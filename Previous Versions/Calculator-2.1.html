@@ -1,0 +1,3342 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="zh">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>D-Calculator-2</title>
+    <style>
+        * {
+            margin: auto;
+            overflow: auto;
+            user-select: none;
+            white-space: nowrap;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        body {
+            width: 100vmin;
+            background-color: rgba(100, 146, 102, 0.56);
+            color: rgba(139, 69, 19, 0.9);
+        }
+
+        @keyframes fade {
+            0% {
+                opacity: 1;
+            }
+            10% {
+                opacity: 0.82;
+            }
+            20% {
+                opacity: 0.64;
+            }
+            30% {
+                opacity: 0.46;
+            }
+            40% {
+                opacity: 0.28;
+            }
+            50% {
+                opacity: 0.1;
+            }
+            60% {
+                opacity: 0.28;
+            }
+            70% {
+                opacity: 0.46;
+            }
+            80% {
+                opacity: 0.64;
+            }
+            90% {
+                opacity: 0.82;
+            }
+            100% {
+                opacity: 1.0;
+            }
+        }
+
+        #cursors {
+            width: 0.5%;
+            color: transparent;
+            background-color: rgba(0, 46, 166, 0.9);
+            margin-left: 0.2%;
+            margin-right: 0.2%;
+            overflow: hidden;
+            animation: fade 960ms infinite;
+        }
+
+        #divs {
+            background-color: rgb(21, 60, 70);
+            border: 0.5vmin solid rgb(21, 60, 70);
+            border-radius: 4vmin;
+            margin: 1vh auto;
+        }
+
+        #main_div {
+            width: 96.5%;
+            background-color: rgb(139, 165, 56);
+            border-radius: 2vmin;
+            box-shadow: inset 0 0 4vmin 0.1vmin rgb(21, 60, 70);
+        }
+
+        #input_area {
+            margin-top: 1vmin;
+        }
+
+        #sub_output_area_info {
+            color: rgb(128, 128, 128);
+            margin: 0.5vmin auto auto;
+            font-size: 3.6vmin;
+        }
+
+        #output_area {
+            width: 93%;
+            color: rgba(0, 135, 0, 0.8);
+            background-color: rgb(199, 205, 140);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin: 1vmin auto auto;
+        }
+
+        #sub_output_area div {
+            color: rgb(0, 0, 0);
+            text-align: left;
+            width: max-content;
+            padding: 0.4% 0.8%;
+            margin-left: 0.8%;
+            font-size: 4vmin;
+            overflow: unset;
+        }
+
+        #sub_output_area sup {
+            text-align: left;
+            font-size: 4vmin;
+        }
+
+        #sub_output_area .InfoPut {
+            color: rgb(53, 121, 68);
+            font-weight: bold;
+        }
+
+        #sub_output_area .FunTitle {
+            font-weight: bold;
+            color: rgb(46, 90, 124);
+        }
+
+        #sub_output_area .FunTitle sup {
+            color: rgb(46, 90, 124);
+            font-weight: bold;
+        }
+
+        #sub_output_area .OneResultOutput {
+            color: rgb(205, 3, 0);
+            font-weight: bold;
+        }
+
+        #sub_output_area .ErrOutput {
+            color: rgb(205, 3, 0);
+            font-weight: bold;
+        }
+
+        .NoDisplay {
+            display: none;
+        }
+
+        .FirstLine {
+            padding-top: 0.6vmin;
+        }
+
+        .Titles {
+            width: 93%;
+            color: rgb(10, 20, 10);
+            background-color: rgb(141, 183, 153);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-top: 1vmin;
+            padding-bottom: 0.8vmin;
+            padding-top: 0.8vmin;
+            font-size: 4vmin;
+            font-weight: bold;
+        }
+
+        .BasicInfo div {
+            color: rgb(233, 209, 181);
+            padding-bottom: 0.5vmin;
+            padding-top: 0.5vmin;
+            font-size: 4vmin;
+            font-weight: bold;
+        }
+
+        .BasicInfo div:hover {
+            opacity: 0.85;
+        }
+
+        .BasicInfo div:active {
+            opacity: 0.75;
+        }
+
+        .InputArea {
+            width: 95%;
+            color: rgba(0, 135, 0, 0.85);
+            background-color: rgb(199, 205, 140);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-top: 0.5vmin;
+            padding-top: 1.2vmin;
+            padding-bottom: 1.2vmin;
+            font-size: 0;
+            text-align: left;
+        }
+
+        .InputArea div {
+            color: rgb(0, 0, 0);
+            font-size: 4vmin;
+            display: inline-block;
+            white-space: pre;
+        }
+
+        .InputArea:active {
+            opacity: 0.8;
+        }
+
+        .InputArea .Tips {
+            color: rgb(128, 128, 128);
+        }
+
+        .ButtonsAdv {
+            margin-top: 0.4vmin;
+            padding-right: 1%;
+            flex-wrap: wrap;
+            display: flex;
+        }
+
+        .ButtonsAdv div {
+            width: 18.5%;
+            color: rgb(0, 0, 0);
+            background-color: rgba(222, 184, 135, 1);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-left: 1%;
+            padding-bottom: 2%;
+            padding-top: 2%;
+            font-size: 4vmin;
+            flex: 1;
+        }
+
+        .ButtonsAdv div:hover {
+            box-shadow: inset 0 0 1vmin 0.8vmin rgb(139, 165, 56);
+        }
+
+        .ButtonsAdv div:active {
+            opacity: 0.75;
+        }
+
+        .ButtonsPri {
+            margin-top: 0.4vmin;
+            padding-right: 1.2%;
+            flex-wrap: wrap;
+            display: flex;
+        }
+
+        .ButtonsPri div {
+            width: 22.5%;
+            color: rgb(0, 0, 0);
+            background-color: rgb(222, 184, 135);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-left: 1.2%;
+            padding-bottom: 3%;
+            padding-top: 3%;
+            font-size: 4vmin;
+            flex: 1;
+        }
+
+        .ButtonsPri div:hover {
+            box-shadow: inset 0 0 1vmin 0.8vmin rgb(139, 165, 56);
+        }
+
+        .ButtonsPri div:active {
+            opacity: 0.75;
+        }
+
+        .ButtonsOther {
+            margin-top: 1vmin;
+            padding-right: 3%;
+            padding-bottom: 1vmin;
+            flex-wrap: wrap;
+            display: flex;
+        }
+
+        .ButtonsOther div {
+            width: 45%;
+            color: rgb(0, 10, 0);
+            background-color: rgb(174, 159, 164);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-left: 3%;
+            padding-bottom: 1.6%;
+            padding-top: 1.6%;
+            font-size: 4vmin;
+            font-weight: bold;
+            flex: 1;
+        }
+
+        .ButtonsOther div:hover {
+            box-shadow: inset 0 0 1vmin 0.8vmin rgb(139, 165, 56);
+        }
+
+        .ButtonsOther div:active {
+            opacity: 0.8;
+        }
+
+        .Choose {
+            width: 93%;
+            color: rgb(0, 10, 0);
+            background-color: rgb(174, 159, 164);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin: 0.5vmin auto auto;
+            padding-bottom: 1.2%;
+            padding-top: 1.2%;
+            font-size: 3.6vmin;
+        }
+
+        .Choose:hover {
+            box-shadow: inset 0 0 1vmin 0.8vmin rgb(139, 165, 56);
+        }
+
+        .Choose:active {
+            opacity: 0.75;
+        }
+
+        .CheckBoxShow {
+            background-color: rgb(222, 184, 135);
+            color: rgb(50, 50, 50);
+        }
+
+        .CheckBox_0 {
+            width: 94%;
+            background-color: rgb(60, 179, 113);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin: 1.2vmin auto 1vmin;
+            padding-bottom: 1vmin;
+        }
+
+        .CheckBox_1 {
+            width: 90%;
+            color: rgb(0, 128, 0);
+            background-color: rgb(139, 165, 56);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin-top: 1vmin;
+            padding-bottom: 1vmin;
+        }
+
+        .CheckBox_2 {
+            width: 90%;
+            color: rgb(173, 255, 47);
+            background-color: rgba(10, 135, 32, 0.35);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            margin: 0.5vmin auto 1vmin;
+            padding-bottom: 1vmin;
+        }
+
+        .ExpText {
+            width: max-content;
+            color: rgb(14, 50, 101);
+            text-align: left;
+            font-size: 3.6vmin;
+            margin-left: 1%;
+            margin-right: 1%;
+        }
+
+        .MainExpText {
+            width: max-content;
+            color: rgb(128, 0, 0);
+            font-size: 3.6vmin;
+            text-align: left;
+            margin-left: 1%;
+            margin-right: 1%;
+        }
+
+        .SubExpText {
+            width: max-content;
+            color: rgb(14, 50, 101);
+            text-align: left;
+            font-size: 3.6vmin;
+            margin-left: 10%;
+            margin-right: 1%;
+        }
+
+        .SetTitles {
+            font-size: 3.3vmin;
+            color: rgb(0, 0, 139);
+            font-weight: bold;
+        }
+
+        .FunMode {
+            width: 94%;
+        }
+
+        .FunctionButtons div {
+            color: rgb(237, 237, 237);
+            background-color: rgba(106, 90, 205, 0.9);
+        }
+
+        .FunStr .FunctionOne {
+            background-color: rgba(238, 232, 170, 0.9);
+        }
+
+        .FunStr .FunctionTwo {
+            background-color: rgba(95, 158, 160, 0.9);
+        }
+
+        ::-webkit-scrollbar {
+            width: 1vmin;
+            height: 1vmin;
+            background-color: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: currentColor;
+            box-shadow: inset 0 0 0.36vmin 0.25vmin rgba(139, 0, 0, 0.3);
+            border-radius: 10vmin;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            box-shadow: inset 0 0 0.36vmin 0.25vmin rgba(255, 50, 255, 0.3);
+        }
+
+        ::-webkit-scrollbar-track-piece {
+            background-color: transparent;
+        }
+
+        ::-webkit-scrollbar-corner {
+            display: none;
+        }
+
+        ::-webkit-scrollbar-button {
+            display: none;
+        }
+    </style>
+    <script type="text/javascript">
+        let ComplexForm = true, FunOutput = true, GeneForm = false;
+        let Ans = 0, Accuracy = 9, e = Math.E, pi = Math.PI;
+        let CurrentInput = 'inputarea0', mode = 'mode_b0';
+        let js_cursor = '<div id="cursors">MC</div>';
+        let tip_basics = '<div class="Tips">输入表达式</div>';
+        let tip = [tip_basics, 'DC', 'B', 'B', 'M'];
+        document.onclick = deal_area => {
+            let parent_deal, another_basic_info;
+            let deal_id = deal_area.target.id;
+            if (deal_area.target.parentNode === null) {
+                parent_deal = '';
+            } else {
+                parent_deal = deal_area.target.parentNode.className;
+            }
+            if (parent_deal === undefined) {
+                parent_deal = '';
+            }
+            if (parent_deal.search('BasicInfo') !== -1) {
+                another_basic_info = 1 - Number(deal_id[6]);
+                document.getElementById(deal_id).style.display = 'none';
+                document.getElementById(deal_id.substring(0, 6) + another_basic_info).style.display = 'block';
+            } else if (parent_deal.search('FunInput') !== -1) {
+                click_input(deal_id);
+            } else if (parent_deal.search('FunStr') !== -1 && deal_area.target.innerHTML !== 'EXE') {
+                input_str(deal_area.target.innerHTML);
+            } else if (parent_deal.search('FunMode') !== -1) {
+                change_on_check(deal_id);
+            } else if (parent_deal.search('InputArea') !== -1 || deal_area.target.className === 'Tips') {
+                click_input(deal_area.target.parentNode.id);
+            }
+            if (!isNaN(Number(deal_id[0]))) {
+                click_input(deal_id);
+            }
+        };
+        document.onkeydown = event => {
+            let inputs = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'e', 'p', 'i', 'I', 's', 'n', 'c', 'o', 't', 'a', 'h', 'r', 'm', 'l', 'g', '|', 'P', 'C', 'A', '(', ')', '/', '*', '^', '+', '-', '!'];
+            let real, next;
+
+            function get_max_input() {
+                let out;
+                if (mode === 'mode_b0') {
+                    out = 0;
+                } else if (mode.search('f') !== -1) {
+                    out = Number(mode[6]);
+                } else if (mode === 'mode_g1') {
+                    out = 0;
+                } else {
+                    out = 2;
+                }
+                return (out);
+            }
+
+            if (inputs.includes(event.key)) {
+                if (event.key === 'I') {
+                    real = '∠';
+                } else if (event.key === 'A') {
+                    real = 'Ans';
+                } else {
+                    real = event.key;
+                }
+                input_str(real);
+            }
+            if (event.key === "ArrowLeft") {
+                move(false);
+            }
+            if (event.key === "ArrowRight") {
+                move(true);
+            }
+            if (event.key === "ArrowDown") {
+                if (event.shiftKey) {
+                    next = Number(CurrentInput[9]) + 1;
+                    if (next === 5) {
+                        next = 0;
+                    }
+                    if (document.getElementById('inputarea' + next).style.display === 'block') {
+                        click_input('inputarea' + next);
+                    } else {
+                        click_input('inputarea0');
+                    }
+                    return false;
+                }
+            }
+            if (event.key === "ArrowUp") {
+                if (event.shiftKey) {
+                    next = Number(CurrentInput[9]) - 1;
+                    if (next === -1) {
+                        click_input('inputarea' + get_max_input());
+                    } else {
+                        click_input('inputarea' + next);
+                    }
+                    return false;
+                }
+            }
+            if (event.key === "Enter") {
+                exe();
+            }
+            if (event.key === "Backspace") {
+                if (event.shiftKey) {
+                    ac();
+                } else {
+                    del();
+                }
+            }
+        };
+
+        function change_area(from_area, to_area) {
+            document.getElementById(from_area + '_area').style.display = 'none';
+            document.getElementById(to_area + '_area').style.display = 'block';
+            if (to_area === 'home_page') {
+                change_check_box(from_area, 'clear');
+            }
+            document.getElementById('output_area').style.display = "none";
+        }
+
+        function change_check_box(area, type) {
+            let delta = '00';
+            let number_i, n;
+            let clear_delta = false;
+            if (type === 'clear') {
+                type = area;
+                clear_delta = true;
+            }
+            if (type === 'explain') {
+                number_i = 6;
+                n = 9;
+            } else if (type === 'set') {
+                number_i = 7;
+                n = 5;
+            }
+            if (!clear_delta) {
+                if (document.getElementById(area).innerHTML.search('∧') !== -1) {
+                    if (area[n - 1] === '0') {
+                        delta = '11';
+                    } else {
+                        delta = '10';
+                    }
+                }
+            }
+            for (let i = 1; i < number_i; i++) {
+                if (i === 4 && type === 'explain') {
+                    for (let sub_i = 0; sub_i < 7; sub_i++) {
+                        document.getElementById('sub_' + type + '_' + sub_i + i).style.display = 'none';
+                        document.getElementById(type + '_' + sub_i + i).innerHTML = document.getElementById(type + '_' + sub_i + i).innerHTML.replaceAll('∧', '∨');
+                    }
+                } else if (i === 5 && type === 'explain') {
+                    for (let sub_i = 0; sub_i < 6; sub_i++) {
+                        document.getElementById('sub_' + type + '_' + sub_i + i).style.display = 'none';
+                        document.getElementById(type + '_' + sub_i + i).innerHTML = document.getElementById(type + '_' + sub_i + i).innerHTML.replaceAll('∧', '∨');
+                    }
+                } else if (i === 1 && type === 'set') {
+                    for (let sub_i = 0; sub_i < 3; sub_i++) {
+                        document.getElementById('sub_' + type + '_' + sub_i + i).style.display = 'none';
+                        document.getElementById(type + '_' + sub_i + i).innerHTML = document.getElementById(type + '_' + sub_i + i).innerHTML.replaceAll('∧', '∨');
+                    }
+                } else {
+                    document.getElementById('sub_' + type + '_0' + i).style.display = 'none';
+                    document.getElementById(type + '_0' + i).innerHTML = document.getElementById(type + '_0' + i).innerHTML.replaceAll('∧', '∨');
+                }
+            }
+            if (!clear_delta) {
+                if (delta[0] === '0') {
+                    document.getElementById('sub_' + type + '_0' + area[n]).style.display = 'block';
+                    document.getElementById(type + '_0' + area[n]).innerHTML = document.getElementById(type + '_0' + area[n]).innerHTML.replaceAll('∨', '∧');
+                    document.getElementById('sub_' + area).style.display = 'block';
+                    document.getElementById(area).innerHTML = document.getElementById(area).innerHTML.replaceAll('∨', '∧');
+                } else if (delta[1] === '0') {
+                    document.getElementById('sub_' + type + '_0' + area[n]).style.display = 'block';
+                    document.getElementById(type + '_0' + area[n]).innerHTML = document.getElementById(type + '_0' + area[n]).innerHTML.replaceAll('∨', '∧');
+                }
+            }
+        }
+
+        function change_on_check(type) {
+            let set_show_area = document.getElementById('set_01');
+            let tip_fun = ['<div class="Tips">输入非零实数a</div>', '<div class="Tips">输入实数b</div>', '<div class="Tips">输入实数c</div>', '<div class="Tips">输入实数d</div>', '<div class="Tips">输入实数q</div>'];
+            let tip_GeneForm = ['<div class="Tips">输入复数Z</div>', '<div class="Tips">输入复数Z_1</div>', '<div class="Tips">输入复数Z_2</div>', '<div class="Tips">输入正整数n</div>'];
+            if (Array.isArray(type)) {
+                document.getElementById(type[0] + '_' + type[1]).innerHTML = document.getElementById(type[0] + '_' + type[1]).innerHTML.replaceAll('● ', '');
+                document.getElementById(type[0] + '_' + type[1]).innerHTML = '● ' + document.getElementById(type[0] + '_' + type[1]).innerHTML;
+                document.getElementById(type[0] + '_' + !type[1]).innerHTML = document.getElementById(type[0] + '_' + !type[1]).innerHTML.replaceAll('● ', '');
+                document.getElementById('set_' + type[2]).innerHTML = document.getElementById(type[0] + '_' + type[1]).innerHTML.replaceAll('● ', '') + ' ∧';
+            } else {
+                document.getElementById(mode).innerHTML = document.getElementById(mode).innerHTML.replaceAll('● ', '');
+                mode = type;
+                document.getElementById(mode).innerHTML = '● ' + document.getElementById(mode).innerHTML;
+                document.getElementById('hp_mode_display_1').style.display = 'block';
+                for (let i = 1; i < 5; i++) {
+                    document.getElementById('inputarea' + i).style.display = 'none';
+                }
+                if (mode === 'mode_b0') {
+                    set_show_area.innerHTML = '基本计算器 ∧';
+                    document.getElementById('hp_mode_display_0').innerHTML = '基本计算器';
+                    document.getElementById('hp_mode_display_1').style.display = 'none';
+                    tip = [tip_basics, 'Ti', 'JS', 'Taylor', 'McMath'];
+                } else if (mode.search('mode_f') !== -1) {
+                    document.getElementById('hp_mode_display_0').innerHTML = '多项式函数分析';
+                    tip = tip_fun;
+                    for (let i = 1; i < Number(mode[6]) + 1; i++) {
+                        document.getElementById('inputarea' + i).style.display = 'block';
+                    }
+                    if (mode === 'mode_f1') {
+                        set_show_area.innerHTML = '一次函数分析 ∧';
+                        document.getElementById('hp_mode_display_1').innerHTML = 'y=f(x)=ax+b';
+                    } else if (mode === 'mode_f2') {
+                        set_show_area.innerHTML = '二次函数分析 ∧';
+                        document.getElementById('hp_mode_display_1').innerHTML = 'y=f(x)=ax<sup>2</sup>+bx+c';
+                    } else if (mode === 'mode_f3') {
+                        set_show_area.innerHTML = '三次函数分析 ∧';
+                        document.getElementById('hp_mode_display_1').innerHTML = 'y=f(x)=ax<sup>3</sup>+bx<sup>2</sup>+cx+d';
+                    } else if (mode === 'mode_f4') {
+                        set_show_area.innerHTML = '四次函数分析 ∧';
+                        document.getElementById('hp_mode_display_1').innerHTML = 'y=f(x)=ax<sup>4</sup>+bx<sup>3</sup>+cx<sup>2</sup>+dx+q';
+                    }
+                } else {
+                    document.getElementById('hp_mode_display_0').innerHTML = '复变函数通式计算';
+                    if (mode === 'mode_g1') {
+                        set_show_area.innerHTML = '复变自然对数函数通式计算 ∧';
+                        tip = [tip_GeneForm[0], 'Ti', 'JS', 'Taylor', 'McMath'];
+                        document.getElementById('hp_mode_display_1').innerHTML = '复变自然对数函数:ln(Z)';
+                    } else if (mode === 'mode_g2') {
+                        set_show_area.innerHTML = '复变幂(指数)函数通式计算 ∧';
+                        tip = [tip_GeneForm[1], tip_GeneForm[2], 'JS', 'Taylor', 'McMath'];
+                        document.getElementById('hp_mode_display_1').innerHTML = '复变幂(指数)函数:(Z_1)^(Z_2)';
+                        document.getElementById('inputarea1').style.display = 'block';
+                    } else if (mode === 'mode_g3') {
+                        set_show_area.innerHTML = '复变根式函数通式计算 ∧';
+                        tip = [tip_GeneForm[0], tip_GeneForm[3], 'JS', 'Taylor', 'McMath'];
+                        document.getElementById('hp_mode_display_1').innerHTML = '复变根式函数:Z^(1÷n)';
+                        document.getElementById('inputarea1').style.display = 'block';
+                    }
+                }
+                CurrentInput = "inputarea0";
+                ac();
+            }
+        }
+
+        function scroll_to() {
+            let body_pos_y = document.documentElement.scrollTop;
+            let difference = document.getElementById(CurrentInput).clientWidth * 0.1;
+            let deal_str = document.getElementById(CurrentInput).innerHTML.split(js_cursor);
+            let deal_str_1 = deal_str[0], deal_str_2 = deal_str[1];
+            let id_number_1 = '', id_number_2 = '';
+            let last_pos, now_pos;
+            let i_delta = false;
+            if (deal_str_1 === '' || deal_str_2 === '') {
+                document.getElementById('cursors').scrollIntoView();
+            } else {
+                deal_str_1 = deal_str_1.replaceAll('>', '');
+                for (let i = deal_str_1.length - 1; i > -1; i--) {
+                    if (i_delta && deal_str_1[i] === '"') {
+                        break;
+                    }
+                    if (i_delta) {
+                        id_number_1 += deal_str_1[i];
+                    }
+                    if (deal_str_1[i] === '"') {
+                        i_delta = true;
+                    }
+                }
+                id_number_1 = id_number_1.split('').reverse().join('');
+                i_delta = false;
+                for (let i = 0; i < deal_str_2.length; i++) {
+                    if (i_delta && deal_str_2[i] === '"') {
+                        break;
+                    }
+                    if (i_delta) {
+                        id_number_2 += deal_str_2[i];
+                    }
+                    if (deal_str_2[i] === '"') {
+                        i_delta = true;
+                    }
+                }
+                document.getElementById(id_number_1).scrollIntoView();
+                document.getElementById(id_number_2).scrollIntoView();
+                last_pos = document.getElementById(CurrentInput).scrollLeft;
+                document.getElementById('cursors').scrollIntoView();
+                now_pos = document.getElementById(CurrentInput).scrollLeft;
+                if (now_pos === last_pos) {
+                    document.getElementById(CurrentInput).scrollLeft = last_pos;
+                } else if (now_pos > last_pos) {
+                    document.getElementById(CurrentInput).scrollLeft = now_pos + difference;
+                } else {
+                    document.getElementById(CurrentInput).scrollLeft = now_pos - difference;
+                }
+            }
+            document.documentElement.scrollTop = body_pos_y;
+        }
+
+        function click_input(input_areas) {
+            let deal_area, new_innerHTML, last_deal_area;
+            document.getElementById('output_area').style.display = "none";
+            for (let i = 0; i < 5; i++) {
+                last_deal_area = document.getElementById('inputarea' + i);
+                last_deal_area.innerHTML = last_deal_area.innerHTML.replaceAll(js_cursor, '');
+                if (last_deal_area.innerHTML === '') {
+                    last_deal_area.innerHTML = tip[i];
+                }
+            }
+            if (input_areas.search('inputarea') !== -1) {
+                CurrentInput = input_areas;
+                deal_area = document.getElementById(CurrentInput);
+                deal_area.innerHTML = deal_area.innerHTML.replaceAll(tip[input_areas[9]], '');
+                deal_area.innerHTML = space(deal_area.innerHTML + js_cursor);
+            } else {
+                CurrentInput = 'inputarea' + input_areas[0];
+                deal_area = document.getElementById(CurrentInput);
+                new_innerHTML = '<div id="' + input_areas + '">';
+                deal_area.innerHTML = deal_area.innerHTML.replaceAll(new_innerHTML, js_cursor + new_innerHTML);
+                deal_area.innerHTML = space(deal_area.innerHTML);
+            }
+            scroll_to();
+        }
+
+        function input_str(str) {
+            let deal_area = document.getElementById(CurrentInput);
+            document.getElementById('output_area').style.display = "none";
+            deal_area.innerHTML = deal_area.innerHTML.replaceAll(tip[CurrentInput[9]], '');
+            deal_area.innerHTML = real_input(deal_area.innerHTML);
+            if (replace_one_fun(deal_area.innerHTML.replaceAll(js_cursor, '')).length < 300) {
+                deal_area.innerHTML = deal_area.innerHTML.replaceAll(js_cursor, str + js_cursor);
+                if (str === 're' || str === 'im' || str === 'arg') {
+                    input_str('(');
+                }
+            }
+            deal_area.innerHTML = space(deal_area.innerHTML);
+            deal_area.innerHTML = back_real_input(deal_area.innerHTML);
+            scroll_to();
+        }
+
+        function move(direction) {
+            let deal_area = document.getElementById(CurrentInput);
+            let deal_list = deal_area.innerHTML.split(js_cursor);
+            let deal_str_1 = deal_list[0], deal_str_2 = deal_list[1];
+            let result_1, result_2, result;
+            document.getElementById('output_area').style.display = "none";
+            if (tip.includes(deal_str_2)) {
+                deal_str_2 = '';
+            }
+            deal_str_1 = replace_one_fun(real_input(deal_str_1));
+            deal_str_2 = replace_one_fun(real_input(deal_str_2));
+            if (direction) {
+                if (deal_str_2 === '') {
+                    result_1 = '';
+                    result_2 = deal_str_1;
+                } else {
+                    result_1 = deal_str_1 + deal_str_2[0];
+                    result_2 = deal_str_2.substring(1, deal_str_2.length);
+                }
+            } else {
+                if (deal_str_1 === '') {
+                    result_1 = deal_str_2;
+                    result_2 = '';
+                } else {
+                    result_1 = deal_str_1.substring(0, deal_str_1.length - 1);
+                    result_2 = deal_str_1[deal_str_1.length - 1] + deal_str_2;
+                }
+            }
+            result = back_replace_one_fun(result_1 + js_cursor + result_2);
+            deal_area.innerHTML = back_real_input(space(result));
+            scroll_to();
+        }
+
+        function del() {
+            let deal_area = document.getElementById(CurrentInput);
+            let deal_list = deal_area.innerHTML.split(js_cursor);
+            let join = document.createElement("div");
+            let deal_str_1 = deal_list[0], deal_str_2 = deal_list[1];
+            let result_1, result_2, result;
+            document.getElementById('output_area').style.display = "none";
+            if (tip.includes(deal_str_2)) {
+                deal_str_2 = '';
+            }
+            deal_str_1 = replace_one_fun(real_input(deal_str_1));
+            deal_str_2 = replace_one_fun(real_input(deal_str_2));
+            if (deal_str_1 === '') {
+                result_1 = deal_str_1;
+                result_2 = deal_str_2.substring(1, deal_str_2.length);
+            } else {
+                result_1 = deal_str_1.substring(0, deal_str_1.length - 1);
+                result_2 = deal_str_2;
+            }
+            result = space(back_replace_one_fun(result_1) + js_cursor + back_replace_one_fun(result_2));
+            deal_area.innerHTML = back_real_input(result);
+            if (deal_area.innerHTML === js_cursor) {
+                deal_area.appendChild(join);
+                join.setAttribute("class", "Tips");
+                join.innerHTML = tip[CurrentInput[9]].replaceAll('<div class="Tips">', '').replaceAll('</div>', '');
+            }
+            scroll_to();
+        }
+
+        function ac() {
+            let deal_area, join;
+            document.getElementById('output_area').style.display = "none";
+            for (let i = 0; i < 5; i++) {
+                deal_area = 'inputarea' + i;
+                join = document.createElement("div");
+                document.getElementById(deal_area).innerHTML = '';
+                document.getElementById(deal_area).appendChild(join);
+                join.setAttribute("class", "Tips");
+                join.innerHTML = tip[i].replaceAll('<div class="Tips">', '').replaceAll('</div>', '');
+                if (deal_area === CurrentInput) {
+                    document.getElementById(deal_area).innerHTML = js_cursor + document.getElementById(deal_area).innerHTML;
+                }
+            }
+        }
+
+        function exe() {
+            let out;
+            let fun_list = [];
+            let memory = CurrentInput;
+            document.getElementById('output_area').style.display = "block";
+            if (mode === 'mode_b0') {
+                out = inputx('inputarea0');
+                if (_err_(out)) {
+                    out = err_display(out);
+                } else {
+                    Ans = out;
+                    out = '<div>' + printx(out) + '</div>';
+                }
+            } else if (mode[5] === 'f') {
+                for (let i = 0; i < Number(mode[6]) + 1; i++) {
+                    fun_list.push(inputx('inputarea' + i));
+                }
+                out = fun(fun_list);
+            } else if (mode === 'mode_g1') {
+                out = gt([inputx('inputarea0')]);
+            } else {
+                out = gt([inputx('inputarea0'), inputx('inputarea1')]);
+            }
+            document.getElementById('sub_output_area').innerHTML = out;
+            CurrentInput = memory;
+            if (tip.includes(document.getElementById(CurrentInput).innerHTML)) {
+                document.getElementById(CurrentInput).innerHTML = js_cursor + document.getElementById(CurrentInput).innerHTML;
+            } else {
+                document.getElementById(CurrentInput).innerHTML = document.getElementById(CurrentInput).innerHTML + js_cursor;
+            }
+            scroll_to();
+        }
+
+        function real_input(str) {
+            let area, numbers;
+            let start_number = '';
+            let i_delta = false;
+            str = str.replaceAll(js_cursor, '标');
+            numbers = (str.length - str.replaceAll('</div>', '').length) / 6 + 1;
+            if (tip.includes(str.replaceAll('标', ''))) {
+                str = '';
+            }
+            str = str.replaceAll('</div>', '');
+            str = str.replaceAll('>', '');
+            str = str.replaceAll('<div', '');
+            str = str.replaceAll(' ', '');
+            str = replace_one_fun(str);
+            if (str !== '') {
+                for (let i = 0; i < 5; i++) {
+                    if (str.search('id="' + i) !== -1) {
+                        area = i;
+                        break;
+                    }
+                }
+                for (let i = 0; i < str.length; i++) {
+                    if (i_delta && str[i] === '"') {
+                        break;
+                    }
+                    if (i_delta) {
+                        start_number += str[i];
+                    }
+                    if (str[i] === '"') {
+                        i_delta = true;
+                    }
+                }
+                start_number = Number(start_number.substring(1, start_number.length));
+                for (let i = start_number; i < numbers + start_number; i++) {
+                    str = str.replaceAll('id="' + area + i + '"', '');
+                }
+            }
+            str = back_replace_one_fun(str).replaceAll('标', js_cursor);
+            return (str);
+        }
+
+        function back_real_input(str) {
+            let out = '', space_str = '';
+            let cursor_number = 0;
+            let difference;
+            str = replace_one_fun(str).replaceAll(js_cursor, '标');
+            for (let i = 0; i < str.length; i++) {
+                if (str[i] === '标') {
+                    cursor_number += 1;
+                    out += '标';
+                } else if (str[i] === ' ') {
+                    cursor_number += 1;
+                    space_str = ' ';
+                } else {
+                    difference = i - cursor_number;
+                    out += '<div id="' + CurrentInput[9] + difference + '">' + space_str + str[i] + '</div>';
+                    space_str = '';
+                }
+            }
+            out = back_replace_one_fun(out).replaceAll('标', js_cursor);
+            return (out);
+        }
+
+        function space(str) {
+            let parts;
+            let out = '';
+            let one_fun_list = ['正', '余', '切', '歪', '空', '劈', '症', '雨', '窃', '阴', '晴', '抢', '谢', '欣', '芸', '实', '虚', '角'];
+            let bivariate_fun_list_part = ['P', 'C'];
+            let constant_list_part = ['存'];
+            let fun_space_list = one_fun_list.concat(constant_list_part).concat(bivariate_fun_list_part);
+            if (str.replaceAll(js_cursor, '').search('div') !== -1) {
+                return (back_real_input(space(real_input(str.split(js_cursor)[0]) + js_cursor + real_input(str.split(js_cursor)[1]))));
+            } else {
+                str = replace_one_fun(str).replaceAll(js_cursor, '标');
+                for (let i = 0; i < str.length; i++) {
+                    parts = str[i];
+                    if (parts !== ' ') {
+                        if (fun_space_list.includes(str[i - 1]) && fun_space_list.includes(parts)) {
+                            parts = ' ' + parts;
+                        }
+                        out += parts;
+                    }
+                }
+                out = out.replaceAll('+-', '-');
+                out = out.replaceAll('-+', '-');
+                out = out.replaceAll('--', '+');
+                out = out.replaceAll('++', '+');
+                out = out.replaceAll('*', '×');
+                out = out.replaceAll('/', '÷');
+                out = out.replaceAll('××', '^');
+                out = out.replaceAll('pi', 'π');
+                out = back_replace_one_fun(out).replaceAll('标', js_cursor);
+                return (out);
+            }
+        }
+
+        function replace_one_fun(str) {
+            str = str.replaceAll('arsinh', '阴');
+            str = str.replaceAll('arcosh', '晴');
+            str = str.replaceAll('artanh', '抢');
+            str = str.replaceAll('sinh', '症');
+            str = str.replaceAll('cosh', '雨');
+            str = str.replaceAll('tanh', '窃');
+            str = str.replaceAll('arcsin', '歪');
+            str = str.replaceAll('arccos', '空');
+            str = str.replaceAll('arctan', '劈');
+            str = str.replaceAll('sin', '正');
+            str = str.replaceAll('cos', '余');
+            str = str.replaceAll('tan', '切');
+            str = str.replaceAll('ln', '谢');
+            str = str.replaceAll('lg', '欣');
+            str = str.replaceAll('log', '芸');
+            str = str.replaceAll('re', '实');
+            str = str.replaceAll('im', '虚');
+            str = str.replaceAll('arg', '角');
+            str = str.replaceAll('Ans', '存');
+            return (str);
+        }
+
+        function back_replace_one_fun(str) {
+            str = str.replaceAll('阴', 'arsinh');
+            str = str.replaceAll('晴', 'arcosh');
+            str = str.replaceAll('抢', 'artanh');
+            str = str.replaceAll('症', 'sinh');
+            str = str.replaceAll('雨', 'cosh');
+            str = str.replaceAll('窃', 'tanh');
+            str = str.replaceAll('歪', 'arcsin');
+            str = str.replaceAll('空', 'arccos');
+            str = str.replaceAll('劈', 'arctan');
+            str = str.replaceAll('正', 'sin');
+            str = str.replaceAll('余', 'cos');
+            str = str.replaceAll('切', 'tan');
+            str = str.replaceAll('谢', 'ln');
+            str = str.replaceAll('欣', 'lg');
+            str = str.replaceAll('芸', 'log');
+            str = str.replaceAll('实', 're');
+            str = str.replaceAll('虚', 'im');
+            str = str.replaceAll('角', 'arg');
+            str = str.replaceAll('存', 'Ans');
+            return (str);
+        }
+
+        function inputx(area) {
+            "use strict";
+            let x, add, last_i, fake_out, special_front, special_after;
+            let xiao_kh = 0, abs_dt = 0;
+            let out = '';
+            let special = [false, false, false];
+            let legal_list = ['阴', '晴', '抢', '症', '雨', '窃', '歪', '空', '劈', '正', '余', '切', '谢', '欣', '芸', '实', '虚', '角', '存', '桐', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'π', 'ℯ', 'ί', '(', ')', '[', ']', '|', 'C', 'P', '∠', '!', '^', '×', '÷', '+', '-'];
+            let one_fun_list = ['阴', '晴', '抢', '症', '雨', '窃', '歪', '空', '劈', '正', '余', '切', '谢', '欣', '实', '虚', '角', '绝'];
+            let one_fun_list_2 = ['!', '桐'];
+            let two_fun_list = ['+', '-', '×', '÷', '∠', 'P', 'C', '芸', '^', '!', '桐'];
+            let two_fun_list_1 = ['÷', '∠', '芸', '^', 'P', 'C', '!', '桐'];
+            let two_fun_list_2 = ['加', '减', '乘', '除', '转', '排', '组', '对', '幂', '阶', '睿'];
+            let number_list_1 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
+            let constant_list = ['π', 'ℯ', 'ί'];
+            let number_list = number_list_1.concat(constant_list);
+            let all_fun_list = one_fun_list.concat(two_fun_list_2);
+
+            function sign_change(str) {
+                str = str.replaceAll('+', '(加');
+                str = str.replaceAll('-', '(减');
+                str = str.replaceAll('×', '(乘');
+                str = str.replaceAll('÷', '(除');
+                str = str.replaceAll('∠', '(转');
+                str = str.replaceAll('P', '(排');
+                str = str.replaceAll('C', '(组');
+                str = str.replaceAll('芸', '(对');
+                str = str.replaceAll('^', '(幂');
+                str = str.replaceAll('!', '(阶');
+                str = str.replaceAll('桐', '(睿');
+                str = str.replaceAll('Z', '加((0),');
+                str = str.replaceAll('F', '减((0),');
+                return (str);
+            }
+
+            function kh_match(x, sign) {
+                let add, last_i;
+                let out = '', count = '';
+                for (let i = 0; i < x.length; i++) {
+                    add = x[i];
+                    if (i !== 0) {
+                        last_i = x[i - 1];
+                    } else {
+                        last_i = '';
+                    }
+                    if ((count.search('<' + xiao_kh + '>') !== -1 || count.search('<' + (xiao_kh - 1) + '>') !== -1) && (x[i] === ']' || x[i] === ')')) {
+                        if (x[i + 1] === '!' || x[i + 1] === '桐') {
+                            out += add;
+                            add = '';
+                            while (x[i + 1] === '!' || x[i + 1] === '桐') {
+                                i += 1;
+                                out += x[i];
+                            }
+                        }
+                        while (count.search('<' + xiao_kh + '>') !== -1) {
+                            count = count.replace('<' + xiao_kh + '>', '');
+                            add = add + '}';
+                        }
+                        while (count.search('<' + (xiao_kh - 1) + '>') !== -1) {
+                            count = count.replace('<' + (xiao_kh - 1) + '>', '');
+                            add = add + '}';
+                        }
+                        if (x[i] !== ']' && x[i] !== ')') {
+                            xiao_kh -= 1;
+                        }
+                    }
+                    if (x[i] === '(' || x[i] === '[') {
+                        xiao_kh += 1;
+                    } else if (x[i] === ')' || x[i] === ']') {
+                        xiao_kh -= 1;
+                    }
+                    if (eval(sign)) {
+                        count += '<' + xiao_kh + '>';
+                        add = '{' + add;
+                    }
+                    out += add;
+                }
+                return (out);
+            }
+
+            function deal(x, sign, mode) {
+                function deal_1(x, adds, mode) {
+                    let add;
+                    let xiao_kh = 0;
+                    let out = '';
+                    let bool = false;
+                    for (let i = 0; i < x.length; i++) {
+                        add = x[i];
+                        if (x[i] === '(') {
+                            xiao_kh += 1;
+                            bool = true;
+                        } else if (x[i] === ')') {
+                            xiao_kh -= 1;
+                            bool = true;
+                        }
+                        if (xiao_kh === 0 && bool) {
+                            if (mode === 'front' && i !== x.length - 1) {
+                                if (all_fun_list.includes(x[i + 1])) {
+                                    out += add + x[i + 1] + adds + x.substring(i + 2, x.length);
+                                    break;
+                                } else {
+                                    out += add + adds + x.substring(i + 1, x.length);
+                                    break;
+                                }
+                            } else {
+                                out += add + adds + x.substring(i + 1, x.length);
+                                break;
+                            }
+                        }
+                        out += add;
+                    }
+                    return (out);
+                }
+
+                for (let i = 0; i < x.length; i++) {
+                    if (sign.includes(x[i])) {
+                        if (mode[0] === '1') {
+                            if (mode[1] === '1') {
+                                x = deal_1(x.substring(0, i).split("").reverse().join(""), sign_change(x[i]), 'front').split("").reverse().join("") + ',' + x.substring(i + 1, x.length);
+                            } else {
+                                x = deal_1(x.substring(0, i).split("").reverse().join(""), sign_change(x[i]), 'front').split("").reverse().join("") + ')' + x[i] + x.substring(i + 1, x.length);
+                                i += 1;
+                            }
+                            i += 2;
+                        }
+                        if (mode[1] === '1') {
+                            if (mode[0] === '0') {
+                                i += 1;
+                                x = x.substring(0, i - 1) + sign_change(x[i - 1]) + deal_1(x.substring(i, x.length), ')', 'after');
+                            } else {
+                                x = x.substring(0, i) + deal_1(x.substring(i, x.length), ')', 'after');
+                            }
+                        }
+                    }
+                }
+                return (x);
+            }
+
+            CurrentInput = area;
+            document.getElementById(area).innerHTML = document.getElementById(area).innerHTML.replaceAll(js_cursor, '');
+            x = real_input(document.getElementById(area).innerHTML).replaceAll(' ', '');
+            if (tip.includes(x)) {
+                x = '';
+            }
+            if (x === '') {
+                if (mode.search('f') !== -1 && area !== 'inputarea0') {
+                    document.getElementById(area).innerHTML = back_real_input('0');
+                    return (0);
+                } else {
+                    return ('err0');
+                }
+            }
+            x = replace_one_fun(x);
+            if (x.length > 300) {
+                return ('err1');
+            }
+            if (x.replaceAll('[') !== x || x.replaceAll(']') !== x) {
+                return ('err0');
+            }
+            x = x.replaceAll('e', 'ℯ');
+            x = x.replaceAll('i', 'ί');
+            x = x.replaceAll('存', '[存]');
+            x = x.replaceAll('!!', '桐');
+            for (let i = 0; i < x.length; i++) {
+                add = x[i];
+                if (i === 0 && number_list.includes(x[i])) {
+                    add = '[' + add;
+                } else if (constant_list.includes(x[i - 1]) && constant_list.includes(x[i])) {
+                    add = '][' + add;
+                } else if (number_list.includes(x[i - 1]) && !number_list.includes(x[i])) {
+                    add = ']' + add;
+                } else if (!number_list.includes(x[i - 1]) && number_list.includes(x[i])) {
+                    add = '[' + add;
+                }
+                out += add;
+            }
+            if (number_list.includes(x[x.length - 1])) {
+                out += ']';
+            }
+            x = out;
+            out = '';
+            x = x.replaceAll(')(', ')×(');
+            x = x.replaceAll(')[', ')×[');
+            x = x.replaceAll('](', ']×(');
+            x = x.replaceAll('][', ']×[');
+            for (let i = 0; i < x.length; i++) {
+                add = x[i];
+                if (i !== 0) {
+                    last_i = x[i - 1];
+                } else {
+                    last_i = '';
+                }
+                if (!legal_list.includes(x[i])) {
+                    return ('err0');
+                }
+                if (x[i] === '(') {
+                    xiao_kh += 1;
+                } else if (x[i] === ')') {
+                    xiao_kh -= 1;
+                }
+                if (one_fun_list.includes(x[i]) && (last_i === ']' || last_i === ')')) {
+                    add = '×' + add;
+                }
+                if (one_fun_list_2.includes(last_i) && !two_fun_list.includes(x[i]) && x[i] !== ')' && x[i] !== '|') {
+                    add = '×' + add;
+                }
+                if (constant_list.includes(x[i]) && constant_list.includes(last_i)) {
+                    add = ']×[' + add;
+                }
+                if (x[i] === '|') {
+                    if (!(last_i === ']' || last_i === ')' || last_i === '|' || one_fun_list_2.includes(last_i))) {
+                        add = add.replaceAll('|', '绝(');
+                        abs_dt += 1;
+                        xiao_kh += 1;
+                    } else if (abs_dt === 0 || last_i === '|' && out[out.length - 1] === '(') {
+                        add = add.replaceAll('|', '绝(');
+                        abs_dt += 1;
+                        xiao_kh += 1;
+                        if (last_i === ']' || out[out.length - 1] === ')' || one_fun_list_2.includes(last_i)) {
+                            add = '×' + add;
+                        }
+                    } else {
+                        add = add.replaceAll('|', ')');
+                        abs_dt -= 1;
+                        xiao_kh -= 1;
+                    }
+                }
+                if (last_i === '|' && out[out.length - 1] === ')' && one_fun_list.includes(x[i])) {
+                    add = '×' + add;
+                }
+                if (x[i] === '+' && !(last_i === '|' || last_i === ']' || last_i === ')' || one_fun_list_2.includes(last_i))) {
+                    add = add.replaceAll('+', 'Z');
+                }
+                if (x[i] === '-' && !(last_i === '|' || last_i === ']' || last_i === ')' || one_fun_list_2.includes(last_i))) {
+                    add = add.replaceAll('-', 'F');
+                }
+                if (x[i] === '+' && last_i === '|' && out[out.length - 1] === '(') {
+                    add = add.replaceAll('+', 'Z');
+                }
+                if (x[i] === '-' && last_i === '|' && out[out.length - 1] === '(') {
+                    add = add.replaceAll('-', 'F');
+                }
+                if (x[i] === '芸' && !(last_i === ')' || last_i === ']')) {
+                    add = add.replaceAll('芸', '欣');
+                }
+                if (x[i] === '[') {
+                    special[0] = true;
+                    add = add.replaceAll('[', '{');
+                    special_front = last_i;
+                }
+                if (special[0] && constant_list.includes(x[i])) {
+                    special[1] = true;
+                }
+                if (special[0] && number_list_1.includes(x[i])) {
+                    special[2] = true;
+                }
+                if (special[0] && x[i] === ']') {
+                    if (i === x.length - 1) {
+                        special_after = '';
+                    } else {
+                        special_after = x[i + 1];
+                    }
+                    if (special[1] && special[2] && special_after !== '÷' && (two_fun_list_1.includes(special_front) || two_fun_list_1.includes(special_after))) {
+                        out = out.replaceAll('{', '([');
+                        add += ')';
+                    } else {
+                        out = out.replaceAll('{', '[');
+                    }
+                    special[0] = false;
+                    special[1] = false;
+                    special[2] = false;
+                    special_front = '';
+                }
+                out += add;
+            }
+            if (xiao_kh > 0) {
+                while (xiao_kh !== 0) {
+                    out += ')';
+                    xiao_kh -= 1;
+                }
+            } else if (xiao_kh < 0) {
+                while (xiao_kh !== 0) {
+                    out = '(' + out;
+                    xiao_kh += 1;
+                }
+            }
+            out = out.replaceAll(')(', ')×(');
+            out = out.replaceAll(')[', ')×[');
+            out = kh_match(out, "one_fun_list.includes(last_i) && x[i] !== '('").replaceAll('{', '(').replaceAll('}', ')');
+            fake_out = kh_match(out, "two_fun_list.includes(last_i) && (x[i] === 'Z' || x[i] === 'F')").replaceAll('{', '(').replaceAll('}', ')');
+            fake_out = kh_match(fake_out, "x[i] === '绝'").replaceAll('{绝(', '|').replaceAll(')}', '|');
+            fake_out = fake_out.replaceAll('[', '').replaceAll(']', '');
+            fake_out = fake_out.replaceAll('F', '-').replaceAll('Z', '+');
+            fake_out = fake_out.replaceAll('桐', '!!');
+            fake_out = space(back_replace_one_fun(fake_out));
+            out = out.replaceAll('[', '(').replaceAll(']', ')');
+            for (let i = 0; i < 10; i++) {
+                out = out.replaceAll('ℯ' + i, 'ℯ)×(' + i);
+                out = out.replaceAll('π' + i, 'π)×(' + i);
+                out = out.replaceAll('ί' + i, 'ί)×(' + i);
+                out = out.replaceAll(i + 'ℯ', i + ')×(ℯ');
+                out = out.replaceAll(i + 'π', i + ')×(π');
+                out = out.replaceAll(i + 'ί', i + ')×(ί');
+            }
+            out = deal(out, ['!', '桐'], '10');
+            out = deal(out, ['Z', 'F'], '01');
+            out = deal(out, ['∠', 'P', 'C', '芸', '^'], '11');
+            out = deal(out, ['×', '÷'], '11');
+            out = deal(out, ['+', '-'], '11');
+            out = out.replaceAll('加', 'jia');
+            out = out.replaceAll('减', 'jian');
+            out = out.replaceAll('乘', 'cheng');
+            out = out.replaceAll('除', 'chuyi');
+            out = out.replaceAll('转', 'tf');
+            out = out.replaceAll('排', 'per');
+            out = out.replaceAll('组', 'com');
+            out = out.replaceAll('对', 'log');
+            out = out.replaceAll('幂', 'pow');
+            out = out.replaceAll('阶', 'fact');
+            out = out.replaceAll('睿', 'double_fact');
+            out = out.replaceAll('绝', 'abs');
+            out = out.replaceAll('π', 'pi');
+            out = out.replaceAll('ℯ', 'e');
+            out = out.replaceAll('ί', '[0,1]');
+            out = out.replaceAll('!', '');
+            out = out.replaceAll('桐', '');
+            out = back_replace_one_fun(out);
+            try {
+                out = eval(out);
+                if (out === undefined) {
+                    out = 'err0';
+                } else {
+                    document.getElementById(area).innerHTML = back_real_input(fake_out);
+                }
+            } catch (err) {
+                out = 'err0';
+            }
+            return (out);
+        }
+
+        function printx(x) {
+            let a, b, sa, sb, pa, pb, arg_x, r, sr, pr, out;
+
+            function sci(x) {
+                let i_x = 0;
+                if (_err_(x)) {
+                    return (x);
+                } else {
+                    if (!isFinite(x)) {
+                        x = 'err3';
+                    } else {
+                        if (abs(x) >= pow(10, 9)) {
+                            if (abs(x) > pow(10, 100)) {
+                                x = 'err3';
+                            } else {
+                                while (abs(x) >= 10) {
+                                    i_x += 1;
+                                    x = x / 10;
+                                }
+                            }
+                        } else if (abs(x) <= pow(10, -6)) {
+                            if (abs(x) < pow(10, -100)) {
+                                x = 0;
+                            } else {
+                                while (abs(x) < 1) {
+                                    i_x -= 1;
+                                    x = x * 10;
+                                }
+                            }
+                        }
+                    }
+                    if (_err_(x)) {
+                        return (x);
+                    } else {
+                        return ([Number(x.toFixed(Accuracy)), i_x]);
+                    }
+                }
+            }
+
+            if (_err_(x)) {
+                return (err_display(x));
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (ComplexForm || b === 0) {
+                    sa = sci(a);
+                    sb = sci(b);
+                    if (_err_(sa)) {
+                        out = err_display(sa);
+                    } else if (_err_(sb)) {
+                        out = err_display(sb);
+                    } else {
+                        a = sa[0];
+                        b = sb[0];
+                        pa = sa[1];
+                        pb = sb[1];
+                        if (a === 0) {
+                            out = '';
+                        } else {
+                            if (pa !== 0) {
+                                if (a === 1) {
+                                    out = '10<sup>' + pa + '</sup>';
+                                } else if (a === -1) {
+                                    out = '-10<sup>' + pa + '</sup>';
+                                } else {
+                                    out = a + '×10<sup>' + pa + '</sup>';
+                                }
+                            } else {
+                                out = a;
+                            }
+                        }
+                        if (b !== 0) {
+                            if (b > 0 && a !== 0) {
+                                out += '+';
+                            }
+                            if (pb !== 0) {
+                                if (b === 1) {
+                                    out += '10<sup>' + pb + '</sup>ί';
+                                } else if (b === -1) {
+                                    out += '-10<sup>' + pb + '</sup>ί';
+                                } else {
+                                    out += b + '×10<sup>' + pb + '</sup>ί';
+                                }
+                            } else {
+                                if (b === 1) {
+                                    out += 'ί';
+                                } else if (b === -1) {
+                                    out += '-ί';
+                                } else {
+                                    out += b + 'ί';
+                                }
+                            }
+                        } else if (a === 0) {
+                            out = '0';
+                        }
+                    }
+                } else {
+                    arg_x = arg([a, b]);
+                    sr = sci(abs([a, b]));
+                    if (_err_(sr)) {
+                        out = err_display(sr);
+                    } else {
+                        r = sr[0];
+                        pr = sr[1];
+                        if (pr !== 0) {
+                            if (r === 1) {
+                                out = '10<sup>' + pr + '</sup>';
+                            } else {
+                                out = r + '×10<sup>' + pr + '</sup>';
+                            }
+                        } else {
+                            out = r;
+                        }
+                        out += '∠' + Number(arg_x.toFixed(Accuracy));
+                    }
+                }
+            }
+            return (out);
+        }
+
+        function _err_(x) {
+            let boolean_part, boolean_out;
+            if (Array.isArray(x)) {
+                x.map(item => {
+                    if (Array.isArray(item)) {
+                        boolean_part = isNaN(Number(item[0])) || isNaN(Number(item[1]));
+                    } else {
+                        boolean_part = isNaN(Number(item));
+                    }
+                    boolean_out = boolean_out || boolean_part;
+                });
+                return (boolean_out);
+            } else {
+                return (isNaN(Number(x)));
+            }
+        }
+
+        function err_display(x) {
+            if (x === 'err1') {
+                return ('<div class="ErrOutput">堆栈错误<div>');
+            } else if (x === 'err2') {
+                return ('<div class="ErrOutput">数学错误<div>');
+            } else if (x === 'err3') {
+                return ('<div class="ErrOutput">结果绝对值过大<div>');
+            } else if (x === 'err4') {
+                return ('<div class="ErrOutput">函数"tan"参数错误<div>');
+            } else if (x === 'err5') {
+                return ('<div class="ErrOutput">函数"arctan"参数错误<div>');
+            } else if (x === 'err6') {
+                return ('<div class="ErrOutput">函数"tanh"参数错误<div>');
+            } else if (x === 'err7') {
+                return ('<div class="ErrOutput">函数"artanh"参数错误<div>');
+            } else if (x === 'err8') {
+                return ('<div class="ErrOutput">函数"ln"参数错误<div>');
+            } else if (x === 'err9') {
+                return ('<div class="ErrOutput">函数"lg"参数错误<div>');
+            } else if (x === 'err10') {
+                return ('<div class="ErrOutput">函数"log"参数错误<div>');
+            } else if (x === 'err11') {
+                return ('<div class="ErrOutput">函数"P"参数错误<div>');
+            } else if (x === 'err12') {
+                return ('<div class="ErrOutput">函数"C"参数错误<div>');
+            } else if (x === 'err13') {
+                return ('<div class="ErrOutput">函数"^"参数错误<div>');
+            } else if (x === 'err14') {
+                return ('<div class="ErrOutput">函数"∠"参数错误<div>');
+            } else if (x === 'err15') {
+                return ('<div class="ErrOutput">函数"!"参数错误<div>');
+            } else if (x === 'err16') {
+                return ('<div class="ErrOutput">函数"!!"参数错误<div>');
+            } else {
+                return ('<div class="ErrOutput">无法计算<div>');
+            }
+        }
+
+        function real(x) {
+            if (_err_(x)) {
+                return (x);
+            } else {
+                if (Array.isArray(x)) {
+                    return ([Number(x[0]), Number(x[1])]);
+                } else {
+                    return ([Number(x), 0]);
+                }
+            }
+        }
+
+        function better(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b === 0) {
+                    return (a);
+                } else {
+                    return ([a, b]);
+                }
+            }
+        }
+
+        function tf(m, n) {
+            let r, b, ct, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                r = real(m)[0];
+                b = real(m)[1];
+                ct = real(n)[0];
+                d = real(n)[1];
+                if (b !== 0 || d !== 0) {
+                    return ('err14');
+                } else {
+                    if ((ct / pi) % 1 === 0) {
+                        return (r * cos(ct));
+                    } else {
+                        return (better([r * cos(ct), r * sin(ct)]));
+                    }
+                }
+            }
+        }
+
+        function sgn(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (abs([a, b]) === 0) {
+                    return (0);
+                } else {
+                    return (better(chuyi([a, b], abs([a, b]))));
+                }
+            }
+        }
+
+        function first_pow(m, n) {
+            let a, b, c, d, r, _arg_, out_r, ct;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                r = abs([a, b]);
+                _arg_ = arg([a, b]);
+                out_r = (pow(r, c)) / (pow(e, (d * _arg_)));
+                ct = d * ln(r) + c * _arg_;
+                return (better([out_r * cos(ct), out_r * sin(ct)]));
+            }
+        }
+
+        function pow(m, n) {
+            let a, b, c, d;
+            let delta = 0, k = 0, t = 10;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                if (a === 0 && b === 0 && c <= 0 && d === 0) {
+                    return ("err13");
+                } else {
+                    if (b === 0 && d === 0) {
+                        if (a >= 0) {
+                            return (Math.pow(a, c));
+                        } else {
+                            while (delta === 0) {
+                                if (k !== 0 && Number((c * k).toFixed(10)) % 1 === 0) {
+                                    delta = 1;
+                                } else {
+                                    if (k > pow(10, 5)) {
+                                        delta = 1;
+                                    } else {
+                                        if (Number(sin(c * pi + 2 * c * k * pi).toFixed(10)) === 0) {
+                                            t = sgn(cos(c * pi + 2 * c * k * pi));
+                                            delta = 1;
+                                        }
+                                    }
+                                }
+                                k += 1
+                            }
+                            if (t !== 10) {
+                                return (t * pow(-a, c));
+                            } else {
+                                return (better(first_pow([a, b], [c, d])));
+                            }
+                        }
+                    } else {
+                        return (better(first_pow([a, b], [c, d])));
+                    }
+                }
+            }
+        }
+
+        function double_fact(x) {
+            let a, b, n, out;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b !== 0 || a % 1 !== 0 || a < 0 && a % 2 === 0) {
+                    return ('err16');
+                } else if (a === 0) {
+                    return (1);
+                } else if (a > 0) {
+                    out = a;
+                    for (let i = 2; i < a; i += 2) {
+                        out = out * (a - i);
+                    }
+                    return (Math.round(out));
+                } else if (a !== -1) {
+                    n = (-a - 1) / 2;
+                    if (n % 2 === 0) {
+                        n = 1;
+                    } else {
+                        n = -1;
+                    }
+                    out = 1 / double_fact(-a - 2);
+                    return (n * out);
+                } else {
+                    return (1);
+                }
+            }
+        }
+
+        function fact(x) {
+            let a, b, out;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (a % 1 !== 0 || a < 0 || b !== 0) {
+                    return ('err15');
+                } else {
+                    if (a === 0) {
+                        return (1);
+                    } else {
+                        out = a;
+                        for (let i = 1; i < a; i++) {
+                            out = out * (a - i);
+                        }
+                        return (Math.round(out));
+                    }
+                }
+            }
+        }
+
+        function per(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                if (a % 1 !== 0 || a < 0 || b !== 0 || c % 1 !== 0 || c < 0 || d !== 0 || a < c) {
+                    return ('err11');
+                } else {
+                    return (Math.round(fact(a) / fact(a - c)));
+                }
+            }
+        }
+
+        function com(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                if (a % 1 !== 0 || a < 0 || b !== 0 || c % 1 !== 0 || c < 0 || d !== 0 || a < c) {
+                    return ('err12');
+                } else {
+                    return (Math.round(fact(a) / (fact(a - c) * fact(c))));
+                }
+            }
+        }
+
+        function jia(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                return (better([a + c, b + d]));
+            }
+        }
+
+        function jian(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                return (better([a - c, b - d]));
+            }
+        }
+
+        function cheng(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                return (better([a * c - b * d, a * d + b * c]));
+            }
+        }
+
+        function chuyi(m, n) {
+            let a, b, c, d, den, mol;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                if (abs([c, d]) === 0) {
+                    return ('err2');
+                } else {
+                    den = pow(abs([c, d]), 2);
+                    mol = cheng([a, b], [c, -d]);
+                    return (better([real(mol)[0] / den, real(mol)[1] / den]));
+                }
+            }
+        }
+
+        function re(x) {
+            if (_err_(x)) {
+                return (x);
+            } else {
+                return (real(x)[0]);
+            }
+        }
+
+        function im(x) {
+            if (_err_(x)) {
+                return (x);
+            } else {
+                return (real(x)[1]);
+            }
+        }
+
+        function abs(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                return (better(pow(pow(a, 2) + pow(b, 2), 0.5)));
+            }
+        }
+
+        function arg(x) {
+            let a, b, r, out, T;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (abs([a, b]) === 0) {
+                    return (0);
+                } else {
+                    r = abs([a, b]);
+                    T = a / r;
+                    if (T > 1) {
+                        T = 1;
+                    } else if (T < -1) {
+                        T = -1;
+                    }
+                    out = arccos(T);
+                    if (b < 0) {
+                        return (-out);
+                    } else {
+                        return (out);
+                    }
+                }
+            }
+        }
+
+        function ln(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (abs([a, b]) === 0) {
+                    return ('err8');
+                } else {
+                    if (b === 0 && a > 0) {
+                        return (Math.log(a) / Math.log(e));
+                    } else {
+                        return (better(jia(ln(abs([a, b])), cheng([0, 1], arg([a, b])))));
+                    }
+                }
+            }
+        }
+
+        function lg(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (abs([a, b]) === 0) {
+                    return ('err9');
+                } else {
+                    return (better(chuyi(ln([a, b]), ln(10))));
+                }
+            }
+        }
+
+        function log(m, n) {
+            let a, b, c, d;
+            if (_err_(m)) {
+                return (m);
+            } else if (_err_(n)) {
+                return (n);
+            } else {
+                a = real(m)[0];
+                b = real(m)[1];
+                c = real(n)[0];
+                d = real(n)[1];
+                if (abs([a, b]) === 0 || abs([c, d]) === 0) {
+                    return ("err10");
+                } else {
+                    if (ln([a, b]) === 0) {
+                        return ("err10");
+                    } else {
+                        return (better(chuyi(ln([c, d]), ln([a, b]))));
+                    }
+                }
+            }
+        }
+
+        function sin(x) {
+            let a, b, mid;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b === 0) {
+                    return (Math.sin(a));
+                } else {
+                    mid = pow(e, cheng([0, 1], [a, b]));
+                    return (better(chuyi(jian(mid, chuyi(1, mid)), [0, 2])));
+                }
+            }
+        }
+
+        function cos(x) {
+            let a, b, mid;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b === 0) {
+                    return (Math.cos(a));
+                } else {
+                    mid = pow(e, cheng([0, 1], [a, b]));
+                    return (better(chuyi(jia(mid, chuyi(1, mid)), 2)));
+                }
+            }
+        }
+
+        function tan(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (cos([a, b]) === 0) {
+                    return ("err4");
+                } else {
+                    return (better(chuyi(sin([a, b]), cos([a, b]))));
+                }
+            }
+        }
+
+        function arcsin(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b === 0 && a <= 1 && a >= -1) {
+                    return (Math.asin(a));
+                } else {
+                    return (better(cheng([0, -1], ln(jia(cheng([a, b], [0, 1]), pow(jian(1, pow([a, b], 2)), 0.5))))));
+                }
+            }
+        }
+
+        function arccos(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (b === 0 && a <= 1 && a >= -1) {
+                    return (Math.acos(a));
+                } else {
+                    return (better(cheng([0, -1], ln(jia([a, b], pow(jian(pow([a, b], 2), 1), 0.5))))));
+                }
+            }
+        }
+
+        function arctan(x) {
+            let a, b, delta;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (jia([a, b], [0, 1]) === 0) {
+                    return ("err5");
+                } else {
+                    delta = pow(chuyi(jian([0, 1], [a, b]), jia([a, b], [0, 1])), 0.5);
+                    if (delta === 0) {
+                        return ("err5");
+                    } else if (b === 0) {
+                        return (Math.atan(a));
+                    } else {
+                        return (better(cheng([0, -1], ln(delta))));
+                    }
+                }
+            }
+        }
+
+        function sinh(x) {
+            let a, b, mid;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                mid = pow(e, [a, b]);
+                return (better(chuyi(jian(mid, chuyi(1, mid)), 2)));
+            }
+        }
+
+        function cosh(x) {
+            let a, b, mid;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                mid = pow(e, [a, b]);
+                return (better(chuyi(jia(mid, chuyi(1, mid)), 2)));
+            }
+        }
+
+        function tanh(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (cosh([a, b]) === 0) {
+                    return ("err6");
+                } else {
+                    return (better(chuyi(sinh([a, b]), cosh([a, b]))));
+                }
+            }
+        }
+
+        function arsinh(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                return (better(ln(jia([a, b], pow(jia(pow([a, b], 2), 1), 0.5)))));
+            }
+        }
+
+        function arcosh(x) {
+            let a, b;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                return (better(ln(jia([a, b], pow(jian(pow([a, b], 2), 1), 0.5)))));
+            }
+        }
+
+        function artanh(x) {
+            let a, b, delta;
+            if (_err_(x)) {
+                return (x);
+            } else {
+                a = real(x)[0];
+                b = real(x)[1];
+                if (jian(1, [a, b]) === 0) {
+                    return ("err7");
+                } else {
+                    delta = chuyi(jia(1, [a, b]), jian(1, [a, b]));
+                    if (delta === 0) {
+                        return ("err7");
+                    } else {
+                        return (better(cheng(0.5, ln(delta))));
+                    }
+                }
+            }
+        }
+
+        function gt(x) {
+            let a, b, c, d, out, n, r, mid_a, mid_b, ct, mid_ct, mid_r, x1;
+            if (_err_(x)) {
+                return (err_display('err0'));
+            } else {
+                if (mode === 'mode_g1') {
+                    x = x[0];
+                    a = real(x)[0];
+                    b = real(x)[1];
+                    if (abs([a, b]) === 0) {
+                        return (err_display('err2'));
+                    } else {
+                        out = '<div class="InfoPut">ln(' + printx([a, b]) + ')= </div><div>';
+                        mid_a = ln(abs([a, b]));
+                        mid_b = arg([a, b]);
+                        if (mid_a !== 0) {
+                            out += printx(mid_a) + '+';
+                        }
+                        if (mid_b !== 0) {
+                            out += '(' + printx(mid_b) + '+2kπ)ί';
+                        } else {
+                            out += '2kπί';
+                        }
+                        out += ' , k∈ℤ</div>';
+                        if (!GeneForm) {
+                            out += '<div class="InfoPut">当 k=0 时,原式= </div><div>' + printx(ln([a, b])) + '</div>';
+                        }
+                        if (out.replaceAll('ErrOutput', '') !== out) {
+                            out = err_display('err0');
+                        }
+                        return (out);
+                    }
+                } else {
+                    x1 = x[1];
+                    x = x[0];
+                    if (_err_(x)) {
+                        return (x);
+                    } else if (_err_(x1)) {
+                        return (x1);
+                    } else {
+                        a = real(x)[0];
+                        b = real(x)[1];
+                        c = real(x1)[0];
+                        d = real(x1)[1];
+                        if (mode === 'mode_g2') {
+                            r = abs([a, b]);
+                            ct = arg([a, b]);
+                            if (r === 0) {
+                                return (err_display('err0'));
+                            } else if (d === 0 && c % 1 === 0) {
+                                out = '<div class="OneResultOutput">' + printx([a, b]) + ' 的';
+                                if (c === 2 && d === 0) {
+                                    out += '平方';
+                                } else if (c === 3 && d === 0) {
+                                    out += '立方';
+                                } else {
+                                    out += ' ' + printx([c, d]) + ' 次方';
+                                }
+                                out += '有唯一结果:</div><div>' + printx(pow([a, b], [c, d])) + '</div>';
+                                if (out.replaceAll('ErrOutput', '') !== out) {
+                                    out = err_display('err0');
+                                }
+                                return (out);
+                            } else {
+                                mid_ct = d * ln(r) + c * ct;
+                                mid_r = pow(r, c) * pow(e, -d * ct);
+                                out = '<div class="InfoPut">' + printx([a, b]) + ' 的 ' + printx([c, d]) + ' 次方为:</div><div>';
+                                if (mid_r !== 1) {
+                                    out += printx(mid_r);
+                                    if (d !== 0) {
+                                        out += '×';
+                                        if (-2 * d === 1) {
+                                            out += 'ℯ<sup>kπ</sup>';
+                                        } else if (-2 * d === -1) {
+                                            out += 'ℯ<sup>-kπ</sup>';
+                                        } else {
+                                            out += 'ℯ<sup>' + printx(-2 * d) + 'kπ</sup>';
+                                        }
+                                    }
+                                }
+                                if (!(c % 1 === 0 && mid_ct === 0)) {
+                                    out += '∠';
+                                    if (c % 1 === 0) {
+                                        out += printx(mid_ct);
+                                    } else {
+                                        out += '(';
+                                        if (mid_ct !== 0) {
+                                            out += printx(mid_ct);
+                                        }
+                                        if (2 * c === 1) {
+                                            out += 'kπ';
+                                        } else if (2 * c === -1) {
+                                            out += '-kπ';
+                                        } else {
+                                            if (mid_ct !== 0 && c > 0) {
+                                                out += '+';
+                                            }
+                                            out += printx(2 * c) + 'kπ';
+                                        }
+                                        out += ')';
+                                    }
+                                }
+                                out += ' , k∈ℤ</div>';
+                                if (!GeneForm) {
+                                    out += '<div class="InfoPut">当 k=0 时,原式= </div><div>' + printx(first_pow([a, b], [c, d])) + '</div>';
+                                }
+                                if (out.replaceAll('ErrOutput', '') !== out) {
+                                    out = err_display('err0');
+                                }
+                                return (out);
+                            }
+                        } else {
+                            if (d !== 0 || c % 1 !== 0 || c <= 0) {
+                                return (err_display('err0'));
+                            } else {
+                                n = c;
+                                if (n === 1) {
+                                    out = '<div class="OneResultOutput">' + printx([a, b]) + ' 的一次方根有唯一结果:</div><div>' + printx([a, b]) + '</div>';
+                                    if (out.replaceAll('ErrOutput', '') !== out) {
+                                        out = err_display('err0');
+                                    }
+                                    return (out);
+                                } else {
+                                    out = '<div class="InfoPut">' + printx([a, b]) + ' 的';
+                                    if (n === 2) {
+                                        out += '平方';
+                                    } else if (n === 3) {
+                                        out += '立方';
+                                    } else {
+                                        out += ' ' + printx(n) + ' 次方';
+                                    }
+                                    out += '根为: </div><div>';
+                                    r = abs([a, b]);
+                                    ct = arg([a, b]);
+                                    out += printx(pow(r, 1 / n)) + '∠';
+                                    if (ct === 0) {
+                                        if (2 / n === 1) {
+                                            out += '(kπ)';
+                                        } else {
+                                            out += '(' + printx(2 / n) + 'kπ)';
+                                        }
+                                    } else {
+                                        out += '(' + printx(ct / n);
+                                        if (2 / n === 1) {
+                                            out += '+kπ)';
+                                        } else {
+                                            out += '+' + printx(2 / n) + 'kπ)';
+                                        }
+                                    }
+                                    out += ' , k∈[0,' + printx(n - 1) + ']∩ℤ</div>';
+                                    if (!GeneForm) {
+                                        out += '<div class="InfoPut">当 k=0 时,原式= </div><div>' + printx(first_pow([a, b], 1 / n)) + '</div>';
+                                    }
+                                    if (out.search('ErrOutput') !== -1) {
+                                        out = err_display('err0');
+                                    }
+                                    return (out);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function fun(x) {
+            let out = '';
+            let a, a1, a2, a11, b, b1, b2, b11;
+            let c, c1, c2, c11, d, d1, d2;
+            let z, z1, z2, w1, w2, w3;
+            let f, f1, f2, fx1, fx2, x11;
+            let root, root1, root11, real_root1;
+            let dt1, dt11, arcdt, ct;
+            let midz, midz1, mid2;
+            let mid1, mid3, mid4, mid1_2;
+            let A, B, C, D, E, F, DT;
+
+            function twoSort(arr) {
+                let len = arr.length;
+                let left = 0, right = 0, point = 0;
+                let nArr = [];
+                nArr[0] = arr[0];
+                for (let i = 1; i < len; i++) {
+                    left = 0;
+                    let nLen = nArr.length;
+                    right = nLen;
+                    for (let j = 0; j < nLen; j++) {
+                        point = Math.floor((left + right) / 2);
+                        if (nArr[point] < arr[i]) {
+                            left = point + 1;
+                        } else {
+                            right = point;
+                        }
+                        if (right === left) {
+                            nArr.splice(left, 0, arr[i]);
+                            break;
+                        }
+                    }
+                }
+                return (nArr);
+            }
+
+            function yfun(n, x) {
+                if (n.length === 2) {
+                    return (n[0] * x + n[1]);
+                } else if (n.length === 3) {
+                    return (n[0] * pow(x, 2) + n[1] * x + n[2]);
+                } else if (n.length === 4) {
+                    return (n[0] * pow(x, 3) + n[1] * pow(x, 2) + n[2] * x + n[3]);
+                } else if (n.length === 5) {
+                    return (n[0] * pow(x, 4) + n[1] * pow(x, 3) + n[2] * pow(x, 2) + n[3] * x + n[4]);
+                }
+            }
+
+            function root_2(x) {
+                let a = x[0], b = x[1], c = x[2];
+                let dt, roots, mid1, mid2, mid3;
+                dt = pow(b, 2) - 4 * a * c;
+                if (dt > 0) {
+                    roots = twoSort([(-b + pow(dt, 0.5)) / (2 * a), (-b - pow(dt, 0.5)) / (2 * a)]);
+                } else if (dt === 0) {
+                    roots = [-b / (2 * a)];
+                } else {
+                    mid1 = -b;
+                    mid2 = 2 * a;
+                    mid3 = pow(dt, 0.5);
+                    roots = [chuyi(jia(mid1, mid3), mid2), chuyi(jian(mid1, mid3), mid2), 'i'];
+                }
+                return (roots);
+            }
+
+            function root_3(x) {
+                let a = x[0], b = x[1], c = x[2], d = x[3];
+                let A, B, C, dt, roots;
+                let w1, w2, re1, im1;
+                let k, ct, T, mid1, mid2;
+                A = pow(b, 2) - 3 * a * c;
+                B = b * c - 9 * a * d;
+                C = pow(c, 2) - 3 * b * d;
+                dt = pow(B, 2) - 4 * A * C;
+                if (A === 0 && B === 0) {
+                    roots = [-b / (3 * a)];
+                } else if (dt > 0) {
+                    w1 = pow(A * b + 1.5 * a * (-B + pow(dt, 0.5)), 1 / 3);
+                    w2 = pow(A * b + 1.5 * a * (-B - pow(dt, 0.5)), 1 / 3);
+                    re1 = (-b + 0.5 * (w1 + w2)) / (3 * a);
+                    im1 = ((w1 - w2) * pow(3, 0.5)) / (6 * a);
+                    roots = [(-b - w1 - w2) / (3 * a), [re1, im1], [re1, -im1], 'i'];
+                } else if (dt === 0) {
+                    k = B / A;
+                    roots = twoSort([-b / a + k, -k / 2]);
+                } else if (dt < 0) {
+                    A = abs(A);
+                    T = (2 * A * b - 3 * a * B) / (2 * pow(A, 1.5));
+                    if (T > 1) {
+                        T = 1;
+                    } else if (T < -1) {
+                        T = -1;
+                    }
+                    ct = arccos(T);
+                    mid1 = (-b + pow(A, 0.5) * (cos(ct / 3) + pow(3, 0.5) * sin(ct / 3))) / (3 * a);
+                    mid2 = (-b + pow(A, 0.5) * (cos(ct / 3) - pow(3, 0.5) * sin(ct / 3))) / (3 * a);
+                    roots = twoSort([(-b - 2 * pow(A, 0.5) * cos(ct / 3)) / (3 * a), mid1, mid2]);
+                }
+                return (roots);
+            }
+
+            if (_err_(x)) {
+                return (err_display('err0'));
+            } else {
+                if (mode === 'mode_f1') {
+                    a = x[0];
+                    b = x[1];
+                    a1 = real(a)[0];
+                    a2 = real(a)[1];
+                    b1 = real(b)[0];
+                    b2 = real(b)[1];
+                    if (a2 !== 0 || b2 !== 0 || a1 === 0) {
+                        return (err_display('err0'));
+                    } else {
+                        a = a1;
+                        b = b1;
+                    }
+                    out += '<div class="InfoPut FunTitle">[y=f(x)=';
+                    if (a === 1) {
+                        out += 'x';
+                    } else if (a === -1) {
+                        out += '-x';
+                    } else {
+                        out += printx(a) + 'x';
+                    }
+                    if (b > 0) {
+                        out += '+' + printx(b);
+                    } else if (b < 0) {
+                        out += printx(b);
+                    }
+                    out += ']</div>';
+                    out += '<div class="InfoPut">值域:</div><div>ℝ</div>';
+                    if (a > 0) {
+                        out += '<div class="InfoPut">增区间:</div><div>ℝ</div>';
+                        out += '<div class="InfoPut">减区间:</div><div>无</div>';
+                    } else {
+                        out += '<div class="InfoPut">增区间:</div><div>无</div>';
+                        out += '<div class="InfoPut">减区间:</div><div>ℝ</div>';
+                    }
+                    out += '<div class="InfoPut">极大值点:</div><div>无</div>';
+                    out += '<div class="InfoPut">极小值点:</div><div>无</div>';
+                    out += '<div class="InfoPut">凹区间:</div><div>无</div>';
+                    out += '<div class="InfoPut">凸区间:</div><div>无</div>';
+                    out += '<div class="InfoPut">拐点:</div><div>无</div>';
+                    out += '<div class="InfoPut">f(0)=</div><div>' + printx(yfun([a, b], 0)) + '</div>';
+                    out += '<div class="InfoPut">方程y=f(x)=0的根:</div><div>x=' + printx(-b / a) + '</div>';
+                } else if (mode === 'mode_f2') {
+                    a = x[0];
+                    b = x[1];
+                    c = x[2];
+                    a1 = real(a)[0];
+                    a2 = real(a)[1];
+                    b1 = real(b)[0];
+                    b2 = real(b)[1];
+                    c1 = real(c)[0];
+                    c2 = real(c)[1];
+                    if (a2 !== 0 || b2 !== 0 || a1 === 0 || c2 !== 0) {
+                        return (err_display('err0'));
+                    } else {
+                        a = a1;
+                        b = b1;
+                        c = c1;
+                    }
+                    out += '<div class="InfoPut FunTitle">[y=f(x)=';
+                    if (a === 1) {
+                        out += 'x';
+                    } else if (a === -1) {
+                        out += '-x';
+                    } else {
+                        out += printx(a) + 'x';
+                    }
+                    out += '<sup>2</sup>';
+                    if (b > 0) {
+                        if (b === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(b) + 'x';
+                        }
+                    } else if (b < 0) {
+                        if (b === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(b) + 'x';
+                        }
+                    }
+                    if (c > 0) {
+                        out += '+' + printx(c);
+                    } else if (c < 0) {
+                        out += printx(c);
+                    }
+                    out += ']</div>';
+                    if (a > 0) {
+                        out += '<div class="InfoPut">值域:</div><div>[' + printx(yfun([a, b, c], -b / (2 * a))) + ',+∞)</div>';
+                        out += '<div class="InfoPut">增区间:</div><div>(' + printx(-b / (2 * a)) + ',+∞)</div>';
+                        out += '<div class="InfoPut">减区间:</div><div>(-∞,' + printx(-b / (2 * a)) + ')</div>';
+                        out += '<div class="InfoPut">极大值点:</div><div>无</div>';
+                        out += '<div class="InfoPut">极小值点:</div><div>(' + printx(-b / (2 * a)) + ',' + printx(yfun([a, b, c], -b / (2 * a))) + ')</div>';
+                        out += '<div class="InfoPut">凹区间:</div><div>ℝ</div>';
+                        out += '<div class="InfoPut">凸区间:</div><div>无</div>';
+                    } else {
+                        out += '<div class="InfoPut">值域:</div><div>(-∞,' + printx(yfun([a, b, c], -b / (2 * a))) + ']</div>';
+                        out += '<div class="InfoPut">增区间:</div><div>(-∞,' + printx(-b / (2 * a)) + ')</div>';
+                        out += '<div class="InfoPut">减区间:</div><div>(' + printx(-b / (2 * a)) + ',+∞)</div>';
+                        out += '<div class="InfoPut">极大值点:</div><div>(' + printx(-b / (2 * a)) + ',' + printx(yfun([a, b, c], -b / (2 * a))) + ')</div>';
+                        out += '<div class="InfoPut">极小值点:</div><div>无</div>';
+                        out += '<div class="InfoPut">凹区间:</div><div>无</div>';
+                        out += '<div class="InfoPut">凸区间:</div><div>ℝ</div>';
+                    }
+                    out += '<div class="InfoPut">拐点:</div><div>无</div>';
+                    out += '<div class="InfoPut">f(0)=</div><div>' + printx(yfun([a, b, c], 0)) + '</div>';
+                    root = root_2([a, b, c]);
+                    out += '<div class="InfoPut">方程y=f(x)=0的根:</div><div>x=';
+                    if (root.length === 1) {
+                        out += printx(root[0]);
+                    } else if (root.length === 2) {
+                        out += printx(root[0]) + ' 或' + ' x=' + printx(root[1]);
+                    } else if (FunOutput) {
+                        out += printx(root[0]) + ' 或' + ' x=' + printx(root[1]);
+                    } else {
+                        out = out.substring(0, out.length - 7);
+                        out += '<div class="OneResultOutput">方程无实根';
+                    }
+                    out += '</div>';
+                } else if (mode === 'mode_f3') {
+                    a = x[0];
+                    b = x[1];
+                    c = x[2];
+                    d = x[3];
+                    a1 = real(a)[0];
+                    a2 = real(a)[1];
+                    b1 = real(b)[0];
+                    b2 = real(b)[1];
+                    c1 = real(c)[0];
+                    c2 = real(c)[1];
+                    d1 = real(d)[0];
+                    d2 = real(d)[1];
+                    if (a2 !== 0 || b2 !== 0 || a1 === 0 || c2 !== 0 || d2 !== 0) {
+                        return (err_display('err0'));
+                    } else {
+                        a = a1;
+                        b = b1;
+                        c = c1;
+                        d = d1;
+                    }
+                    out += '<div class="InfoPut FunTitle">[y=f(x)=';
+                    if (a === 1) {
+                        out += 'x';
+                    } else if (a === -1) {
+                        out += '-x';
+                    } else {
+                        out += printx(a) + 'x';
+                    }
+                    out += '<sup>3</sup>';
+                    if (b > 0) {
+                        if (b === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(b) + 'x';
+                        }
+                        out += '<sup>2</sup>';
+                    } else if (b < 0) {
+                        if (b === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(b) + 'x';
+                        }
+                        out += '<sup>2</sup>';
+                    }
+                    if (c > 0) {
+                        if (c === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(c) + 'x';
+                        }
+                    } else if (c < 0) {
+                        if (c === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(c) + 'x';
+                        }
+                    }
+                    if (d > 0) {
+                        out += '+' + printx(d);
+                    } else if (d < 0) {
+                        out += printx(d);
+                    }
+                    out += ']</div>';
+                    out += '<div class="InfoPut">值域:</div>' + '<div>ℝ</div>';
+                    a1 = 3 * a;
+                    b1 = 2 * b;
+                    c1 = c;
+                    dt1 = pow(b1, 2) - 4 * a1 * c1;
+                    if (dt1 < 0 || dt1 === 0) {
+                        if (a > 0) {
+                            out += '<div class="InfoPut">增区间:</div><div>ℝ</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>无</div>';
+                        } else {
+                            out += '<div class="InfoPut">增区间:</div><div>无</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>ℝ</div>';
+                        }
+                        out += '<div class="InfoPut">极大值点:</div><div>无</div>';
+                        out += '<div class="InfoPut">极小值点:</div><div>无</div>';
+                    } else {
+                        root1 = root_2([a1, b1, c1]);
+                        if (a > 0) {
+                            out += '<div class="InfoPut">增区间:</div><div>(-∞,' + printx(root1[0]) + ') ; (' + printx(root1[1]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(' + printx(root1[0]) + ',' + printx(root1[1]) + ')</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d], root1[0])) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(root1[1]) + ',' + printx(yfun([a, b, c, d], root1[1])) + ')</div>';
+                        } else {
+                            out += '<div class="InfoPut">增区间:</div><div>(' + printx(root1[0]) + ',' + printx(root1[1]) + ')</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(-∞,' + printx(root1[0]) + ') ; (' + printx(root1[1]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(root1[1]) + ',' + printx(yfun([a, b, c, d], root1[1])) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d], root1[0])) + ')</div>';
+                        }
+                    }
+                    x11 = -b / (3 * a);
+                    if (a > 0) {
+                        out += '<div class="InfoPut">凹区间:</div><div>(' + printx(x11) + ',+∞)</div>';
+                        out += '<div class="InfoPut">凸区间:</div><div>(-∞,' + printx(x11) + ')</div>';
+                    } else {
+                        out += '<div class="InfoPut">凹区间:</div><div>(-∞,' + printx(x11) + ')</div>';
+                        out += '<div class="InfoPut">凸区间:</div><div>(' + printx(x11) + ',+∞)</div>';
+                    }
+                    out += '<div class="InfoPut">拐点:</div><div>(' + printx(x11) + ',' + printx(yfun([a, b, c, d], x11)) + ')</div>';
+                    out += '<div class="InfoPut">f(0)=</div><div>' + printx(yfun([a, b, c, d], 0)) + '</div>';
+                    root = root_3([a, b, c, d]);
+                    out += '<div class="InfoPut">方程y=f(x)=0的根:</div><div>';
+                    if (root.length === 1) {
+                        out += 'x=';
+                        out += printx(root[0]);
+                    } else if (root.length === 2) {
+                        out += 'x=';
+                        out += printx(root[0]) + ' 或' + ' x=' + printx(root[1]);
+                    } else if (root.length === 3) {
+                        out += 'x=';
+                        out += printx(root[0]) + ' 或' + ' x=' + printx(root[1]) + ' 或' + ' x=' + printx(root[2]);
+                    } else if (FunOutput) {
+                        out += 'x=';
+                        out += printx(root[0]) + ' 或' + ' x=' + printx(root[1]) + ' 或' + ' x=' + printx(root[2]);
+                    } else {
+                        out += printx(root[0]);
+                    }
+                    out += '</div>';
+                } else {
+                    a = x[0];
+                    b = x[1];
+                    c = x[2];
+                    d = x[3];
+                    f = x[4];
+                    a1 = real(a)[0];
+                    a2 = real(a)[1];
+                    b1 = real(b)[0];
+                    b2 = real(b)[1];
+                    c1 = real(c)[0];
+                    c2 = real(c)[1];
+                    d1 = real(d)[0];
+                    d2 = real(d)[1];
+                    f1 = real(f)[0];
+                    f2 = real(f)[1];
+                    if (a2 !== 0 || b2 !== 0 || a1 === 0 || c2 !== 0 || d2 !== 0 || f2 !== 0) {
+                        return (err_display('err0'));
+                    } else {
+                        a = a1;
+                        b = b1;
+                        c = c1;
+                        d = d1;
+                        f = f1;
+                    }
+                    out += '<div class="InfoPut FunTitle">[y=f(x)=';
+                    if (a === 1) {
+                        out += 'x';
+                    } else if (a === -1) {
+                        out += '-x';
+                    } else {
+                        out += printx(a) + 'x';
+                    }
+                    out += '<sup>4</sup>';
+                    if (b > 0) {
+                        if (b === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(b) + 'x';
+                        }
+                        out += '<sup>3</sup>';
+                    } else if (b < 0) {
+                        if (b === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(b) + 'x';
+                        }
+                        out += '<sup>3</sup>';
+                    }
+                    if (c > 0) {
+                        if (c === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(c) + 'x';
+                        }
+                        out += '<sup>2</sup>';
+                    } else if (c < 0) {
+                        if (c === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(c) + 'x';
+                        }
+                        out += '<sup>2</sup>';
+                    }
+                    if (d > 0) {
+                        if (d === 1) {
+                            out += '+x';
+                        } else {
+                            out += '+' + printx(d) + 'x';
+                        }
+                    } else if (d < 0) {
+                        if (d === -1) {
+                            out += '-x';
+                        } else {
+                            out += printx(d) + 'x';
+                        }
+                    }
+                    if (f > 0) {
+                        out += '+' + printx(f);
+                    } else if (f < 0) {
+                        out += printx(f);
+                    }
+                    out += ']</div>';
+                    a1 = 4 * a;
+                    b1 = 3 * b;
+                    c1 = 2 * c;
+                    d1 = d;
+                    a11 = 12 * a;
+                    b11 = 6 * b;
+                    c11 = 2 * c;
+                    dt11 = pow(b11, 2) - 4 * a11 * c11;
+                    root1 = root_3([a1, b1, c1, d1]);
+                    if (root1.length === 1 || root1.length === 4) {
+                        if (a > 0) {
+                            out += '<div class="InfoPut">值域:</div><div>[' + printx(yfun([a, b, c, d, f], root1[0])) + ',+∞)</div>';
+                            out += '<div class="InfoPut">增区间:</div><div>(' + printx(root1[0]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(-∞,' + printx(root1[0]) + ')</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>无</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d, f], root1[0])) + ')</div>';
+                        } else {
+                            out += '<div class="InfoPut">值域:</div><div>(-∞,' + printx(yfun([a, b, c, d, f], root1[0])) + ']</div>';
+                            out += '<div class="InfoPut">增区间:</div><div>(-∞,' + printx(root1[0]) + ')</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(' + printx(root1[0]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d, f], root1[0])) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>无</div>';
+                        }
+                    } else if (root1.length === 2) {
+                        mid1_2 = (root1[0] + root1[1]) / 2;
+                        mid1 = root1[0] - mid1_2;
+                        if (yfun([a, b, c, d, f], mid1) * yfun([a, b, c, d, f], mid1_2) > 0) {
+                            real_root1 = root1[1];
+                        } else {
+                            real_root1 = root1[0];
+                        }
+                        if (a > 0) {
+                            out += '<div class="InfoPut">值域:</div><div>[' + printx(yfun([a, b, c, d, f], real_root1)) + ',+∞)</div>';
+                            out += '<div class="InfoPut">增区间:</div><div>(' + printx(real_root1) + ',+∞)</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(-∞,' + printx(real_root1) + ')</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>无</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(real_root1) + ',' + printx(yfun([a, b, c, d, f], real_root1)) + ')</div>';
+                        } else {
+                            out += '<div class="InfoPut">值域:</div><div>(-∞,' + printx(yfun([a, b, c, d, f], real_root1)) + ']</div>';
+                            out += '<div class="InfoPut">增区间:</div><div>(-∞,' + printx(real_root1) + ')</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(' + printx(real_root1) + ',+∞)</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(real_root1) + ',' + printx(yfun([a, b, c, d, f], real_root1)) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>无</div>';
+                        }
+                    } else {
+                        fx1 = printx(yfun([a, b, c, d, f], root1[0]));
+                        fx2 = printx(yfun([a, b, c, d, f], root1[2]));
+                        if (a > 0) {
+                            if (fx1 < fx2) {
+                                out += '<div class="InfoPut">值域:</div><div>[' + printx(fx1) + ',+∞)</div>';
+                            } else {
+                                out += '<div class="InfoPut">值域:</div><div>[' + printx(fx2) + ',+∞)</div>';
+                            }
+                            out += '<div class="InfoPut">增区间:</div><div>(' + printx(root1[0]) + ',' + printx(root1[1]) + ') ; (' + printx(root1[2]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(-∞,' + printx(root1[0]) + ') ; (' + printx(root1[1]) + ',' + printx(root1[2]) + ')</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(root1[1]) + ',' + printx(yfun([a, b, c, d, f], root1[1])) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d, f], root1[0])) + ') ; (' + printx(root1[2]) + ',' + printx(yfun([a, b, c, d, f], root1[2])) + ')</div>';
+                        } else {
+                            if (fx1 > fx2) {
+                                out += '<div class="InfoPut">值域:</div><div>(-∞,' + printx(fx1) + ']</div>';
+                            } else {
+                                out += '<div class="InfoPut">值域:</div><div>(-∞,' + printx(fx2) + ']</div>';
+                            }
+                            out += '<div class="InfoPut">增区间:</div><div>(-∞,' + printx(root1[0]) + ') ; (' + printx(root1[1]) + ',' + printx(root1[2]) + ')</div>';
+                            out += '<div class="InfoPut">减区间:</div><div>(' + printx(root1[0]) + ',' + printx(root1[1]) + ') ; (' + printx(root1[2]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">极大值点:</div><div>(' + printx(root1[0]) + ',' + printx(yfun([a, b, c, d, f], root1[0])) + ') ; (' + printx(root1[2]) + ',' + printx(yfun([a, b, c, d, f], root1[2])) + ')</div>';
+                            out += '<div class="InfoPut">极小值点:</div><div>(' + printx(root1[1]) + ',' + printx(yfun([a, b, c, d, f], root1[1])) + ')</div>';
+                        }
+                    }
+                    if (dt11 < 0 || dt11 === 0) {
+                        if (a > 0) {
+                            out += '<div class="InfoPut">凹区间:</div><div>ℝ</div>';
+                            out += '<div class="InfoPut">凸区间:</div><div>无</div>';
+                        } else {
+                            out += '<div class="InfoPut">凹区间:</div><div>无</div>';
+                            out += '<div class="InfoPut">凸区间:</div><div>ℝ</div>';
+                        }
+                        out += '<div class="InfoPut">拐点:</div><div>无</div>';
+                    } else {
+                        root11 = root_2([a11, b11, c11]);
+                        if (a > 0) {
+                            out += '<div class="InfoPut">凹区间:</div><div>(-∞,' + printx(root11[0]) + ') ; (' + printx(root11[1]) + ',+∞)</div>';
+                            out += '<div class="InfoPut">凸区间:</div><div>(' + printx(root11[0]) + ',' + printx(root11[1]) + ')</div>';
+                        } else {
+                            out += '<div class="InfoPut">凹区间:</div><div>(' + printx(root11[0]) + ',' + printx(root11[1]) + ')</div>';
+                            out += '<div class="InfoPut">凸区间:</div><div>(-∞,' + printx(root11[0]) + ') ; (' + printx(root11[1]) + ',+∞)</div>';
+                        }
+                        out += '<div class="InfoPut">拐点:</div><div>(' + printx(root11[0]) + ',' + printx(yfun([a, b, c, d, f], root11[0])) + ') ; (' + printx(root11[1]) + ',' + printx(yfun([a, b, c, d, f], root11[1])) + ')</div>';
+                    }
+                    out += '<div class="InfoPut">f(0)=</div><div>' + printx(yfun([a, b, c, d, f], 0)) + '</div>';
+                    out += '<div class="InfoPut">方程y=f(x)=0的根:</div><div>x=';
+                    D = 3 * pow(b, 2) - 8 * a * c;
+                    E = -pow(b, 3) + 4 * a * b * c - 8 * pow(a, 2) * d;
+                    F = 3 * pow(b, 4) + 16 * pow(a, 2) * pow(c, 2) - 16 * a * c * b * b + 16 * a * a * b * d - 64 * pow(a, 3) * f;
+                    A = D * D - 3 * F;
+                    B = D * F - 9 * pow(E, 2);
+                    C = F * F - 3 * D * pow(E, 2);
+                    DT = B * B - 4 * A * C;
+                    if (D === 0 && E === 0 && F === 0) {
+                        out += printx(-b / (4 * a));
+                    } else if (D * E * F !== 0 && A === 0 && B === 0 && C === 0) {
+                        out += printx((-b * D + 9 * E) / (4 * a * D)) + ' 或 x=' + printx((-b * D - 3 * E) / (4 * a * D));
+                    } else if (E === 0 && F === 0 && D !== 0) {
+                        if (D > 0) {
+                            out += printx((-b + pow(D, 0.5)) / (4 * a)) + ' 或 x=' + printx((-b - pow(D, 0.5)) / (4 * a));
+                        } else if (FunOutput) {
+                            out += printx(chuyi(jia(-b, pow(D, 0.5)), (4 * a))) + ' 或 x=' + printx(chuyi(jian(-b, pow(D, 0.5)), (4 * a)));
+                        } else {
+                            out = out.substring(0, out.length - 7);
+                            out += '<div class="OneResultOutput">方程无实根';
+                        }
+                    } else if (A * B * C !== 0 && DT === 0) {
+                        out += printx((-b - 2 * A * E / B) / (4 * a));
+                        if (A * B > 0) {
+                            out += ' 或 x=' + printx((-b + 2 * A * E / B + pow(2 * B / A, 0.5)) / (4 * a)) + ' 或 x=' + printx((-b + 2 * A * E / B - pow(2 * B / A, 0.5)) / (4 * a));
+                        } else if (FunOutput) {
+                            out += ' 或 x=' + printx(chuyi(jia(-b + 2 * A * E / B, pow(2 * B / A, 0.5)), (4 * a))) + ' 或 x=' + printx(chuyi(jian(-b + 2 * A * E / B, pow(2 * B / A, 0.5)), (4 * a)));
+                        }
+                    } else if (DT > 0) {
+                        z1 = pow(A * D + 1.5 * (-B + pow(DT, 0.5)), 1 / 3);
+                        z2 = pow(A * D + 1.5 * (-B - pow(DT, 0.5)), 1 / 3);
+                        z = D * D - D * (z1 + z2) + pow(z1 + z2, 2) - 3 * A;
+                        midz = (-b + sgn(E) * pow(abs(D + z1 + z2) / 3, 0.5)) / (4 * a);
+                        midz1 = pow(abs(2 * D - z1 - z2 + 2 * pow(abs(z), 0.5)) / 3, 0.5) / (4 * a);
+                        out += printx(midz + midz1) + ' 或 x=' + printx(midz - midz1);
+                        if (FunOutput) {
+                            midz = (-b - sgn(E) * pow(abs(D + z1 + z2) / 3, 0.5)) / (4 * a);
+                            midz1 = pow(abs(-2 * D + z1 + z2 + 2 * pow(abs(z), 0.5)) / 3, 0.5) / (4 * a);
+                            out += ' 或 x=' + printx([midz, midz1]) + ' 或 x=' + printx([midz, -midz1]);
+                        }
+                    } else if (DT < 0) {
+                        if (D > 0 && F > 0 && E === 0) {
+                            out += printx((-b + pow(D + 2 * pow(F, 0.5), 0.5)) / (4 * a));
+                            out += ' 或 x=' + printx((-b - pow(D + 2 * pow(F, 0.5), 0.5)) / (4 * a));
+                            out += ' 或 x=' + printx((-b + pow(abs(D - 2 * pow(F, 0.5)), 0.5)) / (4 * a));
+                            out += ' 或 x=' + printx((-b - pow(abs(D - 2 * pow(F, 0.5)), 0.5)) / (4 * a));
+                        } else if (E === 0 && D < 0 && F > 0) {
+                            if (FunOutput) {
+                                mid1 = -b / (4 * a);
+                                out += printx([mid1, pow(-D + 2 * pow(F, 0.5), 0.5) / (4 * a)]);
+                                out += ' 或 x=' + printx([mid1, -pow(-D + 2 * pow(F, 0.5), 0.5) / (4 * a)]);
+                                out += ' 或 x=' + printx([mid1, pow(abs(-D - 2 * pow(F, 0.5)), 0.5) / (4 * a)]);
+                                out += ' 或 x=' + printx([mid1, -pow(abs(-D - 2 * pow(F, 0.5)), 0.5) / (4 * a)]);
+                            } else {
+                                out = out.substring(0, out.length - 7);
+                                out += '<div class="OneResultOutput">方程无实根';
+                            }
+                        } else if (E === 0 && F < 0) {
+                            if (FunOutput) {
+                                mid1 = pow(abs(-2 * D + 2 * pow(abs(A - F), 0.5)), 0.5) / (8 * a);
+                                mid3 = pow(abs(2 * D + 2 * pow(abs(A - F), 0.5)), 0.5) / (8 * a);
+                                mid2 = -b / (4 * a);
+                                out += printx([mid2 + mid3, mid1]);
+                                out += ' 或 x=' + printx([mid2 + mid3, -mid1]);
+                                out += ' 或 x=' + printx([mid2 - mid3, mid1]);
+                                out += ' 或 x=' + printx([mid2 - mid3, -mid1]);
+                            } else {
+                                out = out.substring(0, out.length - 7);
+                                out += '<div class="OneResultOutput">方程无实根';
+                            }
+                        } else if (E !== 0) {
+                            arcdt = (3 * B - 2 * A * D) / (2 * pow(abs(A), 1.5));
+                            if (arcdt > 1) {
+                                arcdt = 1;
+                            } else if (arcdt < -1) {
+                                arcdt = -1;
+                            }
+                            ct = arccos(arcdt);
+                            w1 = (D - 2 * pow(abs(A), 0.5) * cos(ct / 3)) / 3;
+                            w2 = (D + pow(abs(A), 0.5) * (cos(ct / 3) + pow(3, 0.5) * sin(ct / 3))) / 3;
+                            w3 = (D + pow(abs(A), 0.5) * (cos(ct / 3) - pow(3, 0.5) * sin(ct / 3))) / 3;
+                            if (D > 0 && F > 0) {
+                                out += printx((-b + sgn(E) * pow(abs(w1), 0.5) + pow(abs(w2), 0.5) + pow(abs(w3), 0.5)) / (4 * a));
+                                out += ' 或 x=' + printx((-b + sgn(E) * pow(abs(w1), 0.5) - pow(abs(w2), 0.5) - pow(abs(w3), 0.5)) / (4 * a));
+                                out += ' 或 x=' + printx((-b - sgn(E) * pow(abs(w1), 0.5) + pow(abs(w2), 0.5) - pow(abs(w3), 0.5)) / (4 * a));
+                                out += ' 或 x=' + printx((-b - sgn(E) * pow(abs(w1), 0.5) - pow(abs(w2), 0.5) + pow(abs(w3), 0.5)) / (4 * a));
+                            } else if (FunOutput) {
+                                mid1 = (-b - pow(abs(w2), 0.5)) / (4 * a);
+                                mid2 = (-b + pow(abs(w2), 0.5)) / (4 * a);
+                                mid3 = (sgn(E) * pow(abs(w1), 0.5) + pow(abs(w3), 0.5)) / (4 * a);
+                                mid4 = (sgn(E) * pow(abs(w1), 0.5) - pow(abs(w3), 0.5)) / (4 * a);
+                                out += printx([mid1, mid3]);
+                                out += ' 或 x=' + printx([mid1, -mid3]);
+                                out += ' 或 x=' + printx([mid2, mid4]);
+                                out += ' 或 x=' + printx([mid2, -mid4]);
+                            } else {
+                                out = out.substring(0, out.length - 7);
+                                out += '<div class="OneResultOutput">方程无实根';
+                            }
+                        }
+                    }
+                    out += '</div>';
+                }
+            }
+            if (out.search('ErrOutput') !== -1) {
+                out = err_display('err0');
+            }
+            return (out);
+        }
+    </script>
+</head>
+<body>
+<div id="divs">
+    <div class="BasicInfo">
+        <div id="upper_0">D-Calculator-2</div>
+        <div class="NoDisplay" id="upper_1">Made by Double Cloth</div>
+    </div>
+    <div id="main_div">
+        <div id="home_page_area">
+            <div class="Titles" id="hp_mode_display_0">基本计算器</div>
+            <div class="Titles NoDisplay" id="hp_mode_display_1">Messi</div>
+            <div class="FunInput" id="input_area">
+                <div class="InputArea" id="inputarea0">
+                    <div id="cursors">MC</div>
+                    <div class="Tips">输入表达式</div>
+                </div>
+                <div class="InputArea NoDisplay" id="inputarea1">Counting Stars</div>
+                <div class="InputArea NoDisplay" id="inputarea2">Dream It Possible</div>
+                <div class="InputArea NoDisplay" id="inputarea3">Battle Symphony</div>
+                <div class="InputArea NoDisplay" id="inputarea4">Sunshine in the Rain</div>
+            </div>
+            <div class="NoDisplay" id="output_area">
+                <div id="sub_output_area_info">计算结果:</div>
+                <div id="sub_output_area">
+                    <div class="InfoPut FunTitle OneResultOutput ErrOutput">impossible is nothing</div>
+                </div>
+            </div>
+            <div id="adv">
+                <div class="ButtonsAdv FirstLine FunctionButtons">
+                    <div onclick="move(false);">←</div>
+                    <div onclick="move(true);">→</div>
+                    <div onclick="del();">DEL</div>
+                    <div onclick="ac();">AC</div>
+                    <div onclick="exe();">EXE</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div>7</div>
+                    <div>8</div>
+                    <div>9</div>
+                    <div class="FunctionTwo">(</div>
+                    <div class="FunctionTwo">)</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div>4</div>
+                    <div>5</div>
+                    <div>6</div>
+                    <div class="FunctionTwo">×</div>
+                    <div class="FunctionTwo">÷</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div>1</div>
+                    <div>2</div>
+                    <div>3</div>
+                    <div class="FunctionTwo">+</div>
+                    <div class="FunctionTwo">-</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div>0</div>
+                    <div>.</div>
+                    <div class="FunctionOne">sin</div>
+                    <div class="FunctionOne">cos</div>
+                    <div class="FunctionOne">tan</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div class="FunctionTwo">re</div>
+                    <div class="FunctionTwo">P</div>
+                    <div class="FunctionOne">arcsin</div>
+                    <div class="FunctionOne">arccos</div>
+                    <div class="FunctionOne">arctan</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div class="FunctionTwo">im</div>
+                    <div class="FunctionTwo">C</div>
+                    <div class="FunctionOne">sinh</div>
+                    <div class="FunctionOne">cosh</div>
+                    <div class="FunctionOne">tanh</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div class="FunctionTwo">arg</div>
+                    <div class="FunctionTwo">!</div>
+                    <div class="FunctionOne">arsinh</div>
+                    <div class="FunctionOne">arcosh</div>
+                    <div class="FunctionOne">artanh</div>
+                </div>
+                <div class="ButtonsAdv FunStr">
+                    <div class="FunctionTwo">|</div>
+                    <div class="FunctionTwo">^</div>
+                    <div class="FunctionOne">log</div>
+                    <div class="FunctionOne">lg</div>
+                    <div class="FunctionOne">ln</div>
+                </div>
+                <div class="ButtonsAdv FunStr FunctionButtons">
+                    <div>∠</div>
+                    <div>ί</div>
+                    <div>ℯ</div>
+                    <div>π</div>
+                    <div>Ans</div>
+                </div>
+            </div>
+            <div class="NoDisplay" id="pri">
+                <div class="ButtonsPri FirstLine FunctionButtons">
+                    <div onclick="move(false);">←</div>
+                    <div onclick="move(true);">→</div>
+                    <div onclick="del();">DEL</div>
+                    <div onclick="ac();">AC</div>
+                </div>
+                <div class="ButtonsPri FunStr">
+                    <div>7</div>
+                    <div>8</div>
+                    <div>9</div>
+                    <div class="FunctionTwo">-</div>
+                </div>
+                <div class="ButtonsPri FunStr">
+                    <div>4</div>
+                    <div>5</div>
+                    <div>6</div>
+                    <div class="FunctionTwo">+</div>
+                </div>
+                <div class="ButtonsPri FunStr">
+                    <div>1</div>
+                    <div>2</div>
+                    <div>3</div>
+                    <div class="FunctionTwo">÷</div>
+                </div>
+                <div class="ButtonsPri FunStr">
+                    <div>0</div>
+                    <div class="FunctionTwo">.</div>
+                    <div class="FunctionTwo">^</div>
+                    <div class="FunctionTwo">×</div>
+                </div>
+                <div class="ButtonsPri FunStr FunctionButtons">
+                    <div>π</div>
+                    <div>ℯ</div>
+                    <div>Ans</div>
+                    <div onclick="exe();">EXE</div>
+                </div>
+            </div>
+            <div class="ButtonsOther">
+                <div onclick="change_area('home_page', 'explain');">说明</div>
+                <div onclick="change_area('home_page', 'set');">设置</div>
+            </div>
+        </div>
+        <div class="NoDisplay" id="explain_area">
+            <div class="Titles" id="explain_area_display">说明:</div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="Choose CheckBoxShow" id="explain_01" onclick="change_check_box(this.id, 'explain');">基础说明
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_explain_01">
+                    <div class="ExpText">1.角度单位均为弧度制</div>
+                    <div class="ExpText">2.使用进制均为十进制</div>
+                    <div class="ExpText">3.运算过程中复数辐角均取主值</div>
+                    <div class="ExpText">4.计算结果可能存在误差</div>
+                    <div class="ExpText">5.多项式函数分析输出的最值可能为局部最值</div>
+                    <div class="ExpText">6.部分输入提示范围是输入要求的必要不充分条件</div>
+                    <div class="ExpText">7.Ans为上一次基本计算器模式运算结果</div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="Choose CheckBoxShow" id="explain_02" onclick="change_check_box(this.id, 'explain');">
+                    运算优先顺序说明 ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_explain_02">
+                    <div class="SubExpText">注:运算优先顺序相同时,从左至右计算</div>
+                    <div class="ExpText">1.括号中的表达式</div>
+                    <div class="ExpText">2.数字与常数间省略乘号的乘法</div>
+                    <div class="ExpText">3.阶乘;双阶乘</div>
+                    <div class="ExpText">4.除阶乘,双阶乘外的一元函数</div>
+                    <div class="ExpText">5.除四则运算外的二元函数</div>
+                    <div class="ExpText">6.除数字与常数间省略乘号的乘法外的乘法;除法</div>
+                    <div class="ExpText">7.加法;减法</div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="Choose CheckBoxShow" id="explain_03" onclick="change_check_box(this.id, 'explain');">常数说明
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_explain_03">
+                    <div class="MainExpText">1.圆周率: π</div>
+                    <div class="SubExpText">●圆的周长与直径的比值为π</div>
+                    <div class="MainExpText">2.自然常数: ℯ</div>
+                    <div class="SubExpText">●当时x→∞时函数f(x)=(1+1÷x)<sup>x</sup>值的极限为ℯ</div>
+                    <div class="MainExpText">3.虚数单位: ί</div>
+                    <div class="SubExpText">●规定 ί<sup>2</sup>=-1</div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="Choose CheckBoxShow" id="explain_04" onclick="change_check_box(this.id, 'explain');">一元函数说明
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_explain_04">
+                    <div class="Choose" id="explain_14" onclick="change_check_box(this.id, 'explain');">三角函数 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_14">
+                        <div class="SubExpText">
+                            在平面直角坐标系xOy中,设∠β的始边为x轴的正半轴,点P(m,n)为∠β的终边上不与原点O重合的任意一点,r=|OP|
+                        </div>
+                        <div class="MainExpText">1.正弦函数: sin(x);x∈ℂ</div>
+                        <div class="SubExpText">●当x∈ℂ时,sin(x)=(ℯ<sup>ίx</sup>-ℯ<sup>-ίx</sup>)÷(2ί)</div>
+                        <div class="SubExpText">●特别地,sin(β)=n÷r</div>
+                        <div class="MainExpText">2.余弦函数: cos(x);x∈ℂ</div>
+                        <div class="SubExpText">●当x∈ℂ时,cos(x)=(ℯ<sup>ίx</sup>+ℯ<sup>-ίx</sup>)÷2</div>
+                        <div class="SubExpText">●特别地,cos(β)=m÷r</div>
+                        <div class="MainExpText">3.正切函数: tan(x);x∈ℂ且cos(x)≠0</div>
+                        <div class="SubExpText">●当x∈ℂ时,tan(x)=sin(x)÷cos(x)</div>
+                        <div class="SubExpText">●特别地,tan(β)=n÷m</div>
+                    </div>
+                    <div class="Choose" id="explain_24" onclick="change_check_box(this.id, 'explain');">反三角函数 ∨
+                    </div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_24">
+                        <div class="MainExpText">1.反正弦函数: arcsin(x);x∈ℂ</div>
+                        <div class="SubExpText">●arcsin(x)=-ίln(ίx+(1-x<sup>2</sup>)<sup>0.5</sup>)</div>
+                        <div class="SubExpText">●sin(arcsin(x))=x</div>
+                        <div class="MainExpText">2.反余弦函数: arccos(x);x∈ℂ</div>
+                        <div class="SubExpText">●arccos(x)=-ίln(x+(x<sup>2</sup>-1)<sup>0.5</sup>)</div>
+                        <div class="SubExpText">●cos(arccos(x))=x</div>
+                        <div class="MainExpText">3.反正切函数: arctan(x);x∈ℂ且x≠±ί</div>
+                        <div class="SubExpText">●arctan(x)=-ίln(((ί-x)÷(ί+x))<sup>0.5</sup>)</div>
+                        <div class="SubExpText">●tan(arctan(x))=x</div>
+                    </div>
+                    <div class="Choose" id="explain_34" onclick="change_check_box(this.id, 'explain');">双曲函数 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_34">
+                        <div class="MainExpText">1.双曲正弦函数: sinh(x);x∈ℂ</div>
+                        <div class="SubExpText">●sinh(x)=(ℯ<sup>x</sup>-ℯ<sup>-x</sup>)÷2</div>
+                        <div class="MainExpText">2.双曲余弦函数: cosh(x);x∈ℂ</div>
+                        <div class="SubExpText">●cosh(x)=(ℯ<sup>x</sup>+ℯ<sup>-x</sup>)÷2</div>
+                        <div class="MainExpText">3.双曲正切函数: tanh(x);x∈ℂ且cosh(x)≠0</div>
+                        <div class="SubExpText">●tanh(x)=sinh(x)÷cosh(x)</div>
+                    </div>
+                    <div class="Choose" id="explain_44" onclick="change_check_box(this.id, 'explain');">反双曲函数 ∨
+                    </div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_44">
+                        <div class="MainExpText">1.反双曲正弦函数: arsinh(x);x∈ℂ</div>
+                        <div class="SubExpText">●arsinh(x)=ln(x+(x<sup>2</sup>+1)<sup>0.5</sup>)</div>
+                        <div class="SubExpText">●sinh(arsinh(x))=x</div>
+                        <div class="MainExpText">2.反双曲余弦函数: arcosh(x);x∈ℂ</div>
+                        <div class="SubExpText">●arcosh(x)=ln(x+(x<sup>2</sup>-1)<sup>0.5</sup>)</div>
+                        <div class="SubExpText">●cosh(arcosh(x))=x</div>
+                        <div class="MainExpText">3.反双曲正切函数: artanh(x);x∈ℂ且x≠±1</div>
+                        <div class="SubExpText">●artanh(x)=0.5ln((1+x)÷(1-x))</div>
+                        <div class="SubExpText">●tanh(artanh(x))=x</div>
+                    </div>
+                    <div class="Choose" id="explain_54" onclick="change_check_box(this.id, 'explain');">对数函数 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_54">
+                        <div class="MainExpText">1.自然对数函数: ln(x);x∈ℂ*</div>
+                        <div class="SubExpText">●ℯ<sup>ln(x)</sup>=x</div>
+                        <div class="SubExpText">●ln(x)=ln|x|+ίarg(x)</div>
+                        <div class="MainExpText">2.常用对数函数: lg(x);x∈ℂ*</div>
+                        <div class="SubExpText">●lg(x)=ln(x)÷ln(10)</div>
+                    </div>
+                    <div class="Choose" id="explain_64" onclick="change_check_box(this.id, 'explain');">其它函数 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_64">
+                        <div class="MainExpText">1.实部提取: re(x);x∈ℂ</div>
+                        <div class="SubExpText">●re(x)返回x的实部</div>
+                        <div class="MainExpText">2.虚部提取: im(x);x∈ℂ</div>
+                        <div class="SubExpText">●im(x)返回x的虚部</div>
+                        <div class="MainExpText">3.绝对值函数: |x|;x∈ℂ</div>
+                        <div class="SubExpText">●|x|=((re(x))<sup>2</sup>+(im(x))<sup>2</sup>)<sup>0.5</sup></div>
+                        <div class="MainExpText">4.辐角主值提取: arg(x);x∈ℂ</div>
+                        <div class="SubExpText">●arg(x)=arctan(im(x)÷re(x))</div>
+                        <div class="MainExpText">5.阶乘: n!;n∈ℕ</div>
+                        <div class="SubExpText">●n≠0时,n!=(n-1)!×n</div>
+                        <div class="SubExpText">●规定 0!=1</div>
+                        <div class="MainExpText">6.双阶乘: n!!;n∈ℕ∪{m|m=-2k-1,k∈ℕ}</div>
+                        <div class="SubExpText">●n≠0时,n!!=(n-2)!!×n</div>
+                        <div class="SubExpText">●规定 0!!=1!!=1</div>
+                        <div class="MainExpText">7.正号: +x;x∈ℂ</div>
+                        <div class="SubExpText">●+x=0+x=x</div>
+                        <div class="MainExpText">8.负号: -x;x∈ℂ</div>
+                        <div class="SubExpText">●-x等于x的相反数</div>
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="Choose CheckBoxShow" id="explain_05" onclick="change_check_box(this.id, 'explain');">二元函数说明
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_explain_05">
+                    <div class="Choose" id="explain_15" onclick="change_check_box(this.id, 'explain');">四则运算 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_15">
+                        <div class="MainExpText">1.加法运算: a+b;a,b∈ℂ</div>
+                        <div class="SubExpText">●a+b返回a与b的和</div>
+                        <div class="SubExpText">●把两个数合并成一个数的运算</div>
+                        <div class="MainExpText">2.减法运算: a-b;a,b∈ℂ</div>
+                        <div class="SubExpText">●a-b=a+(-b)</div>
+                        <div class="MainExpText">3.乘法运算: a×b;a,b∈ℂ</div>
+                        <div class="SubExpText">●a∈ℝ;b>0时,设b=c÷d,其中c,d∈ℕ*,则d个a×b的相加的和等于c个a相加的和</div>
+                        <div class="SubExpText">●a∈ℝ;b=0时,a×b=0</div>
+                        <div class="SubExpText">●a∈ℝ;b<0时,a×b=-(a×(-b))</div>
+                        <div class="SubExpText">●a,b∈ℂ时,设c=re(a),d=im(a),x=re(b),y=im(b),则a×b=(xc-yd)+(xd+yc)ί</div>
+                        <div class="MainExpText">4.除法运算: a÷b;a∈ℂ,b∈ℂ*</div>
+                        <div class="SubExpText">●1÷b等于b的倒数</div>
+                        <div class="SubExpText">●a÷b=a×(1÷b)</div>
+                    </div>
+                    <div class="Choose" id="explain_25" onclick="change_check_box(this.id, 'explain');">幂运算 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_25">
+                        <div class="MainExpText">幂运算: a^b;a,b∈ℂ</div>
+                        <div class="SubExpText">●a^b=a<sup>b</sup></div>
+                        <div class="SubExpText">●a,b>0时,设b=c÷d,其中c,d∈ℕ*,则d个a<sup>b</sup>的乘积等于c个a的乘积,此时a<sup>b</sup>运算结果为实数
+                        </div>
+                        <div class="SubExpText">●a>0;b<0时,a<sup>b</sup>=1÷a<sup>-b</sup></div>
+                        <div class="SubExpText">●a≠0时,a<sup>0</sup>=1</div>
+                        <div class="SubExpText">●a<0时,a<sup>2</sup>=(-a)<sup>2</sup></div>
+                        <div class="SubExpText">●b>0时,0<sup>b</sup>=0</div>
+                        <div class="SubExpText">
+                            ●a∈ℂ*;b∈ℂ时,设r=|a|,θ=arg(a),c=re(b),d=im(b),则a<sup>b</sup>=(r<sup>c</sup>÷ℯ<sup>dθ</sup>)∠(d×ln(r)+cθ)
+                        </div>
+                    </div>
+                    <div class="Choose" id="explain_35" onclick="change_check_box(this.id, 'explain');">对数函数 ∨</div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_35">
+                        <div class="MainExpText">对数函数: (a)log(b);a,b∈ℂ*</div>
+                        <div class="SubExpText">●(a)log(b)=log<sub>a</sub>b</div>
+                        <div class="SubExpText">●log<sub>a</sub>b=ln(b)÷ln(a)</div>
+                    </div>
+                    <div class="Choose" id="explain_45" onclick="change_check_box(this.id, 'explain');">排列组合运算 ∨
+                    </div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_45">
+                        <div class="MainExpText">1.排列数: (n)P(r);n,r∈ℕ且r≤n</div>
+                        <div class="SubExpText">●从n个不同元素中取出r个元素的所有排列的个数为(n)P(r)</div>
+                        <div class="SubExpText">●(n)P(r)=n!÷(n-r)!</div>
+                        <div class="MainExpText">2.组合数: (n)C(r);n,r∈ℕ且r≤n</div>
+                        <div class="SubExpText">●从n个不同元素中取出r个元素的所有组合的个数为(n)C(r)</div>
+                        <div class="SubExpText">●(n)C(r)=(n)P(r)÷r!</div>
+                    </div>
+                    <div class="Choose" id="explain_55" onclick="change_check_box(this.id, 'explain');">复数极坐标符号
+                        ∨
+                    </div>
+                    <div class="NoDisplay CheckBox_2" id="sub_explain_55">
+                        <div class="MainExpText">复数极坐标符号: (r)∠(θ);r≥0;θ∈ℝ</div>
+                        <div class="SubExpText">●(r)∠(θ)=r(cosθ+ίsinθ)</div>
+                    </div>
+                </div>
+            </div>
+            <div class="ButtonsOther">
+                <div onclick="change_area('explain', 'home_page');">关闭说明</div>
+            </div>
+        </div>
+        <div class="NoDisplay" id="set_area">
+            <div class="Titles" id="setting_area_display">设置:</div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●模式选择:</div>
+                <div class="Choose CheckBoxShow" id="set_01" onclick="change_check_box(this.id, 'set');">基本计算器 ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_01">
+                    <div class="Choose" id="mode_b0" onclick="change_on_check(this.id);">● 基本计算器</div>
+                    <div class="Choose CheckBoxShow" id="set_11" onclick="change_check_box(this.id, 'set');">多项式函数分析
+                        ∨
+                    </div>
+                    <div class="NoDisplay FunMode" id="sub_set_11">
+                        <div class="Choose" id="mode_f1">一次函数</div>
+                        <div class="Choose" id="mode_f2">二次函数</div>
+                        <div class="Choose" id="mode_f3">三次函数</div>
+                        <div class="Choose" id="mode_f4">四次函数</div>
+                    </div>
+                    <div class="Choose CheckBoxShow" id="set_21" onclick="change_check_box(this.id, 'set');">初等复变函数通式计算
+                        ∨
+                    </div>
+                    <div class="NoDisplay FunMode" id="sub_set_21">
+                        <div class="Choose" id="mode_g1">复变自然对数函数</div>
+                        <div class="Choose" id="mode_g2">复变幂(指数)函数</div>
+                        <div class="Choose" id="mode_g3">复变根式函数</div>
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●非实数输出设置:</div>
+                <div class="Choose CheckBoxShow" id="set_02" onclick="change_check_box(this.id, 'set');">非实数输出为代数式
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_02">
+                    <div class="Choose" id="complex_form_true"
+                         onclick="change_on_check(['complex_form', true, '02']);ComplexForm = true;">● 非实数输出为代数式
+                    </div>
+                    <div class="Choose" id="complex_form_false"
+                         onclick="change_on_check(['complex_form', false, '02']);ComplexForm = false;">非实数输出为极坐标式
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●输出精度设置:</div>
+                <div class="Choose CheckBoxShow" id="set_03" onclick="change_check_box(this.id, 'set');">输出精确结果
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_03">
+                    <div class="Choose" id="accuracy_true"
+                         onclick="change_on_check(['accuracy', true, '03']);Accuracy = 9;">● 输出精确结果
+                    </div>
+                    <div class="Choose" id="accuracy_false"
+                         onclick="change_on_check(['accuracy', false, '03']);Accuracy = 3;">输出粗略结果
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●函数分析输出设置:</div>
+                <div class="Choose CheckBoxShow" id="set_04" onclick="change_check_box(this.id, 'set');">输出全部结果
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_04">
+                    <div class="Choose" id="fun_output_true"
+                         onclick="change_on_check(['fun_output', true, '04']);FunOutput = true;">● 输出全部结果
+                    </div>
+                    <div class="Choose" id="fun_output_false"
+                         onclick="change_on_check(['fun_output', false, '04']);FunOutput = false;">仅输出实数结果
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●通式输出设置:</div>
+                <div class="Choose CheckBoxShow" id="set_05" onclick="change_check_box(this.id, 'set');">输出通式与数字结果
+                    ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_05">
+                    <div class="Choose" id="gene_form_true"
+                         onclick="change_on_check(['gene_form', true, '05']);GeneForm = false;">● 输出通式与数字结果
+                    </div>
+                    <div class="Choose" id="gene_form_false"
+                         onclick="change_on_check(['gene_form', false, '05']);GeneForm = true;">仅输出通式结果
+                    </div>
+                </div>
+            </div>
+            <div class='CheckBox_0 FirstLine'>
+                <div class="SetTitles">●输入键盘设置:</div>
+                <div class="Choose CheckBoxShow" id="set_06" onclick="change_check_box(this.id, 'set');">高级键盘 ∨
+                </div>
+                <div class="NoDisplay FirstLine CheckBox_1" id="sub_set_06">
+                    <div class="Choose" id="keyboard_true"
+                         onclick="change_on_check(['keyboard', true, '06']);document.getElementById('adv').style.display = 'block';document.getElementById('pri').style.display = 'none';">
+                        ● 高级键盘
+                    </div>
+                    <div class="Choose" id="keyboard_false"
+                         onclick="change_on_check(['keyboard', false, '06']);document.getElementById('pri').style.display = 'block';document.getElementById('adv').style.display = 'none';">
+                        标准键盘
+                    </div>
+                </div>
+            </div>
+            <div class="ButtonsOther">
+                <div onclick="change_area('set', 'home_page');">关闭设置</div>
+            </div>
+        </div>
+    </div>
+    <div class="BasicInfo">
+        <div id="lower_0">Started: September 1, 2022</div>
+        <div class="NoDisplay" id="lower_1">Finished: January 18, 2023</div>
+    </div>
+</div>
+</body>
+</html>
