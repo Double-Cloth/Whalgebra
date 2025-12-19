@@ -1,0 +1,18 @@
+# JetBrains IDEs (WebStorm, IntelliJ IDEA, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Build and temporary files (如果后续引入构建工具如 Vite/Webpack)
+node_modules/
+dist/
+build/
+*.log
+
+# Project specific
+# 如果有缓存或本地测试生成的临时数据可添加在此处
