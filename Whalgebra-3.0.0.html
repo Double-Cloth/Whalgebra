@@ -3537,7 +3537,7 @@
              * @private
              * @static
              * @method _roundAndNormalize
-             * @description 将尾数舍入到指定精度，并通过调整指数来进行规范化。
+             * @description 将尾数舍入（银行家舍入）到指定精度，并通过调整指数来进行规范化。
              * 此函数使用高效的 BigInt 算术运算来处理大数。
              * @param {bigint} mantissa - 原始尾数（可以为负数）。
              * @param {number} power - 原始指数。
@@ -3551,48 +3551,55 @@
 
                 const sign = mantissa < 0n ? -1n : 1n;
                 let absMantissa = sign < 0n ? -mantissa : mantissa;
+                let finalPower = power;
 
-                // 获取尾数的位数，以确定是否需要舍入。
-                const mantissaLength = absMantissa.toString().length;
+                // 确定是否需要舍入。
+                const threshold = 10n ** BigInt(acc);
 
-                // 如果当前位数未超过目标精度，则仅需进行规范化（移除末尾的零）。
-                if (mantissaLength <= acc) {
-                    let finalPower = power;
-                    // 规范化：移除尾数末尾的零，并相应增加指数。
-                    while (absMantissa !== 0n && absMantissa % 10n === 0n) {
-                        absMantissa /= 10n;
-                        finalPower++;
+                // 如果当前位数超过目标精度，则需进行舍入。
+                if (absMantissa > threshold) {
+                    // 计算需要舍弃的位数，并确定用于截断尾数的除数。
+                    const mantissaLength = absMantissa.toString().length;
+                    const digitsToShift = mantissaLength - acc;
+                    const divisor = 10n ** BigInt(digitsToShift);
+
+                    // 截断得到基础部分
+                    let roundedMantissa = absMantissa / divisor;
+
+                    // 获取被舍弃的余数部分
+                    const remainder = absMantissa % divisor;
+
+                    // 计算阈值（除数的一半）
+                    const halfDivisor = divisor / 2n;
+
+                    if (remainder > halfDivisor) {
+                        // 情况 A: 余数 > 0.5，绝对进位
+                        roundedMantissa++;
+                    } else if (remainder === halfDivisor) {
+                        // 情况 B: 余数 = 0.5，银行家舍入（向偶数舍入）
+                        // 如果当前最后一位是奇数，则进位变成偶数；如果是偶数则不变
+                        if ((roundedMantissa & 1n) === 1n) {
+                            roundedMantissa++;
+                        }
                     }
-                    return {mantissa: absMantissa * sign, power: finalPower};
+                    // 情况 C: remainder < halfDivisor，直接舍弃（不做操作）
+
+                    // 更新尾数和指数
+                    absMantissa = roundedMantissa;
+                    finalPower += digitsToShift;
                 }
 
-                // 计算需要舍弃的位数，并确定用于截断尾数的除数。
-                const digitsToShift = mantissaLength - acc;
-                const divisor = 10n ** BigInt(digitsToShift);
-
-                // 通过算术运算找出用于“四舍五入”的数字（即被舍弃部分的首位）。
-                const roundDigit = (absMantissa / (divisor / 10n)) % 10n;
-
-                // 截断尾数，得到舍入前的基础部分。
-                let roundedMantissa = absMantissa / divisor;
-
-                // 执行“四舍五入”中的“五入”操作。
-                if (roundDigit >= 5n) {
-                    roundedMantissa++;
+                if (absMantissa === 0n) {
+                    // 理论上舍入可能导致归零（如果精度极低），虽然罕见但需防范
+                    return {mantissa: 0n, power: 0};
                 }
 
-                // 调整指数，以补偿因截断尾数而产生的变化。
-                let finalPower = power + digitsToShift;
-
-                // 规范化尾数：移除末尾所有的零，并相应地增加指数。
-                // 这个过程能确保尾数的表示是最紧凑的，
-                // 同时也能正确处理因“五入”操作产生的进位（例如，999+1=1000 会被规范化）。
-                while (roundedMantissa !== 0n && roundedMantissa % 10n === 0n) {
-                    roundedMantissa /= 10n;
+                while (absMantissa % 10n === 0n) {
+                    absMantissa /= 10n;
                     finalPower++;
                 }
 
-                return {mantissa: roundedMantissa * sign, power: finalPower};
+                return {mantissa: absMantissa * sign, power: finalPower};
             }
 
             /**
@@ -4872,10 +4879,9 @@
                     const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
                     const minPower = -2 * acc - 1; // 收敛阈值
                     const const_2 = new ComplexNumber([0, 2n, acc]);
-                    let difference = const_2.re; // 初始化一个差值，确保循环至少执行一次
-                    let mid;
+                    let difference, mid;
 
-                    for (; difference.power > minPower && difference.mantissa !== 0n && i < max; i++) {
+                    do {
                         // 执行一次牛顿法迭代
                         mid = result;
                         result = MathPlus.divide(
@@ -4885,7 +4891,8 @@
 
                         // 计算新旧结果之差的绝对值，用于判断是否收敛
                         difference = MathPlus.minus(mid, result).re;
-                    }
+                        i++;
+                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
 
                     // 步骤 3: 如果牛顿法收敛过慢，则使用 ln/exp 方法作为备用。
                     // 公式: √x = x^0.5 = e^(0.5 * ln(x))
@@ -4911,23 +4918,83 @@
             /**
              * @static
              * @method cbrt
-             * @description 计算 x 的立方根 (³√x)。
-             * - 该方法通过计算 x 的 1/3 次方来实现，即 `x^(1/3)`。
-             * - 它能够自动处理实数和复数输入。
-             * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
-             * @returns {ComplexNumber} 代表 x 立方根结果的 ComplexNumber 实例。
-             * @example
-             * // cbrt(27) -> 3
-             * MathPlus.cbrt(27);
+             * @description 计算输入值的主立方根 (³√x)。
              *
-             * // cbrt(-8) -> -2
-             * MathPlus.cbrt(-8);
+             * 此方法根据输入值的类型（实数或复数）选择最优的计算路径：
+             * - 实数路径：采用牛顿迭代法（Newton's method）的立方根特化公式 x_(n+1) = (2x_n + x / x_n^2) / 3。
+             *   相比于通用的 `pow` 函数，该算法在处理高精度实数时收敛速度更快，效率更高。
+             * - 复数路径：利用复数幂运算规则，通过 `MathPlus.pow(x, 1/3)` 计算主值。
+             *
+             * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 被开方数。
+             * 支持字符串（如 "27", "-8"）、数字、BigInt、BigNumber 或 ComplexNumber 实例。
+             *
+             * @returns {ComplexNumber} 返回计算结果，为一个 ComplexNumber 实例。
+             *
+             * @example
+             * // 实数示例
+             * MathPlus.cbrt(27); // Result: 3
+             * MathPlus.cbrt(-8); // Result: -2
+             *
+             * @example
+             * // 复数示例
+             * MathPlus.cbrt('8i'); // Result: ~ 1.732 + i
              */
             static cbrt(x) {
                 const input = new ComplexNumber(x);
                 const acc = input.acc; // 存储精度
 
-                // 通过调用 pow(input, 1/3) 来计算立方根。
+                // --- 路径 1: 纯实数优化 ---
+                if (input.onlyReal) {
+                    const re = input.re;
+
+                    // 基准情况: ³√0 = 0
+                    if (re.mantissa === 0n) {
+                        return new ComplexNumber([0, 0n, acc]);
+                    }
+
+                    // 步骤 1: 生成一个低精度的初始猜测值，以加速收敛。
+                    const lowAccuracyRe = new BigNumber(re, {acc: 15});
+                    const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
+                    let result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
+
+                    // 步骤 2: 进行迭代
+                    // 采用牛顿迭代法的立方根特化公式
+                    // x_(n+1) = (2x_n + x / x_n^2) / 3
+
+                    let i = 0;
+                    const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
+                    const minPower = -2 * acc - 1; // 收敛阈值
+                    const const_2 = new ComplexNumber([0, 2n, acc]);
+                    const const_3 = new ComplexNumber([0, 3n, acc]);
+                    let difference, mid;
+
+                    do {
+                        mid = result;
+                        const squareOfMid = MathPlus.times(mid, mid);
+                        result = MathPlus.divide(
+                            MathPlus.plus(
+                                MathPlus.times(mid, const_2),
+                                MathPlus.divide(re, squareOfMid)
+                            ),
+                            const_3
+                        );
+
+                        // 计算新旧结果之差的绝对值，用于判断是否收敛
+                        difference = MathPlus.minus(mid, result).re;
+                        i++;
+                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+
+                    // 步骤 3: 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
+                    if (i === max) {
+                        console.warn('[MathPlus] Cube root calculation takes too long, falling back to pow method.');
+                        return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
+                    }
+
+                    return result;
+                }
+
+                // --- 路径 2: 输入为复数 ---
+                // 通过调用 pow(input, 1/3) 来计算主立方根。
                 // [0, 1n, acc] 是 BigNumber 1, [0, 3n, acc] 是 BigNumber 3。
                 return MathPlus.pow(input, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
             }
@@ -4954,10 +5021,8 @@
                 const inputB = new ComplexNumber(b);
                 // 确定运算精度，取两个输入中较低的精度
                 const acc = Math.min(inputA.acc, inputB.acc);
-                // 创建一个精度与运算精度匹配的 BigNumber 1
-                const one = new ComplexNumber([0, 1n, acc]);
                 // 计算指数 1/b
-                const oneOverB = MathPlus.divide(one, inputB);
+                const oneOverB = MathPlus.divide([0, 1n, acc], inputB);
                 // 计算 a 的 (1/b) 次方
                 return MathPlus.pow(inputA, oneOverB);
             }
@@ -5368,13 +5433,13 @@
                         return new ComplexNumber([0, isNegative ? -1n : 1n, acc]);
                     }
 
-                    // 1f: 利用半角公式 cos(x) = 2cos²(x/2) - 1，进一步将 re 缩减到更小的范围，
+                    // 1f: 利用四倍角公式进一步将 re 缩减到更小的范围，
                     //     以极大地加速泰勒级数收敛。这里我们将 re 反复除以 2，直到其足够小。
-                    let divideBy2 = 0;
-                    for (; MathPlus.plus(re, [-1, -5n, acc]).re.mantissa >= 0n && divideBy2 < 3; divideBy2++) {
-                        re = MathPlus.divide(re, [0, 2n, acc]).re;
+                    let divideBy4 = 0;
+                    for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa >= 0n && divideBy4 < 3; divideBy4++) {
+                        re = MathPlus.divide(re, [0, 4n, acc]).re;
                     }
-                    if (divideBy2 === 3) {
+                    if (divideBy4 === 3) {
                         // 这是一个安全检查，防止因意外输入导致无法收敛。
                         throw new Error('[MathPlus] mathematical error: Unreliable result, error source: cos.');
                     }
@@ -5403,11 +5468,15 @@
                     }
 
                     // --- 步骤 3: 重建结果 ---
-                    // 通过反复应用双角公式 cos(2θ) = 2cos²(θ) - 1 来从缩减后的角度还原原始结果。
-                    for (; divideBy2 !== 0; divideBy2--) {
+                    // 通过反复应用四倍角公式 cos(4θ) = 8cos²(θ)*(cos²(θ) - 1) + 1 来从缩减后的角度还原原始结果。
+                    for (; divideBy4 !== 0; divideBy4--) {
+                        const squareOfResult = MathPlus.times(result, result);
                         result = MathPlus.plus(
-                            MathPlus.times([0, 2n, acc], MathPlus.times(result, result)),
-                            [0, -1n, acc]
+                            MathPlus.times(
+                                MathPlus.plus(squareOfResult, [0, -1n, acc]),
+                                MathPlus.times([0, 8n, acc], squareOfResult)
+                            ),
+                            [0, 1n, acc]
                         );
                     }
 
