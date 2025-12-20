@@ -7,18 +7,18 @@
     <title>D-Calculator-2</title>
     <style>
         * {
-            margin: auto;
-            overflow: auto;
-            user-select: none;
-            white-space: nowrap;
-            text-align: center;
             line-height: 1.4;
+            overflow: auto;
+            margin: auto;
+            user-select: none;
+            text-align: center;
+            white-space: nowrap;
         }
 
         body {
             width: 100vmin;
-            background-color: rgba(100, 146, 102, 0.56);
             color: rgba(139, 69, 19, 0.9);
+            background-color: rgba(100, 146, 102, 0.56);
         }
 
         @keyframes fade {
@@ -58,26 +58,26 @@
         }
 
         #cursors {
+            overflow: hidden;
             width: 0.5%;
+            margin-right: 0.2%;
+            margin-left: 0.2%;
+            animation: fade 960ms infinite;
             color: transparent;
             background-color: rgba(0, 46, 166, 0.9);
-            margin-left: 0.2%;
-            margin-right: 0.2%;
-            overflow: hidden;
-            animation: fade 960ms infinite;
         }
 
         #divs {
-            background-color: rgb(21, 60, 70);
+            margin: 1vh auto;
             border: 0.5vmin solid rgb(21, 60, 70);
             border-radius: 4vmin;
-            margin: 1vh auto;
+            background-color: rgb(21, 60, 70);
         }
 
         #main_div {
             width: 96.5%;
-            background-color: rgb(139, 165, 56);
             border-radius: 2vmin;
+            background-color: rgb(139, 165, 56);
             box-shadow: inset 0 0 4vmin 0.1vmin rgb(21, 60, 70);
         }
 
@@ -86,38 +86,38 @@
         }
 
         #sub_output_area_info {
-            color: rgb(128, 128, 128);
-            margin: 0.5vmin auto auto;
             font-size: 3.6vmin;
+            margin: 0.5vmin auto auto;
+            color: rgb(128, 128, 128);
         }
 
         #output_area {
             width: 93%;
+            margin: 1vmin auto auto;
             color: rgba(0, 135, 0, 0.8);
-            background-color: rgb(199, 205, 140);
             border: 0.6vmin solid rgb(141, 81, 48);
             border-radius: 2vmin;
-            margin: 1vmin auto auto;
+            background-color: rgb(199, 205, 140);
         }
 
         #sub_output_area div {
-            color: rgb(0, 0, 0);
-            text-align: left;
-            width: max-content;
-            padding: 0.4% 0.8%;
-            margin-left: 0.8%;
             font-size: 4vmin;
             overflow: unset;
+            width: max-content;
+            margin-left: 0.8%;
+            padding: 0.4% 0.8%;
+            text-align: left;
+            color: rgb(0, 0, 0);
         }
 
         #sub_output_area sup {
-            text-align: left;
             font-size: 4vmin;
+            text-align: left;
         }
 
         #sub_output_area .InfoPut {
-            color: rgb(53, 121, 68);
             font-weight: bold;
+            color: rgb(53, 121, 68);
         }
 
         #sub_output_area .FunTitle {
@@ -126,18 +126,18 @@
         }
 
         #sub_output_area .FunTitle sup {
-            color: rgb(46, 90, 124);
             font-weight: bold;
+            color: rgb(46, 90, 124);
         }
 
         #sub_output_area .OneResultOutput {
-            color: rgb(205, 3, 0);
             font-weight: bold;
+            color: rgb(205, 3, 0);
         }
 
         #sub_output_area .ErrOutput {
-            color: rgb(205, 3, 0);
             font-weight: bold;
+            color: rgb(205, 3, 0);
         }
 
         .NoDisplay {
@@ -149,24 +149,24 @@
         }
 
         .Titles {
-            width: 93%;
-            color: rgb(10, 20, 10);
-            background-color: rgb(141, 183, 153);
-            border: 0.6vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
-            margin-top: 1vmin;
-            padding-bottom: 0.8vmin;
-            padding-top: 0.8vmin;
             font-size: 4vmin;
             font-weight: bold;
+            width: 93%;
+            margin-top: 1vmin;
+            padding-top: 0.8vmin;
+            padding-bottom: 0.8vmin;
+            color: rgb(10, 20, 10);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(141, 183, 153);
         }
 
         .BasicInfo div {
-            color: rgb(233, 209, 181);
-            padding-bottom: 0.5vmin;
-            padding-top: 0.5vmin;
             font-size: 4vmin;
             font-weight: bold;
+            padding-top: 0.5vmin;
+            padding-bottom: 0.5vmin;
+            color: rgb(233, 209, 181);
         }
 
         .BasicInfo div:hover {
@@ -178,23 +178,24 @@
         }
 
         .InputArea {
+            font-size: 0;
             width: 95%;
-            color: rgba(0, 135, 0, 0.85);
-            background-color: rgb(199, 205, 140);
-            border: 0.6vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
             margin-top: 0.5vmin;
             padding-top: 1.2vmin;
             padding-bottom: 1.2vmin;
-            font-size: 0;
             text-align: left;
+            color: rgba(0, 135, 0, 0.85);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(199, 205, 140);
         }
 
         .InputArea div {
-            color: rgb(0, 0, 0);
             font-size: 4vmin;
             display: inline-block;
+            overflow: hidden;
             white-space: pre;
+            color: rgb(0, 0, 0);
         }
 
         .InputArea:active {
@@ -206,23 +207,23 @@
         }
 
         .ButtonsAdv {
+            display: flex;
+            flex-wrap: wrap;
             margin-top: 0.4vmin;
             padding-right: 1%;
-            flex-wrap: wrap;
-            display: flex;
         }
 
         .ButtonsAdv div {
-            width: 18.5%;
-            color: rgb(0, 0, 0);
-            background-color: rgba(222, 184, 135, 1);
-            border: 0.5vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
-            margin-left: 1%;
-            padding-bottom: 2%;
-            padding-top: 2%;
             font-size: 4vmin;
             flex: 1;
+            width: 18.5%;
+            margin-left: 1%;
+            padding-top: 2%;
+            padding-bottom: 2%;
+            color: rgb(0, 0, 0);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgba(222, 184, 135, 1);
         }
 
         .ButtonsAdv div:hover {
@@ -234,23 +235,23 @@
         }
 
         .ButtonsPri {
+            display: flex;
+            flex-wrap: wrap;
             margin-top: 0.4vmin;
             padding-right: 1.2%;
-            flex-wrap: wrap;
-            display: flex;
         }
 
         .ButtonsPri div {
-            width: 22.5%;
-            color: rgb(0, 0, 0);
-            background-color: rgb(222, 184, 135);
-            border: 0.5vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
-            margin-left: 1.2%;
-            padding-bottom: 3%;
-            padding-top: 3%;
             font-size: 4vmin;
             flex: 1;
+            width: 22.5%;
+            margin-left: 1.2%;
+            padding-top: 3%;
+            padding-bottom: 3%;
+            color: rgb(0, 0, 0);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(222, 184, 135);
         }
 
         .ButtonsPri div:hover {
@@ -262,25 +263,25 @@
         }
 
         .ButtonsOther {
+            display: flex;
+            flex-wrap: wrap;
             margin-top: 1vmin;
             padding-right: 3%;
             padding-bottom: 1vmin;
-            flex-wrap: wrap;
-            display: flex;
         }
 
         .ButtonsOther div {
-            width: 45%;
-            color: rgb(0, 10, 0);
-            background-color: rgb(174, 159, 164);
-            border: 0.6vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
-            margin-left: 3%;
-            padding-bottom: 1.6%;
-            padding-top: 1.6%;
             font-size: 4vmin;
             font-weight: bold;
             flex: 1;
+            width: 45%;
+            margin-left: 3%;
+            padding-top: 1.6%;
+            padding-bottom: 1.6%;
+            color: rgb(0, 10, 0);
+            border: 0.6vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(174, 159, 164);
         }
 
         .ButtonsOther div:hover {
@@ -292,15 +293,15 @@
         }
 
         .Choose {
+            font-size: 3.6vmin;
             width: 93%;
+            margin: 0.5vmin auto auto;
+            padding-top: 1.2%;
+            padding-bottom: 1.2%;
             color: rgb(0, 10, 0);
-            background-color: rgb(174, 159, 164);
             border: 0.6vmin solid rgb(141, 81, 48);
             border-radius: 2vmin;
-            margin: 0.5vmin auto auto;
-            padding-bottom: 1.2%;
-            padding-top: 1.2%;
-            font-size: 3.6vmin;
+            background-color: rgb(174, 159, 164);
         }
 
         .Choose:hover {
@@ -312,70 +313,74 @@
         }
 
         .CheckBoxShow {
-            background-color: rgb(222, 184, 135);
             color: rgb(50, 50, 50);
+            background-color: rgb(222, 184, 135);
         }
 
         .CheckBox_0 {
             width: 94%;
-            background-color: rgb(60, 179, 113);
-            border: 0.5vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
             margin: 1.2vmin auto 1vmin;
             padding-bottom: 1vmin;
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(60, 179, 113);
         }
 
         .CheckBox_1 {
             width: 90%;
-            color: rgb(0, 128, 0);
-            background-color: rgb(139, 165, 56);
-            border: 0.5vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
             margin-top: 1vmin;
             padding-bottom: 1vmin;
+            color: rgb(0, 128, 0);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgb(139, 165, 56);
         }
 
         .CheckBox_2 {
             width: 90%;
-            color: rgb(173, 255, 47);
-            background-color: rgba(10, 135, 32, 0.35);
-            border: 0.5vmin solid rgb(141, 81, 48);
-            border-radius: 2vmin;
             margin: 0.5vmin auto 1vmin;
             padding-bottom: 1vmin;
+            color: rgb(173, 255, 47);
+            border: 0.5vmin solid rgb(141, 81, 48);
+            border-radius: 2vmin;
+            background-color: rgba(10, 135, 32, 0.35);
         }
 
         .ExpText {
-            width: max-content;
-            color: rgb(14, 50, 101);
-            text-align: left;
             font-size: 3.6vmin;
-            margin-left: 1%;
+            overflow: hidden;
+            width: max-content;
             margin-right: 1%;
+            margin-left: 1%;
+            text-align: left;
+            color: rgb(14, 50, 101);
         }
 
         .MainExpText {
-            width: max-content;
-            color: rgb(128, 0, 0);
             font-size: 3.6vmin;
-            text-align: left;
-            margin-left: 1%;
+            overflow: hidden;
+            width: max-content;
             margin-right: 1%;
+            margin-left: 1%;
+            text-align: left;
+            color: rgb(128, 0, 0);
         }
 
         .SubExpText {
-            width: max-content;
-            color: rgb(14, 50, 101);
-            text-align: left;
             font-size: 3.6vmin;
-            margin-left: 10%;
+            overflow: hidden;
+            width: max-content;
             margin-right: 1%;
+            margin-left: 10%;
+            text-align: left;
+            color: rgb(14, 50, 101);
         }
 
         .SetTitles {
             font-size: 3.3vmin;
-            color: rgb(0, 0, 139);
             font-weight: bold;
+            overflow: hidden;
+            color: rgb(0, 0, 139);
         }
 
         .FunMode {
@@ -402,9 +407,9 @@
         }
 
         ::-webkit-scrollbar-thumb {
+            border-radius: 10vmin;
             background-color: currentColor;
             box-shadow: inset 0 0 0.36vmin 0.25vmin rgba(139, 0, 0, 0.3);
-            border-radius: 10vmin;
         }
 
         ::-webkit-scrollbar-thumb:hover {
@@ -1012,14 +1017,14 @@
             let xiao_kh = 0, abs_dt = 0;
             let out = '';
             let special = [false, false, false];
-            let legal_list = ['阴', '晴', '抢', '症', '雨', '窃', '歪', '空', '劈', '正', '余', '切', '谢', '欣', '芸', '实', '虚', '角', '存', '桐', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'π', 'ℯ', 'ί', '(', ')', '[', ']', '|', 'C', 'P', '∠', '!', '^', '×', '÷', '+', '-'];
+            let legal_list = ['阴', '晴', '抢', '症', '雨', '窃', '歪', '空', '劈', '正', '余', '切', '谢', '欣', '芸', '实', '虚', '角', '存', '桐', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', 'π', 'ℯ', 'í', '(', ')', '[', ']', '|', 'C', 'P', '∠', '!', '^', '×', '÷', '+', '-'];
             let one_fun_list = ['阴', '晴', '抢', '症', '雨', '窃', '歪', '空', '劈', '正', '余', '切', '谢', '欣', '实', '虚', '角', '绝'];
             let one_fun_list_2 = ['!', '桐'];
             let two_fun_list = ['+', '-', '×', '÷', '∠', 'P', 'C', '芸', '^', '!', '桐'];
             let two_fun_list_1 = ['÷', '∠', '芸', '^', 'P', 'C', '!', '桐'];
             let two_fun_list_2 = ['加', '减', '乘', '除', '转', '排', '组', '对', '幂', '阶', '睿'];
             let number_list_1 = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
-            let constant_list = ['π', 'ℯ', 'ί'];
+            let constant_list = ['π', 'ℯ', 'í'];
             let number_list = number_list_1.concat(constant_list);
             let all_fun_list = one_fun_list.concat(two_fun_list_2);
 
@@ -1165,7 +1170,7 @@
                 return ('err0');
             }
             x = x.replaceAll('e', 'ℯ');
-            x = x.replaceAll('i', 'ί');
+            x = x.replaceAll('i', 'í');
             x = x.replaceAll('存', '[存]');
             x = x.replaceAll('!!', '桐');
             for (let i = 0; i < x.length; i++) {
@@ -1304,10 +1309,10 @@
             for (let i = 0; i < 10; i++) {
                 out = out.replaceAll('ℯ' + i, 'ℯ)×(' + i);
                 out = out.replaceAll('π' + i, 'π)×(' + i);
-                out = out.replaceAll('ί' + i, 'ί)×(' + i);
+                out = out.replaceAll('í' + i, 'í)×(' + i);
                 out = out.replaceAll(i + 'ℯ', i + ')×(ℯ');
                 out = out.replaceAll(i + 'π', i + ')×(π');
-                out = out.replaceAll(i + 'ί', i + ')×(ί');
+                out = out.replaceAll(i + 'í', i + ')×(í');
             }
             out = deal(out, ['!', '桐'], '10');
             out = deal(out, ['Z', 'F'], '01');
@@ -1328,7 +1333,7 @@
             out = out.replaceAll('绝', 'abs');
             out = out.replaceAll('π', 'pi');
             out = out.replaceAll('ℯ', 'e');
-            out = out.replaceAll('ί', '[0,1]');
+            out = out.replaceAll('í', '[0,1]');
             out = out.replaceAll('!', '');
             out = out.replaceAll('桐', '');
             out = back_replace_one_fun(out);
@@ -1422,19 +1427,19 @@
                             }
                             if (pb !== 0) {
                                 if (b === 1) {
-                                    out += '10<sup>' + pb + '</sup>ί';
+                                    out += '10<sup>' + pb + '</sup>í';
                                 } else if (b === -1) {
-                                    out += '-10<sup>' + pb + '</sup>ί';
+                                    out += '-10<sup>' + pb + '</sup>í';
                                 } else {
-                                    out += b + '×10<sup>' + pb + '</sup>ί';
+                                    out += b + '×10<sup>' + pb + '</sup>í';
                                 }
                             } else {
                                 if (b === 1) {
-                                    out += 'ί';
+                                    out += 'í';
                                 } else if (b === -1) {
-                                    out += '-ί';
+                                    out += '-í';
                                 } else {
-                                    out += b + 'ί';
+                                    out += b + 'í';
                                 }
                             }
                         } else if (a === 0) {
@@ -1636,7 +1641,7 @@
                                         }
                                     }
                                 }
-                                k += 1
+                                k += 1;
                             }
                             if (t !== 10) {
                                 return (t * pow(-a, c));
@@ -2120,7 +2125,7 @@
                             out += printx(mid_a) + '+';
                         }
                         if (mid_b !== 0) {
-                            out += '(' + printx(mid_b) + '+2kπ)ί';
+                            out += '(' + printx(mid_b) + '+2kπ)í';
                         } else {
                             out += '2kπί';
                         }
@@ -2987,7 +2992,7 @@
                 </div>
                 <div class="ButtonsAdv FunStr FunctionButtons">
                     <div>∠</div>
-                    <div>ί</div>
+                    <div>í</div>
                     <div>ℯ</div>
                     <div>π</div>
                     <div>Ans</div>
@@ -3076,8 +3081,8 @@
                     <div class="SubExpText">●圆的周长与直径的比值为π</div>
                     <div class="MainExpText">2.自然常数: ℯ</div>
                     <div class="SubExpText">●当时x→∞时函数f(x)=(1+1÷x)<sup>x</sup>值的极限为ℯ</div>
-                    <div class="MainExpText">3.虚数单位: ί</div>
-                    <div class="SubExpText">●规定 ί<sup>2</sup>=-1</div>
+                    <div class="MainExpText">3.虚数单位: í</div>
+                    <div class="SubExpText">●规定 í<sup>2</sup>=-1</div>
                 </div>
             </div>
             <div class='CheckBox_0 FirstLine'>
@@ -3109,8 +3114,8 @@
                         <div class="MainExpText">2.反余弦函数: arccos(x);x∈ℂ</div>
                         <div class="SubExpText">●arccos(x)=-ίln(x+(x<sup>2</sup>-1)<sup>0.5</sup>)</div>
                         <div class="SubExpText">●cos(arccos(x))=x</div>
-                        <div class="MainExpText">3.反正切函数: arctan(x);x∈ℂ且x≠±ί</div>
-                        <div class="SubExpText">●arctan(x)=-ίln(((ί-x)÷(ί+x))<sup>0.5</sup>)</div>
+                        <div class="MainExpText">3.反正切函数: arctan(x);x∈ℂ且x≠±í</div>
+                        <div class="SubExpText">●arctan(x)=-ίln(((í-x)÷(í+x))<sup>0.5</sup>)</div>
                         <div class="SubExpText">●tan(arctan(x))=x</div>
                     </div>
                     <div class="Choose" id="explain_34" onclick="change_check_box(this.id, 'explain');">双曲函数 ∨</div>
@@ -3182,7 +3187,7 @@
                         <div class="SubExpText">●a∈ℝ;b>0时,设b=c÷d,其中c,d∈ℕ*,则d个a×b的相加的和等于c个a相加的和</div>
                         <div class="SubExpText">●a∈ℝ;b=0时,a×b=0</div>
                         <div class="SubExpText">●a∈ℝ;b<0时,a×b=-(a×(-b))</div>
-                        <div class="SubExpText">●a,b∈ℂ时,设c=re(a),d=im(a),x=re(b),y=im(b),则a×b=(xc-yd)+(xd+yc)ί</div>
+                        <div class="SubExpText">●a,b∈ℂ时,设c=re(a),d=im(a),x=re(b),y=im(b),则a×b=(xc-yd)+(xd+yc)í</div>
                         <div class="MainExpText">4.除法运算: a÷b;a∈ℂ,b∈ℂ*</div>
                         <div class="SubExpText">●1÷b等于b的倒数</div>
                         <div class="SubExpText">●a÷b=a×(1÷b)</div>
