@@ -88,7 +88,7 @@ console.log(res3.toString()); // 输出 100 的精确阶乘结果
 
 - **数据结构**：项目放弃了原生 `Number`，采用自定义对象维护数值位，确保在大数运算下不丢失精度。
 - **解析流程**：输入字符串 -> 符号化 (Tokenization) -> 预处理 (补全乘号/括号) -> 逆波兰表达式 (RPN) -> 栈式求值。
-- **近似算法**：对于初等函数，使用参数缩减和泰勒展开近似算法；对于阶乘和 Gamma 函数，内部集成了多组 **Lanczos 近似** 参数 （[参数详细信息](https://github.com/tk-yoshimura/LanczosApproximation)）以平衡计算速度与精度。
+- **近似算法**：对于初等函数，使用参数缩减和泰勒展开近似算法；对于阶乘和 Gamma 函数，内部集成了多组 **Lanczos 近似** 参数 （[参数详细信息](https://github.com/Double-Cloth/LanczosApproximation)）以平衡计算速度与精度。
 - **图形界面**：包含完整清晰的交互界面，同时使用 svg 作为字体和图片，保证了在不同设备上显示效果相同。
 
 ## 📄 许可证
