@@ -1,0 +1,1368 @@
+/* ===== 全局定义 ===== */
+
+        * {
+            overflow: auto;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        :root {
+            /* 强制声明页面只支持浅色模式 */
+            color-scheme: light;
+        }
+
+        body {
+            position: absolute;
+            z-index: 0;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            width: 100dvw;
+            height: 100dvh;
+            background-color: rgba(240, 248, 255, 0.95);
+        }
+
+        p {
+            flex-shrink: 0;
+            height: 6dvmin;
+            object-fit: contain;
+            object-position: center;
+            mask-size: contain;
+            mask-repeat: no-repeat;
+            mask-position: center;
+        }
+
+        ::-webkit-scrollbar {
+            width: 1dvmin;
+            height: 1dvmin;
+            background-color: transparent;
+        }
+
+        ::-webkit-scrollbar-track {
+            border-radius: 100dvmax;
+            background-color: rgb(245, 245, 245);
+            box-shadow: inset 0 0 0.5dvmin 0.28dvmin rgb(210, 210, 210);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            border-radius: 100dvmax;
+            background-color: rgb(210, 210, 210);
+            box-shadow: inset 0 0 0.48dvmin 0.28dvmin rgb(128, 128, 128);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgb(148, 148, 148);
+            box-shadow: inset 0 0 0.4dvmin 0.2dvmin rgb(80, 80, 80);
+        }
+
+        ::-webkit-scrollbar-button,
+        ::-webkit-scrollbar-corner {
+            display: none;
+        }
+
+        .NoDisplay {
+            display: none !important;
+        }
+
+        .Lines {
+            position: absolute;
+            z-index: 0;
+            width: 0.5dvmin;
+            height: 0.5dvmin;
+            background-color: rgb(95, 158, 160);
+        }
+
+        .Paragraph,
+        .Screen234 > div > div,
+        #print_content > div > div,
+        #grid_data > div div,
+        :where(#keyboard_main, #sub_keyboard > div) > div {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            gap: 0.6dvmin;
+        }
+
+        :where(
+            .Paragraph:not(#title_mode_3),
+            #grid_data > div div,
+            .Screen234 > div > div
+        ) > p:first-child {
+            margin-left: 0.45dvmin;
+        }
+
+        :where(
+            .Paragraph:not(#title_mode_3),
+            #grid_data > div div,
+            .Screen234 > div > div,
+            #print_content > div > div
+        ) > p:last-child {
+            margin-right: 0.45dvmin;
+        }
+
+        /* ===== main 窗口样式 ===== */
+        #main_cover {
+            position: absolute;
+            z-index: 3;
+            top: 0;
+            left: 0;
+            width: 100dvw;
+            height: 100dvh;
+        }
+
+        #main {
+            position: absolute;
+            z-index: 0;
+            top: 0;
+            display: flex;
+            overflow: hidden;
+            width: 200dvw;
+            height: 100dvh;
+            transition: left 0.3s ease;
+        }
+
+        #main.Input {
+            left: 0;
+        }
+
+        #main:not(.Input) {
+            left: -100dvw;
+        }
+
+        #main > div {
+            position: relative;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            width: 100dvw;
+            height: 100dvh;
+        }
+
+        /* == input 窗口样式 == */
+
+        /* head 部分 */
+
+        .HeadNotMain {
+            display: flex;
+            overflow: hidden;
+            align-items: center;
+            justify-content: center;
+            width: 7dvw;
+            height: 6.5dvh;
+            transition: all 0.15s ease;
+            border-radius: 2.5dvmin;
+        }
+
+        .HeadNotMain:hover {
+            background-color: rgba(230, 230, 230, 0.6);
+            box-shadow: inset 0 0 1.5dvmin 0.8dvmin rgba(105, 105, 105, 0.6);
+        }
+
+        .HeadNotMain:active {
+            background-color: rgba(230, 230, 230, 0.7);
+            box-shadow: inset 0 0 1.5dvmin 1dvmin rgba(105, 105, 105, 0.8);
+        }
+
+        #head {
+            display: flex;
+            width: 100dvw;
+            height: 6.5dvh;
+            border-radius: 0 0 2.5dvmin 2.5dvmin;
+            background-color: rgb(196, 196, 196);
+        }
+
+        #head_setting > p:not(.Horizontal) {
+            transform: rotate(90deg);
+        }
+
+        #head_title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 86dvw;
+            height: 6.5dvh;
+            transition: all 0.24s ease;
+        }
+
+        #head_title:active {
+            transform: scale(0.93);
+        }
+
+        #head_inputs {
+            width: 85.4dvw;
+            height: 6.5dvh;
+            margin-left: 0.6dvw;
+        }
+
+        ._ship_.ShipLeft {
+            left: 100dvw;
+            transform: scaleX(-1);
+        }
+
+        ._ship_:not(.ShipLeft) {
+            left: -5dvmin;
+        }
+
+        /* screen_title 部分 */
+
+        #screen_title {
+            width: 100dvw;
+            height: 6.5dvh;
+            border-bottom: 0.5dvmin solid rgb(95, 158, 160);
+        }
+
+        #screen_title > div:not(.Paragraph) {
+            width: 99.55dvw;
+            margin-left: 0.45dvw;
+        }
+
+        #screen_title p.Superscript {
+            margin-left: 0;
+            transform: scale(0.66);
+            transform-origin: top;
+        }
+
+        /* screen 部分 */
+
+        .ScreenMain {
+            width: 100dvw;
+            height: 28.5dvh;
+        }
+
+        .ScreenNoDisplay {
+            transform: scale(0);
+            opacity: 0;
+        }
+
+        .ScreenInputsOn {
+            background-color: rgb(220, 245, 220);
+        }
+
+        /* screen 部分-part 0 */
+
+        #screen_0_display {
+            width: 100dvw;
+            height: 14dvh;
+            margin-top: 7.25dvh;
+        }
+
+        #screen_0_display > div {
+            width: 99dvw;
+            margin-left: 1dvw;
+        }
+
+        #screen_0_display > div:first-child {
+            height: 6dvh;
+        }
+
+        #screen_0_display > div:nth-child(2) {
+            height: 8dvh;
+        }
+
+        /* screen 部分-part 1 */
+
+        #screen_1 > div.Lines {
+            z-index: 1;
+            height: 28.5dvh;
+        }
+
+        #screen_1 > div.Lines:first-child {
+            left: 10dvw;
+        }
+
+        #screen_1 > div.Lines:nth-child(2) {
+            left: 54.5dvw;
+        }
+
+        #grid_top {
+            display: flex;
+            width: 100dvw;
+            height: 6dvmin;
+        }
+
+        #grid_top > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: calc(45dvw - 1dvmin);
+            height: 6dvmin;
+            margin-left: 0.5dvmin;
+        }
+
+        #grid_top > div:first-child {
+            margin-left: calc(10dvw + 0.5dvmin);
+        }
+
+        .GridOn {
+            border-radius: 2.5dvmin;
+            background-color: rgb(220, 245, 220);
+            box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(135, 135, 135, 0.5);
+        }
+
+        #grid_data {
+            width: 100dvw;
+            height: calc(28.5dvh - 6dvmin);
+        }
+
+        #grid_data > div {
+            display: flex;
+            width: 99dvw;
+            height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);
+        }
+
+        #grid_data > div > div {
+            display: flex;
+            align-items: center;
+            height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);;
+            transition: all 0.16s ease;
+        }
+
+        #grid_data > div > div:first-child {
+            align-items: center;
+            justify-content: center;
+            width: 10dvw;
+        }
+
+        #grid_data > div > div:first-child > div {
+            display: flex;
+            align-items: center;
+            height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);
+        }
+
+        #grid_data > div > div:nth-last-child(-n+2) {
+            justify-content: left;
+            width: calc(45dvw - 1dvmin);
+            margin-left: 0.5dvmin;
+        }
+
+        #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):hover {
+            border-radius: 2.5dvmin;
+            background-color: rgb(220, 225, 220);
+            box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(211, 211, 211, 0.8);
+        }
+
+        #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):active {
+            border-radius: 2.5dvmin;
+            background-color: rgb(220, 235, 220);
+            box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(211, 211, 211, 0.8);
+        }
+
+        /* screen 部分-part 2 到 part 4 */
+
+        .Screen234 {
+            position: absolute;
+            z-index: 0;
+            top: 13dvh;
+            left: 0;
+            display: grid;
+            transition: all 0.28s ease;
+            grid-gap: 0;
+            grid-template-columns: 100dvw;
+            grid-template-rows: repeat(2, 11dvh);
+        }
+
+        .Screen234 > div {
+            display: flex;
+            width: 84dvw;
+            height: 8dvh;
+            margin: auto;
+            transition: all 0.18s ease;
+            border-radius: 2.5dvmin;
+            box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(135, 135, 135, 0.5);
+        }
+
+        .Screen234 > div:not(.ScreenInputsOn) {
+            background-color: rgba(211, 211, 211, 0.8);
+        }
+
+        .Screen234 > div:not(.ScreenInputsOn):hover {
+            transform: scale(1.022);
+            background-color: rgb(220, 225, 220);
+        }
+
+        .Screen234 > div:not(.ScreenInputsOn):active {
+            transform: scale(1);
+            background-color: rgb(220, 235, 220);
+        }
+
+        .Screen234 > div > div:first-child {
+            justify-content: right;
+        }
+
+        .Screen234 > div > div:nth-child(2) {
+            padding-left: 1dvw;
+        }
+
+        #screen_2_0,
+        #screen_4 {
+            height: 25.25dvh;
+            margin-top: 3.25dvh;
+        }
+
+        #screen_2_0 > div > div:first-child {
+            width: max(14dvmin, 9.5dvw);
+        }
+
+        #screen_2_0 > div > div:nth-child(2) {
+            width: calc(85dvw - max(14dvmin, 9.5dvw));
+        }
+
+        #screen_2_1 {
+            grid-template-rows: repeat(3, 9.5dvh);
+        }
+
+        #screen_2_1 > div > div:first-child {
+            width: max(20dvmin, 13dvw);
+        }
+
+        #screen_2_1 > div > div:nth-child(2) {
+            width: calc(85dvw - max(20dvmin, 13dvw));
+        }
+
+        #screen_3 {
+            grid-template-columns: repeat(2, 50dvw);
+            grid-template-rows: repeat(3, 9.5dvh);
+        }
+
+        #screen_3 > div {
+            width: 48dvw;
+        }
+
+        :where(#screen_3, #screen_4) > div > div:first-child {
+            width: max(8.5dvmin, 4dvw);
+        }
+
+        #screen_3 > div > div:nth-child(2) {
+            width: calc(48dvw - max(8.5dvmin, 4dvw));
+        }
+
+        #screen_4 > div > div:nth-child(2) {
+            width: calc(85dvw - max(8.5dvmin, 4dvw));
+        }
+
+        /* input 部分 */
+
+        #input {
+            position: absolute;
+            z-index: 0;
+            top: 41.5dvh;
+            left: 0;
+            width: 100dvw;
+            height: 8dvh;
+            border-top: 0.5dvmin solid rgb(95, 158, 160);
+            border-bottom: 0.5dvmin solid rgb(95, 158, 160);
+            background-color: rgba(237, 242, 250, 0.75);
+            box-shadow: inset 0 0 6dvmin 0.1dvmin rgb(255, 248, 220);
+        }
+
+        @keyframes flicker {
+            0% {
+                opacity: 1.0;
+            }
+            50% {
+                opacity: 0.1;
+            }
+            100% {
+                opacity: 1.0;
+            }
+        }
+
+        #cursor {
+            flex-shrink: 0;
+            width: 0.6dvmin;
+            height: 6dvh;
+            margin: auto 0.35dvmin auto;
+            animation: flicker 1s linear infinite;
+            border-radius: 100dvmax;
+            background-color: rgb(184, 91, 110);
+        }
+
+        /* == keyboard 部分 == */
+
+        .KeyboardStyle1 {
+            background-color: rgba(240, 248, 255, 0.95);
+        }
+
+        .KeyboardStyle2 {
+            background-color: rgb(245, 255, 250);
+        }
+
+        .KeyboardStyle3 {
+            background-color: rgb(255, 245, 240);
+        }
+
+        .KeyboardCover {
+            position: absolute;
+            z-index: 1;
+            right: 0;
+            bottom: 0;
+            height: 43.5dvh;
+        }
+
+        :where(
+            #keyboard_cover,
+            #keyboard_cover_ForMode1
+        ):not(.KeyboardCover) {
+            display: none;
+        }
+
+        :where(
+            #keyboard_main,
+            #sub_keyboard_ForMode1,
+            #sub_keyboard > div
+        ) > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 6.75dvh;
+            transition: all 0.12s;
+            border-radius: 3dvmin;
+            box-shadow: inset 0 0 1dvmin 0.4dvmin rgba(13, 48, 2, 0.95);
+        }
+
+        :where(
+            #keyboard_main,
+            #sub_keyboard_ForMode1,
+            #sub_keyboard > div
+        ) > div:hover {
+            transform: translateY(-0.1dvmin);
+            opacity: 0.75;
+        }
+
+        :where(
+            #keyboard_main,
+            #sub_keyboard_ForMode1,
+            #sub_keyboard > div
+        ) > div:active {
+            transform: translateY(0.15dvmin) scale(0.98);
+            box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(0, 0, 0);
+        }
+
+        /* sub_keyboard 部分 */
+
+        #sub_keyboard > div,
+        #sub_keyboard_ForMode1 {
+            display: grid;
+            transition: all 0.25s ease;
+            border-radius: 3dvmin;
+            background-color: rgba(242, 242, 242, 0.44);
+            box-shadow: 0 0 2.8dvmin 1.3dvmin rgb(105, 105, 105);
+            grid-template-rows: repeat(3, 7.25dvh);
+            place-items: center;
+            backdrop-filter: blur(8px);
+        }
+
+        #sub_keyboard_ForMode1 {
+            position: absolute;
+            z-index: 2;
+            top: 56.25dvh;
+            height: 17.5dvh;
+            padding-top: 0.25dvh;
+            padding-left: 0.25dvw;
+            border: 0.5dvmin solid transparent;
+            background-color: rgba(255, 255, 255, 0.13);
+            grid-template-rows: repeat(2, calc(8.5dvh - 0.5dvmin));
+        }
+
+        #sub_keyboard_ForMode1 > div {
+            height: 7dvh;
+            transition: all 0.2s ease;
+            background-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0.4dvmin 1.5dvmin rgba(0, 0, 0, 0.2);
+        }
+
+        #sub_keyboard_ForMode1 > div:hover {
+            background-color: rgba(240, 252, 240, 0.9);
+        }
+
+        #sub_keyboard_ForMode1 > div:active {
+            transform: scale(0.975);
+            background-color: rgb(220, 245, 220);
+            box-shadow: none;
+        }
+
+        #sub_keyboard_ForMode1.NotShow {
+            top: 47.5dvh;
+            transform: scale(0);
+            opacity: 0.25;
+        }
+
+        /* keyboard_top 部分 */
+
+        #keyboard_top {
+            position: absolute;
+            z-index: 0;
+            display: flex;
+            align-items: center;
+            height: 6.5dvh;
+            border-radius: 3dvmin;
+            background-color: rgba(215, 215, 215, 0.7);
+            box-shadow: inset 0 0 1.4dvmin 0.4dvmin rgba(135, 135, 135, 0.4);
+        }
+
+        #keyboard_top > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 6.5dvh;
+            transition: all 0.18s;
+            border-radius: 3dvmin;
+        }
+
+        #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
+            background-color: rgba(162, 196, 162, 0.9);
+            box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+        }
+
+        #keyboard_top > div:hover {
+            box-shadow: inset 0 0 1dvmin 0.3dvmin rgba(105, 105, 105, 0.8);
+        }
+
+        #keyboard_top > div:active {
+            box-shadow: inset 0 0 2dvmin 0.4dvmin rgba(105, 105, 105, 0.8);
+        }
+
+        #keyboard_top > div.Ordinary:not(#keyboard_top_more):hover {
+            background-color: rgba(230, 237, 230, 0.7);
+        }
+
+        #keyboard_top > div.Ordinary:not(#keyboard_top_more):active {
+            background-color: rgba(225, 235, 225, 0.9);
+        }
+
+        #keyboard_top > div:nth-child(5) > p {
+            transform: rotate(180deg);
+        }
+
+        #keyboard_top:not(.ForMode1) > #keyboard_top_more {
+            display: none;
+        }
+
+        #keyboard_top_more {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #sort_svg {
+            overflow: visible;
+            width: 81%;
+            height: 81%;
+        }
+
+        .ArrowPath {
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transform: scaleY(-1);
+            transform-origin: center;
+            fill: none;
+            stroke: rgb(102, 102, 102);
+
+            /* 核心动画设置 */
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+
+            /* 默认状态：scaleY(-1) -> 显示为 >< (收缩/翻转态) */
+            transform-box: fill-box;
+        }
+
+        #keyboard_top_more:active #sort_svg {
+            transition: transform 0.1s;
+            transform: scale(0.9);
+        }
+
+        #keyboard_top_more.Ordinary .ArrowPath {
+            transform: scaleY(1);
+        }
+
+        /* keyboard_main 部分 */
+
+        #keyboard_main {
+            position: absolute;
+            z-index: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            height: 43.75dvh;
+            background-image: linear-gradient(to top, rgb(196, 196, 196), transparent);
+            grid-template-rows: repeat(6, calc(175dvh / 24));
+            place-items: center;
+        }
+
+        #keyboard_main > div {
+            height: calc(163dvh / 24);
+        }
+
+        /* keyboard 媒体查询部分 */
+
+        @media (max-width: 160dvh) {
+            .KeyboardCover {
+                width: 100dvw;
+            }
+
+            #sub_keyboard > div {
+                position: absolute;
+                z-index: 2;
+                top: 56.25dvh;
+                width: calc(59.7dvw + 0.5dvmin);
+                height: calc(21.75dvh + 0.5dvmin);
+                padding: 0.25dvmin;
+                grid-template-columns: repeat(3, 19.9dvw);
+            }
+
+            #sub_keyboard > div:first-child {
+                left: calc(0.25dvw - 0.25dvmin);
+            }
+
+            #sub_keyboard > div:last-child {
+                left: calc(20.15dvw - 0.25dvmin);
+            }
+
+            #sub_keyboard > div.NotShow {
+                top: calc(45.375dvh - 0.25dvmin);
+                transform: scale(0);
+                opacity: 0.25;
+            }
+
+            #sub_keyboard > div > div {
+                width: 19.4dvw;
+            }
+
+            #sub_keyboard_ForMode1 {
+                left: 49.9dvw;
+                width: 28dvw;
+                grid-template-columns: calc(27.5dvw - 1dvmin);
+            }
+
+            #sub_keyboard_ForMode1 > div {
+                width: 25dvw;
+            }
+
+            #keyboard_top {
+                top: 49.75dvh;
+                right: 0;
+                width: 99.5dvw;
+                margin: 0 0.25dvw 0;
+            }
+
+            #keyboard_top > div {
+                width: 19.9dvw;
+            }
+
+            #keyboard_top.ForMode1 > div:nth-last-child(-n+2) {
+                width: 15.9dvw;
+            }
+
+            #keyboard_top.ForMode1 > #keyboard_top_more {
+                width: 8dvw;
+            }
+
+            #keyboard_main > div {
+                width: 19.5dvw;
+            }
+
+            #keyboard_main {
+                width: 100dvw;
+                grid-template-columns: repeat(5, 20dvw);
+            }
+        }
+
+        @media (min-width: 160dvh) {
+            #keyboard_cover,
+            #keyboard_top > div:where(:nth-child(2), div:nth-child(3)) {
+                display: none !important;
+            }
+
+            .KeyboardCover {
+                width: 62.5dvw;
+            }
+
+            #sub_keyboard {
+                position: absolute;
+                z-index: 0;
+                top: 49.5dvh;
+                left: 0;
+                width: 37.5dvw;
+                height: 50.5dvh;
+                border-right: 0.5dvmin solid rgb(95, 158, 160);
+                background-color: rgb(232, 232, 232);
+            }
+
+            #sub_keyboard > div {
+                position: static;
+                width: calc(37.5dvw - 0.5dvmin);
+                height: 21.75dvh;
+                padding: 0;
+                background-color: transparent;
+                box-shadow: 0 0 0 0 transparent;
+                grid-template-columns: repeat(3, calc(12.5dvw - 0.5dvmin / 3));
+            }
+
+            #sub_keyboard > div:first-child {
+                margin-top: calc(29dvh / 12);
+            }
+
+            #sub_keyboard > div:last-child {
+                margin-top: calc(13dvh / 6);
+            }
+
+            #sub_keyboard > div.NotShow {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            #sub_keyboard > div > div {
+                width: 12.125dvw;
+            }
+
+            #sub_keyboard_ForMode1 {
+                left: 51dvw;
+                width: 21dvw;
+                grid-template-columns: calc(20.5dvw - 1dvmin);
+            }
+
+            #sub_keyboard_ForMode1 > div {
+                width: 19dvw;
+            }
+
+            #keyboard_top {
+                top: 49.75dvh;
+                right: 0.15625dvw;
+                width: 62.1875dvw;
+                margin: 0;
+            }
+
+            #keyboard_top > div {
+                width: calc(62dvw / 3);
+            }
+
+            #keyboard_top.ForMode1 > div:nth-last-child(-n+2) {
+                width: calc(53dvw / 3);
+            }
+
+            #keyboard_top.ForMode1 > #keyboard_top_more {
+                width: 6dvw;
+            }
+
+            #keyboard_main > div {
+                width: 12.1875dvw;
+            }
+
+            #keyboard_main {
+                width: 62.5dvw;
+                grid-template-columns: repeat(5, 12.5dvw);
+            }
+        }
+
+        /* == print 窗口样式 == */
+
+        #main_print {
+            background-color: rgb(250, 250, 250);
+        }
+
+        /* 加载动画部分 */
+
+        #load_cover {
+            position: absolute;
+            z-index: 3;
+            top: 0;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100dvw;
+            height: 100dvh;
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        #load {
+            /* 局部定义变量 */
+            width: 40dvw;
+
+            height: calc(18dvh + 25dvmin);
+            border-radius: 3dvmin;
+            /* 启用背景色，使用定义的局部变量 */
+            background-color: hsla(var(--hue), 10%, 90%, 0.8);
+            /* 添加卡片阴影，增加层次感 */
+            box-shadow: 0 4dvmin 20dvmin rgba(0, 0, 0, 0.2);
+            --hue: 223;
+        }
+
+        #load > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: auto;
+        }
+
+        #loading {
+            width: 30dvw;
+            height: 8dvh;
+        }
+
+        #load_cancel {
+            margin-top: 1dvh !important;
+            background-color: rgb(240, 100, 100) !important;
+        }
+
+        #load_box {
+            /* 容器尺寸定义 */
+            display: flex;
+            align-items: center;
+
+            /* 确保 SVG 居中 */
+            justify-content: center;
+            width: 25dvmin;
+            height: 25dvmin;
+        }
+
+        .pl,
+        .pl__worm {
+            /* 动画通用设置 */
+            animation-duration: 3s;
+            animation-iteration-count: infinite;
+        }
+
+        .pl {
+            /* SVG 容器 */
+            width: 60%;
+            height: 60%;
+            animation-name: bump;
+            animation-timing-function: linear;
+        }
+
+        .pl__ring {
+            /* 背景圆环 */
+            transition: stroke 0.3s;
+            stroke: hsla(var(--hue), 10%, 10%, 0.1);
+        }
+
+        .pl__worm {
+            /* 蠕虫线条动画 */
+            animation-name: worm;
+            animation-timing-function: cubic-bezier(0.42, 0.17, 0.75, 0.83);
+        }
+
+        @keyframes bump {
+            /* 关键帧动画定义 */
+            from,
+            42%,
+            46%,
+            51%,
+            55%,
+            59%,
+            63%,
+            67%,
+            71%,
+            74%,
+            78%,
+            81%,
+            85%,
+            88%,
+            92%,
+            to {
+                transform: translate(0, 0);
+            }
+            44% {
+                transform: translate(1.33%, 6.75%);
+            }
+            53% {
+                transform: translate(-16.67%, -0.54%);
+            }
+            61% {
+                transform: translate(3.66%, -2.46%);
+            }
+            69% {
+                transform: translate(-0.59%, 15.27%);
+            }
+            76% {
+                transform: translate(-1.92%, -4.68%);
+            }
+            83% {
+                transform: translate(9.38%, 0.96%);
+            }
+            90% {
+                transform: translate(-4.55%, 1.98%);
+            }
+        }
+
+        @keyframes worm {
+            /* 关键帧动画定义 */
+            from {
+                stroke-dashoffset: 10;
+            }
+            25% {
+                stroke-dashoffset: 295;
+            }
+            to {
+                stroke-dashoffset: 1165;
+            }
+        }
+
+        /* print_title 和 print_close */
+
+        #print_title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100dvw;
+            height: 6.5dvh;
+        }
+
+        #print_close,
+        #load_cancel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 25dvw;
+            height: 7dvh;
+            margin: auto;
+            transition: all 0.2s ease;
+            border-radius: 2.5dvmin;
+            background-color: rgba(105, 145, 105, 0.8);
+            box-shadow: inset 0 0 0.5dvmin 0.4dvmin rgb(250, 250, 250);
+        }
+
+        #print_close:hover,
+        #load_cancel:hover {
+            opacity: 0.9;
+            background-color: rgb(90, 140, 90);
+            box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(250, 250, 250);
+        }
+
+        #print_close:active,
+        #load_cancel:active {
+            transform: scale(0.975);
+            background-color: rgb(90, 140, 90);
+            box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(250, 250, 250);
+        }
+
+        /* print_content 部分 */
+
+        #print_content {
+            width: 99dvw;
+            height: 86.5dvh;
+            margin-left: 1dvw;
+        }
+
+        #print_content > div {
+            width: 99dvw;
+            height: 86dvh;
+        }
+
+        #print_content > div > div:not(.NotPrintDefault) {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            width: 98dvw;
+            height: 7dvh;
+        }
+
+        /* ===== others 窗口样式 ===== */
+
+        #others {
+            width: 0;
+            height: 0;
+        }
+
+        /* == setting 窗口样式 == */
+
+        #setting {
+            position: absolute;
+            z-index: 4;
+            top: 6.5dvh;
+            overflow: hidden;
+            width: 65dvw;
+            height: 93.5dvh;
+            transition: all 0.3s ease;
+            border-radius: 0 2.5dvmin 2.5dvmin 0;
+            background-color: rgba(255, 250, 250, 0.77);
+            backdrop-filter: blur(6px);
+        }
+
+        .SettingNotShow {
+            left: -65dvw;
+        }
+
+        #setting:not(.SettingNotShow) {
+            left: 0;
+            box-shadow: 0 0 2dvmin 1dvmin rgb(211, 211, 211);
+        }
+
+        /* setting 开关部分 */
+
+        #switch_container {
+            /* 核心尺寸计算变量 (--h):
+               1. 优先尝试使用 6dvh (基于高度)。
+               2. 但必须满足 宽度(2h) <= 15dvw，即 h <= 7.5dvw。
+               3. 取两者中的较小值。
+            */
+            position: relative;
+
+            overflow: hidden;
+            width: calc(var(--h) * 2); /* 宽度恒为高度的2倍 */
+            height: var(--h); /* 高度 */
+
+            transition: background-color 0.4s ease;
+
+            /* 阴影大小基于高度计算 (系数约为 0.075) */
+            border-radius: var(--h); /* 圆角为高度值，保持胶囊状 */
+
+            background-color: rgb(238, 242, 245);
+            box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(203, 209, 216),
+            inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(255, 255, 255);
+
+            /* 防止点击时的高亮背景 */
+            --h: min(6dvh, 7.5dvw);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #switch_knob {
+            /* 圆形按钮 (Knob) */
+            position: absolute;
+            /* 边距基于高度计算 (系数 0.1) */
+            top: calc(var(--h) * 0.1);
+            left: calc(var(--h) * 0.1);
+
+            /* 按钮尺寸基于高度计算 (系数 0.8) */
+            display: flex;
+            align-items: center;
+
+            justify-content: center;
+            width: calc(var(--h) * 0.8);
+
+            /* 凸起阴影 */
+            height: calc(var(--h) * 0.8);
+
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+            background-color 0.4s,
+            box-shadow 0.4s;
+
+            border-radius: 50%;
+            background-color: rgb(255, 255, 255);
+            box-shadow: calc(var(--h) * 0.05) calc(var(--h) * 0.05) calc(var(--h) * 0.125) rgb(203, 209, 216),
+            calc(var(--h) * -0.05) calc(var(--h) * -0.05) calc(var(--h) * 0.125) rgb(255, 255, 255);
+        }
+
+        .SwitchIcon {
+            /* SVG 图标 */
+            /* 图标尺寸基于高度计算 (系数 0.4) */
+            position: absolute;
+            width: calc(var(--h) * 0.4);
+            height: calc(var(--h) * 0.4);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .IconOff {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+            stroke: rgb(113, 128, 150);
+        }
+
+        .IconOn {
+            transform: scale(0.5) rotate(-45deg);
+            opacity: 0;
+            stroke: rgb(255, 255, 255);
+        }
+
+        #switch_container.Active {
+            background-color: rgb(241, 248, 241);
+            box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(209, 218, 209),
+            inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(255, 255, 255);
+        }
+
+        #switch_container.Active #switch_knob {
+            /* 移动距离正好等于 1倍高度 */
+            transform: translateX(var(--h));
+            background-color: rgb(162, 196, 162);
+            /* 发光范围 */
+            box-shadow: 0 0 calc(var(--h) * 0.25) rgb(149, 175, 149);
+        }
+
+        #switch_container.Active .IconOff {
+            transform: scale(0.5) rotate(45deg);
+            opacity: 0;
+        }
+
+        #switch_container.Active .IconOn {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+        }
+
+        /* setting 标题和选择部分 */
+
+        .SettingTitle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 65dvw;
+            height: 6dvh;
+        }
+
+        .SelectionOn {
+            width: 59dvw;
+            background-color: rgb(162, 196, 162);
+            box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+        }
+
+        .SettingSelection {
+            display: grid;
+            overflow: hidden;
+            width: 65dvw;
+            border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
+            grid-gap: 0;
+            grid-template-columns: 65dvw;
+        }
+
+        .SettingSelection > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 8.5dvh;
+            margin: auto 0;
+            transition: all 0.4s ease;
+            border-radius: 0 3dvmin 3dvmin 0;
+        }
+
+        .SettingSelection > div:not(.SelectionOn) {
+            width: 46dvw;
+            background-color: rgb(211, 211, 211);
+            box-shadow: inset 0 0 1dvmin 1dvmin rgb(188, 188, 188);
+        }
+
+        .SettingSelection > div:not(.SelectionOn):hover {
+            width: 49dvw;
+            height: 9dvh;
+            background-color: rgb(182, 192, 182);
+        }
+
+        #setting_selection_mode {
+            height: calc(47.5dvh + 0.5dvmin);
+            grid-template-rows: repeat(5, 9.5dvh);
+        }
+
+        #setting_selection_print {
+            height: calc(19dvh + 0.5dvmin);
+            grid-template-rows: repeat(2, 9.5dvh);
+        }
+
+        #setting_acc_control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 65dvw;
+            height: calc(7.5dvh + 0.5dvmin);
+            border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+
+        #setting_acc_control > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #setting_acc_control > div:first-child {
+            width: 47dvw;
+        }
+
+        #setting_acc_control > div:last-child {
+            justify-content: left;
+            width: 18dvw;
+        }
+
+        /* setting_info_show 部分 */
+
+        #setting_info_show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 65dvw;
+            height: calc(7.5dvh - 1.5dvmin);
+        }
+
+        /* == explain 窗口样式 == */
+
+        #explain {
+            position: absolute;
+            z-index: 4;
+            overflow: hidden;
+            width: 85dvw;
+            height: 75dvh;
+            transition: all 0.5s ease;
+            border-radius: 4dvmin;
+        }
+
+        .ExplainNotShow {
+            top: -34.25dvh;
+            left: 54dvw;
+            transform: scale(0);
+            opacity: 0.86;
+        }
+
+        #explain:not(.ExplainNotShow) {
+            top: 12.5dvh;
+            left: 7.5dvw;
+            background-color: rgba(253, 248, 239, 0.78);
+            box-shadow: 0 0 2dvmin 1dvmin rgb(211, 211, 211);
+            backdrop-filter: blur(6px);
+        }
+
+        /* explain_top 部分 */
+
+        #explain_top {
+            display: flex;
+            align-items: center;
+            justify-content: left;
+            width: 85dvw;
+            height: 7dvh;
+        }
+
+        #explain_title_inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 77dvw;
+            height: 7dvh;
+        }
+
+        #explain_close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 8dvw;
+            height: 7dvh;
+            transition: all 0.3s ease;
+        }
+
+        #explain_close:hover,
+        #explain_close:active {
+            transition-property: none;
+            background-color: rgba(195, 13, 35, 0.83);
+        }
+
+        #explain_close:active {
+            opacity: 0.77;
+        }
+
+        #explain_close > p {
+            background-color: rgba(195, 13, 35, 0.83);
+        }
+
+        #explain_close:hover > p,
+        #explain_close:active > p {
+            width: 4.3dvmin;
+            background-color: rgba(253, 248, 239, 0.96);
+        }
+
+        /* explain_content 部分 */
+
+        #explain_content {
+            width: 85dvw;
+            height: 68dvh;
+            padding-top: 1dvmin;
+            border-top: 0.5dvmin dashed rgb(188, 188, 188);
+        }
