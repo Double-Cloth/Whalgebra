@@ -95,6 +95,6 @@ console.log(res3.toString()); // 输出 100 的精确阶乘结果
 
 本项目基于 **MIT 许可证** 开源。
 
-**作者**: DoubleCloth [联系我](mailto:Double-Cloth@outlook.com)
+**作者**: DoubleCloth [Contact me](mailto:Double-Cloth@outlook.com)
 
 **项目地址**: [GitHub - Whalgebra](https://github.com/Double-Cloth/Whalgebra)
