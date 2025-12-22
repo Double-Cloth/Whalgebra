@@ -1,4 +1,4 @@
-# Whalgebra
+# **Whalgebra**
 
 <div align="center">
 <img src="assets/images/icons/logo.png" alt="Whalgebra Logo" width="128" height="128" />
@@ -102,7 +102,7 @@ console.log(res3.toString());
 
 - **渲染层**: 全部使用 svg 作为字体和图片，保证了在不同设备上显示效果相同。
 
-- **工具层**: Python (主要用于文件处理流程，不参与计算过程)
+- **工具层**: Python (主要用于文件处理流程，不参与计算过程)。
 
 ## 👨‍💻 关于作者
 - **项目作者**: Double-Cloth [Contact me](mailto:Double-Cloth@outlook.com)
