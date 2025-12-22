@@ -44,7 +44,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 ## 🚀 快速开始
 
-### 🌐 Web 浏览器端
+### Web 浏览器端
 
 1.通过 Git 版本控制系统获取代码库：
 
@@ -52,9 +52,9 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 2.在浏览器中打开 src 文件夹中的 Whalgebra.html。
 
-### 📱 Android 移动端
+### Android 移动端
 
-1.访问项目发行版页面（Releases）。
+1.访问项目发行版页面 （[Releases](https://github.com/Double-Cloth/Whalgebra/releases)）。
 
 2.下载最新版本的 .apk 应用程序安装包。
 
@@ -86,11 +86,11 @@ console.log(res3.toString());
 
 ## ⌨️ 键盘快捷键与交互示例
 
-为了提高输入效率，计算器支持以下键盘映射（部分示例）：
+为了提高输入效率，计算器支持以下键盘映射（仅部分示例）：
 
 | 键盘按键     | 功能说明                |
 | :---------: | :---------------------: |
-| `Enter`     | 执行计算                 |
+| `Enter`     | 执行计算、返回           |
 | `Backspace` | 删除光标前的一个字符      |
 | `Delete`    | 删除光标后的一个字符      |
 | `alt` + `e` | 快捷输入自然对数底数      |
@@ -104,13 +104,13 @@ console.log(res3.toString());
 
 - **工具层**: Python (主要用于文件处理流程，不参与计算过程)
 
+## 👨‍💻 关于作者
+- **项目作者**: Double-Cloth [Contact me](mailto:Double-Cloth@outlook.com)
+- **项目地址**: [GitHub - Whalgebra](https://github.com/Double-Cloth/Whalgebra)
+
 ## 📚 参考资料
 - [Lanczos 近似算法](https://github.com/Double-Cloth/LanczosApproximation)
-
+  
 ## 📄 许可证
 
 本项目基于 **MIT 许可证** 开源。
-
-**作者**: DoubleCloth [Contact me](mailto:Double-Cloth@outlook.com)
-
-**项目地址**: [GitHub - Whalgebra](https://github.com/Double-Cloth/Whalgebra)
