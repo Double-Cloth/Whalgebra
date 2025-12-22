@@ -50,9 +50,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 `git clone https://github.com/Double-Cloth/Whalgebra`
 
-2.启动应用：
-- 定位至项目根目录中的 src 文件夹。
-- 在浏览器中打开 Whalgebra.html 文件。
+2.在浏览器中打开 src 文件夹中的 Whalgebra.html。
 
 ### 📱 Android 移动端
 
@@ -107,7 +105,7 @@ console.log(res3.toString());
 - **工具层**: Python (主要用于文件处理流程，不参与计算过程)
 
 ## 📚 参考资料
--（[Lanczos 近似算法参数](https://github.com/Double-Cloth/LanczosApproximation)）
+- [Lanczos 近似算法](https://github.com/Double-Cloth/LanczosApproximation)
 
 ## 📄 许可证
 
