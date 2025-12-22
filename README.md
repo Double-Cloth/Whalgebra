@@ -44,11 +44,11 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 ## 🚀 快速开始
 
-### 直接访问
+### 在线访问
 
 [Click here](https://Double-Cloth.github.io/Whalgebra/)
 
-### Web 浏览器端
+### 浏览器本地运行
 
 1.通过 Git 版本控制系统获取代码库：
 
@@ -56,7 +56,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 2.在浏览器中打开 src 文件夹中的 Whalgebra.html。
 
-### Android 移动端
+### Android 移动端本地运行
 
 1.访问项目发行版页面 （[Releases](https://github.com/Double-Cloth/Whalgebra/releases)）。
 
