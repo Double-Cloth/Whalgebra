@@ -48,7 +48,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 [Click here](https://Double-Cloth.github.io/Whalgebra/)
 
-### 浏览器本地运行
+### 浏览器端本地运行
 
 1.通过 Git 版本控制系统获取代码库：
 
