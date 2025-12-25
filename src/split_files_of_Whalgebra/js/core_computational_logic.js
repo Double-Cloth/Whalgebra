@@ -1348,7 +1348,7 @@
                         const realMantissa = absB.mantissa * (10n ** BigInt(absB.power));
 
                         // 溢出检查：在执行昂贵的 a^b 计算之前，先估算结果的量级。
-                        if (estimateDigitCount(reA.mantissa, realMantissa) > CalcConfig.MAX_POWER_ORDER_MAGNITUDE) {
+                        if (estimateDigitCount(reA.mantissa, realMantissa) > CalcConfig.USING_FAST_EXPONENTIATION_TO_COMPUTE_THE_CRITICAL_ORDER_OF_MAGNITUDE) {
                             // 如果指数为负，结果会趋近于0，是安全的。否则，抛出错误。
                             if (isExponentNegative) {
                                 return new ComplexNumber([0, 0n, resultAcc]);

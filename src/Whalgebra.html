@@ -2113,8 +2113,8 @@
                         // 比例模式：基于数据本身的精度 * 比例
                         return Math.floor(acc * numAcc);
                     }
-                    // 绝对模式：直接使用指定的位数，但不能超过数据本身的精度(可选的安全限制)
-                    return Math.min(acc, numAcc); // 建议加上这行，防止用户要求输出精度高于计算精度
+                    // 绝对模式：直接使用指定的位数，但不能超过数据本身的精度
+                    return Math.min(acc, numAcc); // 防止用户要求输出精度高于计算精度
                 };
 
                 // 根据输入值的类型进行不同的处理。
@@ -2716,10 +2716,10 @@
              * @static
              * @readonly
              * @type {number}
-             * @description 在 `MathPlus.pow()` 中，当指数为整数时，允许的结果的最大十进制位数。
-             * 这是一个安全限制，用于在上溢发生前提前中止计算，防止因生成一个极大的数字而耗尽内存。
+             * @description 在 `MathPlus.pow()` 中，当指数为整数时，当结果的最大十进制位数大于此值，则使用快速幂运算计算，否则使用原生 BigInt。
+             * 这是一个安全限制，防止因生成一个极大的数字而耗尽内存或耗时过长。
              */
-            static MAX_POWER_ORDER_MAGNITUDE = 2e7;
+            static USING_FAST_EXPONENTIATION_TO_COMPUTE_THE_CRITICAL_ORDER_OF_MAGNITUDE = 10000;
 
             /**
              * @static
@@ -4304,24 +4304,24 @@
                     const reA = inputA.re;
                     const reB = inputB.re;
 
-                    // 对齐指数（小数点）
-                    const powerDifference = reB.power - reA.power;
                     // 确定运算精度
                     const resultAcc = Math.min(reA.acc, reB.acc);
                     let mantissaA = reA.mantissa;
                     let mantissaB = reB.mantissa;
+                    // 对齐指数（小数点）
+                    const powerDifference = reB.power - reA.power;
 
                     // 如果数量级相差过大则直接返回
                     const bigIntAbs = (num) => num < 0n ? -num : num;
                     const guardAcc = resultAcc + 5;
                     if (powerDifference > guardAcc) {
                         const diff = bigIntAbs(mantissaB) - bigIntAbs(mantissaA);
-                        if (bigIntAbs(diff) < 10n && reB.power > 0) {
+                        if (diff > -10n) {
                             return new ComplexNumber(inputB, {acc: resultAcc});
                         }
                     } else if (powerDifference < -guardAcc) {
                         const diff = bigIntAbs(mantissaA) - bigIntAbs(mantissaB);
-                        if (bigIntAbs(diff) < 10n && reA.power > 0) {
+                        if (diff > -10n) {
                             return new ComplexNumber(inputA, {acc: resultAcc});
                         }
                     }
@@ -4632,6 +4632,52 @@
                     return Math.floor(log10Result) + 1;
                 }
 
+                /**
+                 * 快速幂运算
+                 * 使用 MathPlus 的乘法逻辑来计算 base^exponent
+                 * 目的：计算超大结果时，只保留需要的有效位数以避免内存溢出。
+                 * @param {bigint} base - 底数
+                 * @param {bigint} exponent - 指数
+                 * @returns {ComplexNumber} 结果 (ComplexNumber 实例)
+                 */
+                function fastPow(base, exponent) {
+                    const currentAcc = CalcConfig.globalCalcAccuracy;
+                    // 处理指数为 0 的情况，直接返回 1
+                    if (exponent === 0n) {
+                        return new ComplexNumber([0, 1n, CalcConfig.globalCalcAccuracy]);
+                    }
+
+                    // 将原生 bigint 底数包装为 ComplexNumber
+                    // 必须这样做，否则 MathPlus.times 无法对其进行精度截断处理
+                    let b = new ComplexNumber(base, {acc: currentAcc + 10});
+
+                    // 获取当前对象的精度，用于构造结果
+                    const acc = b.acc;
+
+                    // 初始化结果为 1 (乘法单位元)
+                    // 内部表示: [power=0, mantissa=1n, acc]
+                    let result = new ComplexNumber([0, 1n, acc]);
+
+                    // 核心循环：无需任何类型转换，直接对 bigint 指数进行位操作
+                    while (exponent > 0n) {
+                        // 判断奇数：(exponent & 1n) 等价于 (exponent % 2n !== 0n)
+                        if ((exponent & 1n) === 1n) {
+                            result = MathPlus.times(result, b);
+                        }
+
+                        // 只有当 exponent > 1 时才需要计算平方
+                        // 避免了最后一步 exp 为 1 时多余的一次 b * b 计算
+                        if (exponent > 1n) {
+                            b = MathPlus.times(b, b);
+                        }
+
+                        // 右移一位，等价于除以 2
+                        exponent >>= 1n;
+                    }
+
+                    return result;
+                }
+
                 // 将输入统一转换为 ComplexNumber 实例以便处理。
                 const inputA = new ComplexNumber(a);
                 const inputB = new ComplexNumber(b);
@@ -4691,7 +4737,8 @@
                         const realMantissa = absB.mantissa * (10n ** BigInt(absB.power));
 
                         // 溢出检查：在执行昂贵的 a^b 计算之前，先估算结果的量级。
-                        if (estimateDigitCount(reA.mantissa, realMantissa) > CalcConfig.MAX_POWER_ORDER_MAGNITUDE) {
+                        const orderOfMagnitude = estimateDigitCount(reA.mantissa, realMantissa);
+                        if (orderOfMagnitude >= Number.MAX_SAFE_INTEGER) {
                             // 如果指数为负，结果会趋近于0，是安全的。否则，抛出错误。
                             if (isExponentNegative) {
                                 return new ComplexNumber([0, 0n, resultAcc]);
@@ -4699,15 +4746,19 @@
                             throw new Error('[MathPlus] mathematical error: Result of power is too large to compute safely.');
                         }
 
-                        // 计算 (m_a * 10^p_a)^b = (m_a^b) * 10^(p_a * b)
-                        // 1. 计算尾数部分: m_a ^ b
-                        const resultMantissa = reA.mantissa ** realMantissa;
-
-                        // 2. 计算指数部分: p_a * b
+                        let resultMantissa;
+                        if (orderOfMagnitude < CalcConfig.USING_FAST_EXPONENTIATION_TO_COMPUTE_THE_CRITICAL_ORDER_OF_MAGNITUDE) {
+                            // 计算 (m_a * 10^p_a)^b = (m_a^b) * 10^(p_a * b)
+                            // 计算尾数部分: m_a ^ b
+                            resultMantissa = reA.mantissa ** realMantissa;
+                        } else {
+                            // 计算尾数部分
+                            resultMantissa = fastPow(reA.mantissa, realMantissa);
+                        }
+                        // 计算指数部分: p_a * b
                         // reA.power 是 Number, realB 是 BigInt。需要转换类型进行乘法。
                         const resultPower = BigInt(reA.power) * realMantissa;
-
-                        // 3. 构造结果
+                        // 构造结果
                         let result = new ComplexNumber(resultMantissa, {
                             pow: Number(resultPower), // pow 参数期望是 number
                             acc: resultAcc
@@ -14547,6 +14598,129 @@
 
             CalcConfig.globalCalcAccuracy = a;
             CalcConfig.outputAccuracy = b;
+        }
+
+        /**
+         * 快速幂运算
+         * 使用 MathPlus 的乘法逻辑来计算 base^exponent
+         * 目的：计算超大结果时，只保留需要的有效位数以避免内存溢出。
+         * @param {bigint} base - 底数
+         * @param {bigint} exponent - 指数
+         * @returns {ComplexNumber} 结果 (ComplexNumber 实例)
+         */
+        function fastPow(base, exponent) {
+            const currentAcc = CalcConfig.globalCalcAccuracy;
+            // 处理指数为 0 的情况，直接返回 1
+            if (exponent === 0n) {
+                return new ComplexNumber([0, 1n, CalcConfig.globalCalcAccuracy]);
+            }
+
+            // 将原生 bigint 底数包装为 ComplexNumber
+            // 必须这样做，否则 MathPlus.times 无法对其进行精度截断处理
+            let b = new ComplexNumber(base, {acc: currentAcc + 10});
+
+            // 获取当前对象的精度，用于构造结果
+            const acc = b.acc;
+
+            // 初始化结果为 1 (乘法单位元)
+            // 内部表示: [power=0, mantissa=1n, acc]
+            let result = new ComplexNumber([0, 1n, acc]);
+
+            // 核心循环：无需任何类型转换，直接对 bigint 指数进行位操作
+            while (exponent > 0n) {
+                // 判断奇数：(exponent & 1n) 等价于 (exponent % 2n !== 0n)
+                if ((exponent & 1n) === 1n) {
+                    result = MathPlus.times(result, b);
+                }
+
+                // 只有当 exponent > 1 时才需要计算平方
+                // 避免了最后一步 exp 为 1 时多余的一次 b * b 计算
+                if (exponent > 1n) {
+                    b = MathPlus.times(b, b);
+                }
+
+                // 右移一位，等价于除以 2
+                exponent >>= 1n;
+            }
+
+            return result;
+        }
+
+        let a = 7n, b = 88889999n;
+
+        function estimateDigitCount(a, b) {
+            if (a < 0n) {
+                a = -a;
+            }
+            // 处理一些边界情况
+            if (a === 0n) {
+                return 1; // 0**b 是 0 (当 b > 0 时)，有 1 位数字。
+            }
+            if (a === 1n) {
+                return 1; // 1**b 是 1，有 1 位数字。
+            }
+            if (b === 0n) {
+                return 1; // a**0 是 1，有 1 位数字。
+            }
+
+            // 核心原理：一个正整数 n 的位数是 floor(log10(n)) + 1。
+            // 对于 a**b，位数就是 floor(b * log10(a)) + 1。
+
+            // 我们需要计算一个 BigInt 'a' 的以 10 为底的对数 (log10(a))。
+            // 但是，JavaScript 内置的 Math.log10() 只接受 Number 类型。
+            // 因此，我们通过 'a' 的字符串表示来近似计算 log10(a)。
+            const aStr = a.toString();
+            const numDigitsInA = aStr.length;
+
+            // 对于一个有 'd' 位数字的数，它的值约等于 a_head * 10^(d-15)，
+            // 其中 a_head 是由前 15 位数字组成的数。
+            // log10(a) ≈ log10(a_head * 10^(d-15)) = log10(a_head) + d - 15
+            // 我们选择 15 位，因为这大约是 JavaScript 的 Number 类型能保持的最高精度。
+            const precision = 15;
+            const aHeadStr = aStr.slice(0, precision);
+            const aHeadNum = Number(aHeadStr);
+
+            const log10a = Math.log10(aHeadNum) + (numDigitsInA - aHeadStr.length);
+
+            // 现在计算 b * log10(a)。
+            // 指数 'b' 本身也可能是一个非常大的数，直接转为 Number 可能会损失精度。
+            // 但对于快速估算数量级的场景，为了性能，这通常是可以接受的。
+            const bAsNumber = Number(b);
+
+            const log10Result = bAsNumber * log10a;
+
+            // 最终的位数是 floor(log10Result) + 1。
+            // 我们使用 BigInt 来进行最后的计算，以防止结果本身过大而溢出。
+            return Math.floor(log10Result) + 1;
+        }
+
+        function test1() {
+            const count = 1;
+            let i, j, t1, t2;
+            do {
+                let num = estimateDigitCount(a, b);
+                console.log('结果位数：', num);
+                j = 0;
+                i = 0;
+                for (; i < count; i++) {
+                    j += measureTime(() => {
+                        fastPow(a, b);
+                    });
+                }
+                t1 = j;
+                j = 0;
+                i = 0;
+                for (; i < count; i++) {
+                    j += measureTime(() => {
+                        a ** b;
+                    });
+                }
+                t2 = j;
+                console.log('时间：', t1, t2);
+                console.log('结果是否相等：', fastPow(a, b).toString().replace('.', '').slice(0, 220) === (a ** b).toString().slice(0, 220));
+                console.log('\n');
+                b *= 2n;
+            } while (t1 > t2 && 0);
         }
     </script>
 </head>
