@@ -872,3 +872,7 @@
                 return this._dispatch('exec', [expr, {calcAcc, outputAcc, calcMode, outputMode, f, g}]);
             }
         }
+
+        // 将方法挂载在 window 上，便于测试
+        window.SyncWorker = SyncWorker;
+        window.WorkerTools = WorkerTools;

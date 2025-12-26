@@ -1369,3 +1369,7 @@
                 }
             }
         }
+
+        // 将方法挂载在 window 上，便于测试
+        window.Public = Public;
+        window.CalcConfig = CalcConfig;

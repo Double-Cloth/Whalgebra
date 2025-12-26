@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whalgebra 测试程序</title>
+    <style>
+        :root {
+            /* 严谨的工程配色 */
+            --bg-body: #F0F2F5;
+            --bg-card: #FFFFFF;
+            --bg-console: #1E1E1E;
+
+            --color-primary: #0066CC;
+            --color-primary-hover: #0052A3;
+            --color-text: #333333;
+            --color-text-sub: #666666;
+
+            --status-success: #10B981;
+            --status-error: #EF4444;
+            --status-warn: #F59E0B;
+            --status-info: #3B82F6;
+
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-code: "Consolas", "Monaco", "Courier New", monospace;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-body);
+            color: var(--color-text);
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 顶部状态栏 */
+        .header-bar {
+            background: var(--bg-card);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #DCDFE6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 16px;
+            background: var(--color-primary);
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .status-indicator {
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            background: #F4F4F5;
+            border-radius: 4px;
+            color: var(--color-text-sub);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--status-warn);
+        }
+
+        .status-dot.active {
+            background: var(--status-success);
+        }
+
+        .status-dot.error {
+            background: var(--status-error);
+        }
+
+        .status-dot.loading {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* 主布局 */
+        .main-layout {
+            display: flex;
+            gap: 15px;
+            flex: 1;
+            overflow: hidden; /* 防止页面滚动 */
+        }
+
+        /* 左侧控制区 */
+        .control-panel {
+            width: 280px;
+            background: var(--bg-card);
+            border: 1px solid #DCDFE6;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .panel-section-title {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #EEE;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #FFF;
+            border: 1px solid #DCDFE6;
+            color: var(--color-text);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: left;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover:not(:disabled) {
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+            background: #F0F7FF;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.99);
+        }
+
+        button:disabled {
+            background: #F5F7FA;
+            color: #C0C4CC;
+            cursor: not-allowed;
+            border-color: #EBEEF5;
+        }
+
+        button.primary {
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: var(--color-primary-hover);
+        }
+
+        /* 右侧日志区 */
+        .console-panel {
+            flex: 1;
+            background: var(--bg-console);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .console-header {
+            background: #2D2D2D;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .console-title {
+            color: #CCC;
+            font-size: 12px;
+            font-family: var(--font-ui);
+        }
+
+        .console-actions button {
+            background: transparent;
+            border: 1px solid #555;
+            color: #AAA;
+            padding: 2px 8px;
+            font-size: 11px;
+            border-radius: 2px;
+            height: auto;
+        }
+
+        .console-actions button:hover {
+            border-color: #888;
+            color: #FFF;
+            background: #333;
+        }
+
+        #output {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: var(--font-code);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #D4D4D4;
+        }
+
+        /* 结构化日志样式 */
+        .log-row {
+            display: flex;
+            border-bottom: 1px solid #2A2A2A;
+            padding: 2px 0;
+        }
+
+        .log-row:hover {
+            background: #2A2D2E;
+        }
+
+        .log-time {
+            color: #6A9955; /* VSCode 注释绿 */
+            width: 80px;
+            flex-shrink: 0;
+            user-select: none;
+            opacity: 0.7;
+        }
+
+        .log-tag {
+            width: 80px;
+            flex-shrink: 0;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .log-msg {
+            flex: 1;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 日志级别颜色 */
+        .type-info .log-tag {
+            color: #569CD6;
+        }
+
+        /* 蓝 */
+        .type-success .log-tag {
+            color: #4EC9B0;
+        }
+
+        /* 青绿 */
+        .type-error .log-tag {
+            color: #F44747;
+        }
+
+        /* 红 */
+        .type-sys .log-tag {
+            color: #DCDCAA;
+        }
+
+        /* 黄 */
+
+        /* 滚动条美化 */
+        #output::-webkit-scrollbar {
+            width: 10px;
+            background: #1E1E1E;
+        }
+
+        #output::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 0;
+        }
+
+        #output::-webkit-scrollbar-thumb:hover {
+            background: #4F4F4F;
+        }
+
+        iframe {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header-bar">
+    <h2>Whalgebra 测试程序</h2>
+    <div class="status-indicator">
+        <span id="statusDot" class="status-dot loading"></span>
+        <span id="statusText">初始化引擎...</span>
+    </div>
+</div>
+
+<div class="main-layout">
+    <div class="control-panel">
+
+        <div>
+            <div class="panel-section-title">全局控制</div>
+            <div class="btn-group">
+                <button id="testBtn" class="primary" onclick="uiRunTest(0)" disabled>
+                    运行全部测试
+                </button>
+                <button onclick="clearLog()">清空控制台</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel-section-title">单元测试用例</div>
+            <div class="btn-group">
+                <button onclick="uiRunTest(1)">1. 性能测试</button>
+                <button onclick="uiRunTest(2)">2. 幂函数分析</button>
+                <button onclick="uiRunTest(3)">3. 统计计算</button>
+                <button onclick="uiRunTest(4)">4. 根式函数</button>
+                <button onclick="uiRunTest(5)">5. 函数值列表</button>
+                <button onclick="uiRunTest(6)">6. 表达式解析</button>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="console-panel">
+        <div class="console-header">
+            <span class="console-title">CONSOLE OUTPUT</span>
+            <div class="console-actions">
+                <button onclick="scrollToBottom()">自动滚动</button>
+            </div>
+        </div>
+        <div id="output">
+        </div>
+    </div>
+</div>
+
+<iframe id="logicEngine" src="../src/Whalgebra.html"></iframe>
+
+<script>
+    // --- UI 逻辑层 ---
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const testBtn = document.getElementById('testBtn');
+    const output = document.getElementById('output');
+    const iframe = document.getElementById('logicEngine');
+
+    // 格式化时间 HH:mm:ss.ms
+    function getTimeString() {
+        const now = new Date();
+        const h = now.getHours().toString().padStart(2, '0');
+        const m = now.getMinutes().toString().padStart(2, '0');
+        const s = now.getSeconds().toString().padStart(2, '0');
+        const ms = now.getMilliseconds().toString().padStart(3, '0');
+        return `${h}:${m}:${s}.${ms}`;
+    }
+
+    // 优化后的日志输出函数
+    function log(tag, msg, type = "success") {
+        // 映射 type 到 CSS 类名
+        let typeClass = "type-info";
+        if (type === "error") {
+            typeClass = "type-error";
+        } else if (type === "success") {
+            typeClass = "type-success";
+        } else if (tag === "系统") {
+            typeClass = "type-sys";
+        }
+
+        const div = document.createElement('div');
+        div.className = `log-row ${typeClass}`;
+
+        // 使用 innerText 防止 XSS，保持纯文本整洁
+        div.innerHTML = `
+            <span class="log-time">${getTimeString()}</span>
+            <span class="log-tag">[${tag}]</span>
+            <span class="log-msg">${msg}</span>
+        `;
+
+        output.appendChild(div);
+        scrollToBottom();
+    }
+
+    function clearLog() {
+        output.innerHTML = '';
+        log("系统", "控制台日志已清空", "info");
+    }
+
+    function scrollToBottom() {
+        output.scrollTop = output.scrollHeight;
+    }
+
+    // 封装测试运行，添加 UI 状态反馈
+    async function uiRunTest(mode) {
+        // 禁用所有按钮
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(b => b.disabled = true);
+
+        const modeName = mode === 0 ? "全部测试集" : `测试用例 #${mode}`;
+
+        // 更新状态栏
+        statusDot.className = "status-dot loading";
+        statusText.innerText = `正在运行: ${modeName}`;
+
+        log("系统", `---------------- 启动: ${modeName} ----------------`, "info");
+
+        try {
+            await test(mode); // 调用原始逻辑
+            log("系统", `完成: ${modeName}`, "success");
+        } catch (e) {
+            log("错误", `执行中断: ${e.message}`, "error");
+            console.error(e);
+        } finally {
+            // 恢复按钮和状态
+            buttons.forEach(b => b.disabled = false);
+            statusDot.className = "status-dot active";
+            statusText.innerText = "就绪 - 已连接核心";
+            log("系统", "------------------------------------------------", "info");
+        }
+    }
+
+    // 核心连接监听
+    iframe.onload = function () {
+        try {
+            const win = iframe.contentWindow;
+            if (win.MathPlus) {
+                statusDot.className = "status-dot active";
+                statusText.innerText = "就绪 - 已连接核心";
+                testBtn.disabled = false;
+                log("系统", "核心组件 MathPlus 已加载，连接成功。", "success");
+            } else {
+                throw new Error("iframe 已加载，但未找到 MathPlus 对象");
+            }
+        } catch (e) {
+            statusDot.className = "status-dot error";
+            statusText.innerText = "连接失败";
+            log("错误", e.message, "error");
+        }
+    };
+</script>
+
+<script type="text/javascript" id="test">
+    "use strict";
+
+    function measureTime(func) {
+        const start = Date.now();
+        func();
+        const end = Date.now();
+        return end - start; // 返回毫秒
+    }
+
+    function deepEqual(obj1, obj2) {
+        // 1. 如果两个变量引用同一个对象，或者都是基本类型且相等，直接返回 true
+        if (obj1 === obj2) {
+            return true;
+        }
+
+        // 2. 如果其中一个是 null，或者不是对象（且不是 function），则它们不相等
+        // 注意：typeof null 也是 'object'，所以需要单独排除 null
+        if (obj1 === null || typeof obj1 !== 'object' ||
+            obj2 === null || typeof obj2 !== 'object') {
+            return false;
+        }
+
+        // 3. 处理特殊对象：Date
+        // 如果是 Date 对象，比较它们的时间戳
+        if (obj1 instanceof Date && obj2 instanceof Date) {
+            return obj1.getTime() === obj2.getTime();
+        }
+
+        // 4. 获取对象的 key 列表
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+
+        // 5. 如果属性数量不一样，肯定不相等
+        if (keys1.length !== keys2.length) {
+            return false;
+        }
+
+        // 6. 递归比较每一个属性值
+        for (let key of keys1) {
+            // 检查 obj2 是否包含 obj1 的 key，并且值是否通过递归检查
+            if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 通过 URL 获取并解析 JSON 数据
+     * @param {string} url - JSON 文件的 URL 地址
+     * @returns {Promise<any>} 解析后的数据
+     */
+    async function fetchJson(url) {
+        try {
+            const response = await fetch(url);
+
+            // 检查 HTTP 状态码 (例如 404 或 500)
+            if (!response.ok) {
+                throw new Error(`网络响应错误: ${response.status} ${response.statusText}`);
+            }
+
+            // 解析 JSON
+            return await response.json();
+
+        } catch (error) {
+            console.error("获取 JSON 失败:", error);
+            return null;
+        }
+    }
+
+    async function test(mode = 0) {
+        const win = iframe.contentWindow;
+        const a = win.CalcConfig.globalCalcAccuracy;
+        const b = win.CalcConfig.outputAccuracy;
+        win.CalcConfig.globalCalcAccuracy = 220;
+        win.CalcConfig.outputAccuracy = 0.9;
+
+        // --- test(1) 的参数 ---
+        const count = 111;
+        const num1 = new win.ComplexNumber('23.4-42.8[i]');
+        const num2 = new win.ComplexNumber('-12.43+3.21[i]');
+
+        const func1Name = 'pow';
+        const func1coeffs = [num1, num2];
+        const func2Name = 'fact';
+        const func2coeffs = [num2];
+
+        const run = [1, 1];
+        // ---------
+
+        switch (mode) {
+            case 1: {
+                const func1 = () => win.MathPlus[func1Name](...func1coeffs);
+                const func2 = () => win.MathPlus[func2Name](...func2coeffs);
+                let i, j;
+
+                if (run[0]) {
+                    j = 0;
+                    i = 0;
+                    for (; i < count; i++) {
+                        j += measureTime(() => {
+                            func1();
+                        });
+                    }
+                    console.log('func1: ', func1().toString());
+                    console.log('func1: ', j / i);
+                    console.log('Total: ', j);
+                }
+
+                if (run[1]) {
+                    j = 0;
+                    i = 0;
+                    for (; i < count; i++) {
+                        j += measureTime(() => {
+                            func2();
+                        });
+                    }
+                    console.log('func2: ', func2().toString());
+                    console.log('func2: ', j / i);
+                    console.log('Total: ', j);
+                }
+                break;
+            }
+            case 2: {
+                async function bat2(str, list, realResult) {
+                    const calcResult = await win.WorkerTools.powerFunctionAnalysis(list);
+                    const boolResult = deepEqual(realResult, calcResult);
+                    allBoolResult = allBoolResult && boolResult;
+                    console.log(str);
+                    console.log(calcResult);
+                    console.log(boolResult);
+                    console.log('\n');
+                }
+
+                let allBoolResult = true;
+                let testCases;
+                await fetchJson('test_cases/test_power_function.json').then(data => {
+                    testCases = data;
+                });
+                for (let i = 0; i < testCases.length; i++) {
+                    const current = testCases[i];
+                    await bat2(...[current.description[0], current.coeffs, current.expected]);
+                }
+                return allBoolResult;
+            }
+            case 3: {
+                async function bat3(listA, listB, realResult) {
+                    const calcResult = await win.WorkerTools.statisticsCalc(listA, listB);
+                    const boolResult = deepEqual(realResult, calcResult);
+                    allBoolResult = allBoolResult && boolResult;
+                    console.log(listA, listB);
+                    console.log(calcResult);
+                    console.log(boolResult);
+                    console.log('\n');
+                }
+
+                let allBoolResult = true;
+                let testCases;
+                await fetchJson('test_cases/test_statistics.json').then(data => {
+                    testCases = data;
+                });
+                for (let i = 0; i < testCases.length; i++) {
+                    const current = testCases[i];
+                    await bat3(...[...current.coeffs, current.expected]);
+                }
+                return allBoolResult;
+            }
+            case 4: {
+                async function bat4(z, n, realResult) {
+                    const calcResult = await win.WorkerTools.radicalFunctionAnalysis(z, n);
+                    const boolResult = deepEqual(realResult, calcResult);
+                    allBoolResult = allBoolResult && boolResult;
+                    console.log(`z = ${z}; n = ${n}`);
+                    console.log(calcResult);
+                    console.log(boolResult);
+                    console.log('\n');
+                }
+
+                let allBoolResult = true;
+                let testCases;
+                await fetchJson('test_cases/test_radical_function.json').then(data => {
+                    testCases = data;
+                });
+                for (let i = 0; i < testCases.length; i++) {
+                    const current = testCases[i];
+                    await bat4(...[...current.coeffs, current.expected]);
+                }
+                return allBoolResult;
+            }
+            case 5: {
+                async function bat5(f, g, start, step, end, realResult) {
+                    const calcResult = await win.WorkerTools.valueList(f, g, start, step, end);
+                    const boolResult = deepEqual(realResult, calcResult);
+                    allBoolResult = allBoolResult && boolResult;
+                    console.log(`f = ${f}; g = ${g};\n start = ${start}; step = ${step}; end = ${end}`);
+                    console.log(calcResult);
+                    console.log(boolResult);
+                    console.log('\n');
+                }
+
+                let allBoolResult = true;
+                let testCases;
+                await fetchJson('test_cases/test_func_value_list.json').then(data => {
+                    testCases = data;
+                });
+                for (let i = 0; i < testCases.length; i++) {
+                    const current = testCases[i];
+                    await bat5(...[...current.coeffs, current.expected]);
+                }
+                return allBoolResult;
+            }
+            case 6: {
+                async function bat6(expr, calcAcc, outputAcc, calcMode, outputMode, f, g, realResult) {
+                    const calcResult = await win.WorkerTools.exec(expr, {
+                        calcAcc: calcAcc,
+                        outputAcc: outputAcc,
+                        calcMode: calcMode,
+                        outputMode: outputMode,
+                        f: f,
+                        g: g
+                    });
+                    const boolResult = deepEqual(realResult, calcResult);
+                    allBoolResult = allBoolResult && boolResult;
+                    console.log(`expr = ${expr};\n calcAcc = ${calcAcc}; outputAcc = ${outputAcc}; mode = ${mode}; f = ${f}; g = ${g}`);
+                    console.log(calcResult);
+                    console.log(boolResult);
+                    const appendCalcResult = await win.WorkerTools.exec(expr, {
+                        calcAcc: calcAcc,
+                        outputAcc: outputAcc,
+                        calcMode: calcMode,
+                        outputMode: 'mid',
+                        f: f,
+                        g: g
+                    });
+                    const appendBoolResult = win.Public.idealizationToString(
+                        new win.ComplexNumber(appendCalcResult.result),
+                        {acc: outputAcc}
+                    ) === calcResult.result;
+                    console.log(`Additional judgment: ${appendBoolResult}`);
+                    allBoolResult = allBoolResult && appendBoolResult;
+                    console.log('\n');
+                }
+
+                let allBoolResult = true;
+                let testCases;
+                await fetchJson('test_cases/test_calc_expr.json').then(data => {
+                    testCases = data;
+                });
+                for (let i = 0; i < testCases.length; i++) {
+                    const current = testCases[i];
+                    await bat6(...[...current.coeffs, current.expected]);
+                }
+                return allBoolResult;
+            }
+            default: {
+                let boolResult = true;
+                for (let i = 2; i < 7; i++) {
+                    console.log(`============ case ${i} ============`);
+                    boolResult = boolResult && await test(i);
+                }
+                console.log(`%c<-- ${boolResult} -->`, `color: ${boolResult ? '#00FF00' : '#FF0000'}; font-weight: bold; font-size: 16px;`);
+                return boolResult;
+            }
+        }
+
+        win.CalcConfig.globalCalcAccuracy = a;
+        win.CalcConfig.outputAccuracy = b;
+    }
+</script>
+</body>
+</html>

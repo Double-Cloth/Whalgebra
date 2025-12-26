@@ -5851,3 +5851,13 @@
                 };
             }
         }
+
+        // 将方法挂载在 window 上，便于测试
+        window.BigNumber = BigNumber;
+        window.ComplexNumber = ComplexNumber;
+        window.MathPlus = MathPlus;
+        window.StatisticsTools = StatisticsTools;
+        window.PowerFunctionTools = PowerFunctionTools;
+        window.RadicalFunctionTools = RadicalFunctionTools;
+        window.FuncValueListTools = FuncValueListTools;
+        window.CalcTools = CalcTools;
