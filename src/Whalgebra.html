@@ -4136,7 +4136,7 @@
              * @returns {[BigNumber, bigint]} 返回一个包含两个元素的数组：
              * 1. 归约到 [0, pi/2] 区间后的高精度角度值（内部数据结构）。
              * 2. 符号修正因子 (`1n` 或 `-1n`)，用于在最终计算结果上叠加正确的正负号。
-             * @throws {Error} 如果输入角度的绝对值过大（如超过 220 弧度），导致现有精度下无法保证取模结果的准确性时，抛出异常。
+             * @throws {Error} 如果输入角度的绝对值过大（如超过 440 弧度），导致现有精度下无法保证取模结果的准确性时，抛出异常（或打印警告）。
              */
             static _toLessThanHalfPi(angle, name) {
                 // 提取实部
@@ -4156,10 +4156,13 @@
                 }
 
                 // 利用周期性，将 re 映射到 [0, 2π) 区间，并使用高精度防止精度损失。
-                if (MathPlus.minus(angle, [220, 1n, acc]).re.mantissa >= 0n) {
-                    throw new Error('[MathPlus] Input value is too large.');
-                }
                 const highPrecisionAcc = -CalcConfig.constants.invTwoPi[0];
+                if (MathPlus.minus(angle, [highPrecisionAcc >> 1, 1n, acc]).re.mantissa >= 0n) {
+                    if (MathPlus.minus(angle, [highPrecisionAcc, 1n, acc]).re.mantissa >= 0n) {
+                        throw new Error('[MathPlus] Input value is too large.');
+                    }
+                    console.warn('[MathPlus] Unexpected loss of precision occurred in trigonometric calculations.');
+                }
                 const highPrecisionRe = new ComplexNumber(angle, {acc: highPrecisionAcc});
                 const n = MathPlus.floor(MathPlus.times(highPrecisionRe, CalcConfig.constants.invTwoPi));
                 angle = MathPlus.minus(highPrecisionRe, MathPlus.divide(n, CalcConfig.constants.invTwoPi)).re;
@@ -10095,7 +10098,7 @@
         window.WorkerTools = WorkerTools;
     </script>
     <!-- 样式控制与 UI 交互代码 -->
-    <script type="text/javascript" id="UI_styling_control">
+    <script type="text/javascript" id="ui_styling_control">
         "use strict";
 
         /**
