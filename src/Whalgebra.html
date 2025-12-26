@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2025-12-21 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2025-12-26 -->
     <meta charset="UTF-8"/>
     <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
@@ -2749,14 +2749,18 @@
              * 该对象已被冻结，以防止在运行时被意外修改。
              */
             static constants = Object.freeze({
+                // 基本常数
                 e: [-219, 2718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466391932003059921817413596629043572900334295260595630738132328627943490763233829880753195251019011573834187930702154n, 220],
                 pi: [-219, 3141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148086513282306647093844609550582231725359408128481117450284102701938521105559644622948954930381964428810975665933446n, 220],
-                // 2*pi，用于三角函数的周期性计算，具有更高的精度以减少累积误差。
-                super_2pi: [-439, 62831853071795864769252867665590057683943387987502116419498891846156328125724179972560696506842341359642961730265646132941876892191011644634507188162569622349005682054038770422111192892458979098607639288576219513318668922569512964675735663305424038182912971338469206972209086532964267872145204982825474491740132126311763497630418419256585081834307287357851807200226610610976409330427682939038830232188661145407315191839061843722347638652236n, 440],
+
+                // 1/(2*pi) 和 2*pi，用于三角函数的周期性计算，具有更高的精度以减少累积误差。
+                invTwoPi: [-440, 15915494309189533576888376337251436203445964574045644874766734405889679763422653509011380276625308595607284272675795803689291184611457865287796741073169983922923996693740907757307774639692530768871739289621739766169336239024172362901183238011422269975571594046189008690267395612048941093693784408552872309994644340024867234773945961089832309678307490616698646280469944865218788157478656696424103899587413934860998386809919996244287558517118n, 440],
+
                 // ln(10)，用于对数函数的换底计算。
                 ln_10: [-219, 2302585092994045684017991454684364207601101488628772976033327900967572609677352480235997205089598298341967784042286248633409525465082806756666287369098781689482907208325554680843799894826233198528393505308965377732628846n, 220],
                 // ln(1.2)，用于 ln 函数的范围缩减算法，以加速泰勒级数收敛。
                 ln_1_2: [-220, 1823215567939546262117180251545146331973893379144869839427264516567089274806459178493452037169711655300052070648129885763295192323639741784518560049386476449817107025145695567161878812659111083175957652385595296989949867n, 220],
+
                 /**
                  * 伽玛函数（阶乘函数的推广）的兰佐斯近似（Lanczos Approximation）系数。
                  * 提供了多个不同精度等级的系数集。`fact` 函数会根据目标精度自动选择最合适的系数集。
@@ -4117,6 +4121,76 @@
             }
 
             /**
+             * @private
+             * @static
+             * @method _toLessThanHalfPi (内部辅助方法)
+             * @description 在 `MathPlus` 三角函数底层实现中，负责执行“角度归约” (Range Reduction) 关键步骤。
+             * 为了确保泰勒级数展开的高效收敛和数值精度，此方法将任意范围的输入角度（包括负数和大角度）映射到最优计算区间 [0, pi/2] 内。
+             * 它利用三角函数的周期性和对称性诱导公式，在高精度模式下完成映射，并根据函数类型（sin 或 cos）精确追踪并计算归约过程产生的符号变化。
+             * @param {string|number|bigint|BigNumber|ComplexNumber|Array} angle - 需要进行归约的原始角度值（将被转换为实部处理）。
+             * @param {'sin'|'cos'} name - 当前计算的三角函数名称。此参数决定了象限映射时的符号变换逻辑（例如 `sin(-x)` 需变号，而 `cos(-x)` 不变）。
+             * @returns {[BigNumber, bigint]} 返回一个包含两个元素的数组：
+             * 1. 归约到 [0, pi/2] 区间后的高精度角度值（内部数据结构）。
+             * 2. 符号修正因子 (`1n` 或 `-1n`)，用于在最终计算结果上叠加正确的正负号。
+             * @throws {Error} 如果输入角度的绝对值过大（如超过 220 弧度），导致现有精度下无法保证取模结果的准确性时，抛出异常。
+             */
+            static _toLessThanHalfPi(angle, name) {
+                // 提取实部
+                angle = new ComplexNumber(angle).re;
+                const acc = angle.acc;
+
+                const typeFactor = name === 'sin' ? 1n : -1n;
+                let changeSign = 1n; // -1 为变号，1 为不变号
+
+                // 将 re 映射到 [0, 2π) 区间，并记录符号
+                if (angle.mantissa < 0n) {
+                    angle = MathPlus._oppositeNumber(angle);
+
+                    // sin(-x) = -sin(x) -> 变号 (1 * -1)
+                    // cos(-x) =  cos(x) -> 不变 (-1 * -1 = 1)
+                    changeSign = -typeFactor;
+                }
+
+                // 利用周期性，将 re 映射到 [0, 2π) 区间，并使用高精度防止精度损失。
+                if (MathPlus.minus(angle, [220, 1n, acc]).re.mantissa >= 0n) {
+                    throw new Error('[MathPlus] Input value is too large.');
+                }
+                const highPrecisionAcc = -CalcConfig.constants.invTwoPi[0];
+                const highPrecisionRe = new ComplexNumber(angle, {acc: highPrecisionAcc});
+                const n = MathPlus.floor(MathPlus.times(highPrecisionRe, CalcConfig.constants.invTwoPi));
+                angle = MathPlus.minus(highPrecisionRe, MathPlus.divide(n, CalcConfig.constants.invTwoPi)).re;
+
+                // 利用 cos(x) = cos(2π - x)，将 re 从 (π, 2π) 映射到 (0, π)
+                if (MathPlus.minus(angle, CalcConfig.constants.pi).re.mantissa > 0n) {
+                    angle = MathPlus.minus(
+                        MathPlus.times([0, 2n, acc], CalcConfig.constants.pi),
+                        angle
+                    ).re;
+
+                    // sin(2π - x) = -sin(x) -> 变号
+                    // cos(2π - x) =  cos(x) -> 不变
+                    // 逻辑推导：
+                    // if sin (1):  -1 * 1 * current = -current (变)
+                    // if cos (-1): -1 * -1 * current = current (不变)
+                    changeSign = -typeFactor * changeSign;
+                }
+
+                // 利用 cos(x) = -cos(π - x)，将 re 从 [π/2, π] 映射到 [0, π/2]
+                if (MathPlus.minus(MathPlus.times(angle, [0, 2n, acc]), CalcConfig.constants.pi).re.mantissa >= 0n) {
+                    angle = MathPlus.minus(CalcConfig.constants.pi, angle).re;
+
+                    // sin(π - x) = sin(x)  -> 不变
+                    // cos(π - x) = -cos(x) -> 变号
+                    // 逻辑推导：
+                    // if sin (1):  1 * current = current (不变)
+                    // if cos (-1): -1 * current = -current (变)
+                    changeSign = typeFactor * changeSign;
+                }
+
+                return [angle, changeSign];
+            }
+
+            /**
              * @static
              * @method re
              * @description 提取一个复数的实部。
@@ -5343,7 +5417,6 @@
              * @method sin
              * @description 计算一个数的正弦 (sin(x))。
              * - 该方法能够处理实数和复数输入，并返回主值。
-             * - 它基于三角恒等式 sin(x) = cos(π/2 - x) 来实现，将正弦计算委托给更基础的余弦函数。
              * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入的角度（弧度）。
              * @returns {ComplexNumber} 代表 sin(x) 结果的 ComplexNumber 实例。
              * @example
@@ -5356,14 +5429,91 @@
             static sin(x) {
                 // 将输入统一转换为 ComplexNumber 实例，以便统一处理。
                 const input = new ComplexNumber(x);
-                const acc = input.acc;
-                // 应用核心三角恒等式: sin(x) = cos(π/2 - x)。
-                // 这种方法将正弦的计算委托给更基础、经过优化的余弦函数。
-                return MathPlus.cos(
-                    MathPlus.minus(
-                        MathPlus.divide(CalcConfig.constants.pi, [0, 2n, acc]), // 计算 π/2
-                        input // 计算 π/2 - x
-                    )
+                const acc = input.acc; // 存储精度
+
+                // --- 路径 1: 输入为纯实数 ---
+                if (input.onlyReal) {
+                    // --- 步骤 1: 范围缩减 ---
+                    // 目标: 将任意实数 x 映射到 [0, π/4] 区间内，以保证泰勒级数快速收敛。
+                    let [re, sign] = MathPlus._toLessThanHalfPi(input.re, 'sin');
+
+                    // 特殊情况，如果缩减后为 0，直接返回 0。
+                    if (re.mantissa === 0n) {
+                        return new ComplexNumber([0, 0n, acc]);
+                    }
+
+                    // 利用三倍角公式进一步将 re 缩减到更小的范围，
+                    // 以极大地加速泰勒级数收敛。这里我们将 re 反复除以 3，直到其足够小。
+                    let divideBy3 = 0;
+                    for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa >= 0n && divideBy3 < 4; divideBy3++) {
+                        re = MathPlus.divide(re, [0, 3n, acc]).re;
+                    }
+                    if (divideBy3 === 4) {
+                        // 这是一个安全检查，防止因意外输入导致无法收敛。
+                        throw new Error('[MathPlus] mathematical error: Unreliable result, error source: sin.');
+                    }
+
+                    // --- 步骤 2: 泰勒级数计算 ---
+                    // sin(x) = x - x^3/3! + x^5/5! - x^7/7! + ...
+                    const squareOfRe = MathPlus.times(re, re);
+                    const max = CalcConfig.globalCalcAccuracy + 5;
+                    const minPower = -2 * acc - 1; // 收敛阈值
+                    let mid = new ComplexNumber(re); // 第一项: x
+                    let result = mid;
+                    let i = 1;
+
+                    for (; mid.re.power > minPower && mid.re.mantissa !== 0n && i < max; i++) {
+                        // 计算下一项: term_new = term_old * (-x²) / (2i*(2i+1))
+                        mid = MathPlus.divide(
+                            MathPlus.times(mid, squareOfRe),
+                            2 * i * (2 * i + 1)
+                        );
+                        // 根据项的索引，交替进行加减。
+                        result = MathPlus[i % 2 === 0 ? 'plus' : 'minus'](result, mid);
+                    }
+
+                    if (i === max) {
+                        throw new Error('[MathPlus] mathematical error: Unreliable result, error source: cos.');
+                    }
+
+                    // --- 步骤 3: 重建结果 ---
+                    // 通过反复应用三倍角公式 sin(3θ) = 3sin(θ) - 4sin³(θ) 来还原结果
+                    for (; divideBy3 !== 0; divideBy3--) {
+                        const squareOfResult = MathPlus.times(result, result);
+                        result = MathPlus.times(
+                            MathPlus.minus(
+                                [0, 3n, acc],
+                                MathPlus.times([0, 4n, acc], squareOfResult)
+                            ),
+                            result
+                        );
+                    }
+
+                    // --- 步骤 4: 应用最终符号 ---
+                    return new ComplexNumber([result.re.power, sign * result.re.mantissa, acc]);
+                }
+
+                // --- 路径 2: 输入为复数 ---
+                // 步骤 1: 计算 e^(iz)。
+                // 首先，我们需要计算指数部分 iz。
+                // 如果 z = a + bi, 那么 iz = i(a + bi) = ia - b = -b + ia。
+                // 在我们的代码中:
+                // - input.re 是 a (一个 BigNumber)
+                // - input.im 是 b (一个 BigNumber)
+                // - MathPlus._oppositeNumber(input.im) 是 -b (一个 BigNumber)
+                // - 因此，数组 [ -b, a ] 被 ComplexNumber 构造函数正确地解释为复数 -b + ia。
+                const mid = MathPlus.exp([MathPlus._oppositeNumber(input.im), input.re]);
+
+                // 步骤 2: 组合最终结果。
+                // 此时，mid 变量存储了 e^(iz) 的值。
+                // 根据公式，我们需要计算 (mid + 1/mid) / 2。
+                return MathPlus.divide(
+                    // 计算分子部分: e^(iz) - e^(-iz)
+                    // 其中 e^(-iz) 等于 1 / e^(iz)，即 1 / mid。
+                    // [0, 1n, acc] 是 BigNumber 1 的内部表示。
+                    MathPlus.minus(mid, MathPlus.divide([0, 1n, acc], mid)),
+                    // 将分子除以 2i。
+                    new ComplexNumber([0n, 2n], {acc: acc})
                 );
             }
 
@@ -5454,39 +5604,15 @@
                 if (input.onlyReal) {
                     // --- 步骤 1: 范围缩减 ---
                     // 目标: 将任意实数 x 映射到 [0, π/4] 区间内，以保证泰勒级数快速收敛。
+                    let [re, sign] = MathPlus._toLessThanHalfPi(input.re, 'cos');
 
-                    let re = input.re;
-                    let isNegative = false;
-
-                    // 1a: 利用 cos(x) = cos(-x)，处理负数，将 re 转为正数。
-                    if (re.mantissa < 0n) {
-                        re = MathPlus._oppositeNumber(re);
-                    }
-
-                    // 1b: 利用周期性 cos(x) = cos(x mod 2π)，将 re 映射到 [0, 2π) 区间，使用高精度防止精度损失。
-                    re = MathPlus.mod(new ComplexNumber(re, {acc: 440}), CalcConfig.constants.super_2pi).re;
-
-                    // 1c: 利用对称性 cos(x) = cos(2π - x)，将 re 从 (π, 2π) 映射到 (0, π)。
-                    if (MathPlus.minus(re, CalcConfig.constants.pi).re.mantissa > 0n) {
-                        re = MathPlus.minus(
-                            MathPlus.times([0, 2n, acc], CalcConfig.constants.pi),
-                            re
-                        ).re;
-                    }
-
-                    // 1d: 利用对称性 cos(x) = -cos(π - x)，将 re 从 [π/2, π] 映射到 [0, π/2]，并记录符号。
-                    if (MathPlus.minus(MathPlus.times(re, [0, 2n, acc]), CalcConfig.constants.pi).re.mantissa >= 0n) {
-                        re = MathPlus.minus(CalcConfig.constants.pi, re).re;
-                        isNegative = true;
-                    }
-
-                    // 1e: 特殊情况，如果缩减后为 0，直接返回 1 或 -1。
+                    // 特殊情况，如果缩减后为 0，直接返回 1 或 -1。
                     if (re.mantissa === 0n) {
-                        return new ComplexNumber([0, isNegative ? -1n : 1n, acc]);
+                        return new ComplexNumber([0, sign, acc]);
                     }
 
-                    // 1f: 利用四倍角公式进一步将 re 缩减到更小的范围，
-                    //     以极大地加速泰勒级数收敛。这里我们将 re 反复除以 2，直到其足够小。
+                    // 利用四倍角公式进一步将 re 缩减到更小的范围，
+                    // 以极大地加速泰勒级数收敛。这里我们将 re 反复除以 4，直到其足够小。
                     let divideBy4 = 0;
                     for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa >= 0n && divideBy4 < 3; divideBy4++) {
                         re = MathPlus.divide(re, [0, 4n, acc]).re;
@@ -5499,9 +5625,9 @@
                     // --- 步骤 2: 泰勒级数计算 ---
                     // cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
                     const squareOfRe = MathPlus.times(re, re);
-                    let mid = new ComplexNumber([0, 1n, acc]); // 第一项: 1
                     const max = CalcConfig.globalCalcAccuracy + 5;
                     const minPower = -2 * acc - 1; // 收敛阈值
+                    let mid = new ComplexNumber([0, 1n, acc]); // 第一项: 1
                     let result = new ComplexNumber([0, 0n, acc]);
                     let i = 0;
 
@@ -5533,10 +5659,7 @@
                     }
 
                     // --- 步骤 4: 应用最终符号 ---
-                    if (isNegative) {
-                        return new ComplexNumber([result.re.power, -result.re.mantissa, acc]);
-                    }
-                    return result;
+                    return new ComplexNumber([result.re.power, sign * result.re.mantissa, acc]);
                 }
 
                 // --- 路径 2: 输入为复数 ---
@@ -5977,7 +6100,7 @@
                             }
                             return res;
                         }
-                        if (end - start > 9999n) {
+                        if (end - start > 9999999n) {
                             throw new Error('[MathPlus] mathematical error: The factorial exceeds the range limit.');
                         }
 
@@ -8187,7 +8310,7 @@
                 }
 
                 // --- 情况 3: Δ < 0 ---
-                // 方程有三个不相等的实数根。这是不可约情况（casus irreducibilis）。
+                // 方程有三个不相等的实数根。这是不可约情况。
                 // 此时必须使用三角函数解法。
                 const absA = MathPlus.abs(A);
                 // 计算 T = (2Ab - 3aB) / (2*sqrt(A³))
@@ -14598,129 +14721,6 @@
 
             CalcConfig.globalCalcAccuracy = a;
             CalcConfig.outputAccuracy = b;
-        }
-
-        /**
-         * 快速幂运算
-         * 使用 MathPlus 的乘法逻辑来计算 base^exponent
-         * 目的：计算超大结果时，只保留需要的有效位数以避免内存溢出。
-         * @param {bigint} base - 底数
-         * @param {bigint} exponent - 指数
-         * @returns {ComplexNumber} 结果 (ComplexNumber 实例)
-         */
-        function fastPow(base, exponent) {
-            const currentAcc = CalcConfig.globalCalcAccuracy;
-            // 处理指数为 0 的情况，直接返回 1
-            if (exponent === 0n) {
-                return new ComplexNumber([0, 1n, CalcConfig.globalCalcAccuracy]);
-            }
-
-            // 将原生 bigint 底数包装为 ComplexNumber
-            // 必须这样做，否则 MathPlus.times 无法对其进行精度截断处理
-            let b = new ComplexNumber(base, {acc: currentAcc + 10});
-
-            // 获取当前对象的精度，用于构造结果
-            const acc = b.acc;
-
-            // 初始化结果为 1 (乘法单位元)
-            // 内部表示: [power=0, mantissa=1n, acc]
-            let result = new ComplexNumber([0, 1n, acc]);
-
-            // 核心循环：无需任何类型转换，直接对 bigint 指数进行位操作
-            while (exponent > 0n) {
-                // 判断奇数：(exponent & 1n) 等价于 (exponent % 2n !== 0n)
-                if ((exponent & 1n) === 1n) {
-                    result = MathPlus.times(result, b);
-                }
-
-                // 只有当 exponent > 1 时才需要计算平方
-                // 避免了最后一步 exp 为 1 时多余的一次 b * b 计算
-                if (exponent > 1n) {
-                    b = MathPlus.times(b, b);
-                }
-
-                // 右移一位，等价于除以 2
-                exponent >>= 1n;
-            }
-
-            return result;
-        }
-
-        let a = 7n, b = 88889999n;
-
-        function estimateDigitCount(a, b) {
-            if (a < 0n) {
-                a = -a;
-            }
-            // 处理一些边界情况
-            if (a === 0n) {
-                return 1; // 0**b 是 0 (当 b > 0 时)，有 1 位数字。
-            }
-            if (a === 1n) {
-                return 1; // 1**b 是 1，有 1 位数字。
-            }
-            if (b === 0n) {
-                return 1; // a**0 是 1，有 1 位数字。
-            }
-
-            // 核心原理：一个正整数 n 的位数是 floor(log10(n)) + 1。
-            // 对于 a**b，位数就是 floor(b * log10(a)) + 1。
-
-            // 我们需要计算一个 BigInt 'a' 的以 10 为底的对数 (log10(a))。
-            // 但是，JavaScript 内置的 Math.log10() 只接受 Number 类型。
-            // 因此，我们通过 'a' 的字符串表示来近似计算 log10(a)。
-            const aStr = a.toString();
-            const numDigitsInA = aStr.length;
-
-            // 对于一个有 'd' 位数字的数，它的值约等于 a_head * 10^(d-15)，
-            // 其中 a_head 是由前 15 位数字组成的数。
-            // log10(a) ≈ log10(a_head * 10^(d-15)) = log10(a_head) + d - 15
-            // 我们选择 15 位，因为这大约是 JavaScript 的 Number 类型能保持的最高精度。
-            const precision = 15;
-            const aHeadStr = aStr.slice(0, precision);
-            const aHeadNum = Number(aHeadStr);
-
-            const log10a = Math.log10(aHeadNum) + (numDigitsInA - aHeadStr.length);
-
-            // 现在计算 b * log10(a)。
-            // 指数 'b' 本身也可能是一个非常大的数，直接转为 Number 可能会损失精度。
-            // 但对于快速估算数量级的场景，为了性能，这通常是可以接受的。
-            const bAsNumber = Number(b);
-
-            const log10Result = bAsNumber * log10a;
-
-            // 最终的位数是 floor(log10Result) + 1。
-            // 我们使用 BigInt 来进行最后的计算，以防止结果本身过大而溢出。
-            return Math.floor(log10Result) + 1;
-        }
-
-        function test1() {
-            const count = 1;
-            let i, j, t1, t2;
-            do {
-                let num = estimateDigitCount(a, b);
-                console.log('结果位数：', num);
-                j = 0;
-                i = 0;
-                for (; i < count; i++) {
-                    j += measureTime(() => {
-                        fastPow(a, b);
-                    });
-                }
-                t1 = j;
-                j = 0;
-                i = 0;
-                for (; i < count; i++) {
-                    j += measureTime(() => {
-                        a ** b;
-                    });
-                }
-                t2 = j;
-                console.log('时间：', t1, t2);
-                console.log('结果是否相等：', fastPow(a, b).toString().replace('.', '').slice(0, 220) === (a ** b).toString().slice(0, 220));
-                console.log('\n');
-                b *= 2n;
-            } while (t1 > t2 && 0);
         }
     </script>
 </head>
