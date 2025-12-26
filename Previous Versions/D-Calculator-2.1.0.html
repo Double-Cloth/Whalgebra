@@ -211,6 +211,7 @@
             flex-wrap: wrap;
             margin-top: 0.4vmin;
             padding-right: 1%;
+            overflow: hidden;
         }
 
         .ButtonsAdv div {
@@ -436,7 +437,7 @@
         let tip_basics = '<div class="Tips">输入表达式</div>';
         let tip = [tip_basics, 'DC', 'B', 'B', 'M'];
         document.onclick = deal_area => {
-            let parent_deal, another_basic_info;
+            let parent_deal, another_basic_info, current_key;
             let deal_id = deal_area.target.id;
             if (deal_area.target.parentNode === null) {
                 parent_deal = '';
@@ -453,7 +454,11 @@
             } else if (parent_deal.search('FunInput') !== -1) {
                 click_input(deal_id);
             } else if (parent_deal.search('FunStr') !== -1 && deal_area.target.innerHTML !== 'EXE') {
-                input_str(deal_area.target.innerHTML);
+                current_key = deal_area.target.innerHTML;
+                input_str(current_key);
+                if (current_key === 're' || current_key === 'im' || current_key === 'arg') {
+                    input_str('(');
+                }
             } else if (parent_deal.search('FunMode') !== -1) {
                 change_on_check(deal_id);
             } else if (parent_deal.search('InputArea') !== -1 || deal_area.target.className === 'Tips') {
@@ -749,9 +754,6 @@
             deal_area.innerHTML = real_input(deal_area.innerHTML);
             if (replace_one_fun(deal_area.innerHTML.replaceAll(js_cursor, '')).length < 300) {
                 deal_area.innerHTML = deal_area.innerHTML.replaceAll(js_cursor, str + js_cursor);
-                if (str === 're' || str === 'im' || str === 'arg') {
-                    input_str('(');
-                }
             }
             deal_area.innerHTML = space(deal_area.innerHTML);
             deal_area.innerHTML = back_real_input(deal_area.innerHTML);
@@ -1815,7 +1817,7 @@
             }
         }
 
-        function angle(x) {
+        function re(x) {
             if (_err_(x)) {
                 return (x);
             } else {
