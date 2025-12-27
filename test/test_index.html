@@ -722,7 +722,7 @@
             default: {
                 let boolResult = true;
                 for (let i = 2; i < 7; i++) {
-                    console.log(`============ case ${i} ============`);
+                    console.log(`%c============ case ${i} ============`, `color: #00FF00;`);
                     boolResult = boolResult && await test(i);
                 }
                 console.log(`%c<-- ${boolResult} -->`, `color: ${boolResult ? '#00FF00' : '#FF0000'}; font-weight: bold; font-size: 16px;`);
