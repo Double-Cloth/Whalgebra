@@ -111,17 +111,6 @@
             }
 
             /**
-             * @method restart
-             * @description 终止当前的 Web Worker 并立即使用原始配置初始化一个新的 Worker。
-             * 这个方法对于从一个变得无响应或已崩溃的 Worker 中恢复非常有用，它允许在不创建新的 `SyncWorker` 实例的情况下进行干净的重启。
-             * @returns {void}
-             */
-            restart() {
-                this.terminate(); // 清理旧资源
-                this._init();     // 使用保存的配置重新初始化
-            }
-
-            /**
              * 设置 Worker 的消息和错误监听器。
              * @private
              */
@@ -336,6 +325,17 @@
                         this._worker.postMessage({type: 'cancel', id: taskId});
                     }
                 }
+            }
+
+            /**
+             * @method restart
+             * @description 终止当前的 Web Worker 并立即使用原始配置初始化一个新的 Worker。
+             * 这个方法对于从一个变得无响应或已崩溃的 Worker 中恢复非常有用，它允许在不创建新的 `SyncWorker` 实例的情况下进行干净的重启。
+             * @returns {void}
+             */
+            restart() {
+                this.terminate(); // 清理旧资源
+                this._init();     // 使用保存的配置重新初始化
             }
 
             /**
