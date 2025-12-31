@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2025-12-27 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2025-12-31 -->
     <meta charset="UTF-8"/>
     <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
@@ -627,12 +627,16 @@
 
         p {
             flex-shrink: 0;
+            width: auto;
+            max-width: 100%;
             height: 6dvmin;
             object-fit: contain;
             object-position: center;
             mask-size: contain;
             mask-repeat: no-repeat;
             mask-position: center;
+            display: block;
+            align-self: center;
         }
 
         ::-webkit-scrollbar {
