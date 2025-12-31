@@ -771,6 +771,7 @@
         }
 
         #head {
+            overflow: hidden;
             display: flex;
             width: 100dvw;
             height: 6.5dvh;
@@ -783,6 +784,7 @@
         }
 
         #head_title {
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -909,6 +911,10 @@
         #grid_data {
             width: 100dvw;
             height: calc(28.5dvh - 6dvmin);
+        }
+
+        #grid_data div {
+            overflow: hidden;
         }
 
         #grid_data > div {
@@ -1147,8 +1153,17 @@
 
         /* sub_keyboard 部分 */
 
+        #sub_keyboard {
+            overflow: hidden;
+        }
+
+        #sub_keyboard > div > div {
+            overflow: hidden;
+        }
+
         #sub_keyboard > div,
         #sub_keyboard_ForMode1 {
+            overflow: hidden;
             display: grid;
             transition: all 0.25s ease;
             border-radius: 3dvmin;
@@ -1197,6 +1212,7 @@
         /* keyboard_top 部分 */
 
         #keyboard_top {
+            overflow: hidden;
             position: absolute;
             z-index: 0;
             display: flex;
@@ -1208,6 +1224,7 @@
         }
 
         #keyboard_top > div {
+            overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1286,6 +1303,7 @@
         /* keyboard_main 部分 */
 
         #keyboard_main {
+            overflow: hidden;
             position: absolute;
             z-index: 0;
             right: 0;
@@ -1298,6 +1316,7 @@
         }
 
         #keyboard_main > div {
+            overflow: hidden;
             height: calc(163dvh / 24);
         }
 
@@ -1525,7 +1544,7 @@
         }
 
         .pl,
-        .pl__worm {
+        .plWorm {
             /* 动画通用设置 */
             animation-duration: 3s;
             animation-iteration-count: infinite;
@@ -1539,13 +1558,13 @@
             animation-timing-function: linear;
         }
 
-        .pl__ring {
+        .plRing {
             /* 背景圆环 */
             transition: stroke 0.3s;
             stroke: hsla(var(--hue), 10%, 10%, 0.1);
         }
 
-        .pl__worm {
+        .plWorm {
             /* 蠕虫线条动画 */
             animation-name: worm;
             animation-timing-function: cubic-bezier(0.42, 0.17, 0.75, 0.83);
@@ -13754,9 +13773,9 @@
                                 <stop offset="100%" stop-color="hsl(223,90%,55%)"/>
                             </linearGradient>
                         </defs>
-                        <circle class="pl__ring" cx="64" cy="64" fill="none" r="56" stroke="hsla(0,10%,10%,0.1)"
+                        <circle class="plRing" cx="64" cy="64" fill="none" r="56" stroke="hsla(0,10%,10%,0.1)"
                                 stroke-linecap="round" stroke-width="16"/>
-                        <path class="pl__worm"
+                        <path class="plWorm"
                               d="M92,15.492S78.194,4.967,66.743,16.887c-17.231,17.938-28.26,96.974-28.26,96.974L119.85,59.892l-99-31.588,57.528,89.832L97.8,19.349,13.636,88.51l89.012,16.015S81.908,38.332,66.1,22.337C50.114,6.156,36,15.492,36,15.492a56,56,0,1,0,56,0Z"
                               fill="none" stroke="url(#pl-grad)" stroke-dasharray="44 1111" stroke-dashoffset="10"
                               stroke-linecap="round" stroke-linejoin="round" stroke-width="16"/>
