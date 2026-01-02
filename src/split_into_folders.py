@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import shutil
+import textwrap
 from pathlib import Path
 from bs4 import BeautifulSoup, Tag
 
@@ -17,8 +18,15 @@ def extract_and_save(soup: BeautifulSoup, tag_name: str, output_dir: Path, ext: 
         if tag_name == 'script' and tag.get('src'):
             continue
 
-        content = tag.string
-        if not content or not content.strip():
+        raw_content = tag.string
+        if not raw_content:
+            continue
+
+        # textwrap.dedent: 去除所有行共有的前导空白（智能去缩进）
+        # strip: 去除首尾的空行和多余空格
+        content = textwrap.dedent(raw_content).strip()
+
+        if not content:
             continue
 
         if tag_name == 'script':
@@ -30,21 +38,23 @@ def extract_and_save(soup: BeautifulSoup, tag_name: str, output_dir: Path, ext: 
         if tag_id:
             filename = f"{tag_id}{ext}"
         else:
-            content_hash = calculate_hash(content.strip())
+            # 直接使用处理后(去缩进)的内容计算哈希，保证内容一致性
+            content_hash = calculate_hash(content)
             filename = f"extracted_{content_hash}{ext}"
 
         file_path = output_dir / filename
 
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content.strip())
+                # 写入处理后的内容
+                f.write(content)
         except IOError as e:
             print(f"Error writing file {filename}: {e}")
             continue
 
         tag.string = ""
         if tag_name == 'style':
-            # 修复：显式使用相对路径 ./css/
+            # 显式使用相对路径 ./css/
             new_link = soup.new_tag("link", rel="stylesheet", href=f"./css/{filename}")
             if tag.get('media'):
                 new_link['media'] = tag['media']
@@ -52,7 +62,7 @@ def extract_and_save(soup: BeautifulSoup, tag_name: str, output_dir: Path, ext: 
             print(f"  [CSS] Extracted -> css/{filename}")
 
         elif tag_name == 'script':
-            # 修复：显式使用相对路径 ./js/
+            # 显式使用相对路径 ./js/
             tag['src'] = f"./js/{filename}"
             print(f"  [JS]  Extracted -> js/{filename}")
 
@@ -87,7 +97,7 @@ def main():
         extract_and_save(soup, 'style', css_dir, '.css')
         extract_and_save(soup, 'script', js_dir, '.js')
 
-        # 核心修复：生成 .nojekyll 文件，确保 GitHub Pages 不过滤资源
+        # 生成 .nojekyll 文件，确保 GitHub Pages 不过滤资源
         (base_export_path / ".nojekyll").touch()
 
         output_html_path = base_export_path / "index.html"
