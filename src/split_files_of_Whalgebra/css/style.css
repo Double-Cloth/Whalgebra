@@ -27,7 +27,6 @@
         p {
             flex-shrink: 0;
             width: auto;
-            max-width: 100%;
             height: 6dvmin;
             object-fit: contain;
             object-position: center;
