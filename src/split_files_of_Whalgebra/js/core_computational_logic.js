@@ -1769,7 +1769,7 @@
 
                 // 步骤 3: 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
                 if (i === max) {
-                    console.warn('[MathPlus] Cube root calculation takes too long, falling back to pow method.');
+                    console.warn('[MathPlus] Cube root calculation takes too long.');
                     return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
                 }
 

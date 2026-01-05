@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-4 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-5 -->
     <meta charset="UTF-8"/>
     <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
@@ -5146,7 +5146,7 @@
 
                         // 步骤 3: 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
                         if (i === max) {
-                            console.warn('[MathPlus] Cube root calculation takes too long, falling back to pow method.');
+                            console.warn('[MathPlus] Cube root calculation takes too long.');
                             return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
                         }
 
@@ -9482,11 +9482,11 @@
                     };
 
                     let code = `
-                    // Dynamically Generated Worker Code.
+                    /* Dynamically Generated Worker Code. */
                     "use strict";
 
-                    // -- Dependency Injection --
-                    // Inject dependencies as constants into the global scope of the Worker.
+                    /* -- Dependency Injection -- */
+                    /* Inject dependencies as constants into the global scope of the Worker. */
                 `;
                     for (const dep of deps) {
                         // 解构 name 和 value
@@ -9504,8 +9504,8 @@
                     }
 
                     code += `
-                    // -- Function registration --
-                    // Store all callable functions in an object inside the Worker for searching by name.
+                    /* -- Function registration -- */
+                    /* Store all callable functions in an object inside the Worker for searching by name. */
                     const availableFunctions = {
                 `;
                     for (const [key, func] of Object.entries(funcs)) {
@@ -9514,26 +9514,26 @@
                     code += `
                     };
 
-                    // -- Worker internal status --
-                    // A Map used to track running tasks and their cancellation status.
+                    /* -- Worker internal status -- */
+                    /* A Map used to track running tasks and their cancellation status. */
                     const runningTasks = new Map();
 
-                    // -- Worker message processor --
-                    // This is the core logic of Worker, used to listen for and respond to messages from the main thread.
+                    /* -- Worker message processor -- */
+                    /* This is the core logic of Worker, used to listen for and respond to messages from the main thread. */
                     self.onmessage = async (event) => {
                         const { type, id, functionName, args } = event.data;
 
-                        // Processing messages of type 'cancel'.
+                        /* Processing messages of type 'cancel'. */
                         if (type === 'cancel') {
                             if (runningTasks.has(id)) {
-                                // If the task is running, mark its cancellation status as true.
-                                // The executing function can respond to this change by checking cancellationSignal.isCancelled().
+                                /* If the task is running, mark its cancellation status as true. */
+                                /* The executing function can respond to this change by checking cancellationSignal.isCancelled(). */
                                 runningTasks.get(id).cancelled = true;
                             }
                             return;
                         }
 
-                        // Only handle messages of type 'exec'.
+                        /* Only handle messages of type 'exec'. */
                         if (type !== 'exec') {
                             return;
                         }
@@ -9541,12 +9541,12 @@
                         const func = availableFunctions[functionName];
 
                         if (func) {
-                            // Create and store the cancellation status for new tasks.
+                            /* Create and store the cancellation status for new tasks. */
                             const cancellationState = { cancelled: false };
                             runningTasks.set(id, cancellationState);
 
-                            // Create a cancel signal object that will be passed as the last parameter to the user function.
-                            // This imitates the pattern of AbortController/AbortSignal, which is a standard asynchronous cancellation pattern.
+                            /* Create a cancel signal object that will be passed as the last parameter to the user function. */
+                            /* This imitates the pattern of AbortController/AbortSignal, which is a standard asynchronous cancellation pattern. */
                             const cancellationSignal = {
                                 isCancelled: () => cancellationState.cancelled,
                                 throwIfCancelled: () => {
@@ -9559,27 +9559,27 @@
                             };
 
                             try {
-                                // Execute the function and inject cancellationSignal. 'await' can handle both synchronous and asynchronous functions.
+                                /* Execute the function and inject cancellationSignal. 'await' can handle both synchronous and asynchronous functions. */
                                 const result = await func(...args, cancellationSignal);
 
-                                // Check if the task is marked as cancelled after completion. If so, no results will be sent to avoid race conditions.
+                                /* Check if the task is marked as cancelled after completion. If so, no results will be sent to avoid race conditions. */
                                 if (cancellationState.cancelled) {
                                     return;
                                 }
 
                                 self.postMessage({ id, result });
                             } catch (e) {
-                                // Only send errors when the task has not been canceled to avoid overwriting the CancellationError on the main thread.
+                                /* Only send errors when the task has not been canceled to avoid overwriting the CancellationError on the main thread. */
                                 if (!cancellationState.cancelled) {
-                                    // Send a structured error object while retaining its key attributes.
+                                    /* Send a structured error object while retaining its key attributes. */
                                     self.postMessage({ id, error: { name: e.name, message: e.message, stack: e.stack } });
                                 }
                             } finally {
-                                // Regardless of success, failure, or cancellation, tasks must be cleared from the running queue to prevent memory leaks.
+                                /* Regardless of success, failure, or cancellation, tasks must be cleared from the running queue to prevent memory leaks. */
                                 runningTasks.delete(id);
                             }
                         } else {
-                            // If the function cannot be found, send a specific error.
+                            /* If the function cannot be found, send a specific error. */
                             self.postMessage({
                                 id,
                                 error: {
