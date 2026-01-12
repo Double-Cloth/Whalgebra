@@ -915,5 +915,4 @@
     // 导出对象
     window.SyncWorker = SyncWorker;
     window.WorkerTools = WorkerTools;
-
 })();
