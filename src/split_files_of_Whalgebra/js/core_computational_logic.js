@@ -5869,5 +5869,4 @@
     window.RadicalFunctionTools = RadicalFunctionTools;
     window.FuncValueListTools = FuncValueListTools;
     window.CalcTools = CalcTools;
-
 })();

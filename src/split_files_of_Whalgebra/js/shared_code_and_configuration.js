@@ -1375,5 +1375,4 @@
     // 导出对象
     window.Public = Public;
     window.CalcConfig = CalcConfig;
-
 })();

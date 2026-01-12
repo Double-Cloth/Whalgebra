@@ -2862,5 +2862,4 @@
     window.InputManager = InputManager;
     window.PrintManager = PrintManager;
     window.PageControlTools = PageControlTools;
-
 })();
