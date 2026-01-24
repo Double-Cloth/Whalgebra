@@ -49,6 +49,12 @@ document.addEventListener('click', (event) => {
 
         case 'load_cancel':
             return PageControlTools.cancelPrint();
+
+        case 'print_1_0_choose':
+            return PageControlTools.clickPrint1Choose();
+
+        case 'print_content_1_cover':
+            return PageControlTools.clickPrint1Cover();
     }
 
     // --- 策略 2: 基于父容器 ID 的逻辑 (Group Logic) ---
@@ -175,6 +181,14 @@ document.addEventListener('click', (event) => {
             document.documentElement.requestFullscreen();
         }
         return;
+    }
+
+    if (/^choose_ra_[0-6]$/.test(targetID)) {
+        return PageControlTools.changePrint1Ra(targetID);
+    }
+
+    if (/^export_[0-1]$/.test(targetID)) {
+        return PageControlTools.exportRa(targetID);
     }
 
     // --- 策略 4: 基于子元素图标功能的通用按钮 (Functional Buttons) ---
