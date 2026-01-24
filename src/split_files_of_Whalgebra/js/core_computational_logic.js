@@ -3887,7 +3887,7 @@
                 // 将差值的平方累加到 sum 中。
                 sum = MathPlus.plus(MathPlus.times(mid, mid), sum);
             }
-            return [MathPlus.divide(sum, list.length), MathPlus.divide(sum, list.length - 1)];
+            return [MathPlus.divide(sum, list.length), list.length === 1 ? new ComplexNumber(0) : MathPlus.divide(sum, list.length - 1)];
         }
 
         /**
@@ -4463,6 +4463,14 @@
             if (listA.length !== listB.length) {
                 throw new Error('[StatisticsTools] Data mismatch.');
             }
+            for (let i = 0; i < listA.length; i++) {
+                if (typeof listA === 'string') {
+                    listA[i] = MathPlus.calc(listA[i])[0];
+                }
+                if (typeof listB === 'string') {
+                    listB[i] = MathPlus.calc(listB[i])[0];
+                }
+            }
             // 验证：确保 x 和 y 数据集都是实数集
             for (let i = 0; i < listA.length; i++) {
                 // 消除误差
@@ -4527,29 +4535,47 @@
 
             // --- 步骤 4: 处理回归的边缘情况 ---
             // 如果所有 x 值都为零，则大多数回归模型都无法定义。
-            if (!statesA.positive && !statesA.negative && statesA.zero) {
-                result.linear = errorWith2parameter;
-                result.ln = errorWith2parameter;
-                result.axb = errorWith2parameter;
-                result.exp = errorWith2parameter;
-                result.abx = errorWith2parameter;
-                result.reciprocal = errorWith2parameter;
+            const twoParamModels = ['linear', 'ln', 'axb', 'exp', 'abx', 'reciprocal'];
+            if ((!statesA.positive && !statesA.negative && statesA.zero) || listA.length === 1) {
+                twoParamModels.forEach(key => {
+                    result[key] = {
+                        parameter: ['error', 'error'],
+                        regressionEquation: 'error',
+                        R2: 'error',
+                        model: key // 在创建时直接赋值 model
+                    };
+                });
+
+                // 单独处理需要 3 个参数的 square
                 result.square = {
                     parameter: ['error', 'error', 'error'],
                     regressionEquation: 'error',
-                    R2: 'error'
+                    R2: 'error',
+                    model: 'square'
                 };
+
+                return result;
             }
             // 如果所有 y 值都为零，则所有模型的最佳拟合都是 y=0。
-            else if (!statesB.positive && !statesB.negative && statesB.zero) {
-                const zeroWith2parameter = {parameter: ['0', '0'], regressionEquation: '0', R2: 'error'};
-                result.linear = zeroWith2parameter;
-                result.ln = zeroWith2parameter;
-                result.axb = zeroWith2parameter;
-                result.exp = zeroWith2parameter;
-                result.abx = zeroWith2parameter;
-                result.reciprocal = zeroWith2parameter;
-                result.square = {parameter: ['0', '0', '0'], regressionEquation: '0', R2: 'error'};
+            if (!statesB.positive && !statesB.negative && statesB.zero) {
+                // 遍历赋值
+                twoParamModels.forEach(key => {
+                    result[key] = {
+                        parameter: ['0', '0'],
+                        regressionEquation: '0',
+                        R2: 'error',
+                        model: key
+                    };
+                });
+
+                // 单独处理 3 参数的模型
+                result.square = {
+                    parameter: ['0', '0', '0'],
+                    regressionEquation: '0',
+                    R2: 'error',
+                    model: 'square'
+                };
+
                 return result;
             }
 
@@ -4571,7 +4597,7 @@
             // 3. 对数回归: y = a₁ln(x) + a₀
             // 仅当所有 x > 0 时适用。
             if (statesA.negative || statesA.zero) {
-                result.ln = errorWith2parameter;
+                result.ln = structuredClone(errorWith2parameter);
             } else {
                 result.ln = StatisticsTools._getRegressionInfo(lnListA, listB, 1, listB,
                     (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
@@ -4582,7 +4608,7 @@
             // 4. 幂回归: y = a₀ * x^a₁ (线性化为 ln(y) = ln(a₀) + a₁*ln(x))
             // 仅当所有 x > 0 且所有 y 同号且不为零时适用。
             if (statesA.negative || statesA.zero || statesB.zero || (statesB.positive && statesB.negative)) {
-                result.axb = errorWith2parameter;
+                result.axb = structuredClone(errorWith2parameter);
             } else {
                 result.axb = StatisticsTools._getRegressionInfo(lnListA, lnListB, 1, listB,
                     (x, coefficient) => {
@@ -4601,8 +4627,8 @@
             // 仅当所有 y 同号且不为零时适用。
             if (statesB.zero || (statesB.positive && statesB.negative)) {
                 // 如果 y 包含零或正负混合，则指数回归无定义。
-                result.exp = errorWith2parameter;
-                result.abx = errorWith2parameter;
+                result.exp = structuredClone(errorWith2parameter);
+                result.abx = structuredClone(errorWith2parameter);
             } else {
                 // 指数回归 y = a₀ * e^(a₁x) (线性化为 ln(y) = ln(a₀) + a₁x)
                 // 对 x 和 ln(|y|) 进行线性回归。
@@ -4636,7 +4662,7 @@
             // 6. 倒数回归: y = a₁/x + a₀
             // 仅当所有 x 不为零时适用。
             if (statesA.zero) {
-                result.reciprocal = errorWith2parameter;
+                result.reciprocal = structuredClone(errorWith2parameter);
             } else {
                 // 创建一个 x 的倒数列表 (1/x)。
                 const reciprocalListA = StatisticsTools._changeInner(listA, x => MathPlus.divide(1, x));
@@ -4658,6 +4684,7 @@
                     );
                     result[key].R2 = Public.idealizationToString(result[key].R2);
                     result[key].parameter = Public.idealizationToString(result[key].parameter);
+                    result[key].model = key;
                 }
             }
             // 返回包含所有统计数据和格式化后的回归模型信息的对象。

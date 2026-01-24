@@ -2014,6 +2014,16 @@
 
         /**
          * @static
+         * @type {object|string}
+         * @description 存储模式 1 (统计回归) 的计算结果。
+         * - 如果计算成功，它是一个包含各种回归模型结果的对象 (例如 linear, square, ln 等)。
+         * - 如果计算出错，它将被设置为字符串 'error'。
+         * 此属性用于在用户点击导出按钮时，获取当前选定回归模型的方程字符串。
+         */
+        static mode1Results;
+
+        /**
+         * @static
          * @method mode0ShowOnScreen
          * @description 一个防抖（debounced）函数，用于在标准计算模式（模式 '0'）下，在屏幕上异步显示当前输入表达式的实时计算结果。
          *
@@ -2225,6 +2235,180 @@
         /**
          * @private
          * @static
+         * @method _outputHandleError
+         * @description 处理输出字符串，将其转换为用于显示的 HTML 类名数组。
+         * 如果输入是错误标识 'error'，则返回特定的错误类名 ['_error_']；
+         * 否则，调用 HtmlTools.textToHtmlClass 将字符串转换为对应的类名数组。
+         * @param {string} str - 需要处理的字符串，通常是计算结果或 'error'。
+         * @returns {string[]} 一个包含 CSS 类名的字符串数组。
+         */
+        static _outputHandleError(str) {
+            // 默认返回错误样式的类名数组
+            let output = ['_error_'];
+            // 如果输入字符串不是 'error'，则进行正常的文本到类名的转换
+            if (str !== 'error') {
+                output = HtmlTools.textToHtmlClass(str);
+            }
+            return output;
+        }
+
+        /**
+         * @private
+         * @static
+         * @method _setMode1Results
+         * @description 将统计模式（模式 1）的计算结果批量渲染到页面上。
+         * 此方法负责协调回归分析结果的显示和基础统计数据的填充。
+         * 它会根据计算出的“最佳模型”自动更新回归分析部分的 UI，并将所有统计指标（如平均值、方差等）填入对应的表格单元格中。
+         *
+         * @param {object|string} resultList - 包含统计结果的对象或错误标识字符串。
+         *   - 如果是对象，应包含：
+         *     - `bestModel` {string}: 最佳回归模型的名称（如 'linear'）。
+         *     - `[modelName]` {object}: 各个回归模型的详细数据。
+         *     - `r`, `averageA`, `sumA` 等: 基础统计数据。
+         *   - 如果是 'error'，表示计算过程中发生错误。
+         * @returns {void}
+         */
+        static _setMode1Results(resultList) {
+            /**
+             * @function modelToId
+             * @description (内部辅助函数) 将回归模型名称映射到对应的 UI 选择器 ID。
+             * @param {string} modelName - 模型名称 (e.g., 'linear', 'square').
+             * @returns {string} 对应的 DOM ID (e.g., 'choose_ra_0').
+             */
+            function modelToId(modelName) {
+                switch (modelName) {
+                    case 'linear':
+                        return 'choose_ra_0';
+                    case 'square':
+                        return 'choose_ra_1';
+                    case 'ln':
+                        return 'choose_ra_2';
+                    case 'exp':
+                        return 'choose_ra_3';
+                    case 'abx':
+                        return 'choose_ra_4';
+                    case 'axb':
+                        return 'choose_ra_5';
+                    case 'reciprocal':
+                        return 'choose_ra_6';
+                }
+            }
+
+            // --- 错误处理 ---
+            // 如果计算结果为 'error'，则清空或显示错误状态
+            if (resultList === 'error') {
+                // 设置回归分析区域为错误状态
+                PrintManager.setMode1RaResults('error');
+                // 遍历所有统计数据单元格（ID 从 2 到 18），填充错误图标
+                for (let i = 2; i < 19; i++) {
+                    HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_1_content_${i}`), ['_error_'], {mode: 'replace'});
+                }
+                // 重置回归模型选择为默认（线性回归）
+                PageControlTools.changePrint1Ra('choose_ra_0', 'init');
+                return;
+            }
+
+            // --- 结果映射配置 ---
+            // 定义统计数据属性名与页面 DOM 元素 ID 的对应关系
+            const resultsToOutputArea = {
+                'r': '#print_content_1_content_2', // 相关系数
+                'averageA': '#print_content_1_content_3', // x 平均值
+                'sumA': '#print_content_1_content_4', // x 总和
+                'sum2A': '#print_content_1_content_5', // x 平方和
+                'totalVarianceA': '#print_content_1_content_6', // x 总体标准差
+                'sampleVarianceA': '#print_content_1_content_7', // x 样本标准差
+                'maxA': '#print_content_1_content_8', // x 最大值
+                'minA': '#print_content_1_content_9', // x 最小值
+                'averageB': '#print_content_1_content_10', // y 平均值
+                'sumB': '#print_content_1_content_11', // y 总和
+                'sum2B': '#print_content_1_content_12', // y 平方和
+                'totalVarianceB': '#print_content_1_content_13', // y 总体标准差
+                'sampleVarianceB': '#print_content_1_content_14', // y 样本标准差
+                'maxB': '#print_content_1_content_15', // y 最大值
+                'minB': '#print_content_1_content_16', // y 最小值
+                'dotAB': '#print_content_1_content_17', // Σxy
+                'dotA2B': '#print_content_1_content_18' // Σx²y
+            };
+
+            // --- 更新 UI ---
+            // 1. 显示最佳回归模型的结果（方程和 R²）
+            this.setMode1RaResults(resultList[resultList.bestModel]);
+            // 2. 在 UI 上选中最佳回归模型对应的选项卡
+            PageControlTools.changePrint1Ra(modelToId(resultList.bestModel), 'init');
+            // 3. 遍历映射表，将所有基础统计数据渲染到对应的 DOM 元素中
+            Object.entries(resultsToOutputArea).forEach(([key, value]) => {
+                HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._outputHandleError(resultList[key]), {mode: 'replace'});
+            });
+        }
+
+        /**
+         * @static
+         * @method setMode1RaResults
+         * @description 更新统计回归模式（模式 1）下特定回归模型的结果显示。
+         * 此方法负责将计算出的回归系数（参数）和决定系数 (R²) 渲染到页面的相应区域。
+         * 如果计算结果为错误，则显示错误图标。
+         *
+         * @param {object|string} RaList - 回归分析结果对象或错误标识字符串。
+         *   - 如果是对象，应包含以下属性：
+         *     - `R2` {string}: 决定系数的字符串表示。
+         *     - `parameter` {Array<string>}: 回归系数的字符串数组。
+         *     - `regressionEquation` {string}: 回归方程字符串（用于检查是否出错）。
+         *     - `model` {string}: 模型名称（如 'linear', 'square'），用于特定格式调整。
+         *   - 如果是字符串 'error'，表示计算出错。
+         * @returns {void}
+         */
+        static setMode1RaResults(RaList) {
+            // 获取用于显示回归系数的容器元素
+            const content0 = HtmlTools.getHtml('#print_content_1_content_0');
+
+            // --- 错误处理 ---
+            // 如果输入是 'error'，则在系数显示区和 R² 显示区都显示错误图标
+            if (RaList === 'error') {
+                const element = document.createElement('div');
+                HtmlTools.appendDOMs(element, ['_error_']);
+                content0.replaceChildren(element);
+                HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), ['_error_'], {mode: 'replace'});
+                return;
+            }
+
+            // --- 更新 R² 显示 ---
+            // 将 R² 的值转换为 HTML 类名并显示在对应区域
+            HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._outputHandleError(RaList.R2), {mode: 'replace'});
+
+            const parameter = RaList.parameter;
+
+            // 再次检查回归方程是否标记为错误（可能是参数计算失败）
+            if (RaList.regressionEquation === 'error') {
+                this.setMode1RaResults('error');
+                return;
+            }
+
+            // --- 构建系数显示列表 ---
+            const fragment = document.createDocumentFragment();
+
+            // 对于线性 (y=ax+b) 和二次 (y=ax^2+bx+c) 回归，内部计算的系数顺序可能与显示习惯相反
+            // 这里进行反转以匹配习惯（例如内部可能是 [b, a]，显示需要 a, b）
+            if (['linear', 'square'].includes(RaList.model)) {
+                parameter.reverse();
+            }
+
+            // 遍历系数数组，为每个系数创建显示行
+            // 假设系数分别对应 a, b, c...
+            for (let i = 0; i < parameter.length; i++) {
+                const element = document.createElement('div');
+                // 构建显示内容：变量名 (a/b/c) + 等号 + 数值
+                // i=0 -> a, i=1 -> b, i=2 -> c
+                HtmlTools.appendDOMs(element, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(parameter[i])]);
+                fragment.appendChild(element);
+            }
+
+            // 一次性更新系数显示区域的内容
+            content0.replaceChildren(fragment);
+        }
+
+        /**
+         * @private
+         * @static
          * @async
          * @function _mode0ShowOnScreenFunc
          * @description 这是 `mode0ShowOnScreen` 防抖函数的实际执行体。
@@ -2388,6 +2572,86 @@
         }
 
         /**
+         * @private
+         * @static
+         * @async
+         * @method _exeMode1
+         * @description 执行模式 1（统计回归模式）的核心计算逻辑。
+         * 该方法负责：
+         * 1. 从数据网格 DOM 中提取 X 和 Y 列的数据。
+         * 2. 验证数据的有效性（检查是否有语法错误标记）。
+         * 3. 处理空单元格（默认填充为 0）。
+         * 4. 将提取的数据转换为文本格式。
+         * 5. 调用 Web Worker 执行统计和回归计算。
+         * 6. 将计算结果渲染到界面，并缓存结果以便导出。
+         * @returns {Promise<void>} 无返回值，通过操作 DOM 副作用更新页面。
+         */
+        static async _exeMode1() {
+            // 获取数据网格的所有行元素
+            const data = HtmlTools.getHtml('#grid_data').children;
+            const listA = [], listB = [];
+
+            // 遍历每一行数据（排除最后一行，通常最后一行是空的或用于添加新行）
+            for (let i = 0; i < data.length - 1; i++) {
+                // 获取当前行的 X 和 Y 数据单元格
+                const currentA = data[i].children[1];
+                const currentB = data[i].children[2];
+
+                // 获取单元格内容的类名列表（即输入的 Token）
+                let currentPushA = HtmlTools.getClassList(currentA);
+                let currentPushB = HtmlTools.getClassList(currentB);
+
+                // 检查是否存在语法错误标记
+                if (currentPushA[0] === '_syntax_error_' || currentPushB[0] === '_syntax_error_') {
+                    this._setMode1Results('error');
+                    this.mode1Results = 'error';
+                    return;
+                }
+
+                // 如果单元格为空，自动填充为 0，并更新 DOM 显示
+                if (currentPushA.length === 0) {
+                    HtmlTools.appendDOMs(currentA, ['_0_']);
+                    currentPushA = ['_0_'];
+                }
+                if (currentPushB.length === 0) {
+                    HtmlTools.appendDOMs(currentB, ['_0_']);
+                    currentPushB = ['_0_'];
+                }
+
+                // 将类名转换为文本表达式，并添加到列表中
+                listA.push(HtmlTools.htmlClassToText(currentPushA));
+                listB.push(HtmlTools.htmlClassToText(currentPushB));
+            }
+
+            // 保存当前屏幕数据到 LocalStorage
+            PageConfig.setScreenData();
+
+            try {
+                // 调用 Worker 进行异步统计计算
+                const resultList = await WorkerTools.statisticsCalc(listA, listB);
+
+                // 将计算结果渲染到界面
+                this._setMode1Results(resultList);
+
+                // 缓存各回归模型的结果，用于后续可能的导出操作
+                // 键名对应 UI 上的选择器 ID
+                this.mode1Results = {
+                    'choose_ra_0': resultList.linear,     // 线性回归
+                    'choose_ra_1': resultList.square,     // 二次回归
+                    'choose_ra_2': resultList.ln,         // 对数回归
+                    'choose_ra_3': resultList.exp,        // 指数回归 (e底)
+                    'choose_ra_4': resultList.abx,        // 指数回归 (通用底)
+                    'choose_ra_5': resultList.axb,        // 幂回归
+                    'choose_ra_6': resultList.reciprocal  // 倒数回归
+                };
+            } catch {
+                // 捕获计算过程中的错误（如数据点不足、计算溢出等）
+                this._setMode1Results('error');
+                this.mode1Results = 'error';
+            }
+        }
+
+        /**
          * @static
          * @method exe
          * @async
@@ -2418,6 +2682,9 @@
                 case '0':
                     await this._exeMode0();
                     break;
+                case '1':
+                    await this._exeMode1();
+                    break;
             }
 
             // 隐藏加载条
@@ -2433,6 +2700,17 @@
      */
     class PageControlTools {
         /**
+         * @private
+         * @static
+         * @type {string}
+         * @description 存储当前选中的回归分析模型的 DOM ID。
+         * 用于在统计模式（模式 1）下，记录用户当前查看的是哪种回归模型（例如线性回归、二次回归等）。
+         * 默认值为 'choose_ra_0'（线性回归）。
+         * 此属性主要用于在导出回归方程时确定要导出的内容。
+         */
+        static _currentRaModel = 'choose_ra_0';
+
+        /**
          * @constructor
          * @description PageControlTools 的构造函数。
          * 这个类被设计为静态类，不应该被实例化。
@@ -2443,6 +2721,39 @@
             // 抛出错误以明确表示这是一个静态类，不应创建实例。
             // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
             throw new Error('[PageControlTools] PageControlTools is a static class and should not be instantiated.');
+        }
+
+        /**
+         * @private
+         * @static
+         * @method _changePrintContent1Choose
+         * @description 切换或设置回归模型选择菜单的显示状态。
+         * 此方法通过控制 `#print_content_1_choose` 元素的 `PrintContent1ChooseOff` 类来实现菜单的显示与隐藏。
+         * @param {string|undefined} [mode] - (可选) 控制类切换的行为。
+         *   - 如果为 `undefined`，则切换 'PrintContent1ChooseOff' 类（如果存在则移除，不存在则添加）。
+         *   - 如果是字符串（例如 'add' 或 'remove'），则直接调用 classList 上的相应方法。
+         *     - 'add': 添加类，即隐藏菜单。
+         *     - 'remove': 移除类，即显示菜单。
+         * @returns {void}
+         */
+        static _changePrintContent1Choose(mode) {
+            // 获取回归模型选择菜单的 DOM 元素，并根据 mode 参数切换或设置其隐藏类。
+            HtmlTools.getHtml('#print_content_1_choose').classList[mode === undefined ? 'toggle' : mode]('PrintContent1ChooseOff');
+        }
+
+        /**
+         * @static
+         * @method _exportRaRecover
+         * @description 重置回归分析导出按钮的视觉状态。
+         * 此方法将“导出到 f(x)”和“导出到 g(x)”按钮恢复为默认图标（_export_fx_ 和 _export_gx_）。
+         * 通常在切换回归模型或退出结果页面时调用，以清除之前的“成功”或“失败”状态反馈。
+         * @returns {void}
+         */
+        static _exportRaRecover() {
+            // 重置 #export_0 按钮的内容为默认的 f(x) 导出图标
+            HtmlTools.appendDOMs(HtmlTools.getHtml('#export_0'), ['_export_fx_'], {mode: 'replace'});
+            // 重置 #export_1 按钮的内容为默认的 g(x) 导出图标
+            HtmlTools.appendDOMs(HtmlTools.getHtml('#export_1'), ['_export_gx_'], {mode: 'replace'});
         }
 
         /**
@@ -2524,6 +2835,137 @@
             HtmlTools.getHtml('#title_mode_' + PageConfig.currentMode).classList.add('NoDisplay');
             // 显示与新模式对应的标题
             HtmlTools.getHtml('#title_mode_' + mode).classList.remove('NoDisplay');
+        }
+
+        /**
+         * @static
+         * @method clickPrint1Cover
+         * @description 处理打印内容1（统计回归结果）遮罩层的点击事件。
+         * 当用户点击遮罩层时，此方法被调用，用于关闭回归模型选择菜单并隐藏遮罩层本身。
+         * @returns {void}
+         */
+        static clickPrint1Cover() {
+            // 隐藏回归模型选择菜单
+            PageControlTools._changePrintContent1Choose('add');
+            // 隐藏遮罩层
+            HtmlTools.getHtml('#print_content_1_cover').classList.add('NoDisplay');
+        }
+
+        /**
+         * @static
+         * @method clickPrint1Choose
+         * @description 处理点击回归模型选择区域的事件。
+         * 当用户点击显示当前回归模型的区域时调用此方法，用于打开模型选择菜单并显示遮罩层。
+         * @returns {void}
+         */
+        static clickPrint1Choose() {
+            // 打开回归模型选择菜单（通过移除隐藏类）
+            PageControlTools._changePrintContent1Choose('remove');
+            // 显示遮罩层，以便用户点击外部时可以关闭菜单
+            HtmlTools.getHtml('#print_content_1_cover').classList.remove('NoDisplay');
+        }
+
+        /**
+         * @static
+         * @method changePrint1Ra
+         * @description 切换统计模式（模式 1）下的回归分析模型。
+         * 此方法负责：
+         * 1. 更新 UI 以显示当前选中的回归模型。
+         * 2. 处理模型切换时的视觉状态（高亮选中项，取消旧选中项）。
+         * 3. 如果模型发生变化，重置导出按钮的状态。
+         * 4. 根据选择的模型显示或隐藏特定的结果控件（如线性回归的额外信息）。
+         * 5. 触发结果数据的重新渲染。
+         * 6. 关闭模型选择菜单。
+         * @param {string} id - 被选中的回归模型元素的 DOM ID (例如 'choose_ra_0')。
+         * @param {string} [mode='change'] - 操作模式。
+         *   - 'change': (默认) 这是一个用户交互触发的更改，需要更新显示的结果数据。
+         *   - 'init': 这是一个初始化操作（例如计算完成后自动选择最佳模型），不需要重新触发结果渲染逻辑（或者由调用者处理）。
+         * @returns {void}
+         */
+        static changePrint1Ra(id, mode = 'change') {
+            // 获取被选中模型元素的类名列表（用于提取图标/文本样式）
+            const model = HtmlTools.getClassList(HtmlTools.getHtml(`#${id}`));
+            // 获取显示当前选中模型的容器元素
+            const modelShow = HtmlTools.getHtml('#print_1_0_choose');
+            let lastModel;
+
+            // 更新选择框的显示内容：添加前缀图标、空格和选中模型的图标
+            HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model], {mode: 'replace'});
+
+            // 遍历所有模型选项，找到之前被选中的项并移除高亮状态
+            // 假设选项 ID 格式为 choose_ra_0 到 choose_ra_N
+            for (let i = HtmlTools.getHtml('#print_content_1_choose').children.length - 2; i >= 0; i--) {
+                const dealArea = HtmlTools.getHtml(`#choose_ra_${i}`);
+                if (dealArea.classList.contains('Print1ChooseOn')) {
+                    dealArea.classList.remove('Print1ChooseOn');
+                    lastModel = `choose_ra_${i}`;
+                    break;
+                }
+            }
+
+            // 如果切换了不同的模型，恢复导出按钮的初始状态（例如从“成功”变回“导出”）
+            if (lastModel !== id) {
+                PageControlTools._exportRaRecover();
+            }
+
+            // 高亮当前选中的模型
+            HtmlTools.getHtml(`#${id}`).classList.add('Print1ChooseOn');
+            // 更新内部状态记录当前模型 ID
+            this._currentRaModel = id;
+
+            // 特殊处理：如果是线性回归 ('choose_ra_0')，显示特定的控制区域（可能包含相关系数 r 等）
+            // 其他模型隐藏该区域
+            if (id === 'choose_ra_0') {
+                HtmlTools.getHtml('#print_content_1_content_2_control').classList.remove('NoDisplay');
+            } else {
+                HtmlTools.getHtml('#print_content_1_content_2_control').classList.add('NoDisplay');
+            }
+
+            // 如果是主动切换模式，更新结果显示区域的内容
+            if (mode === 'change') {
+                PrintManager.setMode1RaResults(PrintManager.mode1Results === 'error' ? 'error' : PrintManager.mode1Results[id]);
+            }
+
+            // 关闭选择菜单遮罩
+            PageControlTools.clickPrint1Cover();
+        }
+
+        /**
+         * @static
+         * @method exportRa
+         * @description 将当前选中的回归分析模型的方程导出到函数定义区域（f(x) 或 g(x)）。
+         * 此方法响应导出按钮的点击事件，将计算出的回归方程填充到对应的函数输入框中，
+         * 以便用户可以在函数列表模式下进一步使用该方程（例如求值或绘图）。
+         *
+         * @param {string} func - 触发导出的按钮 ID。
+         *   - `'export_0'`: 导出到 f(x) (对应 DOM ID `#screen_input_inner_2_00`)。
+         *   - `'export_1'`: 导出到 g(x) (对应 DOM ID `#screen_input_inner_2_01`)。
+         * @returns {void}
+         */
+        static exportRa(func) {
+            // 获取被点击的导出按钮元素
+            const clickArea = HtmlTools.getHtml(`#${func}`);
+
+            // 检查按钮状态：如果尚未显示“成功”图标，则执行导出逻辑
+            // 防止用户重复点击已成功的导出
+            if (!clickArea.children[0].classList.contains('_success_')) {
+                // 根据按钮 ID 确定导出的目标输入区域
+                // export_0 -> f(x) (2_00), export_1 -> g(x) (2_01)
+                const exportTarget = HtmlTools.getHtml(func === 'export_0' ? '#screen_input_inner_2_00' : '#screen_input_inner_2_01');
+                // 获取存储在 PrintManager 中的回归分析结果
+                const exportContent = PrintManager.mode1Results;
+                // 检查结果是否有效
+                if (exportContent === 'error') {
+                    // 如果结果为错误，将按钮图标更改为“失败”状态
+                    HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
+                    return;
+                }
+                // 获取当前选中的回归模型 (this._currentRaModel) 的方程字符串
+                // 将其转换为 HTML 类名数组，并替换目标输入区域的内容
+                HtmlTools.appendDOMs(exportTarget, HtmlTools.textToHtmlClass(exportContent[this._currentRaModel].regressionEquation), {mode: 'replace'});
+                // 导出成功，将按钮图标更改为“成功”状态
+                HtmlTools.appendDOMs(clickArea, ['_success_'], {mode: 'replace'});
+            }
         }
 
         /**
@@ -2731,6 +3173,9 @@
                 }
                 InputManager.ac(HtmlTools.getHtml('#print_content_0_content_0'));
                 InputManager.ac(HtmlTools.getHtml('#print_content_0_content_1'));
+            }
+            if (PageConfig.currentMode === '1') {
+                PageControlTools._exportRaRecover();
             }
         }
 

@@ -79,7 +79,13 @@ p {
 
 .Paragraph,
 .Screen234 > div > div,
-#print_content > div > div,
+#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
+#print_content_1_choose > div,
+#print_content_1_content_2_control > div,
+#print_1_0_choose,
+#print_content_1_content_0 > div,
+#print_content_3_content_9 > div,
+#print_content_4_content_2 > div,
 #grid_data > div div,
 :where(#keyboard_main, #sub_keyboard > div) > div {
     display: flex;
@@ -91,7 +97,8 @@ p {
 :where(
     .Paragraph,
     #grid_data > div div,
-    .Screen234 > div > div
+    .Screen234 > div > div,
+     #print_1_0_choose
 ) > p:first-child {
     margin-left: 0.45dvmin;
 }
@@ -1075,12 +1082,173 @@ p {
     height: 86dvh;
 }
 
-#print_content > div > div:not(.NotPrintDefault) {
+#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
+#print_content_1_content_2_control > div {
     display: flex;
     align-items: center;
     justify-content: left;
     width: 98dvw;
     height: 7dvh;
+}
+
+#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault) > p:first-child {
+    margin-left: 0.85dvmin;
+}
+
+#print_content_1 > div:nth-child(7),
+#print_content_1 > div:nth-last-child(-4n+32),
+#print_content_3 > div:nth-child(4n+2) {
+    border-radius: 2dvmin 2dvmin 0 0;
+    background-color: rgba(226, 226, 226, 0.8);
+}
+
+#print_content_1 > div:nth-child(8),
+#print_content_1 > div:nth-last-child(-4n+31),
+#print_content_3 > div:nth-child(4n+3) {
+    border-radius: 0 0 2dvmin 2dvmin;
+    background-color: rgba(226, 226, 226, 0.8);
+}
+
+#print_content_1_cover {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 100dvw;
+    height: 100dvh;
+}
+
+#print_content_1_choose {
+    width: max(100dvmin, 80dvw);
+    height: 68dvh;
+    padding-top: 2dvh;
+    background-color: rgba(245, 245, 245, 0.75);
+    backdrop-filter: blur(7px);
+    box-shadow: inset 0 0 2dvmin 1dvmin rgb(188, 188, 188);
+    border-radius: 2.5dvmin 2.5dvmin 0 0;
+    position: absolute;
+    left: min(calc((100dvw - 100dvmin) / 2), 10dvw);
+    z-index: 2;
+    transition: all 0.3s ease;
+    display: grid;
+    grid-gap: 0;
+    grid-template-columns: max(100dvmin, 80dvw);
+    grid-template-rows: repeat(8, 8dvh);
+}
+
+#print_content_1_choose.PrintContent1ChooseOff {
+    top: 100dvh;
+}
+
+#print_content_1_choose:not(.PrintContent1ChooseOff) {
+    top: 32dvh;
+}
+
+#print_content_1_choose div {
+    width: max(85dvmin, 68dvw);
+    height: 7dvh;
+    margin: auto;
+    border-radius: 2.5dvmin;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Print1ChooseOn {
+    background-color: rgb(162, 196, 162);
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+    transition: all 0.45s ease;
+}
+
+#print_content_1_choose > div:not(
+    :first-child,
+    .Print1ChooseOn
+) {
+    background-color: rgb(211, 211, 211);
+    box-shadow: inset 0 0 1dvmin 1dvmin rgb(188, 188, 188);
+    transition: all 0.45s ease;
+}
+
+#print_content_1_choose > div:not(
+    :first-child,
+    .Print1ChooseOn
+):hover {
+    background-color: rgb(182, 192, 182);
+}
+
+#print_content_1_choose > div:not(
+    :first-child,
+    .Print1ChooseOn
+):active {
+    background-color: rgb(182, 192, 182);
+}
+
+#print_1_0_choose {
+    border-radius: 2dvmin;
+    background-image: linear-gradient(to right, rgba(211, 211, 211, 0.8), transparent);
+    transition: all 0.23s ease;
+}
+
+#print_1_0_choose:hover {
+    background-color: rgba(211, 211, 211, 0.8);
+    box-shadow: inset 0 0 1dvmin 0.5dvmin rgba(211, 211, 211, 0.8);
+}
+
+#print_1_0_choose:active {
+    background-color: rgba(211, 211, 211, 0.8);
+    box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(250, 250, 250);
+}
+
+#print_content_1_content_0,
+#print_content_3_content_9,
+#print_content_4_content_2 {
+    width: 98dvw;
+}
+
+#print_content_1_content_0 > div,
+#print_content_3_content_9 > div,
+#print_content_4_content_2 > div {
+    width: max-content;
+    height: 7dvh;
+}
+
+#export {
+    width: 98dvw;
+    height: 10dvh;
+    border-bottom: 0.5dvmin solid rgb(188, 188, 188);
+    display: grid;
+    grid-gap: 0;
+    grid-template-columns: repeat(2, 49dvw);
+    grid-template-rows: 9.5dvh;
+}
+
+#export div {
+    width: 45dvw;
+    height: 7dvh;
+    margin: auto;
+    background-color: rgba(105, 145, 105, 0.8);
+    border-radius: 3dvmin;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.15s ease;
+}
+
+#export div:hover {
+    opacity: 0.9;
+    background-color: rgb(90, 140, 90);
+    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(250, 250, 250);
+}
+
+#export div:active {
+    transform: translateY(0.3dvmin);
+    background-color: rgb(90, 140, 90);
+    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(250, 250, 250);
+}
+
+#print_content_1_y_start,
+#print_content_1_together_start {
+    margin-top: 2dvmin;
 }
 
 /* ===== others 窗口样式 ===== */
