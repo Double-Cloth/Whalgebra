@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-12 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-24 -->
     <meta charset="UTF-8"/>
     <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
@@ -12764,6 +12764,7 @@
                  *     - `[modelName]` {object}: 各个回归模型的详细数据。
                  *     - `r`, `averageA`, `sumA` 等: 基础统计数据。
                  *   - 如果是 'error'，表示计算过程中发生错误。
+                 * @param {string} [resultList.bestModel] - (当为对象时) 最佳回归模型的名称（例如 'linear'）。
                  * @returns {void}
                  */
                 static _setMode1Results(resultList) {
@@ -12853,6 +12854,10 @@
                  *     - `regressionEquation` {string}: 回归方程字符串（用于检查是否出错）。
                  *     - `model` {string}: 模型名称（如 'linear', 'square'），用于特定格式调整。
                  *   - 如果是字符串 'error'，表示计算出错。
+                 * @param {string} [RaList.model] - (当为对象时) 回归模型名称。
+                 * @param {string} [RaList.R2] - (当为对象时) 可决系数 R²。
+                 * @param {string} [RaList.parameter] - (当为对象时) 回归模型参数列表。
+                 * @param {string} [RaList.regressionEquation] - (当为对象时) 回归模型计算结果。
                  * @returns {void}
                  */
                 static setMode1RaResults(RaList) {
@@ -12919,7 +12924,7 @@
                     const requestId = Date.now();
                     if (this.mode0ScreenInCalc) {
                         // 取消之前积压的计算任务，优先响应当前输入
-                        await WorkerTools.restart();
+                        WorkerTools.restart();
 
                         // 也可以使用软取消（性能更好）
                         // WorkerTools.cancelWorker();
@@ -13006,7 +13011,7 @@
                         this.mode0ShowOnScreen.cancel();
                         screenDisplay.classList.add('NoDisplay');
                         if (this.mode0ScreenInCalc) {
-                            await WorkerTools.restart();
+                            WorkerTools.restart();
                         }
                         // 确保标志复位
                         this.mode0ScreenInCalc = false;
@@ -13453,7 +13458,7 @@
                         // 获取存储在 PrintManager 中的回归分析结果
                         const exportContent = PrintManager.mode1Results;
                         // 检查结果是否有效
-                        if (exportContent === 'error') {
+                        if (exportContent === 'error' || exportContent[this._currentRaModel].regressionEquation === 'error') {
                             // 如果结果为错误，将按钮图标更改为“失败”状态
                             HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
                             return;
