@@ -5754,9 +5754,9 @@
          */
         static valueList(f, g, start, step, end) {
             // 步骤 1: 将区间的起始、步长和结束值转换为高精度的 ComplexNumber 实例，并修正潜在的浮点误差。
-            start = Public.zeroCorrect(start);
-            step = Public.zeroCorrect(step);
-            end = Public.zeroCorrect(end);
+            start = Public.zeroCorrect(MathPlus.calc(start)[0]);
+            step = Public.zeroCorrect(MathPlus.calc(step)[0]);
+            end = Public.zeroCorrect(MathPlus.calc(end)[0]);
 
             // 步骤 2: 验证输入参数的有效性。
             // 确保区间的定义（起始、步长、结束）都是实数。

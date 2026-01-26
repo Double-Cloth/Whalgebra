@@ -86,6 +86,8 @@ p {
 #print_content_1_content_0 > div,
 #print_content_3_content_9 > div,
 #print_content_4_content_2 > div,
+#print_content_2_head > div,
+#print_content_2_inner > div > div > div,
 #grid_data > div div,
 :where(#keyboard_main, #sub_keyboard > div) > div {
     display: flex;
@@ -98,7 +100,8 @@ p {
     .Paragraph,
     #grid_data > div div,
     .Screen234 > div > div,
-     #print_1_0_choose
+     #print_1_0_choose,
+     #print_content_2_inner > div > div > div
 ) > p:first-child {
     margin-left: 0.45dvmin;
 }
@@ -107,7 +110,8 @@ p {
     .Paragraph:not(#title_mode_3),
     #grid_data > div div,
     .Screen234 > div > div,
-    #print_content > div > div
+    #print_content > div > div,
+    #print_content_2_inner > div > div > div
 ) > p:last-child {
     margin-right: 0.45dvmin;
 }
@@ -1098,14 +1102,14 @@ p {
 #print_content_1 > div:nth-child(7),
 #print_content_1 > div:nth-last-child(-4n+32),
 #print_content_3 > div:nth-child(4n+2) {
-    border-radius: 2dvmin 2dvmin 0 0;
+    border-radius: 1.5dvmin 1.5dvmin 0 0;
     background-color: rgba(226, 226, 226, 0.8);
 }
 
 #print_content_1 > div:nth-child(8),
 #print_content_1 > div:nth-last-child(-4n+31),
 #print_content_3 > div:nth-child(4n+3) {
-    border-radius: 0 0 2dvmin 2dvmin;
+    border-radius: 0 0 1.5dvmin 1.5dvmin;
     background-color: rgba(226, 226, 226, 0.8);
 }
 
@@ -1249,6 +1253,127 @@ p {
 #print_content_1_y_start,
 #print_content_1_together_start {
     margin-top: 2dvmin;
+}
+
+#print_content_2 div.Lines {
+    top: 6.5dvh;
+    height: 86dvh;
+    border-radius: 100dvmax;
+}
+
+#print_grid_line_1 {
+    left: calc((101dvw - 1dvmin) / 3);
+}
+
+#print_content_2.TwoFunc #print_grid_line_2 {
+    left: calc((199dvw - 0.5dvmin) / 3);
+}
+
+#print_content_2:not(.TwoFunc) #print_grid_line_2 {
+    display: none;
+}
+
+#print_content_2.TwoFunc #print_grid_line_error {
+    display: none;
+}
+
+#print_content_2:not(.TwoFunc) #print_grid_line_error {
+    top: 7.5dvh;
+    height: 78.5dvh;
+    left: calc((199dvw - 0.5dvmin) / 3);
+}
+
+#print_content_2_head,
+#print_content_2_inner > div {
+    width: 98dvw;
+    display: grid;
+    grid-gap: 0.5dvmin;
+    grid-template-rows: 7dvh;
+}
+
+#print_content_2.TwoFunc :is(
+    #print_content_2_head,
+    #print_content_2_inner > div
+) {
+    grid-template-columns: repeat(3, calc((98dvw - 1dvmin) / 3));
+}
+
+#print_content_2:not(.TwoFunc) :is(
+    #print_content_2_head,
+    #print_content_2_inner > div
+) {
+    grid-template-columns: calc((98dvw - 1dvmin) / 3) calc((196dvw - 0.5dvmin) / 3);
+}
+
+#print_content_2:not(.TwoFunc) :is(
+    #print_content_2_head > div:last-child,
+    #print_content_2_inner > div > div:last-child
+) {
+    display: none;
+}
+
+#print_content_2_head,
+#print_content_2_inner > div > div > div {
+    height: 7dvh;
+}
+
+#print_content_2_head > div {
+    justify-content: center;
+}
+
+#print_content_2_inner {
+    width: 99dvw;
+    height: 79dvh;
+}
+
+#print_content_2_inner > div > div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#print_content_2_inner > div:nth-child(2n+1):not(
+    :first-child:nth-last-child(4),
+    :first-child:nth-last-child(3),
+    :first-child:nth-last-child(2),
+    :first-child:last-child,
+    :nth-child(3):nth-last-child(2),
+    :nth-child(3):last-child
+),
+#print_content_4_content_2 > div:nth-last-child(2n+1):not(
+    :last-child:nth-child(4),
+    :last-child:nth-child(3),
+    :last-child:nth-child(2),
+    :first-child:last-child,
+    :nth-last-child(3):nth-child(2),
+    :nth-last-child(3):first-child
+) {
+    border-radius: 1.5dvmin;
+    background: rgba(226, 226, 226, 0.8);
+}
+
+#print_content_2_error {
+    width: 100dvw;
+    height: 86dvh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 6.5dvh;
+    left: 0;
+    z-index: 1;
+}
+
+#number_table_error {
+    width: 47dvw;
+    height: 10dvh;
+    background-color: rgb(250, 250, 250);
+    backdrop-filter: blur(5px);
+    border: 0.5dvmin solid rgb(95, 158, 160);
+    border-radius: 2dvmin;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* ===== others 窗口样式 ===== */
