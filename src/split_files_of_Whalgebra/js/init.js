@@ -346,7 +346,10 @@ window.addEventListener('load', () => {
         data = JSON.parse(data);
         for (const key in data) {
             if (key !== '1') {
-                HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${key}`), HtmlTools.textToHtmlClass(data[key]), {mode: 'replace'});
+                const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
+                const inner = data[key];
+                HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
+                PageConfig.screenData = {[key]: inner};
             } else {
                 const list = data[key];
                 const len = list.length;

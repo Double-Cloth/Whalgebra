@@ -439,45 +439,83 @@
 
         /**
          * @static
-         * @description 设置指定屏幕区域的数据，并将其持久化到 `localStorage`。
-         * 此方法根据 `area` 参数更新 `_screenData` 中的相应条目。
-         * - 如果 `area` 是 '1'（统计模式），它会从 DOM 中读取整个网格数据。
-         * - 对于其他模式，它会从指定的输入区域读取文本内容。
+         * @description 设置屏幕数据。
+         * 此 setter 允许批量更新 `_screenData` 中的部分或全部字段。
+         * 它会将传入对象 `data` 中的键值对合并到当前的 `_screenData` 中，但仅限于 `_screenData` 中已存在的键。
+         * 更新后，新的状态会被立即持久化到 `localStorage`。
+         * @param {Object<string, string|Array<Array<string>>>} data - 包含要更新的屏幕数据的对象。
+         */
+        static set screenData(data) {
+            // 遍历传入数据的每个键值对
+            Object.entries(data).forEach(([key, value]) => {
+                // 仅当键在当前 _screenData 中存在时才更新，防止注入非法键
+                if (key in PageConfig._screenData) {
+                    PageConfig._screenData[key] = value;
+                }
+            });
+            // 将更新后的 _screenData 序列化并保存到 localStorage
+            localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
+        }
+
+        /**
+         * @static
+         * @method setScreenData
+         * @description 从 DOM 读取指定屏幕区域的当前输入内容，更新内部的 `_screenData` 状态，并将其持久化到 `localStorage`。
+         * 此方法是连接用户界面输入和应用程序数据状态的关键环节。
+         *
+         * 它根据 `area` 参数或当前的计算器模式来确定要读取哪个屏幕区域：
+         * - **统计模式 (area '1')**: 它会遍历数据网格 (`#grid_data`) 的每一行，提取 X 和 Y 值，并将它们作为一个二维数组存储在 `_screenData['1']` 中。
+         * - **其他模式**: 它会找到对应的输入 `div` (例如 `#screen_input_inner_2_00`)，并将其内容（由代表字符的 `<p>` 元素组成）转换回文本字符串，然后存储在 `_screenData` 的相应键下。
+         *
          * @param {string|null} [area=null] - 要更新的屏幕区域的标识符（例如 '1', '2_00'）。
          *   如果为 `null`，则根据当前模式和子模式自动确定区域。
          * @returns {void}
          */
-        static setScreenData(area) {
-            // 获取当前的主模式。
+        static setScreenData(area = null) {
+            // 获取当前的主模式，以确定上下文。
             const currentMode = PageConfig.currentMode;
-            // 确定要操作的屏幕区域的名称。
+            // 确定要操作的屏幕区域的标识符 ('name')。
             let name;
             if (area) {
+                // 如果显式提供了 area，则直接使用它。
                 name = area;
             } else {
+                // 否则，根据当前模式和子模式动态构造标识符。
+                // 统计模式 '1' 是一个特例，它没有子模式标识符。
                 name = currentMode === '1' ? '1' : currentMode + PageConfig.subModes[currentMode];
             }
+
+            // --- 根据区域类型执行不同的数据提取逻辑 ---
             if (name !== '1') {
-                // 对于非统计模式，从 DOM 中读取文本内容并存储。
+                // --- 路径 1: 非统计模式 (例如，函数表达式输入) ---
+                // 从 DOM 中获取目标输入区域的元素。
                 const target = HtmlTools.getHtml(`#screen_input_inner_${name}`);
+                // 将该区域内的 DOM 元素（通常是 <p> 标签）的类名转换回文本字符串，并更新 _screenData。
                 PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
             } else {
-                // 对于统计模式，遍历网格数据并存储。
+                // --- 路径 2: 统计模式 (数据网格) ---
+                // 在更新之前，先清空旧的数组数据，以确保完全重写。
                 PageConfig._screenData[name].length = 0;
-                // 获取网格中所有行。
+                // 获取数据网格中的所有行元素。
                 const gridData = HtmlTools.getHtml('#grid_data').children;
                 const len = gridData.length;
+                // 遍历每一行。
                 for (let i = 0; i < len; i++) {
                     const targetFather = gridData[i];
+                    // 获取 X 和 Y 值的单元格。
                     const targetX = targetFather.children[1];
                     const targetY = targetFather.children[2];
+                    // 只有当行中至少有一个单元格有内容时，才处理该行。
                     if (!(targetX.children.length === 0 && targetY.children.length === 0)) {
+                        // 将单元格内容从 DOM 类名转换回文本字符串。
                         const dataX = HtmlTools.htmlClassToText(HtmlTools.getClassList(targetX));
                         const dataY = HtmlTools.htmlClassToText(HtmlTools.getClassList(targetY));
+                        // 将 [x, y] 对存储到 _screenData['1'] 数组中。
                         PageConfig._screenData[name][i] = [dataX, dataY];
                     }
                 }
             }
+            // 将更新后的 _screenData 对象序列化为 JSON 字符串，并保存到 localStorage。
             localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
         }
     }
@@ -2266,6 +2304,7 @@
          *     - `[modelName]` {object}: 各个回归模型的详细数据。
          *     - `r`, `averageA`, `sumA` 等: 基础统计数据。
          *   - 如果是 'error'，表示计算过程中发生错误。
+         * @param {string} [resultList.bestModel] - (当为对象时) 最佳回归模型的名称（例如 'linear'）。
          * @returns {void}
          */
         static _setMode1Results(resultList) {
@@ -2355,6 +2394,10 @@
          *     - `regressionEquation` {string}: 回归方程字符串（用于检查是否出错）。
          *     - `model` {string}: 模型名称（如 'linear', 'square'），用于特定格式调整。
          *   - 如果是字符串 'error'，表示计算出错。
+         * @param {string} [RaList.model] - (当为对象时) 回归模型名称。
+         * @param {string} [RaList.R2] - (当为对象时) 可决系数 R²。
+         * @param {string} [RaList.parameter] - (当为对象时) 回归模型参数列表。
+         * @param {string} [RaList.regressionEquation] - (当为对象时) 回归模型计算结果。
          * @returns {void}
          */
         static setMode1RaResults(RaList) {
@@ -2421,7 +2464,7 @@
             const requestId = Date.now();
             if (this.mode0ScreenInCalc) {
                 // 取消之前积压的计算任务，优先响应当前输入
-                await WorkerTools.restart();
+                WorkerTools.restart();
 
                 // 也可以使用软取消（性能更好）
                 // WorkerTools.cancelWorker();
@@ -2508,7 +2551,7 @@
                 this.mode0ShowOnScreen.cancel();
                 screenDisplay.classList.add('NoDisplay');
                 if (this.mode0ScreenInCalc) {
-                    await WorkerTools.restart();
+                    WorkerTools.restart();
                 }
                 // 确保标志复位
                 this.mode0ScreenInCalc = false;
@@ -2652,6 +2695,100 @@
         }
 
         /**
+         * @private
+         * @static
+         * @async
+         * @method _exeMode2
+         * @description 执行模式2（“函数列表”模式）的核心计算与UI渲染逻辑。
+         * 该方法负责从UI获取一个或两个函数表达式（f(x), g(x)）以及一个数值范围（起始、终止、步长），
+         * 然后调用Web Worker异步计算在指定范围内的函数值。
+         * 计算完成后，它会动态生成一个HTML表格来展示自变量（x）、f(x)和g(x)的对应值。
+         *
+         * 此方法还处理了多种情况：
+         * - **单函数/双函数显示**：根据用户是否只提供了一个函数，动态调整表格的表头和内容。
+         * - **错误处理**：如果函数表达式无效或计算过程中发生错误，它会捕获异常并显示一个错误提示，而不是渲染表格。
+         * - **DOM性能优化**：使用 `DocumentFragment` 来批量构建表格行，最后一次性插入DOM，以减少页面重绘，提高渲染性能。
+         *
+         * @returns {Promise<void>} 此方法没有返回值，其主要作用是通过DOM操作来更新页面内容。
+         */
+        static async _exeMode2() {
+            // 创建一个 DocumentFragment 以进行高效的批量 DOM 操作，减少重排和重绘。
+            const fragment = document.createDocumentFragment();
+            // 获取表头中用于显示函数名的元素，以便后续根据单/双函数模式进行更新。
+            const headInit = HtmlTools.getHtml('#print_content_2_head').children[1].children[0];
+            // 默认设置为双函数显示模式。
+            HtmlTools.getHtml('#print_content_2').classList.add('TwoFunc');
+            // 默认表头显示 f(x)。
+            headInit.classList.add('_f_');
+            headInit.classList.remove('_g_');
+            try {
+                let onlyFuncG = false;
+                // 从 UI 获取 f(x) 和 g(x) 的表达式字符串。
+                const fx = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_00')));
+                const gx = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_01')));
+                // 检查是否只有一个函数被定义。
+                if (fx === '' !== (gx === '')) { // (fx === '' || gx === '') && !(fx === '' && gx === '')
+                    if (fx === '') {
+                        // 如果只有 g(x) 被定义，则更新表头并设置标志。
+                        headInit.classList.add('_g_');
+                        headInit.classList.remove('_f_');
+                        onlyFuncG = true;
+                    }
+                    // 切换到单函数显示模式。
+                    HtmlTools.getHtml('#print_content_2').classList.remove('TwoFunc');
+                } else if (fx === '') { // fx === '' && gx === ''
+                    // 如果两个函数都未定义，则显示错误并终止。
+                    HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
+                    return;
+                }
+                // 从 UI 获取数值列表的范围参数：起始值、步长和终止值。
+                const start = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_10')));
+                const step = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_12')));
+                const end = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_11')));
+                // 调用 Web Worker 异步计算函数值列表。
+                const result = await WorkerTools.valueList(fx, gx, start, step, end);
+                const n = result.varList.length;
+                // 遍历计算结果，为每一组 (x, f(x), g(x)) 创建一个表格行。
+                for (let i = 0; i < n; i++) {
+                    // 根据是否为单 g(x) 模式，确定数据源的顺序。
+                    const sources = onlyFuncG ?
+                        [
+                            result.varList[i],
+                            result.g[i],
+                            result.f[i]
+                        ] :
+                        [
+                            result.varList[i],
+                            result.f[i],
+                            result.g[i]
+                        ];
+                    // 创建行容器。
+                    const currentDiv = document.createElement('div');
+                    // 遍历 x, f(x), g(x) 的值，为每个值创建单元格。
+                    sources.forEach(data => {
+                        const subWrapper = document.createElement('div');
+                        const subContent = document.createElement('div');
+                        // 如果计算结果为 'error'，则显示错误图标，否则将数值转换为 HTML 类。
+                        const content = (data === 'error') ? ['_error_'] : HtmlTools.textToHtmlClass(data);
+                        HtmlTools.appendDOMs(subContent, content);
+                        // 组装单元格结构。
+                        subWrapper.appendChild(subContent);
+                        currentDiv.appendChild(subWrapper);
+                    });
+                    fragment.appendChild(currentDiv);
+                }
+                // 成功生成表格，隐藏错误提示。
+                HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
+            } catch {
+                // 如果在获取输入或调用 Worker 时发生错误，则显示错误提示。
+                HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
+            } finally {
+                // 无论成功与否，都使用生成的 DocumentFragment (可能为空) 更新表格内容。
+                HtmlTools.getHtml('#print_content_2_inner').replaceChildren(fragment);
+            }
+        }
+
+        /**
          * @static
          * @method exe
          * @async
@@ -2684,6 +2821,9 @@
                     break;
                 case '1':
                     await this._exeMode1();
+                    break;
+                case '2_1':
+                    await this._exeMode2();
                     break;
             }
 
@@ -2955,7 +3095,7 @@
                 // 获取存储在 PrintManager 中的回归分析结果
                 const exportContent = PrintManager.mode1Results;
                 // 检查结果是否有效
-                if (exportContent === 'error') {
+                if (exportContent === 'error' || exportContent[this._currentRaModel].regressionEquation === 'error') {
                     // 如果结果为错误，将按钮图标更改为“失败”状态
                     HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
                     return;
