@@ -79,13 +79,12 @@ p {
 
 .Paragraph,
 .Screen234 > div > div,
+.ForPrintContent3And4 > div,
 #print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
 #print_content_1_choose > div,
 #print_content_1_content_2_control > div,
 #print_1_0_choose,
 #print_content_1_content_0 > div,
-#print_content_3_content_9 > div,
-#print_content_4_content_2 > div,
 #print_content_2_head > div,
 #print_content_2_inner > div > div > div,
 #grid_data > div div,
@@ -111,6 +110,7 @@ p {
     #grid_data > div div,
     .Screen234 > div > div,
     #print_content > div > div,
+    .ForPrintContent3And4 > div,
     #print_content_2_inner > div > div > div
 ) > p:last-child {
     margin-right: 0.45dvmin;
@@ -909,6 +909,7 @@ p {
     width: 100dvw;
     height: 100dvh;
     background-color: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
 }
 
 #load {
@@ -1092,10 +1093,11 @@ p {
     align-items: center;
     justify-content: left;
     width: 98dvw;
-    height: 7dvh;
+    height: max(7dvh, 8dvmin);
 }
 
-#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault) > p:first-child {
+#print_content > div:not(.NotPrintDefault) > div > p:first-child,
+#print_content > div:not(.NotPrintDefault) > div > div > p:first-child {
     margin-left: 0.85dvmin;
 }
 
@@ -1204,16 +1206,14 @@ p {
 }
 
 #print_content_1_content_0,
-#print_content_3_content_9,
-#print_content_4_content_2 {
+.ForPrintContent3And4 {
     width: 98dvw;
 }
 
 #print_content_1_content_0 > div,
-#print_content_3_content_9 > div,
-#print_content_4_content_2 > div {
+.ForPrintContent3And4 > div {
     width: max-content;
-    height: 7dvh;
+    height: max(7dvh, 8dvmin);
 }
 
 #export {
@@ -1283,14 +1283,6 @@ p {
     left: calc((199dvw - 0.5dvmin) / 3);
 }
 
-#print_content_2_head,
-#print_content_2_inner > div {
-    width: 98dvw;
-    display: grid;
-    grid-gap: 0.5dvmin;
-    grid-template-rows: 7dvh;
-}
-
 #print_content_2.TwoFunc :is(
     #print_content_2_head,
     #print_content_2_inner > div
@@ -1313,8 +1305,15 @@ p {
 }
 
 #print_content_2_head,
-#print_content_2_inner > div > div > div {
+#print_content_2_inner > div {
+    width: 98dvw;
+    display: grid;
+    grid-gap: 0.5dvmin;
+}
+
+#print_content_2_head {
     height: 7dvh;
+    grid-template-rows: 7dvh;
 }
 
 #print_content_2_head > div {
@@ -1326,10 +1325,17 @@ p {
     height: 79dvh;
 }
 
+#print_content_2_inner > div {
+    grid-template-rows: max(7dvh, 8dvmin);
+}
+
 #print_content_2_inner > div > div {
     display: flex;
     justify-content: center;
-    align-items: center;
+}
+
+#print_content_2_inner > div > div > div {
+    height: max(7dvh, 8dvmin);
 }
 
 #print_content_2_inner > div:nth-child(2n+1):not(
@@ -1340,13 +1346,13 @@ p {
     :nth-child(3):nth-last-child(2),
     :nth-child(3):last-child
 ),
-#print_content_4_content_2 > div:nth-last-child(2n+1):not(
-    :last-child:nth-child(4),
-    :last-child:nth-child(3),
-    :last-child:nth-child(2),
+#print_content_4_content_2 > div:nth-last-child(2n):not(
+    :first-child:nth-last-child(4),
+    :first-child:nth-last-child(3),
+    :first-child:nth-last-child(2),
     :first-child:last-child,
-    :nth-last-child(3):nth-child(2),
-    :nth-last-child(3):first-child
+    :nth-child(2):nth-last-child(2),
+    :nth-child(3):nth-last-child(2)
 ) {
     border-radius: 1.5dvmin;
     background: rgba(226, 226, 226, 0.8);
@@ -1374,6 +1380,10 @@ p {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#print_omit {
+    margin-top: 0.8dvmin;
 }
 
 /* ===== others 窗口样式 ===== */

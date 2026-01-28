@@ -361,6 +361,7 @@ window.addEventListener('load', () => {
                         recoverMode: true
                     });
                 }
+                PageConfig.screenData = {['1']: list};
             }
         }
     });

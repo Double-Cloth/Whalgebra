@@ -2381,6 +2381,33 @@
         }
 
         /**
+         * @private
+         * @static
+         * @description (内部辅助) 批量渲染列表数据到目标容器，利用 DocumentFragment 优化性能。
+         *
+         * @param {HTMLElement} outputTarget - 目标容器
+         * @param {Array<any>} list - 数据源列表
+         * @param {(container: HTMLElement, item: any, index?: number) => void} toDomFunc - 渲染回调函数
+         * @param {boolean} [needIndex=false] - 是否改变回调参数签名
+         * @returns {void}
+         */
+        static _mode34MultipleLinesOutput(outputTarget, list, toDomFunc, needIndex = false) {
+            // 创建一个文档片段，用于暂存所有新创建的行，避免频繁触发重排/重绘
+            const fragment = document.createDocumentFragment();
+            // 遍历数据列表
+            for (let i = 0; i < list.length; i++) {
+                // 为每一项数据创建一个新的 div 容器
+                const div = document.createElement('div');
+                // 调用传入的回调函数，将数据转换为 DOM 元素并添加到 div 中
+                needIndex ? toDomFunc(div, list[i], i) : toDomFunc(div, list[i]);
+                // 将填充好的 div 添加到文档片段中
+                fragment.appendChild(div);
+            }
+            // 一次性清空目标容器并插入所有新行
+            outputTarget.replaceChildren(fragment);
+        }
+
+        /**
          * @static
          * @method setMode1RaResults
          * @description 更新统计回归模式（模式 1）下特定回归模型的结果显示。
@@ -2632,38 +2659,40 @@
         static async _exeMode1() {
             // 获取数据网格的所有行元素
             const data = HtmlTools.getHtml('#grid_data').children;
+            const screenData = PageConfig.screenData['1'];
             const listA = [], listB = [];
 
             // 遍历每一行数据（排除最后一行，通常最后一行是空的或用于添加新行）
-            for (let i = 0; i < data.length - 1; i++) {
+            for (let i = 0; i < screenData.length; i++) {
                 // 获取当前行的 X 和 Y 数据单元格
                 const currentA = data[i].children[1];
                 const currentB = data[i].children[2];
 
                 // 获取单元格内容的类名列表（即输入的 Token）
-                let currentPushA = HtmlTools.getClassList(currentA);
-                let currentPushB = HtmlTools.getClassList(currentB);
+                let currentPushA = screenData[i][0];
+                let currentPushB = screenData[i][1];
 
                 // 检查是否存在语法错误标记
-                if (currentPushA[0] === '_syntax_error_' || currentPushB[0] === '_syntax_error_') {
+                if (currentPushA.startsWith('[syntax_error]') || currentPushB.startsWith('[syntax_error]')) {
                     this._setMode1Results('error');
                     this.mode1Results = 'error';
+                    PageConfig.setScreenData();
                     return;
                 }
 
                 // 如果单元格为空，自动填充为 0，并更新 DOM 显示
                 if (currentPushA.length === 0) {
                     HtmlTools.appendDOMs(currentA, ['_0_']);
-                    currentPushA = ['_0_'];
+                    currentPushA = '0';
                 }
                 if (currentPushB.length === 0) {
                     HtmlTools.appendDOMs(currentB, ['_0_']);
-                    currentPushB = ['_0_'];
+                    currentPushB = '0';
                 }
 
                 // 将类名转换为文本表达式，并添加到列表中
-                listA.push(HtmlTools.htmlClassToText(currentPushA));
-                listB.push(HtmlTools.htmlClassToText(currentPushB));
+                listA.push(currentPushA);
+                listB.push(currentPushB);
             }
 
             // 保存当前屏幕数据到 LocalStorage
@@ -2721,11 +2750,16 @@
             // 默认表头显示 f(x)。
             headInit.classList.add('_f_');
             headInit.classList.remove('_g_');
+            // 从 UI 获取 f(x) 和 g(x) 的表达式字符串。
+            const fx = PageConfig.screenData['2_00'];
+            const gx = PageConfig.screenData['2_01'];
+            // 从 UI 获取数值列表的范围参数：起始值、步长和终止值。
+            const start = PageConfig.screenData['2_10'];
+            const step = PageConfig.screenData['2_12'];
+            const end = PageConfig.screenData['2_11'];
+
             try {
                 let onlyFuncG = false;
-                // 从 UI 获取 f(x) 和 g(x) 的表达式字符串。
-                const fx = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_00')));
-                const gx = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_01')));
                 // 检查是否只有一个函数被定义。
                 if (fx === '' !== (gx === '')) { // (fx === '' || gx === '') && !(fx === '' && gx === '')
                     if (fx === '') {
@@ -2741,10 +2775,6 @@
                     HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
                     return;
                 }
-                // 从 UI 获取数值列表的范围参数：起始值、步长和终止值。
-                const start = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_10')));
-                const step = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_12')));
-                const end = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#screen_input_inner_2_11')));
                 // 调用 Web Worker 异步计算函数值列表。
                 const result = await WorkerTools.valueList(fx, gx, start, step, end);
                 const n = result.varList.length;
@@ -2789,6 +2819,304 @@
         }
 
         /**
+         * @private
+         * @static
+         * @async
+         * @method _exeMode3
+         * @description 执行模式 3（多项式函数分析）的核心计算与 UI 渲染逻辑。
+         * 该方法负责：
+         * 1. 从屏幕输入数据中收集多项式的系数（a, b, c, d, e）。
+         * 2. 调用 Web Worker 进行多项式函数的全面分析（求导、求根、极值、拐点等）。
+         * 3. 将分析结果格式化并渲染到页面的相应输出区域。
+         * 4. 处理计算过程中的错误，并在界面上显示错误状态。
+         * @returns {Promise<void>} 无返回值，通过操作 DOM 副作用更新页面。
+         */
+        static async _exeMode3() {
+            /**
+             * @function powerFunctionTextToHtml
+             * @description (内部辅助函数) 将分析结果的文本项转换为 HTML DOM 元素并插入目标容器。
+             * 专门处理区间（如 `(-inf, 2)`）和点坐标（如 `(1, 5)`）的格式化显示。
+             * @param {HTMLElement} target - 目标 DOM 容器。
+             * @param {Array<string>} textList - 包含两个元素的数组，代表区间边界或点的坐标 `[left, right]`。
+             * @param {boolean} [useBracket=false] - 是否强制使用方括号 `[]` (通常用于闭区间，但在当前逻辑中似乎主要用于区分)。
+             *   注意：代码逻辑中 `useBracket` 为 true 时使用 `_bracket_` (方括号)，否则使用 `_parentheses_` (圆括号)。
+             *   对于无穷大 `inf`，通常保持开区间（圆括号）。
+             */
+            const powerFunctionTextToHtml = (target, textList, useBracket = false) => {
+                // 处理空结果
+                if (textList[0] === 'null') {
+                    HtmlTools.appendDOMs(target, ['_null_'], {mode: 'replace'});
+                    return;
+                }
+                // 处理实数集 R (-inf, +inf)
+                if (textList[0] === '-inf' && textList[1] === '+inf') {
+                    HtmlTools.appendDOMs(target, ['_R_mathbb_'], {mode: 'replace'});
+                    return;
+                }
+                if (textList[0] === textList[1] && useBracket) {
+                    HtmlTools.appendDOMs(target, [
+                        '_curlyBraces_left_',
+                        ...HtmlTools.textToHtmlClass(textList[0]),
+                        '_curlyBraces_right_'
+                    ], {mode: 'replace'});
+                    return;
+                }
+                // 处理左边界
+                switch (textList[0]) {
+                    case '-inf':
+                        HtmlTools.appendDOMs(target, [
+                            '_parentheses_left_',
+                            '_minus_',
+                            '_infty_',
+                            '_comma_'
+                        ], {mode: 'replace'});
+                        break;
+                    default:
+                        HtmlTools.appendDOMs(target, [
+                            `_${useBracket ? 'bracket' : 'parentheses'}_left_`,
+                            ...HtmlTools.textToHtmlClass(textList[0]),
+                            '_comma_'
+                        ], {mode: 'replace'});
+                        break;
+                }
+                // 处理右边界
+                switch (textList[1]) {
+                    case '+inf':
+                        HtmlTools.appendDOMs(target, [
+                            '_plus_',
+                            '_infty_',
+                            '_parentheses_right_'
+                        ]);
+                        break;
+                    default:
+                        HtmlTools.appendDOMs(target, [
+                            ...HtmlTools.textToHtmlClass(textList[1]),
+                            `_${useBracket ? 'bracket' : 'parentheses'}_right_`
+                        ]);
+                        break;
+                }
+            };
+
+            /**
+             * @function powerFunctionRootToHtml
+             * @description (内部辅助函数) 将多项式函数的根（零点）列表转换为 HTML DOM 元素并插入目标容器。
+             * 它处理特殊情况，如无实根 ('null') 或恒等式 ('anyRealNumber')，以及常规的数值根。
+             * @param {HTMLElement} target - 目标 DOM 容器。
+             * @param {string} text - 包含根信息的字符串。包含数值字符串或特殊标识符。
+             */
+            const powerFunctionRootToHtml = (target, text) => {
+                // 处理无解的情况
+                if (text === 'null') {
+                    HtmlTools.appendDOMs(target, ['_null_'], {mode: 'replace'});
+                    return;
+                }
+                // 处理恒成立的情况（例如 0x + 0 = 0）
+                if (text === 'anyRealNumber') {
+                    HtmlTools.appendDOMs(target, ['_any_real_num_'], {mode: 'replace'});
+                    return;
+                }
+                // 处理常规数值根，使用通用的 DOM 转换函数
+                HtmlTools.appendDOMs(target, HtmlTools.textToHtmlClass(text));
+            };
+
+            // 定义输出区域索引与结果属性名的映射关系
+            const outputList = {
+                '2': 'increasingInterval', // 单调递增区间
+                '3': 'decreasingInterval', // 单调递减区间
+                '4': 'maximumPoint',       // 极大值点
+                '5': 'minimumPoint',       // 极小值点
+                '6': 'concaveInterval',    // 凹区间
+                '7': 'convexInterval',     // 凸区间
+                '8': 'inflectionPoint',    // 拐点
+                '9': 'roots'               // 零点（根）
+            };
+
+            // 收集系数输入 [a, b, c, d, e]
+            const list = [];
+            for (let i = 0; i < 5; i++) {
+                const screenData = PageConfig.screenData[`3${i}`];
+                // 如果输入为空，默认为 0
+                list[i] = screenData === '' ? '0' : screenData;
+            }
+
+            try {
+                // 调用 Worker 进行分析
+                const result = await WorkerTools.powerFunctionAnalysis(list);
+
+                // 遍历并渲染所有结果区域 (0 到 9)
+                for (let i = 0; i < 10; i++) {
+                    switch (i) {
+                        case 0:
+                            // 渲染函数方程: y = f(x) = ...
+                            HtmlTools.appendDOMs(
+                                HtmlTools.getHtml('#print_content_3_content_0'),
+                                ['_y_mathit_', '_equal_', '_f_', '_parentheses_left_', '_x_mathit_', '_parentheses_right_', '_equal_', ...HtmlTools.textToHtmlClass(result.equation)],
+                                {mode: 'replace'}
+                            );
+                            break;
+                        case 1:
+                            // 渲染值域 (Range)
+                            // useBracket=true 表示值域通常是闭区间（除了无穷大）
+                            powerFunctionTextToHtml(HtmlTools.getHtml('#print_content_3_content_1'), result.range, true);
+                            break;
+                        case 9:
+                            // 渲染根 (Roots)
+                            // 根是单个数列表，不是区间，使用特殊渲染方法
+                            this._mode34MultipleLinesOutput(
+                                HtmlTools.getHtml(`#print_content_3_content_${i}`),
+                                result[outputList[i]],
+                                powerFunctionRootToHtml
+                            );
+                            break;
+                        default:
+                            // 渲染区间或点 (单调性、极值、凹凸性、拐点)
+                            this._mode34MultipleLinesOutput(
+                                HtmlTools.getHtml(`#print_content_3_content_${i}`),
+                                result[outputList[i]],
+                                powerFunctionTextToHtml
+                            );
+                            break;
+                    }
+                }
+            } catch {
+                // 错误处理：如果分析失败，将所有相关区域显示为错误状态
+                for (let i = 0; i < 10; i++) {
+                    switch (i) {
+                        case 0:
+                        case 1:
+                            // 单行显示区域直接替换为错误图标
+                            HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_3_content_${i}`), ['_error_'], {mode: 'replace'});
+                            break;
+                        default:
+                            // 多行显示区域渲染一个包含错误图标的行
+                            this._mode34MultipleLinesOutput(
+                                HtmlTools.getHtml(`#print_content_3_content_${i}`),
+                                [['_error_']],
+                                HtmlTools.appendDOMs
+                            );
+                            break;
+                    }
+                }
+            }
+        }
+
+        /**
+         * @private
+         * @static
+         * @async
+         * @method _exeMode4
+         * @description 执行模式 4（复数 N 次方根）的核心计算与 UI 渲染逻辑。
+         * 该方法负责：
+         * 1. 从屏幕输入数据中收集复数 z 和根指数 n。
+         * 2. 调用 Web Worker 计算复数 z 的 n 个根。
+         * 3. 将计算结果（包括原表达式、通项公式、数值解列表）格式化并渲染到页面的相应输出区域。
+         * 4. 处理计算过程中的错误，并在界面上显示错误状态。
+         * @returns {Promise<void>} 无返回值，通过操作 DOM 副作用更新页面。
+         */
+        static async _exeMode4() {
+            /**
+             * @function indexingNumericalResults
+             * @description (内部辅助函数) 将单个数值解格式化为 HTML DOM 元素并插入目标容器。
+             * 格式为：z_k = value
+             * @param {HTMLElement} target - 目标 DOM 容器。
+             * @param {string} text - 数值解的字符串表示。
+             * @param {number} i - 当前解的索引 k。
+             */
+            const indexingNumericalResults = (target, text, i) => {
+                // 渲染索引部分: z_i =
+                HtmlTools.appendDOMs(
+                    target,
+                    ['_z_mathit_', '_underline_', ...HtmlTools.textToHtmlClass(i.toString()), '_space_', '_equal_', '_space_'],
+                    {mode: 'replace'}
+                );
+                // 渲染数值部分
+                HtmlTools.appendDOMs(target, HtmlTools.textToHtmlClass(text));
+            };
+
+            // 获取输入数据：复数 z 和指数 n
+            const z = PageConfig.screenData['40'];
+            const n = PageConfig.screenData['41'];
+            // 获取输出区域的 DOM 元素
+            const content40 = HtmlTools.getHtml('#print_content_4_content_0');
+            const content41 = HtmlTools.getHtml('#print_content_4_content_1');
+            const content42 = HtmlTools.getHtml('#print_content_4_content_2');
+            try {
+                // 调用 Worker 进行分析
+                const result = await WorkerTools.radicalFunctionAnalysis(z, n);
+
+                // 处理结果溢出提示（如果解的数量过多，显示省略号）
+                HtmlTools.getHtml('#print_omit').classList[result.overflow ? 'remove' : 'add']('NoDisplay');
+
+                // --- 渲染原表达式 ---
+                // 格式: z 的 [n次] 方根
+                HtmlTools.appendDOMs(
+                    content40,
+                    [...HtmlTools.textToHtmlClass(result.z), '_space_', '_de_'],
+                    {mode: 'replace'}
+                );
+                // 根据 n 的值选择不同的根号显示方式
+                switch (result.n) {
+                    case '2':
+                        HtmlTools.appendDOMs(content40, ['_print_4_sqrt_']); // 平方根图标
+                        break;
+                    case '3':
+                        HtmlTools.appendDOMs(content40, ['_cbrt_ch_']); // 立方根图标
+                        break;
+                    default:
+                        // n 次方根图标
+                        HtmlTools.appendDOMs(
+                            content40,
+                            ['_space_', ...HtmlTools.textToHtmlClass(result.n), '_space_', '_print_4_root_']
+                        );
+                        break;
+                }
+
+                // --- 渲染通项公式 ---
+                // 格式: z_k = formula, k in [0, n-1] ∩ Z
+                HtmlTools.appendDOMs(
+                    content41,
+                    ['_z_mathit_', '_underline_', '_k_mathit_', '_space_', '_equal_', '_space_'],
+                    {mode: 'replace'}
+                );
+                HtmlTools.appendDOMs(content41, HtmlTools.textToHtmlClass(result.formula));
+                // 添加 k 的取值范围说明
+                if (result.kRange[0] === result.kRange[1]) {
+                    HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_curlyBraces_left_',
+                        ...HtmlTools.textToHtmlClass(result.kRange[0]),
+                        '_curlyBraces_right_'
+                    ]);
+                } else {
+                    HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_bracket_left_',
+                        ...HtmlTools.textToHtmlClass(result.kRange[0]),
+                        '_comma_',
+                        ...HtmlTools.textToHtmlClass(result.kRange[1]),
+                        '_bracket_right_',
+                        '_cap_',
+                        '_Z_mathbb_'
+                    ]);
+                }
+
+                // --- 渲染数值解列表 ---
+                this._mode34MultipleLinesOutput(
+                    content42,
+                    result.numericalResults,
+                    indexingNumericalResults,
+                    true // 需要传递索引 i
+                );
+            } catch {
+                // 错误处理：如果计算失败，将所有相关区域显示为错误状态
+                HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
+                HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
+                this._mode34MultipleLinesOutput(
+                    content42,
+                    [['_error_']],
+                    HtmlTools.appendDOMs
+                );
+                HtmlTools.getHtml('#print_omit').classList.add('NoDisplay');
+            }
+        }
+
+        /**
          * @static
          * @method exe
          * @async
@@ -2824,6 +3152,12 @@
                     break;
                 case '2_1':
                     await this._exeMode2();
+                    break;
+                case '3':
+                    await this._exeMode3();
+                    break;
+                case '4':
+                    await this._exeMode4();
                     break;
             }
 
