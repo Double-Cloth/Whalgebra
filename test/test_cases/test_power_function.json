@@ -176,7 +176,7 @@
       "equation": "3[x]^3+2.2[x]^2+[x]-10",
       "range": [
         "-inf",
-        "inf"
+        "+inf"
       ],
       "increasingInterval": [
         [
@@ -307,7 +307,7 @@
       "equation": "-8.1[x]-1",
       "range": [
         "-inf",
-        "inf"
+        "+inf"
       ],
       "decreasingInterval": [
         [

@@ -1680,7 +1680,7 @@
                 // 步骤 3: 如果牛顿法收敛过慢，则使用 ln/exp 方法作为备用。
                 // 公式: √x = x^0.5 = e^(0.5 * ln(x))
                 if (i === max) {
-                    console.warn('[MathPlus] Square root calculation takes too long.');
+                    console.warn(`[MathPlus] Square root (${x.toString()}) calculation takes too long.`);
                     result = MathPlus.exp(
                         MathPlus.times(MathPlus.ln(absInput), new ComplexNumber([-1, 5n, acc]))
                     );
@@ -1743,7 +1743,6 @@
                 // 步骤 2: 进行迭代
                 // 采用牛顿迭代法的立方根特化公式
                 // x_(n+1) = (2x_n + x / x_n^2) / 3
-
                 let i = 0;
                 const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
                 const minPower = -2 * acc - 1; // 收敛阈值
@@ -1769,7 +1768,7 @@
 
                 // 步骤 3: 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
                 if (i === max) {
-                    console.warn('[MathPlus] Cube root calculation takes too long.');
+                    console.warn(`[MathPlus] Cube root (${x.toString()}) calculation takes too long.`);
                     return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
                 }
 
@@ -3125,7 +3124,7 @@
          * @description 解析并计算一个字符串形式的数学表达式。
          * 这是一个强大的解析器，支持高精度实数、复数、变量以及大量数学函数。
          * 它使用了调度场算法（Shunting-yard algorithm）的变体来处理运算符优先级和结合性。
-         * @param {string} expr - 要计算的数学表达式字符串。
+         * @param {string|number|BigInt|ComplexNumber|BigNumber} expr - 要计算的数学表达式字符串。
          * @param {object} [options={}] - 可选参数对象。
          * @param {string|number|BigInt|ComplexNumber|BigNumber} [options.unknown] - 变量 'x' 的值。
          * @param {string} [options.f] - 自定义函数 'f(x)' 的表达式字符串。
@@ -3133,9 +3132,9 @@
          * @param {string} [options.mode='calc'] - 操作模式。
          * - 'calc': (默认) 解析并计算表达式，返回数值结果。
          * - 'syntaxCheck': 仅解析和格式化表达式以检查语法，不执行计算。这对于快速验证表达式有效性很有用。
-         * @returns {Array<ComplexNumber|string>} 一个包含两个元素的数组：
+         * @returns {Array<ComplexNumber|string|number|BigInt|ComplexNumber|BigNumber>} 一个包含两个元素的数组：
          * - [0]: 计算结果。在 'calc' 模式下，这是一个 ComplexNumber 实例；在 'syntaxCheck' 模式下，这是一个代表 0 的 ComplexNumber 实例。
-         * - [1]: 格式化和美化后的表达式字符串。
+         * - [1]: 格式化和美化后的表达式字符串或原始输入。
          * @throws {Error} 如果表达式包含语法错误、非法字符或计算错误（如除以零）。
          */
         static calc(expr, {unknown, f, g, mode = 'calc', acc = CalcConfig.globalCalcAccuracy} = {}) {
@@ -3292,13 +3291,22 @@
                 }
             }
 
+            // 类型检查
+            const inputType = Public.typeOf(expr);
+            if (['number', 'bigint', 'complexnumber', 'bignumber'].includes(inputType)) {
+                return [new ComplexNumber(expr), expr];
+            }
+            if (inputType !== 'string') {
+                throw new Error('[MathPlus] Disallowed input type.');
+            }
+
             // --- 初始验证和准备 --- //
             if (expr === '') { // 输入为空则抛出错误。
                 throw new Error('[MathPlus] syntax error: Input is empty.');
             }
 
             // 标准化字符串。
-            expr = expr.replaceAll('**', '^').replace(/\s/g, '');
+            expr = expr.replaceAll('[cdot]', '').replaceAll('**', '^').replace(/\s/g, '');
 
             // 对字符串进行分词。
             let [output, input] = [[], Public.tokenizer(expr, {baseNumberMode: 'together'})];
@@ -4464,10 +4472,10 @@
                 throw new Error('[StatisticsTools] Data mismatch.');
             }
             for (let i = 0; i < listA.length; i++) {
-                if (typeof listA === 'string') {
+                if (typeof listA[i] === 'string') {
                     listA[i] = MathPlus.calc(listA[i])[0];
                 }
-                if (typeof listB === 'string') {
+                if (typeof listB[i] === 'string') {
                     listB[i] = MathPlus.calc(listB[i])[0];
                 }
             }
@@ -5428,11 +5436,11 @@
         static powerFunctionAnalysis(list) {
             const result = {};
             // 从列表中提取多项式系数 a, b, c, d, e，并确保它们是 BigNumber 实例的实部。
-            const inputA = Public.zeroCorrect(list[0]),
-                inputB = Public.zeroCorrect(list[1]),
-                inputC = Public.zeroCorrect(list[2]),
-                inputD = Public.zeroCorrect(list[3]),
-                inputE = Public.zeroCorrect(list[4]);
+            const inputA = Public.zeroCorrect(MathPlus.calc(list[0])[0]),
+                inputB = Public.zeroCorrect(MathPlus.calc(list[1])[0]),
+                inputC = Public.zeroCorrect(MathPlus.calc(list[2])[0]),
+                inputD = Public.zeroCorrect(MathPlus.calc(list[3])[0]),
+                inputE = Public.zeroCorrect(MathPlus.calc(list[4])[0]);
             if (!inputA.onlyReal || !inputB.onlyReal || !inputC.onlyReal || !inputD.onlyReal || !inputE.onlyReal) {
                 throw new Error('[PowerFunctionTools] Complex number appear in the input.');
             }
@@ -5508,7 +5516,7 @@
                 const diff1Roots = PowerFunctionTools._solveX2(diff1);
                 const diff2 = PowerFunctionTools._differentiate(diff1);
                 const diff2Roots = PowerFunctionTools._solveX1(diff2);
-                result.range = ['-inf', 'inf'];
+                result.range = ['-inf', '+inf'];
                 // --- 分析单调性和极值 ---
                 if ([1, 3].includes(diff1Roots.length)) {
                     result[b.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
@@ -5560,7 +5568,7 @@
             } else if (d.mantissa !== 0n) {
                 list = [d, e];
                 // --- 情况 4: 一次函数 (a = b = c = 0, d ≠ 0) ---
-                result.range = ['-inf', 'inf'];
+                result.range = ['-inf', '+inf'];
                 result[d.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
                 result[d.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['null', 'null']];
                 result.maximumPoint = [['null', 'null']];
@@ -5669,17 +5677,20 @@
          * 结果包括通项公式、k 的取值范围以及前几个数值解。
          * @param {ComplexNumber|string|number} z - 需要开方的复数（被开方数）。
          * @param {ComplexNumber|string|number} n - 根指数，必须是一个正整数。
-         * @returns {{formula: string, kRange: [string, string], numericalResults: Array<string>}}
+         * @returns {{z:string, n:string, formula: string, kRange: [string, string], numericalResults: Array<string>, overflow:boolean}}
          * 一个包含分析结果的对象：
+         * - `z`: 输入的 z。
+         * - `n`: 输入的 n。
          * - `formula`: 根的通项公式字符串。
          * - `kRange`: 整数 k 的取值范围，格式为 `['0', 'n-1']`。
          * - `numericalResults`: 一个字符串数组，包含从 k=0 开始的数值解，最多显示 `RADICAL_FUNCTION_MAX_SHOW_RESULTS` 个。
+         * - `overflow`: 结果数是否超出允许范围。
          * @throws {Error} 如果根指数 n 不是一个正整数。
          */
         static radicalFunctionAnalysis(z, n) {
             // 将 z,n 转换为 ComplexNumber 实例。
-            z = Public.zeroCorrect(z);
-            n = Public.integerCorrect(Public.zeroCorrect(n));
+            z = Public.zeroCorrect(MathPlus.calc(z)[0]);
+            n = Public.integerCorrect(Public.zeroCorrect(MathPlus.calc(n)[0]));
             // 验证 n 是否为正整数。
             if (!n.onlyReal || n.re.power < 0 || n.re.mantissa <= 0n) {
                 throw new Error('[radicalFunctionTools] n can only be a positive integer.');
@@ -5687,6 +5698,8 @@
 
             // 初始化结果对象。
             const result = {};
+            result.z = Public.idealizationToString(z);
+            result.n = Public.idealizationToString(n);
             // 调用内部方法获取通项公式和计算函数。
             const innerResult = RadicalFunctionTools._generalFormula(z, n);
             result.formula = innerResult[0];
@@ -5697,9 +5710,11 @@
             // 如果 n 大于预设的最大显示数量，则只显示 RADICAL_FUNCTION_MAX_SHOW_RESULTS 个。
             if (MathPlus.minus(n, CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS).re.mantissa > 0n) {
                 count = CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS;
+                result.overflow = true;
             } else {
                 // 否则，显示所有 n 个解。
                 count = n;
+                result.overflow = false;
             }
             // 使用 functionValueList 计算从 k=0 到 count-1 的所有根的数值。
             result.numericalResults = Public.idealizationToString(
