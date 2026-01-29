@@ -3081,10 +3081,7 @@
                 HtmlTools.appendDOMs(content41, HtmlTools.textToHtmlClass(result.formula));
                 // 添加 k 的取值范围说明
                 if (result.kRange[0] === result.kRange[1]) {
-                    HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_curlyBraces_left_',
-                        ...HtmlTools.textToHtmlClass(result.kRange[0]),
-                        '_curlyBraces_right_'
-                    ]);
+                    HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_curlyBraces_left_', '_0_', '_curlyBraces_right_']);
                 } else {
                     HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_bracket_left_',
                         ...HtmlTools.textToHtmlClass(result.kRange[0]),
@@ -3290,10 +3287,13 @@
          * @returns {void}
          */
         static headChangeExplain(mode) {
+            const showOrNot = mode === undefined ? 'toggle' : mode;
             // 根据 mode 参数，切换或设置 #explain 元素的 'ExplainNotShow' 类，从而控制说明面板的显示/隐藏。
-            HtmlTools.getHtml('#explain').classList[mode === undefined ? 'toggle' : mode]('ExplainNotShow');
+            HtmlTools.getHtml('#explain').classList[showOrNot]('ExplainNotShow');
+            // 根据 mode 参数，切换或设置 #head_explain 元素的 'ExplainNotShow' 类，从而控制说明面板的显示/隐藏。
+            HtmlTools.getHtml('#head_explain').classList[showOrNot]('ExplainNotShow');
             // 同样地，切换或设置 #main_cover 元素的 'NoDisplay' 类，以同步显示/隐藏主遮罩层。
-            HtmlTools.getHtml('#main_cover').classList[mode === undefined ? 'toggle' : mode]('NoDisplay');
+            HtmlTools.getHtml('#main_cover').classList[showOrNot]('NoDisplay');
         }
 
         /**
