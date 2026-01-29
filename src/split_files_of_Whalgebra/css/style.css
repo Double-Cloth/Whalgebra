@@ -212,6 +212,14 @@ p {
     margin-left: 0.6dvw;
 }
 
+#head_explain > p {
+    transition: all 0.27s ease;
+}
+
+#head_explain:not(.ExplainNotShow) > p {
+    transform: scale(0.82);
+}
+
 ._ship_.ShipLeft {
     left: 100dvw;
     transform: scaleX(-1);
@@ -914,9 +922,9 @@ p {
 
 #load {
     /* 局部定义变量 */
-    width: 40dvw;
+    width: max(40dvw, 60dvmin);
 
-    height: calc(18dvh + 25dvmin);
+    height: calc(min(10dvmin, 7dvh) + 36dvmin + 2dvh);
     border-radius: 3dvmin;
     /* 启用背景色，使用定义的局部变量 */
     background-color: hsla(var(--hue), 10%, 90%, 0.8);
@@ -934,10 +942,12 @@ p {
 
 #loading {
     width: 30dvw;
-    height: 8dvh;
+    height: 9dvmin;
 }
 
 #load_cancel {
+    width: 60% !important;
+    height: min(10dvmin, 7dvh) !important;
     margin-top: 1dvh !important;
     background-color: rgb(240, 100, 100) !important;
 }
@@ -1615,22 +1625,22 @@ p {
     position: absolute;
     z-index: 4;
     overflow: hidden;
-    width: 85dvw;
-    height: 75dvh;
+    width: min(90dvw, 100dvmin);
+    height: 80dvh;
     transition: all 0.5s ease;
     border-radius: 4dvmin;
 }
 
-.ExplainNotShow {
-    top: -34.25dvh;
-    left: 54dvw;
+#explain.ExplainNotShow {
+    top: -36.75dvh;
+    left: calc(96.5dvw - min(45dvw, 50dvmin));
     transform: scale(0);
     opacity: 0.86;
 }
 
 #explain:not(.ExplainNotShow) {
-    top: 12.5dvh;
-    left: 7.5dvw;
+    top: 10dvh;
+    left: calc(50dvw - min(45dvw, 50dvmin));
     background-color: rgba(253, 248, 239, 0.78);
     box-shadow: 0 0 2dvmin 1dvmin rgb(211, 211, 211);
     backdrop-filter: blur(6px);
@@ -1642,7 +1652,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: left;
-    width: 85dvw;
+    width: min(90dvw, 100dvmin);
     height: 7dvh;
 }
 
@@ -1650,7 +1660,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 77dvw;
+    width: calc(min(90dvw, 100dvmin) - 8dvw);
     height: 7dvh;
 }
 
@@ -1686,8 +1696,12 @@ p {
 /* explain_content 部分 */
 
 #explain_content {
-    width: 85dvw;
-    height: 68dvh;
+    width: min(90dvw, 100dvmin);
+    height: 73dvh;
     padding-top: 1dvmin;
     border-top: 0.5dvmin dashed rgb(188, 188, 188);
+}
+
+#explain_content > p {
+    margin: auto;
 }
