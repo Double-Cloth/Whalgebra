@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-28 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-1-30 -->
     <meta charset="UTF-8"/>
     <meta content="IE=edge, chrome=1" http-equiv="X-UA-Compatible"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
@@ -13041,21 +13041,50 @@
                 /**
                  * @private
                  * @static
-                 * @method _outputHandleError
+                 * @method _printHandleError
                  * @description 处理输出字符串，将其转换为用于显示的 HTML 类名数组。
                  * 如果输入是错误标识 'error'，则返回特定的错误类名 ['_error_']；
                  * 否则，调用 HtmlTools.textToHtmlClass 将字符串转换为对应的类名数组。
                  * @param {string} str - 需要处理的字符串，通常是计算结果或 'error'。
                  * @returns {string[]} 一个包含 CSS 类名的字符串数组。
                  */
-                static _outputHandleError(str) {
-                    // 默认返回错误样式的类名数组
-                    let output = ['_error_'];
+                static _printHandleError(str) {
                     // 如果输入字符串不是 'error'，则进行正常的文本到类名的转换
                     if (str !== 'error') {
-                        output = HtmlTools.textToHtmlClass(str);
+                        return HtmlTools.textToHtmlClass(str);
                     }
-                    return output;
+                    return ['_error_'];
+                }
+
+                /**
+                 * @private
+                 * @static
+                 * @description (内部辅助) 批量渲染列表数据到目标容器，利用 DocumentFragment 优化性能。
+                 *
+                 * @param {HTMLElement} outputTarget - 目标容器
+                 * @param {Array<any>} list - 数据源列表
+                 * @param {(container: HTMLElement, item: any, index?: number) => void} toDomFunc - 渲染回调函数
+                 * @param {boolean} [needIndex=false] - 是否改变回调参数签名
+                 * @returns {void}
+                 */
+                static _multipleLinesPrint(outputTarget, list, toDomFunc, needIndex = false) {
+                    // 创建一个文档片段，用于暂存所有新创建的行，避免频繁触发重排/重绘
+                    const fragment = document.createDocumentFragment();
+                    // 遍历数据列表
+                    for (let i = 0; i < list.length; i++) {
+                        // 为每一项数据创建一个新的 div 容器
+                        const div = document.createElement('div');
+                        if (list[i].includes('error') || list[i].includes('_error_')) {
+                            HtmlTools.appendDOMs(div, ['_error_']);
+                        } else {
+                            // 调用传入的回调函数，将数据转换为 DOM 元素并添加到 div 中
+                            needIndex ? toDomFunc(div, list[i], i) : toDomFunc(div, list[i]);
+                        }
+                        // 将填充好的 div 添加到文档片段中
+                        fragment.appendChild(div);
+                    }
+                    // 一次性清空目标容器并插入所有新行
+                    outputTarget.replaceChildren(fragment);
                 }
 
                 /**
@@ -13144,35 +13173,8 @@
                     PageControlTools.changePrint1Ra(modelToId(resultList.bestModel), 'init');
                     // 3. 遍历映射表，将所有基础统计数据渲染到对应的 DOM 元素中
                     Object.entries(resultsToOutputArea).forEach(([key, value]) => {
-                        HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._outputHandleError(resultList[key]), {mode: 'replace'});
+                        HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._printHandleError(resultList[key]), {mode: 'replace'});
                     });
-                }
-
-                /**
-                 * @private
-                 * @static
-                 * @description (内部辅助) 批量渲染列表数据到目标容器，利用 DocumentFragment 优化性能。
-                 *
-                 * @param {HTMLElement} outputTarget - 目标容器
-                 * @param {Array<any>} list - 数据源列表
-                 * @param {(container: HTMLElement, item: any, index?: number) => void} toDomFunc - 渲染回调函数
-                 * @param {boolean} [needIndex=false] - 是否改变回调参数签名
-                 * @returns {void}
-                 */
-                static _mode34MultipleLinesOutput(outputTarget, list, toDomFunc, needIndex = false) {
-                    // 创建一个文档片段，用于暂存所有新创建的行，避免频繁触发重排/重绘
-                    const fragment = document.createDocumentFragment();
-                    // 遍历数据列表
-                    for (let i = 0; i < list.length; i++) {
-                        // 为每一项数据创建一个新的 div 容器
-                        const div = document.createElement('div');
-                        // 调用传入的回调函数，将数据转换为 DOM 元素并添加到 div 中
-                        needIndex ? toDomFunc(div, list[i], i) : toDomFunc(div, list[i]);
-                        // 将填充好的 div 添加到文档片段中
-                        fragment.appendChild(div);
-                    }
-                    // 一次性清空目标容器并插入所有新行
-                    outputTarget.replaceChildren(fragment);
                 }
 
                 /**
@@ -13191,7 +13193,7 @@
                  *   - 如果是字符串 'error'，表示计算出错。
                  * @param {string} [RaList.model] - (当为对象时) 回归模型名称。
                  * @param {string} [RaList.R2] - (当为对象时) 可决系数 R²。
-                 * @param {string} [RaList.parameter] - (当为对象时) 回归模型参数列表。
+                 * @param {Array<string>} [RaList.parameter] - (当为对象时) 回归模型参数列表。
                  * @param {string} [RaList.regressionEquation] - (当为对象时) 回归模型计算结果。
                  * @returns {void}
                  */
@@ -13201,7 +13203,7 @@
 
                     // --- 错误处理 ---
                     // 如果输入是 'error'，则在系数显示区和 R² 显示区都显示错误图标
-                    if (RaList === 'error') {
+                    if ([RaList, RaList.regressionEquation].includes('error')) {
                         const element = document.createElement('div');
                         HtmlTools.appendDOMs(element, ['_error_']);
                         content0.replaceChildren(element);
@@ -13211,37 +13213,23 @@
 
                     // --- 更新 R² 显示 ---
                     // 将 R² 的值转换为 HTML 类名并显示在对应区域
-                    HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._outputHandleError(RaList.R2), {mode: 'replace'});
+                    HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._printHandleError(RaList.R2), {mode: 'replace'});
 
                     const parameter = RaList.parameter;
 
-                    // 再次检查回归方程是否标记为错误（可能是参数计算失败）
-                    if (RaList.regressionEquation === 'error') {
-                        this.setMode1RaResults('error');
-                        return;
-                    }
-
                     // --- 构建系数显示列表 ---
-                    const fragment = document.createDocumentFragment();
-
-                    // 对于线性 (y=ax+b) 和二次 (y=ax^2+bx+c) 回归，内部计算的系数顺序可能与显示习惯相反
+                    // 对于线性 (y=ax+b) 和二次 (y=ax^2+bx+c) 回归，内部计算的系数顺序与显示习惯相反
                     // 这里进行反转以匹配习惯（例如内部可能是 [b, a]，显示需要 a, b）
                     if (['linear', 'square'].includes(RaList.model)) {
                         parameter.reverse();
                     }
 
-                    // 遍历系数数组，为每个系数创建显示行
-                    // 假设系数分别对应 a, b, c...
-                    for (let i = 0; i < parameter.length; i++) {
-                        const element = document.createElement('div');
-                        // 构建显示内容：变量名 (a/b/c) + 等号 + 数值
-                        // i=0 -> a, i=1 -> b, i=2 -> c
-                        HtmlTools.appendDOMs(element, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(parameter[i])]);
-                        fragment.appendChild(element);
-                    }
-
-                    // 一次性更新系数显示区域的内容
-                    content0.replaceChildren(fragment);
+                    this._multipleLinesPrint(
+                        content0,
+                        parameter,
+                        (div, str, i) => HtmlTools.appendDOMs(div, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(str)]),
+                        true
+                    );
                 }
 
                 /**
@@ -13567,8 +13555,7 @@
                                 const subWrapper = document.createElement('div');
                                 const subContent = document.createElement('div');
                                 // 如果计算结果为 'error'，则显示错误图标，否则将数值转换为 HTML 类。
-                                const content = (data === 'error') ? ['_error_'] : HtmlTools.textToHtmlClass(data);
-                                HtmlTools.appendDOMs(subContent, content);
+                                HtmlTools.appendDOMs(subContent, this._printHandleError(data));
                                 // 组装单元格结构。
                                 subWrapper.appendChild(subContent);
                                 currentDiv.appendChild(subWrapper);
@@ -13611,6 +13598,10 @@
                      *   对于无穷大 `inf`，通常保持开区间（圆括号）。
                      */
                     const powerFunctionTextToHtml = (target, textList, useBracket = false) => {
+                        if (textList.includes('error')) {
+                            HtmlTools.appendDOMs(target, ['error']);
+                            return;
+                        }
                         // 处理空结果
                         if (textList[0] === 'null') {
                             HtmlTools.appendDOMs(target, ['_null_'], {mode: 'replace'});
@@ -13718,7 +13709,9 @@
                                     // 渲染函数方程: y = f(x) = ...
                                     HtmlTools.appendDOMs(
                                         HtmlTools.getHtml('#print_content_3_content_0'),
-                                        ['_y_mathit_', '_equal_', '_f_', '_parentheses_left_', '_x_mathit_', '_parentheses_right_', '_equal_', ...HtmlTools.textToHtmlClass(result.equation)],
+                                        result.equation === 'error' ?
+                                            ['_error_'] :
+                                            ['_y_mathit_', '_equal_', '_f_', '_parentheses_left_', '_x_mathit_', '_parentheses_right_', '_equal_', ...HtmlTools.textToHtmlClass(result.equation)],
                                         {mode: 'replace'}
                                     );
                                     break;
@@ -13730,7 +13723,7 @@
                                 case 9:
                                     // 渲染根 (Roots)
                                     // 根是单个数列表，不是区间，使用特殊渲染方法
-                                    this._mode34MultipleLinesOutput(
+                                    this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
                                         result[outputList[i]],
                                         powerFunctionRootToHtml
@@ -13738,7 +13731,7 @@
                                     break;
                                 default:
                                     // 渲染区间或点 (单调性、极值、凹凸性、拐点)
-                                    this._mode34MultipleLinesOutput(
+                                    this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
                                         result[outputList[i]],
                                         powerFunctionTextToHtml
@@ -13757,9 +13750,9 @@
                                     break;
                                 default:
                                     // 多行显示区域渲染一个包含错误图标的行
-                                    this._mode34MultipleLinesOutput(
+                                    this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
-                                        [['_error_']],
+                                        [['error']],
                                         HtmlTools.appendDOMs
                                     );
                                     break;
@@ -13812,69 +13805,76 @@
                         // 调用 Worker 进行分析
                         const result = await WorkerTools.radicalFunctionAnalysis(z, n);
 
-                        // 处理结果溢出提示（如果解的数量过多，显示省略号）
-                        HtmlTools.getHtml('#print_omit').classList[result.overflow ? 'remove' : 'add']('NoDisplay');
-
-                        // --- 渲染原表达式 ---
-                        // 格式: z 的 [n次] 方根
-                        HtmlTools.appendDOMs(
-                            content40,
-                            [...HtmlTools.textToHtmlClass(result.z), '_space_', '_de_'],
-                            {mode: 'replace'}
-                        );
-                        // 根据 n 的值选择不同的根号显示方式
-                        switch (result.n) {
-                            case '2':
-                                HtmlTools.appendDOMs(content40, ['_print_4_sqrt_']); // 平方根图标
-                                break;
-                            case '3':
-                                HtmlTools.appendDOMs(content40, ['_cbrt_ch_']); // 立方根图标
-                                break;
-                            default:
-                                // n 次方根图标
-                                HtmlTools.appendDOMs(
-                                    content40,
-                                    ['_space_', ...HtmlTools.textToHtmlClass(result.n), '_space_', '_print_4_root_']
-                                );
-                                break;
+                        if ([result.z, result.n].includes('error')) {
+                            HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
+                        } else {
+                            // --- 渲染原表达式 ---
+                            // 格式: z 的 [n次] 方根
+                            HtmlTools.appendDOMs(
+                                content40,
+                                [...HtmlTools.textToHtmlClass(result.z), '_space_', '_de_'],
+                                {mode: 'replace'}
+                            );
+                            // 根据 n 的值选择不同的根号显示方式
+                            switch (result.n) {
+                                case '2':
+                                    HtmlTools.appendDOMs(content40, ['_print_4_sqrt_']); // 平方根图标
+                                    break;
+                                case '3':
+                                    HtmlTools.appendDOMs(content40, ['_cbrt_ch_']); // 立方根图标
+                                    break;
+                                default:
+                                    // n 次方根图标
+                                    HtmlTools.appendDOMs(
+                                        content40,
+                                        ['_space_', ...HtmlTools.textToHtmlClass(result.n), '_space_', '_print_4_root_']
+                                    );
+                                    break;
+                            }
                         }
 
-                        // --- 渲染通项公式 ---
-                        // 格式: z_k = formula, k in [0, n-1] ∩ Z
-                        HtmlTools.appendDOMs(
-                            content41,
-                            ['_z_mathit_', '_underline_', '_k_mathit_', '_space_', '_equal_', '_space_'],
-                            {mode: 'replace'}
-                        );
-                        HtmlTools.appendDOMs(content41, HtmlTools.textToHtmlClass(result.formula));
-                        // 添加 k 的取值范围说明
-                        if (result.kRange[0] === result.kRange[1]) {
-                            HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_curlyBraces_left_', '_0_', '_curlyBraces_right_']);
+                        if (result.kRange.includes('error') || result.formula === 'error') {
+                            HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
                         } else {
-                            HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_bracket_left_',
-                                ...HtmlTools.textToHtmlClass(result.kRange[0]),
-                                '_comma_',
-                                ...HtmlTools.textToHtmlClass(result.kRange[1]),
-                                '_bracket_right_',
-                                '_cap_',
-                                '_Z_mathbb_'
-                            ]);
+                            // --- 渲染通项公式 ---
+                            // 格式: z_k = formula, k in [0, n-1] ∩ Z
+                            HtmlTools.appendDOMs(
+                                content41,
+                                ['_z_mathit_', '_underline_', '_k_mathit_', '_space_', '_equal_', '_space_'],
+                                {mode: 'replace'}
+                            );
+                            HtmlTools.appendDOMs(content41, HtmlTools.textToHtmlClass(result.formula));
+                            // 添加 k 的取值范围说明
+                            if (result.kRange[0] === result.kRange[1]) {
+                                HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_curlyBraces_left_', '_0_', '_curlyBraces_right_']);
+                            } else {
+                                HtmlTools.appendDOMs(content41, ['_comma_', '_k_mathit_', '_in_', '_bracket_left_',
+                                    ...HtmlTools.textToHtmlClass(result.kRange[0]),
+                                    '_comma_',
+                                    ...HtmlTools.textToHtmlClass(result.kRange[1]),
+                                    '_bracket_right_',
+                                    '_cap_',
+                                    '_Z_mathbb_'
+                                ]);
+                            }
                         }
 
                         // --- 渲染数值解列表 ---
-                        this._mode34MultipleLinesOutput(
+                        this._multipleLinesPrint(
                             content42,
                             result.numericalResults,
                             indexingNumericalResults,
                             true // 需要传递索引 i
                         );
+                        // 处理结果溢出提示（如果解的数量过多，显示省略号）
+                        HtmlTools.getHtml('#print_omit').classList[result.overflow ? 'remove' : 'add']('NoDisplay');
                     } catch {
                         // 错误处理：如果计算失败，将所有相关区域显示为错误状态
                         HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
                         HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
-                        this._mode34MultipleLinesOutput(
+                        this._multipleLinesPrint(
                             content42,
-                            [['_error_']],
+                            [['error']],
                             HtmlTools.appendDOMs
                         );
                         HtmlTools.getHtml('#print_omit').classList.add('NoDisplay');
