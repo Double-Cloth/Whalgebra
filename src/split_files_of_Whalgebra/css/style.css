@@ -79,7 +79,7 @@ p {
 
 .Paragraph,
 .Screen234 > div > div,
-.ForPrintContent3And4 > div,
+.MultipleLines > div,
 #print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
 #print_content_1_choose > div,
 #print_content_1_content_2_control > div,
@@ -88,6 +88,7 @@ p {
 #print_content_2_head > div,
 #print_content_2_inner > div > div > div,
 #grid_data > div div,
+#explain_content > div:not(.Lines),
 :where(#keyboard_main, #sub_keyboard > div) > div {
     display: flex;
     align-items: center;
@@ -110,7 +111,7 @@ p {
     #grid_data > div div,
     .Screen234 > div > div,
     #print_content > div > div,
-    .ForPrintContent3And4 > div,
+    .MultipleLines > div,
     #print_content_2_inner > div > div > div
 ) > p:last-child {
     margin-right: 0.45dvmin;
@@ -924,7 +925,7 @@ p {
     /* 局部定义变量 */
     width: max(40dvw, 60dvmin);
 
-    height: calc(min(10dvmin, 7dvh) + 36dvmin + 2dvh);
+    height: calc(min(11dvmin, 7dvh) + 36dvmin + 2dvh);
     border-radius: 3dvmin;
     /* 启用背景色，使用定义的局部变量 */
     background-color: hsla(var(--hue), 10%, 90%, 0.8);
@@ -947,7 +948,6 @@ p {
 
 #load_cancel {
     width: 60% !important;
-    height: min(10dvmin, 7dvh) !important;
     margin-top: 1dvh !important;
     background-color: rgb(240, 100, 100) !important;
 }
@@ -1061,9 +1061,9 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 25dvw;
-    height: 7dvh;
-    margin: auto;
+    width: max(25dvw, 35dvmin);
+    height: min(11dvmin, 7dvh);
+    margin: 0.5dvh auto auto;
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
     background-color: rgba(105, 145, 105, 0.8);
@@ -1088,13 +1088,13 @@ p {
 
 #print_content {
     width: 99dvw;
-    height: 86.5dvh;
+    height: calc(92.5dvh - min(11dvmin, 7dvh));
     margin-left: 1dvw;
 }
 
 #print_content > div {
     width: 99dvw;
-    height: 86dvh;
+    height: calc(92.5dvh - min(11dvmin, 7dvh));
 }
 
 #print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
@@ -1103,7 +1103,16 @@ p {
     align-items: center;
     justify-content: left;
     width: 98dvw;
-    height: max(7dvh, 8dvmin);
+    height: min(7.5dvh, 9dvmin);
+}
+
+.MultipleLines {
+    width: 98dvw;
+}
+
+.MultipleLines > div {
+    width: max-content;
+    height: min(7.5dvh, 9dvmin);
 }
 
 #print_content > div:not(.NotPrintDefault) > div > p:first-child,
@@ -1135,21 +1144,21 @@ p {
 }
 
 #print_content_1_choose {
-    width: max(100dvmin, 80dvw);
-    height: 68dvh;
-    padding-top: 2dvh;
+    width: max(99dvmin, 80dvw);
+    height: calc(min(60dvh, 103dvmin) + min(8dvh, 12dvmin));
+    padding-top: 2dvmin;
     background-color: rgba(245, 245, 245, 0.75);
     backdrop-filter: blur(7px);
     box-shadow: inset 0 0 2dvmin 1dvmin rgb(188, 188, 188);
     border-radius: 2.5dvmin 2.5dvmin 0 0;
     position: absolute;
-    left: min(calc((100dvw - 100dvmin) / 2), 10dvw);
+    left: min(calc(50dvw - 49.5dvmin), 10dvw);
     z-index: 2;
     transition: all 0.3s ease;
     display: grid;
     grid-gap: 0;
-    grid-template-columns: max(100dvmin, 80dvw);
-    grid-template-rows: repeat(8, 8dvh);
+    grid-template-columns: max(99dvmin, 80dvw);
+    grid-template-rows: min(8dvh, 12dvmin) repeat(7, min(14dvmin, 8dvh));
 }
 
 #print_content_1_choose.PrintContent1ChooseOff {
@@ -1157,12 +1166,12 @@ p {
 }
 
 #print_content_1_choose:not(.PrintContent1ChooseOff) {
-    top: 32dvh;
+    top: calc(100dvh - calc(min(60dvh, 103dvmin) + min(8dvh, 12dvmin)));
 }
 
 #print_content_1_choose div {
     width: max(85dvmin, 68dvw);
-    height: 7dvh;
+    height: min(12dvmin, 7dvh);
     margin: auto;
     border-radius: 2.5dvmin;
     display: flex;
@@ -1200,6 +1209,7 @@ p {
 }
 
 #print_1_0_choose {
+    height: min(8dvh, 11dvmin) !important;
     border-radius: 2dvmin;
     background-image: linear-gradient(to right, rgba(211, 211, 211, 0.8), transparent);
     transition: all 0.23s ease;
@@ -1215,30 +1225,19 @@ p {
     box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(250, 250, 250);
 }
 
-#print_content_1_content_0,
-.ForPrintContent3And4 {
-    width: 98dvw;
-}
-
-#print_content_1_content_0 > div,
-.ForPrintContent3And4 > div {
-    width: max-content;
-    height: max(7dvh, 8dvmin);
-}
-
 #export {
     width: 98dvw;
-    height: 10dvh;
+    height: min(13dvmin, 10dvh);
     border-bottom: 0.5dvmin solid rgb(188, 188, 188);
     display: grid;
     grid-gap: 0;
     grid-template-columns: repeat(2, 49dvw);
-    grid-template-rows: 9.5dvh;
+    grid-template-rows: min(12.5dvmin, 9.5dvh);
 }
 
 #export div {
     width: 45dvw;
-    height: 7dvh;
+    height: min(9.1dvmin, 7dvh);
     margin: auto;
     background-color: rgba(105, 145, 105, 0.8);
     border-radius: 3dvmin;
@@ -1267,7 +1266,7 @@ p {
 
 #print_content_2 div.Lines {
     top: 6.5dvh;
-    height: 86dvh;
+    height: calc(92.5dvh - min(11dvmin, 7dvh));
     border-radius: 100dvmax;
 }
 
@@ -1289,7 +1288,7 @@ p {
 
 #print_content_2:not(.TwoFunc) #print_grid_line_error {
     top: 7.5dvh;
-    height: 78.5dvh;
+    height: calc(85dvh - min(11dvmin, 7dvh));
     left: calc((199dvw - 0.5dvmin) / 3);
 }
 
@@ -1332,11 +1331,11 @@ p {
 
 #print_content_2_inner {
     width: 99dvw;
-    height: 79dvh;
+    height: calc(85.5dvh - min(11dvmin, 7dvh));
 }
 
 #print_content_2_inner > div {
-    grid-template-rows: max(7dvh, 8dvmin);
+    grid-template-rows: min(7.5dvh, 9dvmin);
 }
 
 #print_content_2_inner > div > div {
@@ -1345,7 +1344,7 @@ p {
 }
 
 #print_content_2_inner > div > div > div {
-    height: max(7dvh, 8dvmin);
+    height: min(7.5dvh, 9dvmin);
 }
 
 #print_content_2_inner > div:nth-child(2n+1):not(
@@ -1370,7 +1369,7 @@ p {
 
 #print_content_2_error {
     width: 100dvw;
-    height: 86dvh;
+    height: calc(92.5dvh - min(11dvmin, 7dvh));
     display: flex;
     justify-content: center;
     align-items: center;
@@ -1382,7 +1381,7 @@ p {
 
 #number_table_error {
     width: 47dvw;
-    height: 10dvh;
+    height: min(10dvh, 16dvmin);
     background-color: rgb(250, 250, 250);
     backdrop-filter: blur(5px);
     border: 0.5dvmin solid rgb(95, 158, 160);
@@ -1410,7 +1409,7 @@ p {
     z-index: 4;
     top: 6.5dvh;
     overflow: hidden;
-    width: 65dvw;
+    width: min(65dvw, 90dvmin);
     height: 93.5dvh;
     transition: all 0.3s ease;
     border-radius: 0 2.5dvmin 2.5dvmin 0;
@@ -1419,7 +1418,7 @@ p {
 }
 
 .SettingNotShow {
-    left: -65dvw;
+    left: max(-65dvw, -90dvmin);
 }
 
 #setting:not(.SettingNotShow) {
@@ -1533,12 +1532,12 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 65dvw;
+    width: min(65dvw, 90dvmin);
     height: 6dvh;
 }
 
 .SelectionOn {
-    width: 59dvw;
+    width: min(59dvw, 83dvmin);
     background-color: rgb(162, 196, 162);
     box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
 }
@@ -1546,10 +1545,10 @@ p {
 .SettingSelection {
     display: grid;
     overflow: hidden;
-    width: 65dvw;
+    width: min(65dvw, 90dvmin);
     border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
     grid-gap: 0;
-    grid-template-columns: 65dvw;
+    grid-template-columns: min(65dvw, 90dvmin);
 }
 
 .SettingSelection > div {
@@ -1563,13 +1562,13 @@ p {
 }
 
 .SettingSelection > div:not(.SelectionOn) {
-    width: 46dvw;
+    width: min(46dvw, 64.7dvmin);
     background-color: rgb(211, 211, 211);
     box-shadow: inset 0 0 1dvmin 1dvmin rgb(188, 188, 188);
 }
 
 .SettingSelection > div:not(.SelectionOn):hover {
-    width: 49dvw;
+    width: min(49dvw, 68.5dvmin);
     height: 9dvh;
     background-color: rgb(182, 192, 182);
 }
@@ -1588,7 +1587,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 65dvw;
+    width: min(65dvw, 90dvmin);
     height: calc(7.5dvh + 0.5dvmin);
     border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
     background-color: rgba(255, 255, 255, 0.9);
@@ -1601,12 +1600,12 @@ p {
 }
 
 #setting_acc_control > div:first-child {
-    width: 47dvw;
+    width: min(47dvw, 66.1dvmin);
 }
 
 #setting_acc_control > div:last-child {
     justify-content: left;
-    width: 18dvw;
+    width: min(18dvw, 23.9dvmin);
 }
 
 /* setting_info_show 部分 */
@@ -1615,7 +1614,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 65dvw;
+    width: min(65dvw, 90dvmin);
     height: calc(7.5dvh - 1.5dvmin);
 }
 
@@ -1702,6 +1701,23 @@ p {
     border-top: 0.5dvmin dashed rgb(188, 188, 188);
 }
 
-#explain_content > p {
-    margin: auto;
+#explain_content > p:not(.ExplainLeft) {
+    margin: 1dvmin auto;
+}
+
+#explain_content > p.ExplainLeft {
+    margin: 1dvmin auto 1dvmin 1.5dvmin;
+}
+
+#explain_content > div:not(.Lines) {
+    height: min(7.5dvh, 9dvmin);
+    margin: 1dvmin auto;
+    justify-content: center;
+}
+
+#explain_content > div.Lines {
+    width: min(87dvw, 97dvmin);
+    margin: 1dvmin auto;
+    position: static;
+    border-radius: 100dvmax;
 }

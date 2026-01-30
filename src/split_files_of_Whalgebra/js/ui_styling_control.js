@@ -799,7 +799,7 @@
          * @static
          * @method appendDOMs
          * @description 高效地向指定的父元素批量添加或插入子元素。
-         * @param {HTMLElement | string} parentElement - 目标父元素或其 ID 选择器。
+         * @param {HTMLElement | string | DocumentFragment} parentElement - 目标父元素或其 ID 选择器。
          * @param {string[]} nameList - 类名数组。
          * @param {object} [options={}] - 配置选项。
          * @param {HTMLElement} [options.referenceNode=null] - 明确的参照节点。
@@ -1694,6 +1694,8 @@
                             case 'right':
                                 PageConfig.subModes = {'1': [currentSubModes[0], 1 - currentSubModes[1]]};
                                 PageControlTools.syncScreenToInput();
+                                // 确保视图跟随
+                                HtmlTools.scrollToView();
                                 return;
                             case 'up':
                             case 'down':
@@ -1719,6 +1721,8 @@
                         }
                         PageConfig.subModes = {'default': nextNum.toString()};
                         PageControlTools.syncScreenToInput();
+                        // 确保视图跟随
+                        HtmlTools.scrollToView();
                         return;
                     }
                     default: {
@@ -1729,6 +1733,8 @@
                         }
                         nextNum = Number(PageConfig.subModes[currentMode]) + addNum;
                         makeValue = nextNum => nextNum.toString();
+                        // 确保视图跟随
+                        HtmlTools.scrollToView();
                         break;
                     }
                 }
@@ -1742,6 +1748,8 @@
                     PageConfig.subModes = {'default': makeValue(nextNum)};
                     PageControlTools.syncScreenToInput();
                 }
+                // 确保视图跟随
+                HtmlTools.scrollToView();
                 return;
             }
 
@@ -3667,6 +3675,146 @@
             WorkerTools.restart();
             // 3. 隐藏全屏加载遮罩层，恢复用户界面交互
             HtmlTools.getHtml('#load_cover').classList.add('NoDisplay');
+        }
+
+        /**
+         * @static
+         * @method hideExplain
+         * @description 隐藏当前的详细解释面板，并将界面恢复至默认状态。
+         * 此方法通常在鼠标移出特定符号或检测到非法输入时调用，用于重置顶部标题栏的显示状态，并将解释区域的内容恢复为基础说明信息。
+         * @returns {void}
+         */
+        static hideExplain() {
+            // 1. 切换顶部显示状态：隐藏详情输入栏，恢复显示主标题
+            HtmlTools.getHtml('#head_inputs').classList.add('NoDisplay');
+            HtmlTools.getHtml('#head_title').classList.remove('NoDisplay');
+
+            // 2. 重置解释区域的标题为默认的基础说明标题
+            HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_title_inner'), ['_basic_explain_title_'], {mode: 'replace'});
+
+            // 3. 重置解释区域的主体内容为默认的基础说明内容
+            HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_content'), ['_basic_explain_content_'], {mode: 'replace'});
+        }
+
+        /**
+         * @static
+         * @method showExplain
+         * @description 根据输入的符号信息，动态生成并显示其详细解释、优先级和结合性。
+         * 此方法负责解析输入的符号（如运算符、函数），构建包含中文含义、优先级（Priority）和结合性（Associativity）的 DOM 结构。
+         * @param {Array<string>} input - 包含符号样式类名的数组，用于识别和渲染当前选中的符号。
+         * @returns {void}
+         */
+        static showExplain(input) {
+            /**
+             * @function funcInfoShow
+             * @description 内部辅助函数：构建并追加优先级和结合性的详细信息块。
+             * 根据传入的优先级数值和结合性方向，生成对应的 DOM 结构并插入到目标容器中。
+             * @param {HTMLElement|DocumentFragment} target - 目标 DOM 容器（通常是 DocumentFragment）。
+             * @param {number} priority - 运算符的优先级数值。
+             * @param {string|null} associativity - 运算符的结合性 ('left', 'right' 或 null)。
+             */
+            function funcInfoShow(target, priority, associativity) {
+                // 1. 创建优先级显示容器并填充内容 ("Priority Level X")
+                const priorityShow = document.createElement('div');
+                HtmlTools.appendDOMs(
+                    priorityShow,
+                    ['_priority_level_', '_space_', '_L_', '_e_', '_v_', '_e_', '_l_', '_space_', ...HtmlTools.textToHtmlClass(priority.toString())]
+                );
+
+                // 2. 将优先级信息挂载到目标容器
+                target.appendChild(priorityShow);
+
+                // 3. 检查结合性：如果为空（例如部分单目运算符），则不显示结合性信息
+                if (associativity === null) {
+                    return;
+                }
+
+                // 4. 创建结合性显示容器并填充内容 ("Operator Associativity X")
+                const associativityShow = document.createElement('div');
+                HtmlTools.appendDOMs(
+                    associativityShow,
+                    ['_operator_associativity_', '_space_', `_${associativity}_associative_`]
+                );
+
+                // 5. 将结合性信息挂载到目标容器
+                target.appendChild(associativityShow);
+            }
+
+            /**
+             * @function addLine
+             * @description 内部辅助函数：向目标容器添加一条视觉分割线。
+             * 用于在 UI 上区分同一符号的不同含义（例如区分 "+" 作为加法运算符和正号）。
+             * @param {HTMLElement|DocumentFragment} target - 要追加分割线的目标容器。
+             */
+            function addLine(target) {
+                // 1. 创建分割线元素
+                const line = document.createElement('div');
+                // 2. 添加标准的分割线样式类
+                line.classList.add('Lines');
+                // 3. 将分割线追加到目标容器
+                target.appendChild(line);
+            }
+
+            // --- 主逻辑开始 ---
+
+            // 1. 获取符号的文本形式及元数据信息
+            const inputStr = HtmlTools.htmlClassToText(input);
+            const info = Public.getTokenInfo(inputStr);
+
+            // 2. 合法性检查：如果是非法符号，则隐藏解释面板并直接返回
+            if (info.class === 'illegal') {
+                this.hideExplain();
+                return;
+            }
+
+            // 3. 准备 UI 类名并切换顶部显示状态
+            const inputClassStr = inputStr.replace(/[\[\]]/g, '');
+            const chinese = `_${inputClassStr}_ch_`;
+            HtmlTools.getHtml('#head_inputs').classList.remove('NoDisplay');
+            HtmlTools.getHtml('#head_title').classList.add('NoDisplay');
+            HtmlTools.getHtml('#head_inputs').children[2].className = chinese;
+            HtmlTools.appendDOMs(
+                HtmlTools.getHtml('#explain_title_inner'),
+                [chinese, '_colon_', '_space_', ...input],
+                {mode: 'replace'}
+            );
+
+            // 4. 开始构建解释内容
+            const fragment = document.createDocumentFragment();
+            HtmlTools.appendDOMs(fragment, [`_${inputClassStr}_expl_`]);
+
+            // 5. 针对函数/运算符类型的特殊逻辑处理
+            if (info.class === 'func') {
+                addLine(fragment); // 添加第一条分割线
+                const plusAndMinusPriority = info.priority + 2;
+                const plusAndMinusAssociativity = info.associativity;
+
+                // 特殊处理 "+" 和 "-" 的多重含义
+                if (['+', '-'].includes(inputStr)) {
+                    const positiveAndNegative = Public.getTokenInfo('N');
+                    const positiveAndNegativePriority = positiveAndNegative.priority + 2;
+                    const positiveAndNegativeAssociativity = positiveAndNegative.associativity;
+
+                    // 展示作为加/减号的属性
+                    HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'plus' : 'minus'}_sign_ ExplainLeft`]);
+                    funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
+
+                    addLine(fragment); // 添加第二条分割线
+
+                    // 展示作为正/负号的属性
+                    HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'positive' : 'negative'}_sign_ ExplainLeft`]);
+                    funcInfoShow(fragment, positiveAndNegativePriority, positiveAndNegativeAssociativity);
+                } else {
+                    // 普通运算符处理
+                    funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
+                }
+            } else if (inputStr === '|') {
+                // 6. 特殊处理绝对值符号
+                funcInfoShow(fragment, 1, null);
+            }
+
+            // 7. 将构建好的文档片段渲染到页面
+            HtmlTools.getHtml('#explain_content').replaceChildren(fragment);
         }
 
         /**
