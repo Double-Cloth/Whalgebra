@@ -20,12 +20,13 @@ document.addEventListener('click', (event) => {
     const firstChildClass = target.firstElementChild?.className || '';
     const parent = target.parentNode;
     const parentID = parent?.id || '';
-
-    console.log({parentID, targetID, targetClass, firstChildClass});
+    // console.log({parentID, targetID, targetClass, firstChildClass});
 
     // --- 策略 1: 基于明确 ID 的快速分发 (Exact Matches) ---
     switch (targetID) {
         case 'head_setting':
+            // 隐藏说明
+            PageControlTools.hideExplain();
             return PageControlTools.headChangeModes();
 
         case 'head_title':
@@ -42,6 +43,8 @@ document.addEventListener('click', (event) => {
             return PageControlTools.headChangeExplain();
 
         case 'input':
+            // 隐藏说明
+            PageControlTools.hideExplain();
             if (HtmlTools.isScrolledToRight(HtmlTools.getHtml('#input'))) {
                 InputManager.moveCursor('end');
             }
@@ -87,6 +90,8 @@ document.addEventListener('click', (event) => {
             } else if (targetID === 'keyboard_top_more') {
                 showMoreFunc();
             } else {
+                // 隐藏说明
+                PageControlTools.hideExplain();
                 // 提取光标移动方向，例如 class="_cursor_left_" -> "left"
                 // 假设 class 格式固定，从索引 13 开始截取
                 const direction = firstChildClass.slice(13).toLowerCase();
@@ -100,13 +105,18 @@ document.addEventListener('click', (event) => {
 
     // 屏幕输入区切换 (screen_input_2, screen_input_3...)
     if (parentID.startsWith('screen_input_')) {
+        // 隐藏说明
+        PageControlTools.hideExplain();
         const modeIndex = parentID.slice(-1); // 获取最后一位数字
         PageConfig.subModes = {'default': modeIndex};
         PageControlTools.syncScreenToInput();
         return;
     }
 
+    // 移动鼠标
     if (parentID === 'input' && targetID === '') {
+        // 隐藏说明
+        PageControlTools.hideExplain();
         return InputManager.clickMoveCursor(target);
     }
 
@@ -128,6 +138,8 @@ document.addEventListener('click', (event) => {
 
     // 统计模式数据切换 (DataX, DataY)
     if (/Data[XY]/.test(targetClass)) {
+        // 隐藏说明
+        PageControlTools.hideExplain();
         // 获取点击元素在表格中的位置
         const children = HtmlTools.getHtml('#grid_data').children;
         const name = [];
@@ -146,8 +158,10 @@ document.addEventListener('click', (event) => {
         return;
     }
 
-    // 键盘样式输入
+    // 键盘输入
     if (/KeyboardStyle[13]/.test(targetClass)) {
+        // 隐藏说明
+        PageControlTools.hideExplain();
         if (firstChildClass === '_add_line_') {
             const currentSubModes = PageConfig.subModes['1'];
             const succeed = InputManager.statisticsAddLine({
@@ -163,16 +177,19 @@ document.addEventListener('click', (event) => {
         if (firstChildClass === '_del_line_') {
             return InputManager.statisticsDelLine();
         }
-        InputManager.input(HtmlTools.getClassList(target));
+        const input = HtmlTools.getClassList(target);
+        InputManager.input(input);
         if (targetClass.includes('NeedParentheses') && PageConfig.keyboardType === 1) {
             InputManager.input(['_parentheses_left_']);
         }
         if (PageConfig.currentMode === '0') {
             PrintManager.mode0ShowOnScreen();
         }
+        PageControlTools.showExplain(input);
         return;
     }
 
+    // 全屏模式切换
     if (/title_mode_([0134]|2_[01])|screen_title/.test(targetID)) {
         if (document.fullscreenElement) {
             // 进入全屏
@@ -195,10 +212,16 @@ document.addEventListener('click', (event) => {
 
     switch (firstChildClass) {
         case '_exe_':
+            // 隐藏说明
+            PageControlTools.hideExplain();
             return PrintManager.exe();
         case '_ac_':
+            // 隐藏说明
+            PageControlTools.hideExplain();
             return InputManager.ac();
         case '_del_': {
+            // 隐藏说明
+            PageControlTools.hideExplain();
             InputManager.del();
             if (PageConfig.currentMode === '0') {
                 PrintManager.mode0ShowOnScreen();
@@ -221,6 +244,9 @@ document.addEventListener('keydown', (event) => {
 
     // 获取按下的键的字符串表示形式
     const key = event.key;
+
+    // 隐藏说明
+    PageControlTools.hideExplain();
 
     // 1. 优先处理功能控制键 (Switch 结构更清晰)
     switch (key) {
@@ -274,10 +300,14 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault(); // 阻止将字符输入到非预期的元素中
         // 处理 Alt 组合键
         if (event.altKey && ['e', 'i', 'x'].includes(key)) {
-            InputManager.input([`_${key}_mathit_`]);
+            const input = [`_${key}_mathit_`];
+            InputManager.input(input);
+            PageControlTools.showExplain(input);
         } else {
             // 普通字符输入
-            InputManager.input([`_${key}_`]);
+            const input = [`_${key}_`];
+            InputManager.input(input);
+            PageControlTools.showExplain(input);
         }
         if (PageConfig.currentMode === '0') {
             PrintManager.mode0ShowOnScreen();
