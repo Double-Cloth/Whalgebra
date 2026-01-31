@@ -2375,8 +2375,8 @@
             if (resultList === 'error') {
                 // 设置回归分析区域为错误状态
                 PrintManager.setMode1RaResults('error');
-                // 遍历所有统计数据单元格（ID 从 2 到 18），填充错误图标
-                for (let i = 2; i < 19; i++) {
+                // 遍历所有统计数据单元格（ID 从 2 到 21），填充错误图标
+                for (let i = 2; i < 22; i++) {
                     HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_1_content_${i}`), ['_error_'], {mode: 'replace'});
                 }
                 // 重置回归模型选择为默认（线性回归）
@@ -2387,7 +2387,7 @@
             // --- 结果映射配置 ---
             // 定义统计数据属性名与页面 DOM 元素 ID 的对应关系
             const resultsToOutputArea = {
-                'r': '#print_content_1_content_2', // 相关系数
+                'n': '#print_content_1_content_2', // 基数
                 'averageA': '#print_content_1_content_3', // x 平均值
                 'sumA': '#print_content_1_content_4', // x 总和
                 'sum2A': '#print_content_1_content_5', // x 平方和
@@ -2403,7 +2403,10 @@
                 'maxB': '#print_content_1_content_15', // y 最大值
                 'minB': '#print_content_1_content_16', // y 最小值
                 'dotAB': '#print_content_1_content_17', // Σxy
-                'dotA2B': '#print_content_1_content_18' // Σx²y
+                'dotA2B': '#print_content_1_content_18', // Σx²y
+                'totalCovariance': '#print_content_1_content_19', // 总体协方差
+                'sampleCovariance': '#print_content_1_content_20', // 样本协方差
+                'r': '#print_content_1_content_21' // 相关系数
             };
 
             // --- 更新 UI ---
@@ -3395,14 +3398,6 @@
             // 更新内部状态记录当前模型 ID
             this._currentRaModel = id;
 
-            // 特殊处理：如果是线性回归 ('choose_ra_0')，显示特定的控制区域（可能包含相关系数 r 等）
-            // 其他模型隐藏该区域
-            if (id === 'choose_ra_0') {
-                HtmlTools.getHtml('#print_content_1_content_2_control').classList.remove('NoDisplay');
-            } else {
-                HtmlTools.getHtml('#print_content_1_content_2_control').classList.add('NoDisplay');
-            }
-
             // 如果是主动切换模式，更新结果显示区域的内容
             if (mode === 'change') {
                 PrintManager.setMode1RaResults(PrintManager.mode1Results === 'error' ? 'error' : PrintManager.mode1Results[id]);
@@ -3433,7 +3428,7 @@
             if (!clickArea.children[0].classList.contains('_success_')) {
                 // 根据按钮 ID 确定导出的目标输入区域
                 // export_0 -> f(x) (2_00), export_1 -> g(x) (2_01)
-                const exportTarget = HtmlTools.getHtml(func === 'export_0' ? '#screen_input_inner_2_00' : '#screen_input_inner_2_01');
+                const exportTarget = func === 'export_0' ? '2_00' : '2_01';
                 // 获取存储在 PrintManager 中的回归分析结果
                 const exportContent = PrintManager.mode1Results;
                 // 检查结果是否有效
@@ -3442,11 +3437,24 @@
                     HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
                     return;
                 }
+                const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
+                PageConfig.screenData = {[exportTarget]: equation};
                 // 获取当前选中的回归模型 (this._currentRaModel) 的方程字符串
                 // 将其转换为 HTML 类名数组，并替换目标输入区域的内容
-                HtmlTools.appendDOMs(exportTarget, HtmlTools.textToHtmlClass(exportContent[this._currentRaModel].regressionEquation), {mode: 'replace'});
+                HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`), HtmlTools.textToHtmlClass(equation), {mode: 'replace'});
                 // 导出成功，将按钮图标更改为“成功”状态
                 HtmlTools.appendDOMs(clickArea, ['_success_'], {mode: 'replace'});
+            }
+        }
+
+        static switchStatisticsResults(target) {
+            const dealList = [
+                HtmlTools.getHtml('#statistics_results_top'),
+                HtmlTools.getHtml('#statistics_results_window')
+            ];
+            for (let i = 0; i < dealList.length; i++) {
+                dealList[i].classList.remove('ResultX', 'ResultY', 'ResultXY');
+                dealList[i].classList.add(`Result${target.toUpperCase()}`);
             }
         }
 

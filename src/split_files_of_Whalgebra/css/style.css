@@ -80,13 +80,11 @@ p {
 .Paragraph,
 .Screen234 > div > div,
 .MultipleLines > div,
-#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
+#print_content > div > div:not(.NotPrintDefault),
 #print_content_1_choose > div,
-#print_content_1_content_2_control > div,
-#print_1_0_choose,
-#print_content_1_content_0 > div,
+#statistics_results_window > div > div,
 #print_content_2_head > div,
-#print_content_2_inner > div > div > div,
+#print_content_2_inner > div div,
 #grid_data > div div,
 #explain_content > div:not(.Lines),
 :where(#keyboard_main, #sub_keyboard > div) > div {
@@ -98,21 +96,21 @@ p {
 
 :where(
     .Paragraph,
-    #grid_data > div div,
     .Screen234 > div > div,
-     #print_1_0_choose,
-     #print_content_2_inner > div > div > div
+     #print_content_2_inner > div div,
+     #grid_data > div div
 ) > p:first-child {
     margin-left: 0.45dvmin;
 }
 
 :where(
-    .Paragraph:not(#title_mode_3),
-    #grid_data > div div,
+    .Paragraph,
     .Screen234 > div > div,
-    #print_content > div > div,
     .MultipleLines > div,
-    #print_content_2_inner > div > div > div
+    #print_content > div > div:not(.NotPrintDefault),
+    #statistics_results_window > div > div,
+    #print_content_2_inner > div div,
+    #grid_data > div div
 ) > p:last-child {
     margin-right: 0.45dvmin;
 }
@@ -317,7 +315,8 @@ p {
 }
 
 #grid_top > div:first-child {
-    margin-left: calc(10dvw + 0.5dvmin);
+    width: 10dvw;
+    margin-left: 0;
 }
 
 .GridOn {
@@ -1097,13 +1096,21 @@ p {
     height: calc(92.5dvh - min(11dvmin, 7dvh));
 }
 
-#print_content > div:not(.NotPrintDefault) > div:not(.NotPrintDefault),
-#print_content_1_content_2_control > div {
+#print_content > div > div:not(.NotPrintDefault),
+#statistics_results_window > div > div {
     display: flex;
     align-items: center;
     justify-content: left;
     width: 98dvw;
     height: min(7.5dvh, 9dvmin);
+}
+
+:where(
+    #print_content > div > div:not(.NotPrintDefault),
+    #print_content > div > div:not(.NotPrintDefault) > div,
+    #statistics_results_window > div > div
+) > p:first-child {
+    margin-left: 0.85dvmin;
 }
 
 .MultipleLines {
@@ -1115,20 +1122,15 @@ p {
     height: min(7.5dvh, 9dvmin);
 }
 
-#print_content > div:not(.NotPrintDefault) > div > p:first-child,
-#print_content > div:not(.NotPrintDefault) > div > div > p:first-child {
-    margin-left: 0.85dvmin;
-}
-
 #print_content_1 > div:nth-child(7),
-#print_content_1 > div:nth-last-child(-4n+32),
+#statistics_results_window > div > div:nth-child(4n + 1),
 #print_content_3 > div:nth-child(4n+2) {
     border-radius: 1.5dvmin 1.5dvmin 0 0;
     background-color: rgba(226, 226, 226, 0.8);
 }
 
 #print_content_1 > div:nth-child(8),
-#print_content_1 > div:nth-last-child(-4n+31),
+#statistics_results_window > div > div:nth-child(4n + 2),
 #print_content_3 > div:nth-child(4n+3) {
     border-radius: 0 0 1.5dvmin 1.5dvmin;
     background-color: rgba(226, 226, 226, 0.8);
@@ -1259,9 +1261,81 @@ p {
     box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(250, 250, 250);
 }
 
-#print_content_1_y_start,
-#print_content_1_together_start {
-    margin-top: 2dvmin;
+#statistics_results_top {
+    width: 98dvw;
+    height: min(calc(8dvh + 0.5dvmin), 11.5dvmin);
+    margin-top: 1dvmin;
+    display: flex;
+    justify-content: center;
+    position: relative;
+}
+
+#statistics_results_top > div:hover {
+    background-color: rgb(242, 242, 242);
+}
+
+#statistics_results_top > div:not(.Lines) {
+    height: min(8dvh, 11dvmin);
+    width: calc(98dvw / 3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: border-radius 0.3s ease;
+}
+
+#statistics_results_top > div.Lines {
+    width: calc(98dvw / 3);
+    position: absolute;
+    bottom: 0;
+    border-radius: 100dvmax;
+    transition: left 0.3s ease;
+}
+
+#statistics_results_top.ResultX > div.Lines {
+    left: 0;
+}
+
+#statistics_results_top.ResultY > div.Lines {
+    left: calc(98dvw / 3);
+}
+
+#statistics_results_top.ResultXY > div.Lines {
+    left: calc(196dvw / 3);
+}
+
+#statistics_results_top.ResultX > div:first-child,
+#statistics_results_top.ResultY > div:nth-child(2),
+#statistics_results_top.ResultXY > div:nth-child(3) {
+    background-color: rgb(236, 236, 236);
+}
+
+#statistics_results {
+    width: 98dvw;
+    margin-top: 1dvmin;
+    overflow: hidden;
+}
+
+#statistics_results_window {
+    width: 294dvw;
+    display: flex;
+    position: relative;
+    transition: transform 0.3s ease;
+}
+
+#statistics_results_window.ResultX {
+    transform: translateX(0);
+}
+
+#statistics_results_window.ResultY {
+    transform: translateX(-98dvw);
+}
+
+#statistics_results_window.ResultXY {
+    transform: translateX(-196dvw);
+}
+
+#statistics_results_window > div {
+    width: 98dvw;
 }
 
 #print_content_2 div.Lines {

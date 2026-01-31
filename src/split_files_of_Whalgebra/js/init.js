@@ -58,6 +58,11 @@ document.addEventListener('click', (event) => {
 
         case 'print_content_1_cover':
             return PageControlTools.clickPrint1Cover();
+
+        case 'statistics_results_top_x':
+        case 'statistics_results_top_y':
+        case 'statistics_results_top_xy':
+            return PageControlTools.switchStatisticsResults(targetID.slice(23));
     }
 
     // --- 策略 2: 基于父容器 ID 的逻辑 (Group Logic) ---
