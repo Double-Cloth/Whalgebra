@@ -3879,23 +3879,90 @@
          * @description 计算一个数值列表的总体方差 (population variance)。
          * 方差是每个数据点与平均值之差的平方的平均值。
          * @param {Array<ComplexNumber|string|number>} list - 需要计算方差的数值数组。
-         * @returns {[ComplexNumber, ComplexNumber]} 列表的总体方差和样本方差，以 ComplexNumber 实例形式返回。
+         * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 数据的平均值与和。
+         * @returns {[ComplexNumber, ComplexNumber|string]} 列表的总体方差和样本方差，以 ComplexNumber 实例形式返回。
          * - [0]: 列表的总体方差。
          * - [1]: 列表的样本方差。
          */
-        static _variance(list) {
+        static _variance(list, averageAndSum = null) {
+            const n = list.length;
+            if (n === 1) {
+                return [new ComplexNumber(0), 'error'];
+            }
             // 首先，计算列表的平均值。
-            const average = StatisticsTools._averageAndSum(list).average;
+            const average = (averageAndSum === null ? StatisticsTools._averageAndSum(list) : averageAndSum).average;
             // 初始化一个累加器，用于计算差值的平方和。
             let sum = new ComplexNumber(0);
             // 遍历列表中的每个元素。
-            for (let i = 0; i < list.length; i++) {
+            for (let i = 0; i < n; i++) {
                 // 计算当前元素与平均值的差值。
                 const mid = MathPlus.minus(list[i], average);
                 // 将差值的平方累加到 sum 中。
                 sum = MathPlus.plus(MathPlus.times(mid, mid), sum);
             }
-            return [MathPlus.divide(sum, list.length), list.length === 1 ? new ComplexNumber(0) : MathPlus.divide(sum, list.length - 1)];
+            return [MathPlus.divide(sum, n), MathPlus.divide(sum, n - 1)];
+        }
+
+        /**
+         * @private
+         * @static
+         * @method _covariance
+         * @description (内部辅助方法) 计算两个数值列表协方差 (covariance)。
+         * 协方差衡量两个变量总体误差的期望。
+         * - 公式: Cov(X, Y) = Σ(xᵢ - x̄)(yᵢ - ȳ) / n；s = Σ(xᵢ - x̄)(yᵢ - ȳ) / (n - 1)
+         * @param {Array<ComplexNumber|string|number>} listA - 第一个数值数组 (X)。
+         * @param {Array<ComplexNumber|string|number>} listB - 第二个数值数组 (Y)。
+         * @param {object} [options={}] - 可选参数。
+         * @param {ComplexNumber} [options.averageA=null] - listA 的平均值。如果未提供，将自动计算。
+         * @param {ComplexNumber} [options.averageB=null] - listB 的平均值。如果未提供，将自动计算。
+         * @returns {[ComplexNumber, ComplexNumber|string]} 列表的总体方差和样本协方差，以 ComplexNumber 实例形式返回。
+         * - [0]: 列表的总体协方差。
+         * - [1]: 列表的样本协方差。
+         */
+        static _covariance(listA, listB, {averageA = null, averageB = null} = {}) {
+            const n = listA.length;
+            // 样本协方差的分母是 n-1，如果 n=1，则无法计算。
+            if (n === 1) {
+                return [new ComplexNumber(0), 'error'];
+            }
+            // 如果未提供平均值，则先计算平均值。
+            averageA = averageA === null ? this._averageAndSum(listA) : averageA;
+            averageB = averageB === null ? this._averageAndSum(listB) : averageB;
+            // 初始化协方差累加器。
+            let cov = new ComplexNumber(0);
+            // 遍历列表，计算 (xᵢ - x̄)(yᵢ - ȳ) 的总和。
+            for (let i = 0; i < n; i++) {
+                // 累加：(listA[i] - averageA) * (listB[i] - averageB)
+                cov = MathPlus.plus(
+                    MathPlus.times(
+                        MathPlus.minus(listA[i], averageA),
+                        MathPlus.minus(listB[i], averageB)
+                    ),
+                    cov
+                );
+            }
+            // 返回结果：总和除以 (n)。
+            return [MathPlus.divide(cov, n), MathPlus.divide(cov, n - 1)];
+        }
+
+        static _correlationCoefficient(listA, listB, {
+            varianceA = null,
+            varianceB = null,
+            covariance = null
+        } = {}) {
+            let result;
+            varianceA = varianceA === null ? this._variance(listA) : varianceA;
+            varianceB = varianceB === null ? this._variance(listB) : varianceB;
+            covariance = covariance === null ? this._covariance(listA, listB) : covariance;
+            try {
+                result = MathPlus.divide(
+                    covariance[0],
+                    MathPlus.sqrt(MathPlus.times(varianceA[0], varianceB[0]))
+                );
+            } catch {
+                result = 'error';
+            }
+            return result;
         }
 
         /**
@@ -4247,61 +4314,23 @@
         /**
          * @private
          * @static
-         * @method _calcR (内部辅助方法)
-         * @description 计算两个数据集之间的皮尔逊相关系数 (r)。
-         * 该系数衡量了两个变量之间线性关系的强度和方向，其值在 -1 到 +1 之间。
-         * - 公式: r = (Σxy - n * μx * μy) / sqrt((Σx² - n * μx²) * (Σy² - n * μy²))
-         * @param {Array<ComplexNumber|string|number>} listA - 第一个数据集 (x 值)。
-         * @param {Array<ComplexNumber|string|number>} listB - 第二个数据集 (y 值)。
-         * @returns {ComplexNumber} 皮尔逊相关系数 r。
-         */
-        static _calcR(listA, listB) {
-            // n 是数据点的数量。
-            const n = new ComplexNumber(listA.length);
-            // 计算 Σ(x*y)，即两个列表对应元素的乘积之和。
-            const dot = StatisticsTools._dotProduct(listA, listB);
-            // 计算列表 A (x) 的总和与平均值。
-            const averageA = StatisticsTools._averageAndSum(listA).average; // μx
-            // 计算列表 B (y) 的总和与平均值。
-            const averageB = StatisticsTools._averageAndSum(listB).average; // μy
-            // 计算 Σ(x²)，即列表 A 中每个元素的平方和。
-            const sumA2 = StatisticsTools._averageAndSum(StatisticsTools._changeInner(listA, x => MathPlus.times(x, x))).sum;
-            // 计算 Σ(y²)，即列表 B 中每个元素的平方和。
-            const sumB2 = StatisticsTools._averageAndSum(StatisticsTools._changeInner(listB, x => MathPlus.times(x, x))).sum;
-            // 计算分子: Σxy - n * μx * μy
-            const numerator = MathPlus.minus(
-                dot,
-                MathPlus.times(n, MathPlus.times(averageA, averageB))
-            );
-            // 计算分母: sqrt((Σx² - n * μx²) * (Σy² - n * μy²))
-            const denominator = MathPlus.sqrt(MathPlus.times(
-                // 计算 Σx² - n * μx²
-                MathPlus.minus(sumA2, MathPlus.times(n, MathPlus.times(averageA, averageA))),
-                // 计算 Σy² - n * μy²
-                MathPlus.minus(sumB2, MathPlus.times(n, MathPlus.times(averageB, averageB)))
-            ));
-            // 返回最终结果: 分子 / 分母
-            return MathPlus.divide(numerator, denominator);
-        }
-
-        /**
-         * @private
-         * @static
          * @method _getStatisticsInfo
          * @description (内部辅助方法) 计算一个数值列表的一系列基本统计信息。
          * 此方法作为一个便捷的封装，一次性计算出总和、平均值、平方和、方差、最大值和最小值，
          * 以供其他更复杂的统计函数（如 `statisticsCalc`）复用，从而避免重复计算。
          * @param {Array<ComplexNumber|string|number>} list - 需要计算统计信息的数值数组。
+         * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 数据的平均值与和。
+         * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [varianceList] - 数据的方差。
          * @returns {{statisticsResult: {}, squareList: Array<ComplexNumber>}}
          * 一个包含两部分结果的对象：
          * - `statisticsResult`: 一个包含各种统计指标的对象。
          * - `squareList`: 一个新的数组，其中包含原始列表中每个元素的平方。
          */
-        static _getStatisticsInfo(list) {
+        static _getStatisticsInfo(list, {averageAndSum = null, varianceList = null} = {}) {
             // 初始化一个空对象，用于存储所有计算出的统计结果。
             const statisticsResult = {};
             // 一次性计算列表的总和与平均值，以提高效率。
-            const averageAndSum = StatisticsTools._averageAndSum(list);
+            averageAndSum = averageAndSum === null ? StatisticsTools._averageAndSum(list) : averageAndSum;
             statisticsResult.average = Public.idealizationToString(averageAndSum.average);
             statisticsResult.sum = Public.idealizationToString(averageAndSum.sum);
             // 计算列表中每个元素的平方，得到一个新的列表 [x₁², x₂², ...]。
@@ -4309,9 +4338,9 @@
             // 计算平方和 (Σx²)。
             statisticsResult.sum2 = Public.idealizationToString(StatisticsTools._averageAndSum(list2).sum);
             // 计算方差。
-            const variance = StatisticsTools._variance(list);
+            const variance = varianceList === null ? StatisticsTools._variance(list, averageAndSum) : varianceList;
             statisticsResult.totalVariance = Public.idealizationToString(MathPlus.sqrt(variance[0]));
-            statisticsResult.sampleVariance = Public.idealizationToString(MathPlus.sqrt(variance[1]));
+            statisticsResult.sampleVariance = Public.idealizationToString(variance[1] === 'error' ? 'error' : MathPlus.sqrt(variance[1]));
             // 查找列表中的最大值和最小值。
             const maxAndMin = StatisticsTools._getMaxAndMin(list);
             statisticsResult.max = Public.idealizationToString(maxAndMin.max);
@@ -4412,6 +4441,7 @@
          * @param {Array<ComplexNumber|string|number>} listA - 自变量数据集 (x-values)。数组中的每个元素都将被转换为 ComplexNumber。
          * @param {Array<ComplexNumber|string|number>} listB - 因变量数据集 (y-values)。数组中的每个元素都将被转换为 ComplexNumber。
          * @returns {object} 一个包含详细统计和回归分析结果的对象。
+         * @property {string} n - 基数。
          * @property {string} averageA - 数据集 A 的平均值。
          * @property {string} sumA - 数据集 A 的总和。
          * @property {string} sum2A - 数据集 A 的平方和 (Σx²)。
@@ -4428,6 +4458,8 @@
          * @property {string} minB - 数据集 B 的最小值。
          * @property {string} dotAB - A 和 B 的点积 (Σxy)。
          * @property {string} dotA2B - A² 和 B 的点积 (Σx²y)。
+         * @property {string} totalCovariance - 总体协方差。
+         * @property {string} sampleCovariance - 样本协方差。
          * @property {string} r - 皮尔逊相关系数 (r)，或在无法计算时为 'error'。
          * @property {string} bestModel - 拟合度最佳的回归模型的名称（基于最高的 R² 值）。
          * @property {object} linear - 线性回归 (y = a₁x + a₀) 的结果。
@@ -4496,10 +4528,22 @@
 
             // --- 步骤 1: 计算每个数据集的基本统计信息 ---
             const result = {};
+            result.n = listA.length.toString();
+            const averageAndSumA = this._averageAndSum(listA);
+            const averageAndSumB = this._averageAndSum(listB);
+            const varianceA = this._variance(listA);
+            const varianceB = this._variance(listB);
+
             // _getStatisticsInfo 是一个辅助函数，它一次性计算出总和、平均值、平方和、标准差、最大值和最小值，
             // 以避免重复计算，并返回一个包含这些统计数据和平方列表的对象。
-            const statisticsInfoA = StatisticsTools._getStatisticsInfo(listA);
-            const statisticsInfoB = StatisticsTools._getStatisticsInfo(listB);
+            const statisticsInfoA = this._getStatisticsInfo(listA, {
+                averageAndSum: averageAndSumA,
+                variance: varianceA
+            });
+            const statisticsInfoB = this._getStatisticsInfo(listB, {
+                averageAndSum: averageAndSumB,
+                variance: varianceB
+            });
             // 将计算出的统计信息填充到最终的 result 对象中，并用 'A' 和 'B' 后缀来区分。
             for (let key in statisticsInfoA.statisticsResult) {
                 result[key + 'A'] = statisticsInfoA.statisticsResult[key];
@@ -4507,32 +4551,38 @@
             }
             // --- 步骤 2: 计算关系度量 ---
             // 计算点积 Σ(x*y) 和 Σ(x²*y)，这些值在某些回归计算中可能会用到。
-            result.dotAB = Public.idealizationToString(StatisticsTools._dotProduct(listA, listB));
-            result.dotA2B = Public.idealizationToString(StatisticsTools._dotProduct(statisticsInfoA.squareList, listB));
-            // 计算皮尔逊相关系数 (r)，衡量线性关系的强度。
-            try {
-                result.r = Public.idealizationToString(StatisticsTools._calcR(listA, listB));
-            } catch {
-                // 如果计算出错（例如，一个数据集的方差为零），则将 r 标记为 'error'。
-                result.r = 'error';
-            }
+            const covariance = this._covariance(listA, listB, {
+                averageA: averageAndSumA.average,
+                averageB: averageAndSumB.average
+            });
+            const correlationCoefficient = this._correlationCoefficient(listA, listB, {
+                varianceA: varianceA,
+                varianceB: varianceB,
+                covariance: covariance
+            });
+
+            result.dotAB = Public.idealizationToString(this._dotProduct(listA, listB));
+            result.dotA2B = Public.idealizationToString(this._dotProduct(statisticsInfoA.squareList, listB));
+            result.totalCovariance = Public.idealizationToString(covariance[0]);
+            result.sampleCovariance = Public.idealizationToString(covariance[1]);
+            result.r = Public.idealizationToString(correlationCoefficient);
 
             // --- 步骤 3: 为回归分析准备数据和状态 ---
             result.bestModel = 'linear';
             // 检查每个数据集中是否存在正、负或零值，因为某些回归模型（如对数、幂）对输入值的域有要求。
-            const statesA = StatisticsTools._getListInfo(listA);
-            const statesB = StatisticsTools._getListInfo(listB);
+            const statesA = this._getListInfo(listA);
+            const statesB = this._getListInfo(listB);
             // 预先计算 listB 的绝对值，因为某些模型（如 y=a*b^x）在 y<0 时需要对 |y| 进行回归。
-            const absListB = StatisticsTools._getAbsList(listB);
+            const absListB = this._getAbsList(listB);
             // 预先计算 listA 的自然对数，供对数和幂回归模型使用。
             let lnListA;
             if (!statesA.zero && !statesA.negative) {
-                lnListA = StatisticsTools._changeInner(listA, x => MathPlus.ln(x));
+                lnListA = this._changeInner(listA, x => MathPlus.ln(x));
             }
             // 预先计算 listB 的自然对数（或其绝对值的对数），供幂和指数回归模型使用。
             let lnListB;
             if (!statesB.zero && !(statesB.positive && statesB.negative)) {
-                lnListB = StatisticsTools._changeInner(absListB, x => MathPlus.ln(x));
+                lnListB = this._changeInner(absListB, x => MathPlus.ln(x));
             }
             // 定义一个标准的错误对象，用于当回归模型不适用或计算失败时返回。
             const errorWith2parameter = {
@@ -4589,36 +4639,36 @@
 
             // --- 步骤 5: 执行多种回归分析 ---
             // 1. 线性回归: y = a₁x + a₀
-            result.linear = StatisticsTools._getRegressionInfo(listA, listB, 1, listB,
+            result.linear = this._getRegressionInfo(listA, listB, 1, listB,
                 (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
             );
 
             // 2. 二次回归: y = a₂x² + a₁x + a₀
-            result.square = StatisticsTools._getRegressionInfo(listA, listB, 2, listB,
+            result.square = this._getRegressionInfo(listA, listB, 2, listB,
                 (x, coefficient) => MathPlus.plus(
                     MathPlus.times(coefficient[2], MathPlus.times(x, x)),
                     MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                 )
             );
-            result.bestModel = StatisticsTools._findBestModel(result, 'square');
+            result.bestModel = this._findBestModel(result, 'square');
 
             // 3. 对数回归: y = a₁ln(x) + a₀
             // 仅当所有 x > 0 时适用。
             if (statesA.negative || statesA.zero) {
                 result.ln = structuredClone(errorWith2parameter);
             } else {
-                result.ln = StatisticsTools._getRegressionInfo(lnListA, listB, 1, listB,
+                result.ln = this._getRegressionInfo(lnListA, listB, 1, listB,
                     (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                 );
             }
-            result.bestModel = StatisticsTools._findBestModel(result, 'ln');
+            result.bestModel = this._findBestModel(result, 'ln');
 
             // 4. 幂回归: y = a₀ * x^a₁ (线性化为 ln(y) = ln(a₀) + a₁*ln(x))
             // 仅当所有 x > 0 且所有 y 同号且不为零时适用。
             if (statesA.negative || statesA.zero || statesB.zero || (statesB.positive && statesB.negative)) {
                 result.axb = structuredClone(errorWith2parameter);
             } else {
-                result.axb = StatisticsTools._getRegressionInfo(lnListA, lnListB, 1, listB,
+                result.axb = this._getRegressionInfo(lnListA, lnListB, 1, listB,
                     (x, coefficient) => {
                         // 从线性化模型反向计算预测值
                         const mid = MathPlus.exp(MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0]));
@@ -4629,7 +4679,7 @@
                 const mid = MathPlus.exp(result.axb.parameter[0]);
                 result.axb.parameter[0] = statesB.negative ? MathPlus.minus(0, mid) : mid;
             }
-            result.bestModel = StatisticsTools._findBestModel(result, 'axb');
+            result.bestModel = this._findBestModel(result, 'axb');
 
             // 5. 指数回归 (y = a₀ * e^(a₁x)) 和 (y = a₀ * b^x)
             // 仅当所有 y 同号且不为零时适用。
@@ -4640,7 +4690,7 @@
             } else {
                 // 指数回归 y = a₀ * e^(a₁x) (线性化为 ln(y) = ln(a₀) + a₁x)
                 // 对 x 和 ln(|y|) 进行线性回归。
-                result.exp = StatisticsTools._getRegressionInfo(listA, lnListB, 1, listB,
+                result.exp = this._getRegressionInfo(listA, lnListB, 1, listB,
                     (x, coefficient) => {
                         // 从线性化模型反向计算预测值。
                         const mid = MathPlus.exp(MathPlus.plus(
@@ -4664,8 +4714,8 @@
                     R2: result.exp.R2
                 };
             }
-            result.bestModel = StatisticsTools._findBestModel(result, 'exp');
-            result.bestModel = StatisticsTools._findBestModel(result, 'abx');
+            result.bestModel = this._findBestModel(result, 'exp');
+            result.bestModel = this._findBestModel(result, 'abx');
 
             // 6. 倒数回归: y = a₁/x + a₀
             // 仅当所有 x 不为零时适用。
@@ -4673,13 +4723,13 @@
                 result.reciprocal = structuredClone(errorWith2parameter);
             } else {
                 // 创建一个 x 的倒数列表 (1/x)。
-                const reciprocalListA = StatisticsTools._changeInner(listA, x => MathPlus.divide(1, x));
+                const reciprocalListA = this._changeInner(listA, x => MathPlus.divide(1, x));
                 // 对 1/x 和 y 进行线性回归。
-                result.reciprocal = StatisticsTools._getRegressionInfo(reciprocalListA, listB, 1, listB,
+                result.reciprocal = this._getRegressionInfo(reciprocalListA, listB, 1, listB,
                     (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                 );
             }
-            result.bestModel = StatisticsTools._findBestModel(result, 'reciprocal');
+            result.bestModel = this._findBestModel(result, 'reciprocal');
 
             // --- 步骤 6: 格式化所有回归模型的输出 ---
             // 遍历所有计算出的结果。
