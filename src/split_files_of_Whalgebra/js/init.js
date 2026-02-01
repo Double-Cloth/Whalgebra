@@ -62,6 +62,7 @@ document.addEventListener('click', (event) => {
         case 'statistics_results_top_x':
         case 'statistics_results_top_y':
         case 'statistics_results_top_xy':
+            PageControlTools.triggerSelection(target, event);
             return PageControlTools.switchStatisticsResults(targetID.slice(23));
     }
 

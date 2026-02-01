@@ -2661,6 +2661,10 @@
             const screenData = PageConfig.screenData['1'];
             const listA = [], listB = [];
 
+            // 初始化选择统计计算输出区域
+            PageControlTools.triggerSelection(HtmlTools.getHtml('#statistics_results_top_x'));
+            PageControlTools.switchStatisticsResults('x');
+
             // 遍历每一行数据（排除最后一行，通常最后一行是空的或用于添加新行）
             for (let i = 0; i < screenData.length; i++) {
                 // 获取当前行的 X 和 Y 数据单元格
@@ -3447,15 +3451,109 @@
             }
         }
 
+        /**
+         * @static
+         * @method switchStatisticsResults
+         * @description 切换统计结果窗口的显示模式（X、Y 或 XY）。
+         * 此函数通过修改 DOM 元素的类名来控制统计结果面板的滑动切换效果。
+         *
+         * @param {'x'|'y'|'xy'} target - 要切换到的目标模式。
+         *   - `'x'`: 显示 X 数据的统计结果。
+         *   - `'y'`: 显示 Y 数据的统计结果。
+         *   - `'xy'`: 显示 X 和 Y 的回归分析/相关性结果。
+         */
         static switchStatisticsResults(target) {
-            const dealList = [
-                HtmlTools.getHtml('#statistics_results_top'),
-                HtmlTools.getHtml('#statistics_results_window')
-            ];
-            for (let i = 0; i < dealList.length; i++) {
-                dealList[i].classList.remove('ResultX', 'ResultY', 'ResultXY');
-                dealList[i].classList.add(`Result${target.toUpperCase()}`);
+            const topBar = HtmlTools.getHtml('#statistics_results_top');
+            const resultWindow = HtmlTools.getHtml('#statistics_results_window');
+
+            // 定义所有可能的模式类名
+            const modeClasses = ['ResultX', 'ResultY', 'ResultXY'];
+            const targetUpper = target.toUpperCase();
+
+            // 1. 批量更新 DOM 类名
+            [topBar, resultWindow].forEach(el => {
+                if (!el) {
+                    return;
+                } // 安全检查
+                el.classList.remove(...modeClasses); // 使用扩展运算符一次移除
+                el.classList.add(`Result${targetUpper}`);
+            });
+
+            // 2. 处理按钮重置逻辑
+            // 建立 target 到 索引 的映射关系，代替复杂的 if/else
+            const indexMap = {'x': 0, 'y': 1, 'xy': 2};
+            const skipIndex = indexMap[target.toLowerCase()] ?? 3; // 默认为 3
+
+            // 将 HTMLCollection 转换为数组以使用 forEach
+            Array.from(topBar.children).forEach((child, index) => {
+                if (index !== skipIndex) {
+                    this._resetButton(child);
+                }
+            });
+        }
+
+        /**
+         * @static
+         * @method triggerSelection
+         * @description 处理列表项的单选逻辑。
+         * 用于在设置菜单或其他选项列表中，当用户点击某一项时，更新 UI 样式（添加选中态类名）并触发相应的后续操作。
+         *
+         * @param {HTMLElement} target - 接收操作的目标按钮元素
+         * @param {MouseEvent} [e] - (可选) 点击事件对象，用于计算波纹起始坐标
+         *
+         */
+        static triggerSelection(target, e) {
+            // 参数校验
+            if (!target || target.classList.contains('IsSelected')) {
+                return;
             }
+
+            target.classList.add('IsSelected');
+
+            // 创建并添加波纹
+            const circle = document.createElement('span');
+            circle.classList.add('Ripple');
+
+            const diameter = Math.max(target.clientWidth, target.clientHeight);
+            const radius = diameter / 2;
+            const rect = target.getBoundingClientRect();
+
+            // 计算扩散中心（优先使用鼠标点击位置，如果没有则默认居中）
+            let x = rect.width / 2;
+            let y = rect.height / 2;
+
+            if (e && e.clientX !== undefined) {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${x - radius}px`;
+            circle.style.top = `${y - radius}px`;
+
+            target.appendChild(circle);
+        }
+
+        /**
+         * @static
+         * @method _resetButton
+         * @description 重置按钮状态
+         * @param {HTMLElement} btn - 需要重置的按钮元素
+         */
+        static _resetButton(btn) {
+            if (!btn) {
+                return;
+            }
+
+            const ripples = btn.querySelectorAll('.Ripple');
+
+            // 执行褪色动画并清理
+            ripples.forEach(r => {
+                r.classList.add('IsFadingOut');
+                setTimeout(() => r.remove(), 600);
+            });
+
+            btn.classList.remove('IsSelected');
         }
 
         /**
