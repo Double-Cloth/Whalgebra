@@ -570,10 +570,7 @@ p {
 
 /* sub_keyboard 部分 */
 
-#sub_keyboard {
-    overflow: hidden;
-}
-
+#sub_keyboard,
 #sub_keyboard > div > div {
     overflow: hidden;
 }
@@ -595,16 +592,14 @@ p {
     position: absolute;
     z-index: 2;
     top: 56.25dvh;
-    height: 17.5dvh;
-    padding-top: 0.25dvh;
-    padding-left: 0.25dvw;
-    border: 0.5dvmin solid transparent;
+    height: min(calc(17dvh + 1dvmin), 29dvmin);
+    padding: 0.5dvmin 0 0 0.5dvmin;
     background-color: rgba(255, 255, 255, 0.13);
-    grid-template-rows: repeat(2, calc(8.5dvh - 0.5dvmin));
+    grid-template-rows: repeat(2, min(8.5dvh, 14dvmin));
 }
 
 #sub_keyboard_ForMode1 > div {
-    height: 7dvh;
+    height: min(7dvh, 12dvmin);
     transition: all 0.2s ease;
     background-color: rgba(255, 255, 255, 0.6);
     box-shadow: 0 0.4dvmin 1.5dvmin rgba(0, 0, 0, 0.2);
@@ -621,7 +616,7 @@ p {
 }
 
 #sub_keyboard_ForMode1.NotShow {
-    top: 47.5dvh;
+    top: calc(56.25dvh - min(calc(8.5dvh + 0.5dvmin), 14.5dvmin));
     transform: scale(0);
     opacity: 0.25;
 }
@@ -773,13 +768,13 @@ p {
     }
 
     #sub_keyboard_ForMode1 {
-        left: 49.9dvw;
-        width: 28dvw;
-        grid-template-columns: calc(27.5dvw - 1dvmin);
+        width: max(28dvw, 35dvmin);
+        left: calc(63.95dvw - max(14dvw, 17.5dvmin));
+        grid-template-columns: calc(max(28dvw, 35dvmin) - 1dvmin);
     }
 
     #sub_keyboard_ForMode1 > div {
-        width: 25dvw;
+        width: max(25dvw, 32dvmin);
     }
 
     #keyboard_top {
@@ -791,6 +786,11 @@ p {
 
     #keyboard_top > div {
         width: 19.9dvw;
+    }
+
+    #keyboard_top > div:first-child {
+        width: calc(19.9dvw - 0.5dvmin);
+        margin-right: 0.5dvmin;
     }
 
     #keyboard_top.ForMode1 > div:nth-last-child(-n+2) {
@@ -860,9 +860,9 @@ p {
     }
 
     #sub_keyboard_ForMode1 {
-        left: 51dvw;
+        left: calc(30.15625dvw + calc(62dvw / 3));
         width: 21dvw;
-        grid-template-columns: calc(20.5dvw - 1dvmin);
+        grid-template-columns: calc(21dvw - 1dvmin);
     }
 
     #sub_keyboard_ForMode1 > div {
@@ -1105,12 +1105,12 @@ p {
     height: min(7.5dvh, 9dvmin);
 }
 
-:where(
-    #print_content > div > div:not(.NotPrintDefault),
-    #print_content > div > div:not(.NotPrintDefault) > div,
-    #statistics_results_window > div > div
-) > p:first-child {
+#print_content > div:not(#print_content_2) div > p:first-of-type {
     margin-left: 0.85dvmin;
+}
+
+#print_content > div:not(#print_content_2) div > p:last-of-type {
+    margin-right: 0.85dvmin;
 }
 
 .MultipleLines {
@@ -1127,6 +1127,7 @@ p {
 #print_content_3 > div:nth-child(4n+2) {
     border-radius: 1.5dvmin 1.5dvmin 0 0;
     background-color: rgba(226, 226, 226, 0.8);
+    margin-top: 1dvmin;
 }
 
 #print_content_1 > div:nth-child(8),
@@ -1270,7 +1271,11 @@ p {
     position: relative;
 }
 
-#statistics_results_top > div:hover {
+:where(
+    #statistics_results_top.ResultX > div:not(:first-child),
+    #statistics_results_top.ResultY > div:not(:nth-child(2)),
+    #statistics_results_top.ResultXY > div:not(:nth-child(3))
+):not(.Lines):hover {
     background-color: rgb(242, 242, 242);
 }
 
@@ -1280,7 +1285,7 @@ p {
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: border-radius 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 #statistics_results_top > div.Lines {
@@ -1303,10 +1308,49 @@ p {
     left: calc(196dvw / 3);
 }
 
-#statistics_results_top.ResultX > div:first-child,
-#statistics_results_top.ResultY > div:nth-child(2),
-#statistics_results_top.ResultXY > div:nth-child(3) {
-    background-color: rgb(236, 236, 236);
+.SelectBtn {
+    position: relative;
+    overflow: hidden; /* 核心：裁剪溢出的波纹 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* 外观样式 */
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* 波纹元素样式 */
+span.Ripple {
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.1);
+    pointer-events: none; /* 核心：确保不阻挡交互 */
+    transform: scale(0);
+
+    /* 进入动画：扩散 */
+    animation: RippleFill 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* 离开状态：褪色 */
+span.Ripple.IsFadingOut {
+    animation: RippleFadeOut 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes RippleFill {
+    to {
+        transform: scale(4);
+        opacity: 1;
+    }
+}
+
+@keyframes RippleFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(4);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(4.2);
+    }
 }
 
 #statistics_results {
@@ -1316,10 +1360,15 @@ p {
 }
 
 #statistics_results_window {
-    width: 294dvw;
+    width: 296dvw;
     display: flex;
+    gap: 1dvw;
     position: relative;
     transition: transform 0.3s ease;
+}
+
+#statistics_results_window > div {
+    width: 98dvw;
 }
 
 #statistics_results_window.ResultX {
@@ -1327,15 +1376,11 @@ p {
 }
 
 #statistics_results_window.ResultY {
-    transform: translateX(-98dvw);
+    transform: translateX(-99dvw);
 }
 
 #statistics_results_window.ResultXY {
-    transform: translateX(-196dvw);
-}
-
-#statistics_results_window > div {
-    width: 98dvw;
+    transform: translateX(-198dvw);
 }
 
 #print_content_2 div.Lines {
@@ -1439,6 +1484,7 @@ p {
 ) {
     border-radius: 1.5dvmin;
     background: rgba(226, 226, 226, 0.8);
+    margin-top: 1dvmin;
 }
 
 #print_content_2_error {

@@ -3945,6 +3945,19 @@
             return [MathPlus.divide(cov, n), MathPlus.divide(cov, n - 1)];
         }
 
+        /**
+         * @private
+         * @static
+         * @method _covariance
+         * @description (内部辅助方法) 计算两个数值列表的相关系数。
+         * @param {Array<ComplexNumber|string|number>} listA - 第一个数值数组 (X)。
+         * @param {Array<ComplexNumber|string|number>} listB - 第二个数值数组 (Y)。
+         * @param {object} [options={}] - 可选参数。
+         * @param {Array<ComplexNumber|string>} [options.varianceA=null] - listA 的方差（样本方差和总体方差）。如果未提供，将自动计算。
+         * @param {Array<ComplexNumber|string>} [options.varianceB=null] - listB 的方差（样本方差和总体方差）。如果未提供，将自动计算。
+         * @param {Array<ComplexNumber|string>} [options.covariance=null] - 样本的协方差（样本协方差和总体协方差）。如果未提供，将自动计算。
+         * @returns {ComplexNumber|string} 列表的相关系数，以 ComplexNumber 实例形式返回。
+         */
         static _correlationCoefficient(listA, listB, {
             varianceA = null,
             varianceB = null,
