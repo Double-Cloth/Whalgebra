@@ -7,7 +7,7 @@
 
 **项目简介**
 
-**Whalgebra**（前身 D-Calculator）是一个基于原生 Web 技术栈构建的代数计算器。项目经历了从 Python 脚本原型到单文件 HTML，再到模块化前端工程的演进过程。
+**Whalgebra**（原名 D-Calculator）是一个基于原生 Web 技术栈构建的代数计算器。项目经历了从 Python 脚本原型到单文件 HTML，再到模块化前端工程的演进过程。
 
 该项目旨在提供一个**无需依赖**、**离线可用**且**精度可控**的数学计算环境。无论是在桌面端浏览器还是移动设备上，Whalgebra 都能提供一致的计算体验。
 
@@ -54,9 +54,9 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 1.通过 Git 版本控制系统获取代码库：
 
-`git clone https://github.com/Double-Cloth/Whalgebra`
+`git clone https://github.com/Double-Cloth/Whalgebra.git`
 
-2.在浏览器中打开 src 文件夹中的 Whalgebra.html。
+2.运行根目录下的 `run_server.py`。
 
 ### Android 移动端本地运行
 

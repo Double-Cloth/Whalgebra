@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>访问控制台</title>
+    <style>
+        :root {
+            /* 语义化颜色变量 */
+            --bg-body: #F8FAFC; /* 极淡的灰蓝背景 */
+            --bg-card: #FFFFFF;
+            --text-main: #1E293B; /* 深色主文字 */
+            --text-sub: #64748B; /* 次要文字 */
+            --primary: #3B82F6; /* 品牌蓝 */
+            --primary-hover: #2563EB;
+            --danger: #EF4444; /* 警告红 */
+            --success: #10B981; /* 成功绿 */
+            --disabled-bg: #F1F5F9;
+            --disabled-text: #94A3B8;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            line-height: 1.5;
+        }
+
+        .card {
+            background: var(--bg-card);
+            width: 100%;
+            max-width: 440px;
+            padding: 48px 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid #E2E8F0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        p.subtitle {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        /* 状态标签 */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2.5rem;
+            background-color: #F1F5F9; /* 默认灰 */
+            color: var(--text-sub);
+        }
+
+        .status-pill.local {
+            background-color: #FFF1F2;
+            color: #BE123C; /* 深红 */
+            border: 1px solid #FFE4E6;
+        }
+
+        .status-pill.server {
+            background-color: #ECFDF5;
+            color: #047857; /* 深绿 */
+            border: 1px solid #D1FAE5;
+        }
+
+        /* 按钮容器 */
+        .action-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* 按钮通用样式 */
+        .btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 14px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* 样式 A: 主按钮 */
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* 样式 B: 次级按钮 (用于需要鉴权的入口) */
+        .btn-secondary {
+            background-color: #334155; /* 深岩灰 */
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #1E293B;
+        }
+
+        /* 禁用状态 */
+        .btn.disabled {
+            background-color: var(--disabled-bg);
+            color: var(--disabled-text);
+            cursor: not-allowed;
+            pointer-events: none; /* 核心：禁止交互 */
+            border: 1px solid #CBD5E1;
+        }
+
+        /* 底部警告条 */
+        .warning-box {
+            margin-top: 32px;
+            padding: 16px;
+            background-color: #FFF7ED; /* 浅橙色背景 */
+            border: 1px solid #FFEDD5;
+            border-radius: 8px;
+            text-align: left;
+            display: none; /* 默认隐藏 */
+        }
+
+        .warning-title {
+            display: flex;
+            align-items: center;
+            color: #9A3412; /* 深橙色文字 */
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .warning-desc {
+            color: #C2410C;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: monospace;
+            background-color: rgba(0, 0, 0, 0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #9A3412;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>访问控制台</h1>
+    <p class="subtitle">请选择要访问的功能模块</p>
+
+    <div id="status-pill" class="status-pill">正在检测运行环境...</div>
+
+    <div class="action-group">
+        <a href="./src/Whalgebra.html" target="_self" class="btn btn-primary">
+            Whalgebra 计算器
+        </a>
+
+        <a href="./test/test_index.html" target="_self" class="btn btn-secondary" id="secure-link">
+            计算器测试程序
+        </a>
+    </div>
+
+    <div id="local-warning" class="warning-box">
+        <div class="warning-title">
+            功能受限
+        </div>
+        <div class="warning-desc">
+            当前为本地文件模式，无法连接测试程序。<br/>
+            请运行同级目录下的 <code>run_server.py</code> 以使用全部功能。
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const statusPill = document.getElementById('status-pill');
+        const secureLink = document.getElementById('secure-link');
+        const warningBox = document.getElementById('local-warning');
+
+        // 获取协议
+        const protocol = window.location.protocol;
+
+        if (protocol === 'file:') {
+            // === 本地模式 ===
+
+            // 1. 更新状态文案
+            statusPill.innerHTML = '功能受限 (Functionally Limited)';
+            statusPill.className = 'status-pill local';
+
+            // 2. 锁定按钮
+            secureLink.classList.add('disabled');
+            secureLink.classList.remove('btn-secondary'); // 移除原有深色样式
+            // 修改文案，直观告知用户状态
+            secureLink.innerHTML = '计算器测试程序 (需服务器环境)';
+            // 移除链接
+            secureLink.removeAttribute('href');
+
+            // 3. 显示底部提示
+            warningBox.style.display = 'block';
+
+        } else {
+            // === 服务器模式 ===
+
+            // 1. 更新状态文案
+            statusPill.innerHTML = '完整功能模式 (Full Access)';
+            statusPill.className = 'status-pill server';
+
+            // 按钮保持 HTML 中定义的默认状态（可点击）
+            warningBox.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>
