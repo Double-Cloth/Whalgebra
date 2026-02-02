@@ -924,7 +924,7 @@ p {
     /* 局部定义变量 */
     width: max(40dvw, 60dvmin);
 
-    height: calc(min(11dvmin, 7dvh) + 36dvmin + 2dvh);
+    height: calc(min(12dvmin, 7dvh) + 37dvmin + 2dvh);
     border-radius: 3dvmin;
     /* 启用背景色，使用定义的局部变量 */
     background-color: hsla(var(--hue), 10%, 90%, 0.8);
@@ -942,7 +942,7 @@ p {
 
 #loading {
     width: 30dvw;
-    height: 9dvmin;
+    height: 10dvmin;
 }
 
 #load_cancel {
@@ -1061,7 +1061,7 @@ p {
     align-items: center;
     justify-content: center;
     width: max(25dvw, 35dvmin);
-    height: min(11dvmin, 7dvh);
+    height: min(12dvmin, 7dvh);
     margin: 0.5dvh auto auto;
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
