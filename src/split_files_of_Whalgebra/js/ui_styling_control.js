@@ -3874,7 +3874,7 @@
             }
 
             // 3. 准备 UI 类名并切换顶部显示状态
-            const inputClassStr = inputStr.replace(/[\[\]]/g, '');
+            const inputClassStr = Public.symbolToLetter(inputStr).replace(/[\[\]]/g, '');
             const chinese = `_${inputClassStr}_ch_`;
             HtmlTools.getHtml('#head_inputs').classList.remove('NoDisplay');
             HtmlTools.getHtml('#head_title').classList.add('NoDisplay');

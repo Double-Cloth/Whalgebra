@@ -1822,6 +1822,7 @@ span.Ripple.IsFadingOut {
 }
 
 #explain_content > p:not(.ExplainLeft) {
+    height: 7dvmin;
     margin: 1dvmin auto;
 }
 

@@ -3172,17 +3172,6 @@
                 // 使用 switch 语句高效地处理不同 token 的映射。
                 switch (str) {
                     // --- 映射二元运算符为其方法名 ---
-                    case '+':
-                        return 'plus'; // 将加法符号 '+' 映射为 'plus' 方法。
-                    case '-':
-                        return 'minus'; // 将减法符号 '-' 映射为 'minus' 方法。
-                    case '*':
-                    case '&': // 将显式的 '*' 和隐式的 '&' 都映射为乘法。
-                        return 'times';
-                    case '/':
-                        return 'divide'; // 将除法符号 '/' 映射为 'divide' 方法。
-                    case '^':
-                        return 'pow'; // 将幂运算 '^' 映射为 'pow' 方法。
                     case 'E': // 代表科学记数法 (例如, 3E6)。
                         return 'exponential';
 
@@ -3191,8 +3180,6 @@
                         return '_oppositeNumber';
                     case 'A': // 'A' 是内部使用的、代表绝对值的 token。
                         return 'abs';
-                    case '!': // 将阶乘符号 '!' 映射为 'fact' 方法。
-                        return 'fact';
 
                     // --- 映射函数为其方法名 ---
                     case 'f':
@@ -3222,10 +3209,8 @@
 
                     // --- 默认回退情况 ---
                     default:
-                        // 如果 token 不需要任何特殊转换（例如，它本身就是一个数字 "123"，
-                        // 或者是一个不需要映射的标准函数名如 "sin"），则原样返回。
-                        // 只需删除标识 CSS 的中括号
-                        return str.replace(/[\[\]]/g, '');
+                        // 删除标识 CSS 的中括号
+                        return Public.symbolToLetter(str).replace(/[\[\]]/g, '');
                 }
             }
 

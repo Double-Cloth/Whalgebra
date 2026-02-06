@@ -386,6 +386,40 @@
 
         /**
          * @static
+         * @method symbolToLetter
+         * @description (内部辅助函数) 将一个符号词法单元（token）转换为纯字母表示。
+         * @param {string} symbol - 要转换的词法单元字符串，例如 "+", "-", "*"。
+         * @returns {string} - 转换后的字符串。
+         */
+        static symbolToLetter(symbol) {
+            switch (symbol) {
+                // --- 映射二元运算符为其方法名 ---
+                case '+':
+                    return 'plus'; // 将加法符号 '+' 映射为 'plus' 方法。
+                case '-':
+                    return 'minus'; // 将减法符号 '-' 映射为 'minus' 方法。
+                case '*':
+                case '&': // 将显式的 '*' 和隐式的 '&' 都映射为乘法。
+                    return 'times';
+                case '/':
+                    return 'divide'; // 将除法符号 '/' 映射为 'divide' 方法。
+                case '^':
+                    return 'pow'; // 将幂运算 '^' 映射为 'pow' 方法。
+
+                // --- 映射一元运算符为其方法名 ---
+                case '!': // 将阶乘符号 '!' 映射为 'fact' 方法。
+                    return 'fact';
+                case '|':
+                    return 'abs';
+
+                // 默认情况
+                default:
+                    return symbol;
+            }
+        }
+
+        /**
+         * @static
          * @method getTokenInfo
          * @description 分析一个词法单元（token），返回其包含完整元数据的对象。
          * 此函数是词法分析器的核心，它为后续的语法分析（如调度场算法）提供了正确解析运算符优先级、
