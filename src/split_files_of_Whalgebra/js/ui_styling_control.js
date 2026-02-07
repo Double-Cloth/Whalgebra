@@ -3874,20 +3874,91 @@
             }
 
             // 3. 准备 UI 类名并切换顶部显示状态
-            const inputClassStr = Public.symbolToLetter(inputStr).replace(/[\[\]]/g, '');
-            const chinese = `_${inputClassStr}_ch_`;
+            const inputClassStr = Public.symbolToLetter(inputStr).replace(/[\[\],.()]/g, (match) => {
+                const map = {
+                    '[': '',
+                    ']': '',
+                    '(': 'parentheses_left',
+                    ')': 'parentheses_right',
+                    ',': 'comma',
+                    '.': 'dp'
+                };
+                return map[match];
+            });
+
             HtmlTools.getHtml('#head_inputs').classList.remove('NoDisplay');
             HtmlTools.getHtml('#head_title').classList.add('NoDisplay');
-            HtmlTools.getHtml('#head_inputs').children[2].className = chinese;
-            HtmlTools.appendDOMs(
-                HtmlTools.getHtml('#explain_title_inner'),
-                [chinese, '_colon_', '_space_', ...input],
-                {mode: 'replace'}
-            );
+            switch (inputClassStr) {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                case 'f':
+                case 'g':
+                    const ch = ['f', 'g'].includes(inputClassStr) ? '_custom_function_ch_' : '_num_ch_';
+                    HtmlTools.appendDOMs(
+                        HtmlTools.getHtml('#head_inputs'),
+                        ['_input_', '_space_', ch, '_space_', `_${inputClassStr}_`],
+                        {mode: 'replace'}
+                    );
+                    HtmlTools.appendDOMs(
+                        HtmlTools.getHtml('#explain_title_inner'),
+                        [ch, '_space_', ...input],
+                        {mode: 'replace'}
+                    );
+                    break;
+
+                default:
+                    const chinese = `_${inputClassStr}_ch_`;
+                    HtmlTools.appendDOMs(
+                        HtmlTools.getHtml('#head_inputs'),
+                        ['_input_', '_space_', chinese],
+                        {mode: 'replace'}
+                    );
+                    HtmlTools.appendDOMs(
+                        HtmlTools.getHtml('#explain_title_inner'),
+                        [chinese, '_colon_', '_space_', ...input],
+                        {mode: 'replace'}
+                    );
+                    break;
+
+            }
 
             // 4. 开始构建解释内容
             const fragment = document.createDocumentFragment();
-            HtmlTools.appendDOMs(fragment, [`_${inputClassStr}_expl_`]);
+            switch (inputStr) {
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                    const div = document.createElement('div');
+                    const num = Number(inputStr);
+                    HtmlTools.appendDOMs(
+                        div,
+                        [`_${num}_`, '_space_', '_is_between_', '_space_', `_${num - 1}_`, '_space_', '_and_', '_space_', `_${num + 1}_`, '_space_', '_natural_numbers_']
+                    );
+                    fragment.replaceChildren(div);
+                    break;
+
+                case 'f':
+                case 'g':
+                    HtmlTools.appendDOMs(fragment, ['_custom_function_expl_']);
+                    break;
+
+                default:
+                    HtmlTools.appendDOMs(fragment, [`_${inputClassStr}_expl_`]);
+                    break;
+            }
 
             // 5. 针对函数/运算符类型的特殊逻辑处理
             if (info.class === 'func') {
