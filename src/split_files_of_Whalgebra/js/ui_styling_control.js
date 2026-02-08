@@ -1561,6 +1561,9 @@
          * InputManager.input(['_s_', '_i_', '_n_', '_parentheses_left_']);
          */
         static input(classArray) {
+            if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') || !HtmlTools.getHtml('#main').classList.contains('Input')) {
+                return;
+            }
             // 获取主输入区域和光标元素。
             const inputArea = HtmlTools.getHtml('#input');
             if (inputArea.children.length > this._MAX_INPUT_LEN) { // 防止输入过多数据
@@ -3791,6 +3794,9 @@
          * @returns {void}
          */
         static hideExplain() {
+            if (!HtmlTools.getHtml('#explain').classList.contains('ExplainNotShow')) {
+                return;
+            }
             // 1. 切换顶部显示状态：隐藏详情输入栏，恢复显示主标题
             HtmlTools.getHtml('#head_inputs').classList.add('NoDisplay');
             HtmlTools.getHtml('#head_title').classList.remove('NoDisplay');
@@ -3859,6 +3865,10 @@
                 line.classList.add('Lines');
                 // 3. 将分割线追加到目标容器
                 target.appendChild(line);
+            }
+
+            if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') || !HtmlTools.getHtml('#main').classList.contains('Input')) {
+                return;
             }
 
             // --- 主逻辑开始 ---
@@ -3966,24 +3976,42 @@
                 const plusAndMinusPriority = info.priority + 2;
                 const plusAndMinusAssociativity = info.associativity;
 
-                // 特殊处理 "+" 和 "-" 的多重含义
-                if (['+', '-'].includes(inputStr)) {
-                    const positiveAndNegative = Public.getTokenInfo('N');
-                    const positiveAndNegativePriority = positiveAndNegative.priority + 2;
-                    const positiveAndNegativeAssociativity = positiveAndNegative.associativity;
+                switch (inputStr) {
+                    // 特殊处理 "+" "*" 和 "-" 的多重含义
+                    case '-':
+                    case '+':
+                        const positiveAndNegative = Public.getTokenInfo('N');
+                        const positiveAndNegativePriority = positiveAndNegative.priority + 2;
+                        const positiveAndNegativeAssociativity = positiveAndNegative.associativity;
 
-                    // 展示作为加/减号的属性
-                    HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'plus' : 'minus'}_sign_ ExplainLeft`]);
-                    funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
+                        // 展示作为加/减号的属性
+                        HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'plus' : 'minus'}_sign_ ExplainLeft`]);
+                        funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
 
-                    addLine(fragment); // 添加第二条分割线
+                        addLine(fragment); // 添加第二条分割线
 
-                    // 展示作为正/负号的属性
-                    HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'positive' : 'negative'}_sign_ ExplainLeft`]);
-                    funcInfoShow(fragment, positiveAndNegativePriority, positiveAndNegativeAssociativity);
-                } else {
-                    // 普通运算符处理
-                    funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
+                        // 展示作为正/负号的属性
+                        HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'positive' : 'negative'}_sign_ ExplainLeft`]);
+                        funcInfoShow(fragment, positiveAndNegativePriority, positiveAndNegativeAssociativity);
+                        break;
+
+                    case '*':
+                        const explicit = Public.getTokenInfo('*');
+                        const implicit = Public.getTokenInfo('&');
+                        // 展示显式乘法
+                        HtmlTools.appendDOMs(fragment, ['_as_explicit_multiplication_ ExplainLeft']);
+                        funcInfoShow(fragment, explicit.priority + 2, explicit.associativity);
+
+                        addLine(fragment); // 添加第二条分割线
+
+                        // 展示隐式乘法
+                        HtmlTools.appendDOMs(fragment, ['_as_implicit_multiplication_ ExplainLeft']);
+                        funcInfoShow(fragment, implicit.priority + 2, implicit.associativity);
+                        break;
+
+                    default:
+                        // 普通运算符处理
+                        funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
                 }
             } else if (inputStr === '|') {
                 // 6. 特殊处理绝对值符号
