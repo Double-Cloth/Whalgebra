@@ -928,7 +928,7 @@
             if (input.re.mantissa === 0n) {
                 // 如果它是一个纯实数 (即 0)，则辐角为 0。
                 if (input.onlyReal) {
-                    return zero;
+                    throw new Error('[MathPlus] The argument of 0 is undefined.');
                 }
                 // 如果是纯虚数:
                 // - 虚部为正 (例如, 2i), 辐角为 π/2。
@@ -2379,12 +2379,23 @@
          */
         static tan(x) {
             const input = new ComplexNumber(x);
-            // 首先计算 cos(x)、sin(x)，并将其结果存储起来。
-            const cosAngle = Public.zeroCorrect(MathPlus.cos(input));
-            const sinAngle = MathPlus.sin(input);
+            if (input.onlyReal) {
+                // 首先计算 cos(x)、sin(x)，并将其结果存储起来。
+                const cosAngle = Public.zeroCorrect(MathPlus.cos(input));
+                const sinAngle = MathPlus.sin(input);
 
-            // 然后将 sin(x) 的结果除以 cos(x) 的结果。
-            return MathPlus.divide(sinAngle, cosAngle);
+                // 然后将 sin(x) 的结果除以 cos(x) 的结果。
+                return MathPlus.divide(sinAngle, cosAngle);
+            }
+
+            const one = new ComplexNumber(1);
+            const tmp = MathPlus.exp(MathPlus.times([0, 2], input));
+            const denominator = MathPlus.plus(tmp, one);
+            const numerator = MathPlus.minus(tmp, one);
+            return MathPlus.times(
+                [0, -1],
+                MathPlus.divide(numerator, denominator)
+            );
         }
 
         /**
@@ -2668,7 +2679,7 @@
                 // 计算分子: e^(2x) - 1
                 MathPlus.plus(mid, [0, -1n, acc]),
                 // 计算分母: e^(2x) + 1
-                MathPlus.plus(mid, [0, 1n, acc])
+                Public.zeroCorrect(MathPlus.plus(mid, [0, 1n, acc]))
             );
         }
 

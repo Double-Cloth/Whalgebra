@@ -4015,6 +4015,7 @@
                 }
             } else if (inputStr === '|') {
                 // 6. 特殊处理绝对值符号
+                addLine(fragment);
                 funcInfoShow(fragment, 1, null);
             }
 
