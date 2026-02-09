@@ -8,43 +8,37 @@ import datetime
 import time
 from pathlib import Path
 
-# 获取当前脚本所在目录
-BASE_DIR = Path(__file__).parent.absolute()
-
-# ================= 配置区域 (详细注释版) =================
+# ================= 配置区域 =================
 CONFIG = {
     # ================= [路径配置] =================
-    # 输入目录：默认在脚本同级创建 input，也可以通过命令行 -i 参数覆盖
-    'input_dir': BASE_DIR / 'input',
+    # 输入目录：默认为当前执行目录下的 input 文件夹
+    'input_dir': Path('../tmp/input'),
 
     # 输出目录：生成的 CSS 文件存放位置
-    'output_dir': BASE_DIR / 'output',
+    'output_dir': Path('../tmp/output-css'),
 
-    # 临时目录：存放压缩优化后的 SVG 源文件 (方便您拿去单独使用)
-    'temp_dir': BASE_DIR / 'temp',
+    # 临时目录：存放压缩优化后的 SVG 源文件
+    'temp_dir': Path('../tmp/output-svg'),
 
     # 输出的 CSS 文件名称
     'output_css_name': 'icons.css',
 
+    # 输出 CSS 文件中 SVG 的默认高度
+    'default_height': '5dvmin',
+
     # ================= [压缩配置 (Scour Options)] =================
-    # Scour 是核心压缩引擎，以下选项决定了 SVG 怎么瘦身
     'scour_options': {
-        # [核心优化]
-        'enable_viewboxing': True,  # 强烈建议开启！自动修正或添加 viewBox 属性 (网页响应式缩放必须)
-        'enable_id_stripping': True,  # 删除未被使用的 ID 属性 (减小体积)
-        'enable_comment_stripping': True,  # 删除文件中的注释
-        'shorten_ids': True,  # 将 ID 缩短为随机字符 (如 id="layer1" -> id="a")，进一步减小体积
-
-        # [格式化与清理]
-        'indent_type': 'none',  # 缩进方式：'none'=压缩成一行(体积最小); 'space'=格式化(方便阅读)
-        'strip_xml_prolog': True,  # 删除开头的 <?xml ...?> 声明 (浏览器不需要这个)
-        'remove_metadata': True,  # 删除元数据 (如 Illustrator/Inkscape 留下的编辑信息，体积占用大且无用)
-        'newlines': False,  # 是否保留换行符
-
-        # [颜色与样式] (按需开启，通常保持默认即可)
-        'simple_colors': False,  # 是否将 #RRGGBB 缩写为 #RGB (建议 False，防止某些老旧解析器出错)
-        'style_to_xml': False,  # 是否将 style="..." 转换为 XML 属性 (如 fill="red")
-        'group_collapse': False,  # 是否删除无用的 <g> 标签 (有时会导致复杂图形层级错乱，建议 False)
+        'enable_viewboxing': True,
+        'enable_id_stripping': True,
+        'enable_comment_stripping': True,
+        'shorten_ids': True,
+        'indent_type': 'none',
+        'strip_xml_prolog': True,
+        'remove_metadata': True,
+        'newlines': False,
+        'simple_colors': False,
+        'style_to_xml': False,
+        'group_collapse': False,
     }
 }
 
@@ -52,136 +46,130 @@ CONFIG = {
 # =======================================================
 
 class Logger:
-    """自定义日志打印类，支持颜色和时间戳"""
-    # ANSI 颜色代码
+    """自定义日志打印类"""
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
+    GREY = '\033[90m'
     RESET = '\033[0m'
     BOLD = '\033[1m'
 
-    @staticmethod
-    def _time():
-        return datetime.datetime.now().strftime('%H:%M:%S')
+    SYM_OK = "[OK]"
+    SYM_FAIL = "[!!]"
+    SYM_WARN = "[WARN]"
+    SYM_INFO = "[i]"
+    SYM_SAVE = "v"
+
+    @classmethod
+    def format_bytes(cls, size):
+        power = 2 ** 10
+        n = size
+        power_labels = {0: 'B', 1: 'KB', 2: 'MB', 3: 'GB'}
+        n_label = 0
+        while n > power:
+            n /= power
+            n_label += 1
+        return f"{n:.1f}{power_labels.get(n_label, 'TB')}"
 
     @classmethod
     def info(cls, msg):
-        print(f"{cls.BOLD}[{cls._time()}] [INFO] {msg}{cls.RESET}")
+        print(f"{cls.BLUE}{cls.SYM_INFO} {msg}{cls.RESET}")
+
+    @classmethod
+    def section(cls, msg):
+        print(f"\n{cls.BOLD}{cls.CYAN}== {msg} =={cls.RESET}")
 
     @classmethod
     def success(cls, msg):
-        print(f"{cls.GREEN}[{cls._time()}] [SUCCESS] {msg}{cls.RESET}")
+        print(f"{cls.GREEN}{cls.SYM_OK} {msg}{cls.RESET}")
 
     @classmethod
     def warning(cls, msg):
-        print(f"{cls.YELLOW}[{cls._time()}] [WARNING] {msg}{cls.RESET}")
+        print(f"{cls.YELLOW}{cls.SYM_WARN} {msg}{cls.RESET}")
 
     @classmethod
     def error(cls, msg):
-        print(f"{cls.RED}[{cls._time()}] [ERROR] {msg}{cls.RESET}")
+        print(f"{cls.RED}{cls.SYM_FAIL} {msg}{cls.RESET}")
 
     @classmethod
-    def box(cls, lines):
-        """打印一个漂亮的方框信息"""
-        width = 60
-        print(f"{cls.CYAN}┌{'─' * width}┐{cls.RESET}")
-        for line in lines:
-            # 计算实际字符长度
-            print(f"{cls.CYAN}│{cls.RESET} {line:<{width - 2}} {cls.CYAN}│{cls.RESET}")
-        print(f"{cls.CYAN}└{'─' * width}┘{cls.RESET}")
+    def report_line(cls, label, value, color=RESET):
+        print(f"{cls.GREY}|{cls.RESET} {label:<15} : {color}{value}{cls.RESET}")
+
+    @classmethod
+    def box_start(cls, title):
+        width = 50
+        print(
+            f"\n{cls.CYAN}+{'-' * 2} {cls.BOLD}{title} {cls.RESET}{cls.CYAN}{'-' * (width - len(title) - 4)}+{cls.RESET}")
+
+    @classmethod
+    def box_end(cls):
+        width = 50
+        print(f"{cls.CYAN}+{'-' * width}+{cls.RESET}\n")
 
 
 # 引入 scour
 try:
     from scour import scour
 except ImportError as e:
-    Logger.error(f"无法导入 scour 库。详情: {e}")
-    print(">>> 请运行命令安装: pip install scour")
+    Logger.error(f"无法导入核心库 [scour]。")
+    print(f"{Logger.YELLOW}   >>> 请运行安装命令: pip install scour{Logger.RESET}")
     sys.exit(1)
 
 
 class ScourOptionsMock:
-    """
-    用于模拟 scour 需要的 options 对象。
-    """
-
     def __init__(self, config_options):
-        # 1. 设置 Scour 所有可能的默认值 (防止报错)
-        # =========================================================================
-        # [注意] 为什么要写这一大堆默认值？
-        # Scour 库的内部代码（scour.py）会直接读取 options 对象的属性，例如 options.simple_colors。
-        # 如果我们只传了 CONFIG 里那几个配置，Scour 访问其他未定义的属性时，就会直接报错：
-        # AttributeError: 'ScourOptionsMock' object has no attribute 'xxx'
-        # 因此，这里必须把 Scour 可能用到的所有参数都列出来，并给一个安全的默认值（通常是 False 或 None）。
-        # =========================================================================
         defaults = {
-            # --- 颜色与样式 ---
-            'simple_colors': False,  # 是否简化颜色代码 (#aabbcc -> #abc)
-            'style_to_xml': False,  # 是否将 style 属性转换为 XML 属性
-            'group_collapse': False,  # 是否合并无用的 <g> 组
-
-            # --- 兼容性与清理 ---
-            'doc_type_xml_ent': False,  # 是否保留文档类型定义
-            'embed_rasters': False,  # 是否嵌入位图 (我们只处理矢量)
-            'keep_editor_data': False,  # 是否保留编辑器元数据
-
-            # --- ID 处理 ---
-            'strip_ids': False,  # 是否完全剥离 ID (慎用，可能导致引用丢失)
-            'shorten_ids': False,  # 是否缩短 ID
-
-            # --- 结构清理 ---
-            'strip_comments': False,  # 是否删除注释
-            'strip_xml_prolog': False,  # 是否删除 XML 头声明
-            'remove_metadata': False,  # 是否删除 <metadata> 标签
-            'enable_viewboxing': False,  # 是否修正 viewBox
-
-            # --- 输出格式 ---
-            'indent_type': 'none',  # 缩进类型
-            'digits': 5,  # 坐标精度 (小数点后保留几位)
-            'quiet': True,  # 静默模式 (不输出 Scour 自己的日志)
-            'verbose': False,  # 详细模式
-            'newlines': True,  # 是否保留换行符
-            'line_terminator': '\n',  # 行结束符
-            'set_precision': 5,  # 设置精度
-            'renderer_workaround': False,  # 针对某些渲染器的兼容性修复
-            'copy_defs': False,  # 复制 defs (通常不需要)
+            'simple_colors': False,
+            'style_to_xml': False,
+            'group_collapse': False,
+            'doc_type_xml_ent': False,
+            'embed_rasters': False,
+            'keep_editor_data': False,
+            'strip_ids': False,
+            'shorten_ids': False,
+            'strip_comments': False,
+            'strip_xml_prolog': False,
+            'remove_metadata': False,
+            'enable_viewboxing': False,
+            'indent_type': 'none',
+            'digits': 5,
+            'quiet': True,
+            'verbose': False,
+            'newlines': True,
+            'line_terminator': '\n',
+            'set_precision': 5,
+            'renderer_workaround': False,
+            'copy_defs': False,
             'no_renderer_workaround': True,
         }
-
-        # 先将所有安全的默认值赋予当前对象
         for k, v in defaults.items():
             setattr(self, k, v)
-
-        # 2. 用 CONFIG 中的配置覆盖默认值
-        # 这里会将我们在开头 CONFIG 里自定义的配置（如 enable_viewboxing=True）应用生效
         for k, v in config_options.items():
             setattr(self, k, v)
 
 
 class LocalSvgProcessor:
     def __init__(self):
-        # 预编译正则，提升循环处理时的性能
         self.re_data_name = re.compile(r'\s+data-name=(["\']).*?\1')
         self.re_illustrator_id = re.compile(r'\s+id=["\']_图层_\d+["\']')
-
         self._init_folders()
 
     def _init_folders(self):
         """初始化文件夹结构"""
         # 1. 检查输入目录
         if not CONFIG['input_dir'].exists():
-            Logger.warning(f"输入文件夹不存在: {CONFIG['input_dir']}")
+            Logger.warning(f"未找到输入目录: {CONFIG['input_dir']}")
             try:
                 CONFIG['input_dir'].mkdir(parents=True, exist_ok=True)
-                Logger.success("已自动为您创建该文件夹")
+                Logger.success(f"已自动创建输入目录: ./input")
             except Exception as e:
-                Logger.error(f"无法创建文件夹，请检查路径权限。错误: {e}")
+                Logger.error(f"创建目录权限不足: {e}")
                 sys.exit(1)
 
-            print(">>> 请将 SVG 文件放入该文件夹后重新运行。")
+            print(f"\n{Logger.CYAN}>> 操作指南: 请将 SVG 文件放入 'input' 文件夹后重新运行本脚本。{Logger.RESET}")
             sys.exit(1)
 
         # 2. 重建输出目录
@@ -195,7 +183,6 @@ class LocalSvgProcessor:
         CONFIG['temp_dir'].mkdir(parents=True, exist_ok=True)
 
     def _sanitize_css_classname(self, filename: str) -> str:
-        """生成合法的 CSS 类名"""
         name = Path(filename).stem
         clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
         if clean_name and clean_name[0].isdigit():
@@ -203,84 +190,98 @@ class LocalSvgProcessor:
         return f"._{clean_name}_"
 
     def optimize_svg(self, file_path: Path) -> str:
-        """读取 -> 正则清洗 -> Scour压缩"""
         try:
             content = file_path.read_text(encoding='utf-8')
-
-            # =========== 1. 正则预清洗 ===========
             content = self.re_data_name.sub('', content)
             content = self.re_illustrator_id.sub('', content)
-
-            # =========== 2. Scour 压缩 ===========
             options = ScourOptionsMock(CONFIG['scour_options'])
             clean_data = scour.scourString(content, options=options)
             return clean_data
-
         except Exception as e:
-            # 这里的日志留给主循环处理，避免打断进度条
             return ""
 
+    def _format_path(self, path):
+        """统一将路径格式化为 UNIX 风格 (使用正斜杠)，且是相对路径"""
+        try:
+            # 获取相对于当前工作目录的路径
+            rel_path = os.path.relpath(path)
+            # 强制替换反斜杠为正斜杠
+            return rel_path.replace(os.sep, '/')
+        except Exception:
+            return str(path).replace(os.sep, '/')
+
     def run(self):
+        # 支持相对路径查找
         input_files = list(CONFIG['input_dir'].glob('*.svg'))
         if not input_files:
-            Logger.warning(f"在以下目录中未找到 SVG 文件:")
-            print(f"   [DIR] {CONFIG['input_dir']}")
+            # 这里的路径显示也优化一下
+            display_path = self._format_path(CONFIG['input_dir'])
+            Logger.warning(f"目录为空: {display_path}")
             return
 
-        # 打印启动信息面板
-        Logger.box([
-            "[START] SVG 极速压缩工具启动",
-            f"输入: {CONFIG['input_dir'].name}",
-            f"数量: {len(input_files)} 个文件"
-        ])
+        # 打印启动面板
+        Logger.box_start("SVG OPTIMIZER ENGINE")
+        # 移除了 Work Dir，只显示 Input Dir
+        Logger.report_line("Input Dir", self._format_path(CONFIG['input_dir']))
+        Logger.report_line("Target Files", f"{len(input_files)} SVG(s)", Logger.BOLD)
+        Logger.box_end()
 
         start_time = time.time()
         css_rules = []
         success_count = 0
         total_files = len(input_files)
 
-        # 开始处理循环
-        for idx, f in enumerate(input_files, 1):
-            # 打印单行进度条 (使用 \r 回到行首，实现原地刷新)
-            # \033[K 用于清除光标后的残留字符
-            sys.stdout.write(f"\r\033[K[PROCESSING] [{idx}/{total_files}] 正在处理: {f.name} ...")
-            sys.stdout.flush()
+        total_orig_size = 0
+        total_opt_size = 0
 
-            # 1. 压缩 SVG
+        # 打印表头
+        print(f"{Logger.GREY}{'ID':<4} {'STATUS':<8} {'FILENAME':<25} {'SIZE OPTIMIZATION'}{Logger.RESET}")
+        print(f"{Logger.GREY}{'-' * 60}{Logger.RESET}")
+
+        for idx, f in enumerate(input_files, 1):
+            orig_size = f.stat().st_size
+            total_orig_size += orig_size
+
             optimized_svg = self.optimize_svg(f)
 
             if not optimized_svg:
-                sys.stdout.write(f"\n")  # 换行以免覆盖
-                Logger.warning(f"文件压缩失败或为空: {f.name}")
+                status = f"{Logger.RED}FAIL{Logger.RESET}"
+                print(f"{idx:<4} {status:<8} {f.name[:24]:<25}")
+                Logger.warning(f"Skip: {f.name} (Empty or Error)")
                 continue
 
-            # 2. 保存压缩后的 SVG
+            opt_size_bytes = len(optimized_svg.encode('utf-8'))
+            total_opt_size += opt_size_bytes
+            savings = orig_size - opt_size_bytes
+            savings_pct = (savings / orig_size) * 100 if orig_size > 0 else 0
+
+            size_color = Logger.GREEN if savings_pct > 20 else Logger.YELLOW
+            size_info = f"{Logger.format_bytes(orig_size)} -> {Logger.format_bytes(opt_size_bytes)} ({Logger.SYM_SAVE}{savings_pct:.0f}%)"
+
+            status = f"{Logger.GREEN}DONE{Logger.RESET}"
+            print(
+                f"{Logger.GREY}{idx:<4}{Logger.RESET} {status:<18} {f.name[:24]:<25} {size_color}{size_info}{Logger.RESET}")
+
             temp_file_path = CONFIG['temp_dir'] / f.name
             try:
                 temp_file_path.write_text(optimized_svg, encoding='utf-8')
             except Exception as e:
-                sys.stdout.write(f"\n")
-                Logger.error(f"写入临时文件失败: {e}")
+                Logger.error(f"Write Temp Fail: {e}")
 
-            # 3. 转 Base64
             b64_str = base64.b64encode(optimized_svg.encode('utf-8')).decode('utf-8')
-
-            # 4. 生成 CSS
             class_name = self._sanitize_css_classname(f.name)
-            rule = f"{class_name} {{\n    height: 5dvmin;\n    content: url(data:image/svg+xml;base64,{b64_str});\n}}"
+            rule = f"{class_name} {{\n    height: {CONFIG['default_height']};\n    content: url(data:image/svg+xml;base64,{b64_str});\n}}"
             css_rules.append(rule)
             success_count += 1
 
-        # 循环结束，换行
-        print("\n")
+        print(f"{Logger.GREY}{'-' * 60}{Logger.RESET}")
 
         if not css_rules:
-            Logger.error("没有生成任何 CSS 规则。")
+            Logger.error("No valid SVG content processed.")
             return
 
-        # 5. 写入最终 CSS 文件
         output_file = CONFIG['output_dir'] / CONFIG['output_css_name']
-        header = "/* Generated by Local-SVG-Tool */\n/* Icons Base64 Data */\n\n"
+        header = "/* Generated by SVG_compressor */\n/* Icons Base64 Data */\n\n"
 
         try:
             final_content = header + "\n\n".join(css_rules)
@@ -288,34 +289,33 @@ class LocalSvgProcessor:
 
             end_time = time.time()
             duration = end_time - start_time
+            total_saved = total_orig_size - total_opt_size
+            total_saved_pct = (total_saved / total_orig_size) * 100 if total_orig_size > 0 else 0
 
-            # 打印结束统计
-            Logger.success("处理完成！")
-            Logger.box([
-                f"[REPORT] 统计报告",
-                f"耗时: {duration:.2f} 秒",
-                f"成功: {success_count} / {total_files}",
-                f"压缩源文件: temp/{'...' if success_count else '无'}",
-                f"最终 CSS: {output_file.name}"
-            ])
+            Logger.box_start("BUILD SUCCESSFUL")
+            Logger.report_line("Time", f"{duration:.2f}s")
+            Logger.report_line("Status", f"{success_count}/{total_files} files processed", Logger.GREEN)
+            Logger.report_line("Total Size",
+                               f"{Logger.format_bytes(total_orig_size)} -> {Logger.format_bytes(total_opt_size)}")
+            Logger.report_line("Saved", f"{Logger.format_bytes(total_saved)} (-{total_saved_pct:.1f}%)", Logger.GREEN)
 
-            # Windows 系统自动打开文件夹
-            if sys.platform == 'win32':
-                os.startfile(CONFIG['temp_dir'])
+            # 使用新的格式化方法
+            Logger.report_line("Output", self._format_path(output_file), Logger.BOLD)
+            Logger.report_line("Temp Dir", self._format_path(CONFIG['temp_dir']), Logger.GREY)
+            Logger.box_end()
 
         except Exception as e:
-            Logger.error(f"写入最终文件失败: {e}")
+            Logger.error(f"Final write failed: {e}")
 
 
 if __name__ == "__main__":
-    # 命令行参数解析
-    parser = argparse.ArgumentParser(description="SVG 极速压缩与 CSS 生成工具")
+    parser = argparse.ArgumentParser(description="SVG 压缩与 CSS 生成工具")
     parser.add_argument('-i', '--input', type=str, help='指定输入文件夹路径')
     args = parser.parse_args()
 
-    # 如果有输入参数，覆盖配置
     if args.input:
-        CONFIG['input_dir'] = Path(args.input).absolute()
+        # 支持用户传入相对路径
+        CONFIG['input_dir'] = Path(args.input)
 
     processor = LocalSvgProcessor()
     processor.run()

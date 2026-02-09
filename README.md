@@ -56,7 +56,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 `git clone https://github.com/Double-Cloth/Whalgebra.git`
 
-2.运行根目录下的 `run_server.py`。
+2.运行tools目录下的 `run_server.py`。
 
 ### Android 移动端本地运行
 

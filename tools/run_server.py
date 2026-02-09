@@ -8,9 +8,12 @@ import argparse
 import threading
 from typing import Tuple
 
-# --- 配置常量 ---
-DEFAULT_PORT = 8000
-MAX_PORT_RETRIES = 100
+# --- 配置文件 (可在下方修改默认参数) ---
+SERVER_CONFIG = {
+    "DEFAULT_PORT": 8000,  # 默认起始端口
+    "MAX_PORT_RETRIES": 100,  # 端口被占用时的最大重试次数
+    "DEFAULT_DIR": "..",  # 默认服务目录 (当前目录)
+}
 
 
 class CORSNoCacheRequestHandler(http.server.SimpleHTTPRequestHandler):
@@ -71,7 +74,8 @@ def create_server(target_dir: str, start_port: int, bind_all: bool) -> Tuple[soc
     port = start_port
     host = "" if bind_all else "127.0.0.1"
 
-    for _ in range(MAX_PORT_RETRIES):
+    # 使用配置中的重试次数
+    for _ in range(SERVER_CONFIG["MAX_PORT_RETRIES"]):
         try:
             # 直接尝试实例化服务器，原子性操作
             server = ThreadingHTTPServer((host, port), CORSNoCacheRequestHandler)
@@ -109,9 +113,14 @@ def main():
         formatter_class=argparse.RawTextHelpFormatter
     )
 
-    parser.add_argument("--dir", default=".", metavar="PATH", help="指定要服务的目录路径 (默认: 当前目录)")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, metavar="PORT",
-                        help=f"指定起始端口号 (默认: {DEFAULT_PORT})")
+    # 使用配置中的默认目录
+    parser.add_argument("--dir", default=SERVER_CONFIG["DEFAULT_DIR"], metavar="PATH",
+                        help=f"指定要服务的目录路径 (默认: {SERVER_CONFIG['DEFAULT_DIR']})")
+
+    # 使用配置中的默认端口
+    parser.add_argument("--port", type=int, default=SERVER_CONFIG["DEFAULT_PORT"], metavar="PORT",
+                        help=f"指定起始端口号 (默认: {SERVER_CONFIG['DEFAULT_PORT']})")
+
     parser.add_argument("--local", action="store_true", help="安全模式：仅监听 127.0.0.1，不暴露给局域网")
 
     args = parser.parse_args()
