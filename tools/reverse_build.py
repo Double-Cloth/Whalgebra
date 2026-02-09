@@ -15,10 +15,10 @@ from argparse import RawTextHelpFormatter
 # ==========================================
 GLOBAL_CONFIG = {
     # 默认输入文件名 (如果在命令行未指定)
-    "DEFAULT_INPUT_FILE": "../src/Whalgebra.html",
+    "DEFAULT_INPUT_FILE": "../dist/Whalgebra.html",
 
     # 默认输出目录名称 (设为 None 则自动生成: split_files_of_{filename})
-    "DEFAULT_OUTPUT_DIR": "../src/split_files_of_Whalgebra",
+    "DEFAULT_OUTPUT_DIR": "../src",
 
     # 文件编码
     "ENCODING": "utf-8",
@@ -164,6 +164,13 @@ def parse_arguments() -> argparse.Namespace:
         help="禁用智能去缩进 (保留原始空格)"
     )
 
+    # [Modification] 添加 force 参数
+    parser.add_argument(
+        "--force", "-f",
+        action="store_true",
+        help="强制清空目标文件夹，跳过确认提示"
+    )
+
     return parser.parse_args()
 
 
@@ -188,6 +195,14 @@ def main():
     # 准备环境：清理旧目录并创建新目录
     # ==========================================
     if base_export_path.exists():
+        # [Modification] 只有在没有使用 --force 参数时才询问
+        if not args.force:
+            print(f"\n[Warning] 目标文件夹已存在: {base_export_path}")
+            user_input = input("是否清空该目录并继续? [y/N]: ").lower().strip()
+            if user_input != 'y':
+                print("操作已取消。")
+                sys.exit(0)
+
         print(f"Cleaning existing directory: {base_export_path}")
         try:
             shutil.rmtree(base_export_path)

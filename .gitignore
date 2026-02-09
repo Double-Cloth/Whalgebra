@@ -22,23 +22,11 @@ ehthumbs.db
 Desktop.ini
 
 # --- Dependencies & Logs ---
-node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
-
-# --- Build & Dist ---
-# Standard build output
-dist/
-build/
-
-# Framework specific (e.g., Next.js, Nuxt.js)
-.next/
-.nuxt/
-.output/
-out/
 
 # --- Environment Variables ---
 # WARNING: Never commit .env files containing API keys or secrets
@@ -52,8 +40,6 @@ out/
 ! .env.example
 
 # --- Testing & Quality Control ---
-# Code coverage reports
-coverage/
 
 # Cache files (eslint, stylelint, prettier, etc.)
 .eslintcache
@@ -68,3 +54,4 @@ coverage/
 *.temp
 *.swp
 *.swo
+tmp/
