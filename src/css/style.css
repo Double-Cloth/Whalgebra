@@ -116,6 +116,7 @@ p {
 }
 
 /* ===== main 窗口样式 ===== */
+
 #main_cover {
     position: absolute;
     z-index: 3;
@@ -162,7 +163,7 @@ p {
     overflow: hidden;
     align-items: center;
     justify-content: center;
-    width: 7dvw;
+    width: max(7dvw, 10dvmin);
     height: 6.5dvh;
     transition: all 0.15s ease;
     border-radius: 2.5dvmin;
@@ -196,7 +197,7 @@ p {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 86dvw;
+    width: calc(100dvw - max(14dvw, 20dvmin));
     height: 6.5dvh;
     transition: all 0.24s ease;
 }
@@ -225,7 +226,7 @@ p {
 }
 
 ._ship_:not(.ShipLeft) {
-    left: -5dvmin;
+    left: max(-5dvh, -7.79dvmin);
 }
 
 /* screen_title 部分 */
@@ -1752,7 +1753,7 @@ span.Ripple.IsFadingOut {
 
 #explain.ExplainNotShow {
     top: -36.75dvh;
-    left: calc(96.5dvw - min(45dvw, 50dvmin));
+    left: calc(calc(100dvw - max(3.5dvw, 5dvmin)) - min(45dvw, 50dvmin));
     transform: scale(0);
     opacity: 0.86;
 }

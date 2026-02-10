@@ -10,7 +10,7 @@
         /**
          * @static
          * @type {number}
-         * @description 允许输入 token 的最大长度。
+         * @description 合法 token 的最大长度。
          */
         static MAX_TOKEN_LENGTH = 9;
 
@@ -122,6 +122,7 @@
          *   - 若省略，则使用 `CalcConfig.outputAccuracy` 的当前值。
          *   - 若 `acc >= 1`，它代表一个绝对的有效数字位数。
          *   - 若 `0 < acc < 1`，它被视为一个比例，最终精度将是 `acc * CalcConfig.globalCalcAccuracy`。
+         *   - 若 `acc <= 0`，它代表输出精度和输入一致。
          * @param {string} [options.printMode=CalcConfig.globalPrintMode] - 输出模式，如 'algebra' 或 'polar'。
          * @returns {string|string[]} 如果输入是单个值，则返回其字符串表示；如果输入是数组，则返回一个字符串数组。
          */
@@ -137,6 +138,10 @@
             // 内部辅助函数：根据输入数值的精度计算输出精度
             // numAcc: 数值本身的计算精度
             const getRealAcc = (numAcc) => {
+                if (acc <= 0) {
+                    // 同精度模式：直接返回数值本身的精度
+                    return numAcc;
+                }
                 if (acc < 1) {
                     // 比例模式：基于数据本身的精度 * 比例
                     return Math.floor(acc * numAcc);
@@ -205,143 +210,139 @@
 
             // 首先将所有系数值转换为理想化的字符串表示。
             list = Public.idealizationToString(list);
-            let result = '';
-            // 用于控制在非首个非零项前添加 '+' 号。
-            let firstNoneZero = false;
-
-            // --- 多项式函数模型: aₙxⁿ + ... + a₁x + a₀ ---
-            if (mode === 'powerFunc') {
-                // 从最高次项开始倒序遍历系数。
-                for (let i = list.length - 1; i >= 0; i--) {
-                    const currentCoefficient = list[i];
-                    // 忽略系数为零的项。
-                    if (currentCoefficient !== '0') {
-                        // 如果不是第一个非零项，并且系数不是负数（或包含'E'的科学记数法），则添加 '+'。
-                        if (firstNoneZero && (currentCoefficient[0] !== '-' || currentCoefficient.includes('E'))) {
-                            result += '+';
-                        }
-                        firstNoneZero = true;
-
-                        // --- 处理变量项 (x, x², x³, ...) ---
-                        if (i !== 0) {
-                            // 特殊处理系数为 1 或 -1 的情况，以简化表达式 (例如 'x' 而不是 '1x')。
-                            if (currentCoefficient === '1') {
-                                result += asX;
-                            } else if (currentCoefficient === '-1') {
-                                result += `-${asX}`;
-                            } else if (currentCoefficient.includes('E')) {
-                                // 如果系数是科学记数法，则用括号括起来。
-                                result += `(${currentCoefficient})${asX}`;
-                            } else {
-                                result += `${currentCoefficient}${asX}`;
-                            }
-                        }
-                        // --- 处理常数项 (i=0) ---
-                        else if (!currentCoefficient.includes('E')) {
-                            result += currentCoefficient;
-                        } else {
-                            // 如果常数项是科学记数法，并且是多项式中的唯一项，则不加括号。
-                            result += list.length === 1 ? currentCoefficient : `(${currentCoefficient})`;
-                        }
-
-                        // --- 添加指数部分 ---
-                        // 如果指数不为 0 或 1，则添加 '^' 和指数值。
-                        if (![0, 1].includes(i)) {
-                            result += `^${i}`;
-                        }
-                    }
-                }
-                // 如果遍历完所有系数都没有找到非零项，则函数为 0。
-                if (!firstNoneZero) {
-                    return '0';
-                }
-                return result;
-            }
-
-            // --- 对数多项式模型: aₙ(lnx)ⁿ + ... + a₀ ---
-            // 这是 powerFunc 的一个特例，只需将变量替换为 'ln(x)'。
-            if (mode === 'lnFunc') {
-                return Public.funcToString(list, 'powerFunc', `ln(${asX})`);
-            }
-
-            // 对于后续模型，系数列表通常只有两个元素 [a, b]。
+            // 系数列表前两个元素 [a, b] 使用最多。
             const a = list[0];
             const b = list[1];
+            let result = '';
 
-            // --- 指数函数模型: a * exp(b*x) ---
-            if (mode === 'expFunc') {
-                // 如果 a=0，整个函数为 0。
-                if (a === '0') {
-                    return '0';
-                }
-                // 如果 b=0, a * exp(0) = a。
-                if (b === '0') {
-                    return a;
-                }
-                // 递归调用 funcToString 来格式化表达式。
-                // 外层是 a * [variable]，内层是 exp(b*x)。
-                return Public.funcToString([0, a], 'powerFunc', `exp(${Public.funcToString([0, b], 'powerFunc')})`);
-            }
+            switch (mode) {
+                // --- 多项式函数模型: aₙxⁿ + ... + a₁x + a₀ ---
+                case 'powerFunc': {
+                    // 用于控制在非首个非零项前添加 '+' 号。
+                    let firstNoneZero = false;
+                    // 从最高次项开始倒序遍历系数。
+                    for (let i = list.length - 1; i >= 0; i--) {
+                        const currentCoefficient = list[i];
+                        // 忽略系数为零的项。
+                        if (currentCoefficient !== '0') {
+                            // 如果不是第一个非零项，并且系数不是负数（或包含'E'的科学记数法），则添加 '+'。
+                            if (firstNoneZero && (currentCoefficient[0] !== '-' || currentCoefficient.includes('E'))) {
+                                result += '+';
+                            }
+                            firstNoneZero = true;
 
-            // --- 指数函数模型: a * b^x ---
-            if (mode === 'abxFunc') {
-                if (a === '0') {
-                    return '0';
-                }
-                // 如果 b=1, a * 1^x = a。
-                if (b === '1') {
-                    return a;
-                }
-                // 处理系数 a 的格式。
-                if (a === '-1') {
-                    result += '-';
-                } else if (a !== '1') {
-                    result += a.includes('E') ? `(${a})*` : `${a}*`;
-                }
-                // 处理底数 b 的格式。
-                if (!b.includes('E') && !b.includes('-')) {
-                    result += `${b}^${asX}`;
-                } else {
-                    result += `(${b})^${asX}`;
-                }
-                return result;
-            }
+                            // --- 处理变量项 (x, x², x³, ...) ---
+                            if (i !== 0) {
+                                // 特殊处理系数为 1 或 -1 的情况，以简化表达式 (例如 'x' 而不是 '1x')。
+                                if (currentCoefficient === '1') {
+                                    result += asX;
+                                } else if (currentCoefficient === '-1') {
+                                    result += `-${asX}`;
+                                } else if (currentCoefficient.includes('E')) {
+                                    // 如果系数是科学记数法，则用括号括起来。
+                                    result += `(${currentCoefficient})${asX}`;
+                                } else {
+                                    result += `${currentCoefficient}${asX}`;
+                                }
+                            }
+                            // --- 处理常数项 (i=0) ---
+                            else if (!currentCoefficient.includes('E')) {
+                                result += currentCoefficient;
+                            } else {
+                                // 如果常数项是科学记数法，并且是多项式中的唯一项，则不加括号。
+                                result += list.length === 1 ? currentCoefficient : `(${currentCoefficient})`;
+                            }
 
-            // --- 幂函数模型: a * x^b ---
-            if (mode === 'axbFunc') {
-                // 如果 b=0, a * x^0 = a。
-                if (b === '0') {
-                    return a;
-                }
-                // 处理 x^b 部分的格式。
-                if (b === '1') {
-                    result += `${asX}`;
-                } else if (!b.includes('E') && !b.includes('-')) {
-                    result += `${asX}^${b}`;
-                } else {
-                    result += `${asX}^(${b})`;
-                }
-                // 递归调用 funcToString 来处理系数 a。
-                return Public.funcToString([0, a], 'powerFunc', result);
-            }
-
-            // --- 反比例函数模型: a + b/x ---
-            if (mode === 'reciprocalFunc') {
-                // 如果 b=0, 结果为 a。
-                if (b === '0') {
-                    return a;
-                }
-                // 格式化 b/x 部分。
-                result += b.includes('E') ? `(${b})/${asX}` : `${b}/${asX}`;
-                // 如果 a 不为零，则添加常数项 a。
-                if (a !== '0') {
-                    // 处理符号。
-                    if (a[0] !== '-' || a.includes('E')) {
-                        result += '+';
+                            // --- 添加指数部分 ---
+                            // 如果指数不为 0 或 1，则添加 '^' 和指数值。
+                            if (![0, 1].includes(i)) {
+                                result += `^${i}`;
+                            }
+                        }
                     }
-                    result += a.includes('E') ? `(${a})` : a;
+                    // 如果遍历完所有系数都没有找到非零项，则函数为 0。
+                    if (!firstNoneZero) {
+                        return '0';
+                    }
+                    return result;
                 }
-                return result;
+
+                // --- 对数多项式模型: aₙ(lnx)ⁿ + ... + a₀ ---
+                // 这是 powerFunc 的一个特例，只需将变量替换为 'ln(x)'。
+                case 'lnFunc':
+                    return Public.funcToString(list, 'powerFunc', `ln(${asX})`);
+
+                // --- 指数函数模型: a * exp(b*x) ---
+                case 'expFunc':
+                    // 如果 a=0，整个函数为 0。
+                    if (a === '0') {
+                        return '0';
+                    }
+                    // 如果 b=0, a * exp(0) = a。
+                    if (b === '0') {
+                        return a;
+                    }
+                    // 递归调用 funcToString 来格式化表达式。
+                    // 外层是 a * [variable]，内层是 exp(b*x)。
+                    return Public.funcToString([0, a], 'powerFunc', `exp(${Public.funcToString([0, b], 'powerFunc')})`);
+
+                // --- 指数函数模型: a * b^x ---
+                case 'abxFunc':
+                    if (a === '0') {
+                        return '0';
+                    }
+                    // 如果 b=1, a * 1^x = a。
+                    if (b === '1') {
+                        return a;
+                    }
+                    // 处理系数 a 的格式。
+                    if (a === '-1') {
+                        result += '-';
+                    } else if (a !== '1') {
+                        result += a.includes('E') ? `(${a})*` : `${a}*`;
+                    }
+                    // 处理底数 b 的格式。
+                    if (!b.includes('E') && !b.includes('-')) {
+                        result += `${b}^${asX}`;
+                    } else {
+                        result += `(${b})^${asX}`;
+                    }
+                    return result;
+
+                // --- 幂函数模型: a * x^b ---
+                case 'axbFunc':
+                    // 如果 b=0, a * x^0 = a。
+                    if (b === '0') {
+                        return a;
+                    }
+                    // 处理 x^b 部分的格式。
+                    if (b === '1') {
+                        result += `${asX}`;
+                    } else if (!b.includes('E') && !b.includes('-')) {
+                        result += `${asX}^${b}`;
+                    } else {
+                        result += `${asX}^(${b})`;
+                    }
+                    // 递归调用 funcToString 来处理系数 a。
+                    return Public.funcToString([0, a], 'powerFunc', result);
+
+                // --- 反比例函数模型: a + b/x ---
+                case 'reciprocalFunc':
+                    // 如果 b=0, 结果为 a。
+                    if (b === '0') {
+                        return a;
+                    }
+                    // 格式化 b/x 部分。
+                    result += b.includes('E') ? `(${b})/${asX}` : `${b}/${asX}`;
+                    // 如果 a 不为零，则添加常数项 a。
+                    if (a !== '0') {
+                        // 处理符号。
+                        if (a[0] !== '-' || a.includes('E')) {
+                            result += '+';
+                        }
+                        result += a.includes('E') ? `(${a})` : a;
+                    }
+                    return result;
             }
         }
 
@@ -517,7 +518,8 @@
             // 这些数组定义了解析器可以识别的各种函数、运算符和符号。
 
             // 接受两个参数的函数（例如 log(base, number)）
-            const func_01_2 = ['log', 'nroot'],
+            const
+                func_01_2 = ['log', 'nroot'],
                 // 放置在两个操作数之间的二元运算符（例如 a + b）
                 // '&' 是内部表示的隐式乘法。
                 func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'],
@@ -540,7 +542,8 @@
             const signsNeedKh = ['^', ...complement(func_01_1, ['A', 'N'])];
 
             // 定义数字常量和变量 'x'。
-            const baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'],
+            const
+                baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'],
                 codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
             const allNumbers = [...baseNumbers, ...codeNumbers];
 
@@ -729,14 +732,14 @@
      */
     class CalcConfig {
         /**
-         * @private
          * @static
          * @readonly
          * @type {number}
          * @description 存储最大全局精度（有效数字位数），其值在运行时不应被修改。
          * 这是一个私有静态字段，只能在 CalcConfig 类内部访问。
+         * 其值与下面的常量精度有关。
          */
-        static _MAX_GLOBAL_CALC_ACCURACY = 220;
+        static MAX_GLOBAL_CALC_ACCURACY = 220;
 
         /**
          * @static
@@ -764,7 +767,7 @@
          * @description BigNumber 允许的最小指数。
          * 用于 BigNumber 下溢检查。
          */
-        static MIN_INPUT_EXPONENT = -2025;
+        static MIN_INPUT_EXPONENT = -2026;
 
         /**
          * @static
@@ -782,7 +785,7 @@
          * @description 在 `MathPlus.pow()` 中，当指数为整数时，当结果的最大十进制位数大于此值，则使用快速幂运算计算，否则使用原生 BigInt。
          * 这是一个安全限制，防止因生成一个极大的数字而耗尽内存或耗时过长。
          */
-        static USING_FAST_EXPONENTIATION_TO_COMPUTE_THE_CRITICAL_ORDER_OF_MAGNITUDE = 10000;
+        static CRITICAL_MAGNITUDE_FAST_EXP = 10000;
 
         /**
          * @static
@@ -1276,7 +1279,7 @@
             if (acc === undefined) {
                 // 如果未提供精度值，则重置为最大允许的全局精度。
                 // 这提供了一种方便的方式来恢复到最高精度设置。
-                numericAcc = CalcConfig._MAX_GLOBAL_CALC_ACCURACY;
+                numericAcc = CalcConfig.MAX_GLOBAL_CALC_ACCURACY;
             } else {
                 // 如果提供了精度值，则对其进行严格的验证。
                 numericAcc = Number(acc);
@@ -1293,8 +1296,8 @@
 
                 // 验证第三步：确保精度值在允许的范围内（1 到 CalcConfig._maxGlobalAccuracy）。
                 // 精度过高可能导致性能问题或超出浮点数表示范围，过低则无意义。
-                if (numericAcc > CalcConfig._MAX_GLOBAL_CALC_ACCURACY || numericAcc <= 0) {
-                    throw new Error(`[CalcConfig] Range error: Accuracy must be between 1 and ${CalcConfig._MAX_GLOBAL_CALC_ACCURACY}.`);
+                if (numericAcc > CalcConfig.MAX_GLOBAL_CALC_ACCURACY || numericAcc <= 0) {
+                    throw new Error(`[CalcConfig] Range error: Accuracy must be between 1 and ${CalcConfig.MAX_GLOBAL_CALC_ACCURACY}.`);
                 }
             }
 

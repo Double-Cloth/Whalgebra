@@ -8751,16 +8751,17 @@
                     result.min = new ComplexNumber(list[0]);
                     // 从列表的第二个元素开始遍历。
                     for (let i = 1; i < list.length; i++) {
+                        const currentI = new ComplexNumber(list[i]);
                         // 比较当前最大值与列表中的当前元素。
                         // 如果 `list[i] > result.max`，则 `result.max - list[i]` 的结果为负。
-                        if (MathPlus.minus(result.max, list[i]).re.mantissa < 0n) {
+                        if (MathPlus.minus(result.max, currentI).re.mantissa < 0n) {
                             // 如果当前元素更大，则更新最大值。
-                            result.max = new ComplexNumber(list[i]);
+                            result.max = currentI;
                             // 否则，比较当前最小值与列表中的当前元素。
                             // 如果 `list[i] < result.min`，则 `list[i] - result.min` 的结果为负。
-                        } else if (MathPlus.minus(list[i], result.min).re.mantissa < 0n) {
+                        } else if (MathPlus.minus(currentI, result.min).re.mantissa < 0n) {
                             // 如果当前元素更小，则更新最小值。
-                            result.min = new ComplexNumber(list[i]);
+                            result.min = currentI;
                         }
                     }
                     // 返回包含最终最大值和最小值的对象。
@@ -8806,6 +8807,7 @@
                         zero: false,
                         negative: false
                     }; // 初始化对象，用于存储检查结果。
+
                     // 遍历列表中的每个元素。
                     for (let i = 0; i < list.length; i++) {
                         // 确保每个被检查的元素都是一个 ComplexNumber 实例。
