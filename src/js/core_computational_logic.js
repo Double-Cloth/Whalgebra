@@ -2379,23 +2379,12 @@
          */
         static tan(x) {
             const input = new ComplexNumber(x);
-            if (input.onlyReal) {
-                // 首先计算 cos(x)、sin(x)，并将其结果存储起来。
-                const cosAngle = Public.zeroCorrect(MathPlus.cos(input));
-                const sinAngle = MathPlus.sin(input);
+            // 首先计算 cos(x)、sin(x)，并将其结果存储起来。
+            const cosAngle = Public.zeroCorrect(MathPlus.cos(input));
+            const sinAngle = MathPlus.sin(input);
 
-                // 然后将 sin(x) 的结果除以 cos(x) 的结果。
-                return MathPlus.divide(sinAngle, cosAngle);
-            }
-
-            const one = new ComplexNumber(1);
-            const tmp = MathPlus.exp(MathPlus.times([0, 2], input));
-            const denominator = MathPlus.plus(tmp, one);
-            const numerator = MathPlus.minus(tmp, one);
-            return MathPlus.times(
-                [0, -1],
-                MathPlus.divide(numerator, denominator)
-            );
+            // 然后将 sin(x) 的结果除以 cos(x) 的结果。
+            return MathPlus.divide(sinAngle, cosAngle);
         }
 
         /**

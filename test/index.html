@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Whalgebra 测试控制台 v3.2</title>
+    <link href="css/liquid_glass.css" rel="stylesheet"/>
+</head>
+<body>
+<div class="liquid-bg">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+</div>
+<div class="header-bar glass-panel">
+    <h2>
+        Whalgebra 测试控制台
+        <small style="font-size: 13px; color: var(--text-sub); margin-left:12px; font-weight:normal; opacity: 0.8;">
+            v3.1
+        </small>
+    </h2>
+    <div class="status-badge">
+        <span class="status-dot loading" id="statusDot"></span>
+        <span id="statusText">
+            正在等待连接...
+        </span>
+    </div>
+</div>
+<div class="main-layout">
+    <div class="control-panel glass-panel">
+        <div>
+            <div class="section-title">
+                全局操作
+            </div>
+            <button class="primary" disabled="" id="testBtn" onclick="uiRunTest(0)">
+                运行全部测试集
+            </button>
+            <button id="clearBtn" onclick="clearLog()">
+                清空控制台
+            </button>
+        </div>
+        <div>
+            <div class="section-title">
+                单元测试用例
+            </div>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(1)">
+                1. 性能测试
+            </button>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(2)">
+                2. 幂函数分析
+            </button>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(3)">
+                3. 统计计算
+            </button>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(4)">
+                4. 根式函数
+            </button>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(5)">
+                5. 函数值列表
+            </button>
+            <button class="test-case-btn" disabled="" onclick="uiRunTest(6)">
+                6. 表达式解析
+            </button>
+        </div>
+    </div>
+    <div class="console-panel">
+        <div class="console-header">
+            <span class="console-title">
+                DEBUG CONSOLE
+            </span>
+            <button class="btn-small" id="btnAutoScroll" onclick="toggleAutoScroll()"
+                    style="color:#CBD5E1; border-color:rgba(255,255,255,0.2);">
+                自动滚动: ON
+            </button>
+        </div>
+        <div id="output"></div>
+    </div>
+</div>
+<iframe id="logicEngine" src="../dist/Whalgebra.html"></iframe>
+<script src="js/json.js"></script>
+<script id="testLogic" src="./js/testLogic.js" type="text/javascript"></script>
+</body>
+</html>

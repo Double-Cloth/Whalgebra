@@ -155,6 +155,8 @@ class LocalSvgProcessor:
     def __init__(self):
         self.re_data_name = re.compile(r'\s+data-name=(["\']).*?\1')
         self.re_illustrator_id = re.compile(r'\s+id=["\']_图层_\d+["\']')
+        # 新增：检测文本节点的正则 (<text>, <tspan>, <textPath>, <flowRoot>)
+        self.re_text_tags = re.compile(r'<(text|tspan|textPath|flowRoot)\b', re.IGNORECASE)
         self._init_folders()
 
     def _init_folders(self):
@@ -210,6 +212,16 @@ class LocalSvgProcessor:
         except Exception:
             return str(path).replace(os.sep, '/')
 
+    def _check_has_text(self, file_path: Path) -> bool:
+        """检查源文件是否包含未转曲的字体"""
+        try:
+            content = file_path.read_text(encoding='utf-8')
+            if self.re_text_tags.search(content):
+                return True
+        except Exception:
+            pass
+        return False
+
     def run(self):
         # 支持相对路径查找
         input_files = list(CONFIG['input_dir'].glob('*.svg'))
@@ -261,6 +273,11 @@ class LocalSvgProcessor:
             status = f"{Logger.GREEN}DONE{Logger.RESET}"
             print(
                 f"{Logger.GREY}{idx:<4}{Logger.RESET} {status:<18} {f.name[:24]:<25} {size_color}{size_info}{Logger.RESET}")
+
+            # [新增功能] 检查是否含有非路径字体
+            if self._check_has_text(f):
+                print(
+                    f"     {Logger.YELLOW}└── [WARN] Font detected (<text>). Please convert to outlines.{Logger.RESET}")
 
             temp_file_path = CONFIG['temp_dir'] / f.name
             try:
