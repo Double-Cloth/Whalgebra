@@ -56,6 +56,7 @@
                     this.acc = finalAcc;
                     return;
                 }
+
                 case 'bignumber':
                 case 'object': {
                     // 检查对象是否符合输入要求
@@ -84,6 +85,7 @@
                     this.acc = finalAcc;
                     return;
                 }
+
                 case 'bigint': {
                     acc = acc ?? CalcConfig.globalCalcAccuracy;
                     const {
@@ -96,18 +98,34 @@
                     this.acc = acc;
                     return;
                 }
+
+                case 'number': {
+                    if (!Number.isFinite(x)) {
+                        throw new Error('[BigNumber] Input error: Non-finite numbers (Infinity, NaN) are not supported.');
+                    }
+                    if (Number.isInteger(x)) {
+                        acc = acc ?? CalcConfig.globalCalcAccuracy;
+                        const {
+                            mantissa: mantissaFromBigInt,
+                            power: powerFromBigInt
+                        } = BigNumber._roundAndNormalize(x, 0, acc);
+
+                        this.power = powerFromBigInt + pow;
+                        this.mantissa = mantissaFromBigInt;
+                        this.acc = acc;
+                        return;
+                    }
+                    x = x.toExponential(); // 转换为可预测的字符串格式。
+                    break;
+                }
+
                 case 'string':
                     // 安全性：检查输入长度是否超过配置的最大值。
                     if (x.length > CalcConfig.MAX_INPUT_STRING_LENGTH) {
                         throw new Error(`[BigNumber] Input string length exceeds maximum allowed length of ${CalcConfig.MAX_INPUT_STRING_LENGTH}.`);
                     }
                     break;
-                case 'number':
-                    if (!Number.isFinite(x)) {
-                        throw new Error('[BigNumber] Input error: Non-finite numbers (Infinity, NaN) are not supported.');
-                    }
-                    x = x.toExponential(); // 转换为可预测的字符串格式。
-                    break;
+
                 default:
                     throw new Error('[BigNumber] Unsupported input type or invalid number format.');
             }
@@ -198,12 +216,17 @@
          * @method _roundAndNormalize
          * @description 将尾数舍入（银行家舍入）到指定精度，并通过调整指数来进行规范化。
          * 此函数使用高效的 BigInt 算术运算来处理大数。
-         * @param {bigint} mantissa - 原始尾数（可以为负数）。
+         * @param {bigint|number} mantissa - 原始尾数（可以为负数）。
          * @param {number} power - 原始指数。
          * @param {number} acc - 目标精度（有效数字的位数）。
          * @returns {{mantissa: bigint, power: number}} 一个包含舍入和规范化后的尾数和指数的对象。
          */
         static _roundAndNormalize(mantissa, power, acc) {
+            // 类型转换
+            if (typeof mantissa === 'number') {
+                mantissa = BigInt(mantissa);
+            }
+
             if (mantissa === 0n) {
                 return {mantissa: 0n, power: 0};
             }
@@ -492,10 +515,12 @@
                     }
                     break;
                 }
+
                 case 'bignumber':
                     this.re = new BigNumber(x, {acc: acc, pow: pow});
                     this.im = new BigNumber([0, 0n, this.re.acc]);
                     break;
+
                 case 'complexnumber':
                 case 'object': {
                     const realAccuracy = acc ?? x.acc;
@@ -503,20 +528,23 @@
                     this.im = new BigNumber(x.im, {acc: realAccuracy, pow: pow});
                     break;
                 }
+
                 case 'string': {
                     if (x.length > CalcConfig.MAX_INPUT_STRING_LENGTH) {
                         throw new Error(`[ComplexNumber] Input string length exceeds maximum allowed length of ${CalcConfig.MAX_INPUT_STRING_LENGTH}.`);
                     }
-                    let ParseComplex = ComplexNumber._parseComplex(x);
+                    const ParseComplex = ComplexNumber._parseComplex(x);
                     this.re = new BigNumber(ParseComplex.re, {acc: acc, pow: pow});
                     this.im = new BigNumber(ParseComplex.im, {acc: acc, pow: pow});
                     break;
                 }
+
                 case 'number':
                 case 'bigint':
                     this.re = new BigNumber(x, {acc: acc, pow: pow});
                     this.im = new BigNumber([0, 0n, this.re.acc]);
                     break;
+
                 default:
                     throw new Error('[ComplexNumber] Unsupported input type or invalid number format.');
             }
@@ -593,6 +621,7 @@
             // 步骤 5: 分离并存储实部和虚部。
             let realPart = '0', hasReal = false;
             let imagPart = '0', hasImag = false;
+
             for (const match of validTerms) {
                 const term = match[0];
                 if (term.endsWith('i')) {
@@ -723,11 +752,11 @@
             // 根据输入值的精确类型，分情况处理。
             switch (Public.typeOf(x)) {
                 // 情况一: 输入是 BigNumber
-                case 'bignumber': {
+                case 'bignumber':
                     // BigNumber 的相反数是一个具有相同 power 和 acc，但 mantissa 相反的新 BigNumber。
                     // 我们使用数组构造函数来高效地创建一个新的 BigNumber 实例。
                     return new BigNumber([x.power, -x.mantissa, x.acc]);
-                }
+
                 // 情况二: 输入是 ComplexNumber
                 case 'complexnumber':
                     // 复数的相反数是其实部和虚部各自的相反数： -(a + bi) = (-a) + (-b)i
@@ -759,19 +788,16 @@
          */
         static _customFunc(token, funcs, unknown, acc) {
             // 根据传入的 token ('f' 或 'g')，选择要执行的函数。
-            if (token === 'f') {
-                // 如果要计算 f(x)，则递归调用 calc 来解析 funcs.f。
-                // 关键点：在递归调用时，需要将 g(x) 的定义 (funcs.g) 也传入上下文，
-                // 以便 f(x) 的表达式中可以正确地调用 g(x)。
-                // 'unknown' 则作为变量 'x' 的值被代入。
-                return MathPlus.calc(funcs.f, {g: funcs.g, unknown: unknown, acc: acc})[0];
-            }
-            if (token === 'g') {
-                // 同理，如果要计算 g(x)，则递归调用 calc 来解析 funcs.g。
-                // 此时，需要将 f(x) 的定义 (funcs.f) 传入上下文，
-                // 以支持 g(x) 表达式中对 f(x) 的调用。
-                return MathPlus.calc(funcs.g, {f: funcs.f, unknown: unknown, acc: acc})[0];
-            }
+            const another = token === 'f' ? 'g' : 'f';
+            // 如果要计算 f(x)，则递归调用 calc 来解析 funcs.f。
+            // 关键点：在递归调用时，需要将 g(x) 的定义 (funcs.g) 也传入上下文，
+            // 以便 f(x) 的表达式中可以正确地调用 g(x)。
+            // 'unknown' 则作为变量 'x' 的值被代入。
+            return MathPlus.calc(funcs[token], {
+                [another]: funcs[another],
+                unknown: unknown,
+                acc: acc
+            })[0];
         }
 
         /**
@@ -809,7 +835,7 @@
             const highPrecisionAcc = -CalcConfig.constants.invTwoPi[0];
             if (MathPlus.minus(angle, [highPrecisionAcc >> 1, 1n, acc]).re.mantissa >= 0n) {
                 if (MathPlus.minus(angle, [highPrecisionAcc, 1n, acc]).re.mantissa >= 0n) {
-                    throw new Error('[MathPlus] Input value is too large.');
+                    throw new Error(`[MathPlus] Input value (${angle.toString()}) is too large.`);
                 }
                 console.warn('[MathPlus] Unexpected loss of precision occurred in trigonometric calculations.');
             }
@@ -1006,10 +1032,11 @@
             // 构造复数 (cos(θ) + i*sin(θ))
             const complexExponential = MathPlus.plus(
                 cosTheta,
-                MathPlus.times(sinTheta, new ComplexNumber([[0, 0n, acc], [0, 1n, acc]]))
+                [MathPlus._oppositeNumber(sinTheta.im), sinTheta.re]
             );
             // 计算最终结果 r * (cos(θ) + i*sin(θ))
-            return MathPlus.times(inputA, complexExponential);
+            const result = MathPlus.times(inputA, complexExponential);
+            return new ComplexNumber(result, {acc: acc});
         }
 
         /**
@@ -1078,16 +1105,16 @@
                 // 需要通过 ComplexNumber 构造函数来完成，因为它能处理这种情况。
                 return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
 
-            } else {
-                // 通用路径：对于复数，递归地将实部和虚部分别相加。
-                // (a + bi) + (c + di) = (a + c) + (b + d)i
-                const resultRe = MathPlus.plus(inputA.re, inputB.re);
-                const resultIm = MathPlus.plus(inputA.im, inputB.im);
-
-                // 组合结果。resultRe 和 resultIm 是纯实数的 ComplexNumber，
-                // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
-                return new ComplexNumber([resultRe.re, resultIm.re]);
             }
+
+            // 通用路径：对于复数，递归地将实部和虚部分别相加。
+            // (a + bi) + (c + di) = (a + c) + (b + d)i
+            const resultRe = MathPlus.plus(inputA.re, inputB.re);
+            const resultIm = MathPlus.plus(inputA.im, inputB.im);
+
+            // 组合结果。resultRe 和 resultIm 是纯实数的 ComplexNumber，
+            // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
+            return new ComplexNumber([resultRe.re, resultIm.re]);
         }
 
         /**
@@ -1147,27 +1174,27 @@
 
                 // 4. 构造结果：使用计算出的新尾数和指数创建一个新的纯实数 ComplexNumber。
                 return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
-            } else {
-                // 通用路径：处理复数乘法。
-                // 应用公式：(a + bi) * (c + di) = (ac - bd) + (ad + bc)i
-                // 其中 a=inputA.re, b=inputA.im, c=inputB.re, d=inputB.im
-
-                // 通过递归调用 MathPlus.times 来计算每个部分。
-                // 由于 re 和 im 都是 BigNumber，这些递归调用将进入上面的优化路径。
-                const ac = MathPlus.times(inputA.re, inputB.re); // a * c
-                const bd = MathPlus.times(inputA.im, inputB.im); // b * d
-                const ad = MathPlus.times(inputA.re, inputB.im); // a * d
-                const bc = MathPlus.times(inputA.im, inputB.re); // b * c
-
-                // 计算最终结果的实部 (ac - bd)
-                const realPart = MathPlus.minus(ac, bd);
-                // 计算最终结果的虚部 (ad + bc)
-                const imagPart = MathPlus.plus(ad, bc);
-
-                // 组合结果。realPart 和 imagPart 是纯实数的 ComplexNumber，
-                // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
-                return new ComplexNumber([realPart.re, imagPart.re]);
             }
+
+            // 通用路径：处理复数乘法。
+            // 应用公式：(a + bi) * (c + di) = (ac - bd) + (ad + bc)i
+            // 其中 a=inputA.re, b=inputA.im, c=inputB.re, d=inputB.im
+
+            // 通过递归调用 MathPlus.times 来计算每个部分。
+            // 由于 re 和 im 都是 BigNumber，这些递归调用将进入上面的优化路径。
+            const ac = MathPlus.times(inputA.re, inputB.re); // a * c
+            const bd = MathPlus.times(inputA.im, inputB.im); // b * d
+            const ad = MathPlus.times(inputA.re, inputB.im); // a * d
+            const bc = MathPlus.times(inputA.im, inputB.re); // b * c
+
+            // 计算最终结果的实部 (ac - bd)
+            const realPart = MathPlus.minus(ac, bd);
+            // 计算最终结果的虚部 (ad + bc)
+            const imagPart = MathPlus.plus(ad, bc);
+
+            // 组合结果。realPart 和 imagPart 是纯实数的 ComplexNumber，
+            // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
+            return new ComplexNumber([realPart.re, imagPart.re]);
         }
 
         /**
@@ -1227,28 +1254,28 @@
 
                 // BigNumber 构造函数会自动处理舍入和规范化。
                 return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
-            } else {
-                // 通用路径：处理复数除法。
-                // 应用公式 a/b = (a * conj(b)) / (b * conj(b))
-                // 其中 b * conj(b) 是一个纯实数 |b|^2，这让除法变得简单。
-
-                // 1. 计算分子：inputA * conj(inputB)
-                const conjB = MathPlus.conj(inputB);
-                const numerator = MathPlus.times(inputA, conjB);
-
-                // 2. 计算分母：inputB * conj(inputB) = |inputB|^2
-                // 结果是一个纯实数 (虚部为零)。
-                const denominator = MathPlus.times(inputB, conjB);
-
-                // 3. 将分子的实部和虚部分别除以分母（一个实数）。
-                // 这里的递归调用将进入上面的纯实数除法优化路径。
-                const resultRe = MathPlus.divide(numerator.re, denominator.re);
-                const resultIm = MathPlus.divide(numerator.im, denominator.re);
-
-                // 4. 组合结果。resultRe 和 resultIm 是纯实数的 ComplexNumber，
-                // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
-                return new ComplexNumber([resultRe.re, resultIm.re]);
             }
+
+            // 通用路径：处理复数除法。
+            // 应用公式 a/b = (a * conj(b)) / (b * conj(b))
+            // 其中 b * conj(b) 是一个纯实数 |b|^2，这让除法变得简单。
+
+            // 1. 计算分子：inputA * conj(inputB)
+            const conjB = MathPlus.conj(inputB);
+            const numerator = MathPlus.times(inputA, conjB);
+
+            // 2. 计算分母：inputB * conj(inputB) = |inputB|^2
+            // 结果是一个纯实数 (虚部为零)。
+            const denominator = MathPlus.times(inputB, conjB);
+
+            // 3. 将分子的实部和虚部分别除以分母（一个实数）。
+            // 这里的递归调用将进入上面的纯实数除法优化路径。
+            const resultRe = MathPlus.divide(numerator.re, denominator.re);
+            const resultIm = MathPlus.divide(numerator.im, denominator.re);
+
+            // 4. 组合结果。resultRe 和 resultIm 是纯实数的 ComplexNumber，
+            // 因此我们需要提取它们的实部 (.re) 来构造最终的复数。
+            return new ComplexNumber([resultRe.re, resultIm.re]);
         }
 
         /**
@@ -1478,7 +1505,7 @@
                     }
 
                     let resultMantissa;
-                    if (orderOfMagnitude < CalcConfig.USING_FAST_EXPONENTIATION_TO_COMPUTE_THE_CRITICAL_ORDER_OF_MAGNITUDE) {
+                    if (orderOfMagnitude < CalcConfig.CRITICAL_MAGNITUDE_FAST_EXP) {
                         // 计算 (m_a * 10^p_a)^b = (m_a^b) * 10^(p_a * b)
                         // 计算尾数部分: m_a ^ b
                         resultMantissa = reA.mantissa ** realMantissa;
@@ -1879,7 +1906,7 @@
 
                 // 如果达到最大迭代次数仍未收敛，则抛出错误。
                 if (i === max) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: exp.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: exp. Input: ${input.toString()}`);
                 }
 
                 // 组合最终结果：e^x = e^i * e^f
@@ -1958,7 +1985,7 @@
                 }
 
                 if (j === 14) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: ln.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: ln. Input: ${input.toString()}`);
                 }
 
                 // 步骤 3: 使用 artanh(z) 的泰勒级数计算 ln(x'')
@@ -1991,7 +2018,7 @@
                 }
 
                 if (i === max) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: ln.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: ln. Input: ${input.toString()}`);
                 }
 
                 // 步骤 4: 组合所有部分得到最终结果
@@ -2106,7 +2133,7 @@
                 }
                 if (divideBy3 === 4) {
                     // 这是一个安全检查，防止因意外输入导致无法收敛。
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: sin.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: sin. Input: ${input.toString()}`);
                 }
 
                 // --- 步骤 2: 泰勒级数计算 ---
@@ -2129,7 +2156,7 @@
                 }
 
                 if (i === max) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: cos.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                 }
 
                 // --- 步骤 3: 重建结果 ---
@@ -2275,7 +2302,7 @@
                 }
                 if (divideBy4 === 3) {
                     // 这是一个安全检查，防止因意外输入导致无法收敛。
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: cos.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                 }
 
                 // --- 步骤 2: 泰勒级数计算 ---
@@ -2298,7 +2325,7 @@
                 }
 
                 if (i === max) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: cos.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                 }
 
                 // --- 步骤 3: 重建结果 ---
@@ -2438,7 +2465,7 @@
                     ).re;
                 }
                 if (j === 4) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: arctan.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: arctan. Input: ${input.toString()}`);
                 }
 
                 // 步骤 4: 对缩减后的参数 re 使用泰勒级数进行计算。
@@ -2463,7 +2490,7 @@
                     ).re;
                 }
                 if (i === max) {
-                    throw new Error('[MathPlus] mathematical error: Unreliable result, error source: arctan.');
+                    throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: arctan. Input: ${input.toString()}`);
                 }
 
                 // 步骤 5: 结果重建
@@ -2503,7 +2530,7 @@
                 (mid.re.mantissa === 0n && mid.im.mantissa === 0n) ||
                 (mid_pow.re.mantissa === 0n && mid_pow.im.mantissa === 0n)
             ) {
-                throw new Error('[MathPlus] mathematical error: Unable to calculate arctan, input cannot be i or -i.');
+                throw new Error(`[MathPlus] mathematical error: Unable to calculate arctan, input cannot be ${input.toString()}.`);
             }
 
             // 步骤 3: 应用完整公式。
@@ -2808,6 +2835,10 @@
             } else {
                 option = 'lanczos_n164';
             }
+            if (acc > CalcConfig.MAX_GLOBAL_CALC_ACCURACY) {
+                console.warn(`[MathPlus] The required accuracy(${acc}) is too high. Input: ${x.toString()}`);
+            }
+
             const calcAcc = CalcConfig.constants[option].acc;
             const g = CalcConfig.constants[option].g;
             const p = CalcConfig.constants[option].p;
@@ -2936,17 +2967,16 @@
                 }
                 return new ComplexNumber(result, {acc: acc});
             }
+
             // --- 路径 2: 输入为复数 ---
-            else {
-                // 对于复数 a + bi，floor(a + bi) 定义为 floor(a) + floor(b)i。
-                // 我们通过递归调用 floor 分别处理实部和虚部。
-                // 注意：MathPlus.floor() 返回的是 ComplexNumber，我们需要提取其 .re 属性 (一个 BigNumber)
-                // 来构造最终结果的实部和虚部。
-                return new ComplexNumber([
-                    MathPlus.floor(input.re).re,
-                    MathPlus.floor(input.im).re
-                ]);
-            }
+            // 对于复数 a + bi，floor(a + bi) 定义为 floor(a) + floor(b)i。
+            // 我们通过递归调用 floor 分别处理实部和虚部。
+            // 注意：MathPlus.floor() 返回的是 ComplexNumber，我们需要提取其 .re 属性 (一个 BigNumber)
+            // 来构造最终结果的实部和虚部。
+            return new ComplexNumber([
+                MathPlus.floor(input.re).re,
+                MathPlus.floor(input.im).re
+            ]);
         }
 
         /**
@@ -2995,6 +3025,7 @@
                 // 使用计算出的整数构造一个新的、纯实数的 ComplexNumber。
                 return new ComplexNumber(result, {acc: acc});
             }
+
             // --- 路径 2: 输入为复数 ---
             // 对于复数 a + bi，ceil(a + bi) 定义为 ceil(a) + ceil(b)i。
             // 我们通过递归调用 ceil 分别处理实部和虚部。
@@ -4024,16 +4055,17 @@
             result.min = new ComplexNumber(list[0]);
             // 从列表的第二个元素开始遍历。
             for (let i = 1; i < list.length; i++) {
+                const currentI = new ComplexNumber(list[i]);
                 // 比较当前最大值与列表中的当前元素。
                 // 如果 `list[i] > result.max`，则 `result.max - list[i]` 的结果为负。
-                if (MathPlus.minus(result.max, list[i]).re.mantissa < 0n) {
+                if (MathPlus.minus(result.max, currentI).re.mantissa < 0n) {
                     // 如果当前元素更大，则更新最大值。
-                    result.max = new ComplexNumber(list[i]);
+                    result.max = currentI;
                     // 否则，比较当前最小值与列表中的当前元素。
                     // 如果 `list[i] < result.min`，则 `list[i] - result.min` 的结果为负。
-                } else if (MathPlus.minus(list[i], result.min).re.mantissa < 0n) {
+                } else if (MathPlus.minus(currentI, result.min).re.mantissa < 0n) {
                     // 如果当前元素更小，则更新最小值。
-                    result.min = new ComplexNumber(list[i]);
+                    result.min = currentI;
                 }
             }
             // 返回包含最终最大值和最小值的对象。
@@ -4079,6 +4111,7 @@
                 zero: false,
                 negative: false
             }; // 初始化对象，用于存储检查结果。
+
             // 遍历列表中的每个元素。
             for (let i = 0; i < list.length; i++) {
                 // 确保每个被检查的元素都是一个 ComplexNumber 实例。
