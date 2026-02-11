@@ -5693,7 +5693,7 @@
                 result.convexInterval = [['null', 'null']];
                 result.concaveInterval = [['null', 'null']];
                 result.inflectionPoint = [['null', 'null']];
-                result.roots = [Public.idealizationToString(PowerFunctionTools._solveX1(list))];
+                result.roots = Public.idealizationToString(PowerFunctionTools._solveX1(list));
                 return result;
             }
 

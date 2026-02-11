@@ -1293,7 +1293,12 @@
                 const prevInfo = Public.getTokenInfo(prevToken);
                 const currInfo = Public.getTokenInfo(currToken);
 
-                // 情况 A: 两个 Token 都是字母且合法，至少有一个是函数名 (func)，且不都是单字母特殊符号
+                // 情况 A: 后缀不加空格
+                if (currInfo.funcPlace === 'back' || prevInfo.funcPlace === 'back') {
+                    return false;
+                }
+
+                // 情况 B: 两个 Token 都是字母且合法，至少有一个是函数名 (func)，且不都是单字母特殊符号
                 const isAlphaSeq = REGEX_ALPHA.test(prevToken) && REGEX_ALPHA.test(currToken);
                 const hasFunc = prevInfo.class === 'func' || currInfo.class === 'func';
                 const notSpecialSymbol = !(prevInfo.isHtmlClassLenOne && currInfo.isHtmlClassLenOne);
@@ -1303,7 +1308,7 @@
                     return true;
                 }
 
-                // 情况 B: 非法字符边界处理 (Illegal Token 边界需要空格，除非是空格本身或特殊字符)
+                // 情况 C: 非法字符边界处理 (Illegal Token 边界需要空格，除非是空格本身或特殊字符)
                 const isBoundaryIllegal = (prevInfo.class === 'illegal') !== (currInfo.class === 'illegal');
                 const isIgnoredChar = [prevToken, currToken].includes(' ') || prevInfo.isHtmlClassLenOne || currInfo.isHtmlClassLenOne;
 
@@ -2465,9 +2470,8 @@
             // 将 R² 的值转换为 HTML 类名并显示在对应区域
             HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._printHandleError(RaList.R2), {mode: 'replace'});
 
-            const parameter = RaList.parameter;
-
             // --- 构建系数显示列表 ---
+            const parameter = structuredClone(RaList.parameter);
             // 对于线性 (y=ax+b) 和二次 (y=ax^2+bx+c) 回归，内部计算的系数顺序与显示习惯相反
             // 这里进行反转以匹配习惯（例如内部可能是 [b, a]，显示需要 a, b）
             if (['linear', 'square'].includes(RaList.model)) {
