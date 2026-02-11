@@ -20,6 +20,7 @@ document.addEventListener('click', (event) => {
     const firstChildClass = target.firstElementChild?.className || '';
     const parent = target.parentNode;
     const parentID = parent?.id || '';
+
     // console.log({parentID, targetID, targetClass, firstChildClass});
 
     // --- 策略 1: 基于明确 ID 的快速分发 (Exact Matches) ---
@@ -256,23 +257,21 @@ document.addEventListener('keydown', (event) => {
 
     // 1. 优先处理功能控制键 (Switch 结构更清晰)
     switch (key) {
-        case 'Backspace': {
+        case 'Backspace':
             event.preventDefault(); // 阻止浏览器默认的退格行为（如返回上一页）
             InputManager.del('left', event.shiftKey);
             if (PageConfig.currentMode === '0') {
                 PrintManager.mode0ShowOnScreen();
             }
             return;
-        }
 
-        case 'Delete': {
+        case 'Delete':
             event.preventDefault(); // 阻止浏览器默认的退格行为（如返回上一页）
             InputManager.del('right', event.shiftKey);
             if (PageConfig.currentMode === '0') {
                 PrintManager.mode0ShowOnScreen();
             }
             return;
-        }
 
         case 'ArrowLeft':
         case 'ArrowRight':

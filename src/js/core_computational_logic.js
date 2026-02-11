@@ -3203,10 +3203,25 @@
                 // 使用 switch 语句高效地处理不同 token 的映射。
                 switch (str) {
                     // --- 映射二元运算符为其方法名 ---
+                    case '+':
+                        return 'plus'; // 将加法符号 '+' 映射为 'plus' 方法。
+                    case '-':
+                        return 'minus'; // 将减法符号 '-' 映射为 'minus' 方法。
+                    case '*':
+                    case '&': // 将显式的 '*' 和隐式的 '&' 都映射为乘法。
+                        return 'times';
+                    case '/':
+                        return 'divide'; // 将除法符号 '/' 映射为 'divide' 方法。
+                    case '^':
+                        return 'pow'; // 将幂运算 '^' 映射为 'pow' 方法。
                     case 'E': // 代表科学记数法 (例如, 3E6)。
                         return 'exponential';
 
                     // --- 映射一元运算符为其方法名 ---
+                    case '!': // 将阶乘符号 '!' 映射为 'fact' 方法。
+                        return 'fact';
+                    case '|':
+                        return 'abs';
                     case 'N': // 'N' 是内部使用的、代表一元负号（取反）的 token。
                         return '_oppositeNumber';
                     case 'A': // 'A' 是内部使用的、代表绝对值的 token。
@@ -3241,7 +3256,7 @@
                     // --- 默认回退情况 ---
                     default:
                         // 删除标识 CSS 的中括号
-                        return Public.symbolToLetter(str).replace(/[\[\]]/g, '');
+                        return str.replace(/[\[\]]/g, '');
                 }
             }
 
@@ -4549,10 +4564,10 @@
                 listB[i] = Public.zeroCorrect(listB[i]);
 
                 // 确保输入为实数
-                if (!new ComplexNumber(listA[i]).onlyReal) {
+                if (!listA[i].onlyReal) {
                     throw new Error('[StatisticsTools] Complex number appear in the inputA.');
                 }
-                if (!new ComplexNumber(listB[i]).onlyReal) {
+                if (!listB[i].onlyReal) {
                     throw new Error('[StatisticsTools] Complex number appear in the inputB.');
                 }
             }
@@ -4994,11 +5009,13 @@
                 MathPlus.times(b, b),
                 MathPlus.times(MathPlus.times(a, c), 3)
             )).re;
+
             // B = bc - 9ad
             const B = Public.zeroCorrect(MathPlus.minus(
                 MathPlus.times(b, c),
                 MathPlus.times(MathPlus.times(a, d), 9)
             )).re;
+
             // C = c² - 3bd
             const C = Public.zeroCorrect(MathPlus.minus(
                 MathPlus.times(c, c),
@@ -5517,7 +5534,8 @@
         static powerFunctionAnalysis(list) {
             const result = {};
             // 从列表中提取多项式系数 a, b, c, d, e，并确保它们是 BigNumber 实例的实部。
-            const inputA = Public.zeroCorrect(MathPlus.calc(list[0])[0]),
+            const
+                inputA = Public.zeroCorrect(MathPlus.calc(list[0])[0]),
                 inputB = Public.zeroCorrect(MathPlus.calc(list[1])[0]),
                 inputC = Public.zeroCorrect(MathPlus.calc(list[2])[0]),
                 inputD = Public.zeroCorrect(MathPlus.calc(list[3])[0]),
@@ -5525,13 +5543,15 @@
             if (!inputA.onlyReal || !inputB.onlyReal || !inputC.onlyReal || !inputD.onlyReal || !inputE.onlyReal) {
                 throw new Error('[PowerFunctionTools] Complex number appear in the input.');
             }
-            const a = inputA.re,
+            const
+                a = inputA.re,
                 b = inputB.re,
                 c = inputC.re,
                 d = inputD.re,
                 e = inputE.re;
             // 整合输入
             result.equation = Public.funcToString([e, d, c, b, a], 'powerFunc');
+
             // --- 情况 1: 四次函数 (a ≠ 0) ---
             if (a.mantissa !== 0n) {
                 list = [a, b, c, d, e];
@@ -5540,6 +5560,7 @@
                 const diff1Roots = PowerFunctionTools._solveX3(diff1);
                 const diff2 = PowerFunctionTools._differentiate(diff1);
                 const diff2Roots = PowerFunctionTools._solveX2(diff2);
+
                 // --- 分析单调性和极值 (基于一阶导数) ---
                 if ([1, 2, 4].includes(diff1Roots.length)) {
                     const minMax = Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]));
@@ -5567,6 +5588,7 @@
                         [point3, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[2]))]
                     ];
                 }
+
                 // --- 分析凹凸性和拐点 (基于二阶导数) ---
                 if ([1, 3].includes(diff2Roots.length)) {
                     result[a.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
@@ -5582,6 +5604,7 @@
                         [point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff2Roots[1]))]
                     ];
                 }
+
                 // --- 求解方程的根 ---
                 const roots = [];
                 const originalRoots = PowerFunctionTools._solveX4(list);
@@ -5589,7 +5612,10 @@
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
                 result.roots = roots;
-            } else if (b.mantissa !== 0n) {
+                return result;
+            }
+
+            if (b.mantissa !== 0n) {
                 // --- 情况 2: 三次函数 (a = 0, b ≠ 0) ---
                 list = [b, c, d, e];
                 // 计算一阶和二阶导数及其根。
@@ -5598,6 +5624,7 @@
                 const diff2 = PowerFunctionTools._differentiate(diff1);
                 const diff2Roots = PowerFunctionTools._solveX1(diff2);
                 result.range = ['-inf', '+inf'];
+
                 // --- 分析单调性和极值 ---
                 if ([1, 3].includes(diff1Roots.length)) {
                     result[b.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
@@ -5612,19 +5639,24 @@
                     result[b.mantissa > 0n ? 'maximumPoint' : 'minimumPoint'] = [[point1, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]))]];
                     result[b.mantissa > 0n ? 'minimumPoint' : 'maximumPoint'] = [[point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]))]];
                 }
+
                 // --- 分析凹凸性和拐点 ---
                 const point = Public.idealizationToString(diff2Roots[0]);
                 result[b.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['-inf', point]];
                 result[b.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [[point, '+inf']];
                 result.inflectionPoint = [[point, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff2Roots[0]))]];
-                const roots = [];
+
                 // --- 求解方程的根 ---
+                const roots = [];
                 const originalRoots = PowerFunctionTools._solveX3(list);
                 for (let i = 0; i < Math.min(3, originalRoots.length); i++) {
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
                 result.roots = roots;
-            } else if (c.mantissa !== 0n) {
+                return result;
+            }
+
+            if (c.mantissa !== 0n) {
                 list = [c, d, e];
                 // --- 情况 3: 二次函数 (a = b = 0, c ≠ 0) ---
                 const diff1 = PowerFunctionTools._differentiate(list);
@@ -5639,14 +5671,18 @@
                 result[c.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
                 result[c.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [['-inf', '+inf']];
                 result.inflectionPoint = [['null', 'null']];
-                const roots = [];
+
                 // --- 求解方程的根 ---
+                const roots = [];
                 const originalRoots = PowerFunctionTools._solveX2(list);
                 for (let i = 0; i < Math.min(2, originalRoots.length); i++) {
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
                 result.roots = roots;
-            } else if (d.mantissa !== 0n) {
+                return result;
+            }
+
+            if (d.mantissa !== 0n) {
                 list = [d, e];
                 // --- 情况 4: 一次函数 (a = b = c = 0, d ≠ 0) ---
                 result.range = ['-inf', '+inf'];
@@ -5658,19 +5694,20 @@
                 result.concaveInterval = [['null', 'null']];
                 result.inflectionPoint = [['null', 'null']];
                 result.roots = [Public.idealizationToString(PowerFunctionTools._solveX1(list))];
-            } else {
-                // --- 情况 5: 常数函数 (a = b = c = d = 0) ---
-                const num = Public.idealizationToString(e);
-                result.range = [num, num];
-                result.increasingInterval = [['null', 'null']];
-                result.decreasingInterval = [['null', 'null']];
-                result.maximumPoint = [['null', 'null']];
-                result.minimumPoint = [['null', 'null']];
-                result.convexInterval = [['null', 'null']];
-                result.concaveInterval = [['null', 'null']];
-                result.inflectionPoint = [['null', 'null']];
-                result.roots = [e.mantissa === 0n ? 'anyRealNumber' : 'null'];
+                return result;
             }
+
+            // --- 情况 5: 常数函数 (a = b = c = d = 0) ---
+            const num = Public.idealizationToString(e);
+            result.range = [num, num];
+            result.increasingInterval = [['null', 'null']];
+            result.decreasingInterval = [['null', 'null']];
+            result.maximumPoint = [['null', 'null']];
+            result.minimumPoint = [['null', 'null']];
+            result.convexInterval = [['null', 'null']];
+            result.concaveInterval = [['null', 'null']];
+            result.inflectionPoint = [['null', 'null']];
+            result.roots = [e.mantissa === 0n ? 'anyRealNumber' : 'null'];
             return result;
         }
     }
@@ -5712,6 +5749,7 @@
             // 将输入统一转换为 ComplexNumber 实例。
             z = new ComplexNumber(z);
             n = new ComplexNumber(n);
+
             // 计算 1/n，这是根的指数。
             const realPow = MathPlus.divide(1, n);
             // 计算 z 的模 r = |z|。
@@ -5972,12 +6010,12 @@
 
             // 根据 outputMode 格式化并返回结果
             return {
-                result: outputMode === 'output'
-                        ? Public.idealizationToString(calcResult[0], {
-                        acc: effectiveOutputAcc, // 使用修正后的输出精度
-                        printMode: printMode
-                    })
-                        : calcResult[0].valueOf(),
+                result: outputMode === 'output' ?
+                        Public.idealizationToString(calcResult[0], {
+                            acc: effectiveOutputAcc, // 使用修正后的输出精度
+                            printMode: printMode
+                        }) :
+                        calcResult[0].valueOf(),
                 expr: calcResult[1]
             };
         }

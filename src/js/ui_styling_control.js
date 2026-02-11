@@ -36,6 +36,43 @@
         };
 
         /**
+         * @static
+         * @type {Object<string, string>}
+         * @description 一个静态映射表，将特殊的数学或结构字符转换为其对应的“安全”字符串，用作 CSS 类名的一部分。
+         * 此配置由 `HtmlTools.textToHtmlClass` 方法使用，目的是将数学表达式字符串（例如 "2+3") 转换为一系列 CSS 类（例如, ['_2_', '_plus_', '_3_']）。
+         * 这些类随后用于渲染表达式的视觉表示，通常是通过为每个字符/符号应用带有特定背景图像的样式。
+         * @example
+         * // '+' 字符被映射到 'plus'，最终生成的 CSS 类将是 '_plus_'。
+         * '+': 'plus',
+         */
+        static classNameConverterConfig = {
+            ' ': 'space',
+            '+': 'plus',
+            '-': 'minus',
+            '*': 'times',
+            '/': 'divide',
+            '^': 'pow',
+            '=': 'equal',
+            ',': 'comma',
+            ';': 'semicolon',
+            '!': 'fact',
+            '|': 'abs',
+            '_': 'underline',
+            '.': 'dp',
+            ':': 'colon',
+            '(': 'parentheses_left',
+            ')': 'parentheses_right',
+            '{': 'curlyBraces_left',
+            '}': 'curlyBraces_right',
+
+            // 注意：以下中括号是便于分词器将他们识别为1个 token
+            '[e]': 'e_mathit',
+            '[i]': 'i_mathit',
+            '[x]': 'x_mathit',
+            '[k]': 'k_mathit'
+        };
+
+        /**
          * @constructor
          * @description PageConfig 的构造函数。
          * 这个类被设计为静态类，不应该被实例化。
@@ -198,6 +235,7 @@
             if (!['0', '1', '2_0', '2_1', '3', '4'].includes(mode)) {
                 throw new Error('[PageConfig] Unsupported mode');
             }
+
             // 调用工具函数来更新页面标题以反映新模式。
             PageControlTools.changeTitle(mode);
             PageControlTools.changeScreen(mode);
@@ -257,6 +295,7 @@
             if (!['0', '1'].includes(mode)) {
                 throw new Error('[PageConfig] Unsupported mode');
             }
+
             // 从当前活动的打印模式按钮上移除高亮类。
             HtmlTools.getHtml(`#print_${PageConfig._printMode}`).classList.remove('SelectionOn');
             // 更新内部状态以反映新模式。
@@ -325,6 +364,7 @@
             if (![0, 1].includes(type)) {
                 throw new Error('[PageConfig] Unsupported mode');
             }
+
             // 获取所有需要根据“第二功能”状态动态更新的键盘按钮。
             const secondaryKeyboard = [...HtmlTools.getHtml('.SecondaryKeyboard', -1)];
             for (let i = 0; i < secondaryKeyboard.length; i++) {
@@ -530,50 +570,12 @@
          * @private
          * @static
          * @type {Object<string, string>}
-         * @description 一个静态映射表，将特殊的数学或结构字符转换为其对应的“安全”字符串，用作 CSS 类名的一部分。
-         * 此配置由 `HtmlTools.textToHtmlClass` 方法使用，目的是将数学表达式字符串（例如 "2+3") 转换为一系列 CSS 类（例如, ['_2_', '_plus_', '_3_']）。
-         * 这些类随后用于渲染表达式的视觉表示，通常是通过为每个字符/符号应用带有特定背景图像的样式。
-         * @example
-         * // '+' 字符被映射到 'plus'，最终生成的 CSS 类将是 '_plus_'。
-         * '+': 'plus',
-         */
-        static _classNameConverterConfig = {
-            ' ': 'space',
-            '+': 'plus',
-            '-': 'minus',
-            '*': 'times',
-            '/': 'divide',
-            '^': 'pow',
-            '=': 'equal',
-            ',': 'comma',
-            ';': 'semicolon',
-            '!': 'fact',
-            '|': 'abs',
-            '_': 'underline',
-            '.': 'dp',
-            ':': 'colon',
-            '(': 'parentheses_left',
-            ')': 'parentheses_right',
-            '{': 'curlyBraces_left',
-            '}': 'curlyBraces_right',
-
-            // 注意：以下中括号是便于分词器将他们识别为1个 token
-            '[e]': 'e_mathit',
-            '[i]': 'i_mathit',
-            '[x]': 'x_mathit',
-            '[k]': 'k_mathit'
-        };
-
-        /**
-         * @private
-         * @static
-         * @type {Object<string, string>}
          * @description `_classNameConverterConfig` 的逆向映射。
          * 此对象是动态生成的，用于将 CSS 类名的一部分（例如 "plus"）转换回其原始的特殊字符（例如 "+"）。
          * 它主要由 `HtmlTools.htmlClassToText` 方法使用，以便从 DOM 元素的类名中重建原始的数学表达式字符串。
          */
         static _classNameConverterReverseConfig = Object.fromEntries(
-            Object.entries(HtmlTools._classNameConverterConfig).map(([k, v]) => [v, k])
+            Object.entries(PageConfig.classNameConverterConfig).map(([k, v]) => [v, k])
         );
 
         /**
@@ -597,7 +599,7 @@
             const escape = s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
             // 从配置中获取所有特殊符号，对它们进行转义，然后用 '|' (OR) 连接起来，形成一个匹配模式。
-            const symbolPattern = Object.keys(HtmlTools._classNameConverterConfig)
+            const symbolPattern = Object.keys(PageConfig.classNameConverterConfig)
                 .map(escape)
                 .join('|');
             // 创建并返回最终的正则表达式对象。
@@ -739,7 +741,7 @@
          */
         static textToHtmlClass(text) {
             const output = [];
-            const config = HtmlTools._classNameConverterConfig;
+            const config = PageConfig.classNameConverterConfig;
 
             const matches = text.matchAll(HtmlTools._tokenizerRegex);
             for (const match of matches) {
@@ -783,10 +785,7 @@
 
             return classArray.map(cls => {
                 if (!cls.startsWith('_') || !cls.endsWith('_')) {
-                    if (cls === '[id]cursor') {
-                        return '[cursor]';
-                    }
-                    return cls;
+                    return cls === '[id]cursor' ? '[cursor]' : cls;
                 }
                 let core = cls.slice(1, -1);
 
@@ -820,9 +819,9 @@
             nameType = 'className'
         } = {}) {
             // 1. 统一处理父元素：如果是字符串则查找，否则直接使用。
-            const targetParent = typeof parentElement === 'string'
-                                 ? HtmlTools.getHtml(parentElement)
-                                 : parentElement;
+            const targetParent = typeof parentElement === 'string' ?
+                                 HtmlTools.getHtml(parentElement) :
+                                 parentElement;
 
             // 2. 健壮性检查：确保父元素存在且类名数组有效。
             if (!targetParent || !Array.isArray(nameList) || nameList.length === 0) {
@@ -910,6 +909,7 @@
                 // 4. 执行替换
                 return expr.replace(regex, '');
             }
+
             // 如果是数组，则遍历它以构建一个不包含 `_cdot_` 的新数组。
             const resultList = [];
             const deleteClassList = deleteStrList.map(name => `_${name}_`);
@@ -938,6 +938,7 @@
             if (PageConfig.currentMode === '1') {
                 return HtmlTools.getHtml('.GridOn');
             }
+
             // 对于所有其他模式，根据当前主模式和子模式构造目标元素的 ID。
             const targetName = `#screen_input_inner_${currentMode}${PageConfig.subModes[currentMode]}`;
             // 使用构造的 ID 获取并返回对应的 DOM 元素。
@@ -1024,7 +1025,6 @@
             }
 
             const {scrollLeft, scrollWidth, clientWidth} = element;
-
             // scrollLeft + clientWidth 大于等于 scrollWidth - 1 (容错 1px)
             return scrollLeft + clientWidth >= scrollWidth - 1;
         }
@@ -1050,7 +1050,7 @@
          * @type {number}
          * @description 统计模式最大统计数据行数。
          */
-        static MAX_STATISTICS_ROW = 200;
+        static MAX_STATISTICS_ROW = 211;
 
         /**
          * @constructor
@@ -1082,6 +1082,7 @@
             if (!token) {
                 return 0;
             }
+
             // 获取词法单元的详细信息，包括其类型和特殊标志。
             const tokenInfo = Public.getTokenInfo(token);
             // 检查该 token 是否是一个函数，并且不是那种被特殊标记为“使用单个HTML类”的函数。
@@ -1564,6 +1565,7 @@
             if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') || !HtmlTools.getHtml('#main').classList.contains('Input')) {
                 return;
             }
+
             // 获取主输入区域和光标元素。
             const inputArea = HtmlTools.getHtml('#input');
             if (inputArea.children.length > this._MAX_INPUT_LEN) { // 防止输入过多数据
@@ -1689,6 +1691,7 @@
                 switch (currentMode) {
                     case '0':
                         return;
+
                     case '1': {
                         const currentSubModes = PageConfig.subModes['1'];
                         len = HtmlTools.getHtml('#grid_data').children.length - 1;
@@ -1708,7 +1711,8 @@
                         }
                         break;
                     }
-                    case '3': {
+
+                    case '3':
                         len = 4;
                         if (['left', 'right'].includes(direction)) {
                             nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'left' ? -1 : 1);
@@ -1727,7 +1731,7 @@
                         // 确保视图跟随
                         HtmlTools.scrollToView();
                         return;
-                    }
+
                     default: {
                         len = HtmlTools.getHtml(`#screen_${currentMode}`).children.length - 1;
                         let addNum = 1;
@@ -2108,7 +2112,7 @@
          * @private
          * @static
          * @method _debounce
-         * @description 高级防抖函数
+         * @description 防抖函数
          * @param {Function} func - 要执行的函数
          * @param {Number} wait - 等待时间 (毫秒)
          * @param {Object} options - 配置对象
@@ -3872,10 +3876,10 @@
             }
 
             // --- 主逻辑开始 ---
-
             // 1. 获取符号的文本形式及元数据信息
             const inputStr = HtmlTools.htmlClassToText(input);
             const info = Public.getTokenInfo(inputStr);
+            const converterConfig = PageConfig.classNameConverterConfig;
 
             // 2. 合法性检查：如果是非法符号，则隐藏解释面板并直接返回
             if (info.class === 'illegal') {
@@ -3884,17 +3888,7 @@
             }
 
             // 3. 准备 UI 类名并切换顶部显示状态
-            const inputClassStr = Public.symbolToLetter(inputStr).replace(/[\[\],.()]/g, (match) => {
-                const map = {
-                    '[': '',
-                    ']': '',
-                    '(': 'parentheses_left',
-                    ')': 'parentheses_right',
-                    ',': 'comma',
-                    '.': 'dp'
-                };
-                return map[match];
-            });
+            const inputClassStr = (inputStr in converterConfig ? converterConfig[inputStr] : inputStr).replace(/[\[\]]/g, '');
 
             HtmlTools.getHtml('#head_inputs').classList.remove('NoDisplay');
             HtmlTools.getHtml('#head_title').classList.add('NoDisplay');

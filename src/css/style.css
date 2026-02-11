@@ -268,21 +268,14 @@ p {
 
 #screen_0_display {
     width: 100dvw;
-    height: 14dvh;
-    margin-top: 7.25dvh;
+    height: min(24dvmin, 16dvh);
+    margin-top: calc(14.25dvh - min(12dvmin, 8dvh));
 }
 
 #screen_0_display > div {
-    width: 99dvw;
-    margin-left: 1dvw;
-}
-
-#screen_0_display > div:first-child {
-    height: 6dvh;
-}
-
-#screen_0_display > div:nth-child(2) {
-    height: 8dvh;
+    width: 99.5dvw;
+    margin-left: 0.5dvw;
+    height: min(12dvmin, 8dvh);
 }
 
 /* screen 部分-part 1 */
