@@ -46,9 +46,13 @@ async function test(mode = 0) {
         throw new Error("Core not loaded");
     }
 
-    const a = win.CalcConfig.globalCalcAccuracy, b = win.CalcConfig.outputAccuracy;
+    const
+        a = win.CalcConfig.globalCalcAccuracy,
+        b = win.CalcConfig.outputAccuracy;
+    const printMode = win.CalcConfig.globalPrintMode;
     win.CalcConfig.globalCalcAccuracy = 220;
     win.CalcConfig.outputAccuracy = 0.9;
+    win.CalcConfig.globalPrintMode = 'algebra';
 
     let result = true;
 
@@ -213,7 +217,9 @@ async function test(mode = 0) {
             break;
         }
     }
+
     win.CalcConfig.globalCalcAccuracy = a;
     win.CalcConfig.outputAccuracy = b;
+    win.CalcConfig.globalPrintMode = printMode;
     return result;
 }

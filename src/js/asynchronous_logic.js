@@ -590,7 +590,6 @@
                     throw err;
                 }
 
-                // --- 修复开始 --- //
                 // 只有非人为的意外错误（如超时、内部崩溃），才执行自动重启机制
                 WorkerTools._isRestarting = true;
                 try {
@@ -602,7 +601,6 @@
                 } finally {
                     WorkerTools._isRestarting = false;
                 }
-                // --- 修复结束 --- //
 
                 // 抛出错误
                 // 这样上层调用者才知道本次任务失败了，尽管 Worker 已经重启准备好处理下一次任务了。
@@ -778,50 +776,6 @@
          * @param {Array<ComplexNumber|string|number>} listA - 自变量数据集 (x-values)。数组中的每个元素都将被转换为 ComplexNumber。
          * @param {Array<ComplexNumber|string|number>} listB - 因变量数据集 (y-values)。数组中的每个元素都将被转换为 ComplexNumber。
          * @returns {Promise<object>} 一个 Promise，它会解析为一个包含详细统计和回归分析结果的对象。
-         * @property {string} averageA - 数据集 A 的平均值。
-         * @property {string} sumA - 数据集 A 的总和。
-         * @property {string} sum2A - 数据集 A 的平方和 (Σx²)。
-         * @property {string} varianceA - 数据集 A 的标准差。
-         * @property {string} maxA - 数据集 A 的最大值。
-         * @property {string} minA - 数据集 A 的最小值。
-         * @property {string} averageB - 数据集 B 的平均值。
-         * @property {string} sumB - 数据集 B 的总和。
-         * @property {string} sum2B - 数据集 B 的平方和 (Σy²)。
-         * @property {string} varianceB - 数据集 B 的标准差。
-         * @property {string} maxB - 数据集 B 的最大值。
-         * @property {string} minB - 数据集 B 的最小值。
-         * @property {string} dotAB - A 和 B 的点积 (Σxy)。
-         * @property {string} dotA2B - A² 和 B 的点积 (Σx²y)。
-         * @property {string} r - 皮尔逊相关系数 (r)，或在无法计算时为 'error'。
-         * @property {string} bestModel - 拟合度最佳的回归模型的名称（基于最高的 R² 值）。
-         * @property {object} linear - 线性回归 (y = a₁x + a₀) 的结果。
-         * @property {string} linear.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} linear.parameter - 系数数组 [a₀, a₁]。
-         * @property {string} linear.R2 - 决定系数 R²。
-         * @property {object} square - 二次回归 (y = a₂x² + a₁x + a₀) 的结果。
-         * @property {string} square.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} square.parameter - 系数数组 [a₀, a₁, a₂]。
-         * @property {string} square.R2 - 决定系数 R²。
-         * @property {object} ln - 对数回归 (y = a₁ln(x) + a₀) 的结果。
-         * @property {string} ln.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} ln.parameter - 系数数组 [a₀, a₁]。
-         * @property {string} ln.R2 - 决定系数 R²。
-         * @property {object} axb - 幂回归 (y = a₀ * x^a₁) 的结果。
-         * @property {string} axb.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} axb.parameter - 系数数组 [a₀, a₁]。
-         * @property {string} axb.R2 - 决定系数 R²。
-         * @property {object} exp - 指数回归 (y = a₀ * e^(a₁x)) 的结果。
-         * @property {string} exp.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} exp.parameter - 系数数组 [a₀, a₁]。
-         * @property {string} exp.R2 - 决定系数 R²。
-         * @property {object} abx - 指数回归 (y = a₀ * b^x) 的结果。
-         * @property {string} abx.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} abx.parameter - 系数数组 [a₀, b]。
-         * @property {string} abx.R2 - 决定系数 R²。
-         * @property {object} reciprocal - 倒数回归 (y = a₁/x + a₀) 的结果。
-         * @property {string} reciprocal.regressionEquation - 格式化后的回归方程字符串。
-         * @property {Array<string>} reciprocal.parameter - 系数数组 [a₀, a₁]。
-         * @property {string} reciprocal.R2 - 决定系数 R²。
          * @throws {Error} 如果输入无效或 Worker 发生错误，Promise 将被拒绝。
          */
         static statisticsCalc(listA, listB) {
