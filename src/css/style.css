@@ -916,7 +916,7 @@ p {
 
 #load {
     /* 局部定义变量 */
-    width: max(40dvw, 60dvmin);
+    width: max(30dvw, 45dvmin);
 
     height: calc(min(12dvmin, 7dvh) + 37dvmin + 2dvh);
     border-radius: 3dvmin;
