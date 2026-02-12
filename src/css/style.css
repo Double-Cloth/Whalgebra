@@ -915,15 +915,14 @@ p {
 }
 
 #load {
-    /* 局部定义变量 */
-    width: max(30dvw, 45dvmin);
-
+    width: max(32dvw, 45dvmin);
     height: calc(min(12dvmin, 7dvh) + 37dvmin + 2dvh);
     border-radius: 3dvmin;
     /* 启用背景色，使用定义的局部变量 */
     background-color: hsla(var(--hue), 10%, 90%, 0.8);
     /* 添加卡片阴影，增加层次感 */
     box-shadow: 0 4dvmin 20dvmin rgba(0, 0, 0, 0.2);
+    /* 局部定义变量 */
     --hue: 223;
 }
 
@@ -935,7 +934,6 @@ p {
 }
 
 #loading {
-    width: 30dvw;
     height: 10dvmin;
 }
 
