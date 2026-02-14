@@ -28,6 +28,26 @@
         }
 
         /**
+         * @private
+         * @static
+         * @type {boolean}
+         * @description 标记当前是否处于 Web 模式。
+         * 如果为 true，则启用某些特定于 Web 的功能（如全屏切换）。
+         * 这是一个私有静态字段，应通过 `webMode` 的 getter 进行访问。
+         */
+        static _webMode = true;
+
+        /**
+         * @static
+         * @property {boolean} webMode
+         * @description 获取当前是否处于 Web 模式。
+         * @type {boolean}
+         */
+        static get webMode() {
+            return this._webMode;
+        }
+
+        /**
          * @static
          * @method typeOf
          * @description 以小写字符串形式获取一个值的精确类型。
