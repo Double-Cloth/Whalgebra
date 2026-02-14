@@ -138,7 +138,7 @@ document.addEventListener('click', (event) => {
     if (/^mode_[0-4]$/.test(targetID)) {
         const mode = targetID.slice(-1);
         PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
-        // 修复: 使用箭头函数替代字符串，更安全且性能更好
+        // 使用箭头函数替代字符串，更安全且性能更好
         setTimeout(() => PageControlTools.clickMainCover(), 340);
         return;
     }
@@ -198,6 +198,11 @@ document.addEventListener('click', (event) => {
 
     // 全屏模式切换
     if (/title_mode_([0134]|2_[01])|screen_title/.test(targetID)) {
+        // 只有网页模式才能全屏显示
+        if (!Public.webMode) {
+            return;
+        }
+
         if (document.fullscreenElement) {
             // 进入全屏
             document.exitFullscreen();

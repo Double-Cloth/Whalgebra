@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-2-13 -->
+    <!-- Whalgebra Version: v3.0.0 | Updated: 2026-2-14 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -35,6 +35,26 @@
                     // 抛出错误以明确表示这是一个静态类，不应创建实例。
                     // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
                     throw new Error('[Public] Public is a static class and should not be instantiated.');
+                }
+
+                /**
+                 * @private
+                 * @static
+                 * @type {boolean}
+                 * @description 标记当前是否处于 Web 模式。
+                 * 如果为 true，则启用某些特定于 Web 的功能（如全屏切换）。
+                 * 这是一个私有静态字段，应通过 `webMode` 的 getter 进行访问。
+                 */
+                static _webMode = true;
+
+                /**
+                 * @static
+                 * @property {boolean} webMode
+                 * @description 获取当前是否处于 Web 模式。
+                 * @type {boolean}
+                 */
+                static get webMode() {
+                    return this._webMode;
                 }
 
                 /**
@@ -12577,7 +12597,7 @@
             if (/^mode_[0-4]$/.test(targetID)) {
                 const mode = targetID.slice(-1);
                 PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
-                // 修复: 使用箭头函数替代字符串，更安全且性能更好
+                // 使用箭头函数替代字符串，更安全且性能更好
                 setTimeout(() => PageControlTools.clickMainCover(), 340);
                 return;
             }
@@ -12637,6 +12657,11 @@
 
             // 全屏模式切换
             if (/title_mode_([0134]|2_[01])|screen_title/.test(targetID)) {
+                // 只有网页模式才能全屏显示
+                if (!Public.webMode) {
+                    return;
+                }
+
                 if (document.fullscreenElement) {
                     // 进入全屏
                     document.exitFullscreen();
