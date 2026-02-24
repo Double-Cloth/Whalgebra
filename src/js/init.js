@@ -65,9 +65,16 @@ document.addEventListener('click', (event) => {
         case 'statistics_results_top_xy':
             PageControlTools.triggerSelection(target, event);
             return PageControlTools.switchStatisticsResults(targetID.slice(23));
+
+        case 'back_btn':
+        case 'back_btn_child1':
+        case 'back_btn_child2':
+            PageConfig.currentMode = '2_0';
+            return;
     }
 
     // --- 策略 2: 基于父容器 ID 的逻辑 (Group Logic) ---
+
     const showMoreFunc = () => PageControlTools.changeSubKeyboard('SortSvg');
 
     switch (parentID) {
