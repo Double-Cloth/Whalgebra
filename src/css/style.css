@@ -248,6 +248,39 @@ p {
     transform-origin: top;
 }
 
+#title_mode_2_1 {
+    display: flex;
+    align-items: center;
+    gap: 1dvmin;
+}
+
+#back_btn {
+    width: min(7.5dvh, 12dvmin);
+    height: min(4.5dvh, 7.2dvmin);
+    margin-left: 0.5dvw;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#back_btn:hover {
+    transform: translateX(-0.4dvmin);
+}
+
+#back_btn rect {
+    transition: opacity 0.3s ease;
+}
+
+#back_btn:hover rect {
+    opacity: 0.18;
+}
+
+#back_btn path {
+    transition: transform 0.3s ease;
+}
+
+#back_btn:hover path {
+    transform: translateX(-0.3dvmin);
+}
+
 /* screen 部分 */
 
 .ScreenMain {

@@ -708,7 +708,7 @@
                 // 计算模长和辐角
                 const modulus = MathPlus.abs(this).re.toString({acc: acc, mode: mode});
                 let argument = MathPlus.arg(this).re.toString({acc: acc, mode: mode});
-                if (argument.includes('E') || argument.includes('-')) {
+                if (argument.includes('E')) {
                     argument = `(${argument})`;
                 }
 
@@ -1662,6 +1662,8 @@
             // --- 路径 1: 输入为纯实数 ---
             if (input.onlyReal) {
                 const re = input.re;
+                let useAlternative = false;
+                let result;
 
                 // 基准情况: √0 = 0
                 if (re.mantissa === 0n) {
@@ -1682,32 +1684,44 @@
                 // 步骤 1: 生成一个低精度的初始猜测值，以加速收敛。
                 const lowAccuracyRe = new BigNumber(absInput, {acc: 15});
                 const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
-                let result = new ComplexNumber(Math.sqrt(numberRe), {acc: acc});
 
-                // 步骤 2: 进行迭代
-                let i = 0;
-                const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
-                const minPower = -2 * acc - 1; // 收敛阈值
-                const const_2 = new ComplexNumber([0, 2n, acc]);
-                let difference, mid;
+                // 防止出现无限值导致出错
+                if (!Number.isFinite(numberRe)) {
+                    useAlternative = true;
+                }
 
-                do {
-                    // 执行一次牛顿法迭代
-                    mid = result;
-                    result = MathPlus.divide(
-                        MathPlus.plus(mid, MathPlus.divide(absInput, mid)),
-                        const_2
-                    );
+                if (!useAlternative) {
+                    result = new ComplexNumber(Math.sqrt(numberRe), {acc: acc});
 
-                    // 计算新旧结果之差的绝对值，用于判断是否收敛
-                    difference = MathPlus.minus(mid, result).re;
-                    i++;
-                } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+                    // 步骤 2: 进行迭代
+                    let i = 0;
+                    const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
+                    const minPower = -2 * acc - 1; // 收敛阈值
+                    const const_2 = new ComplexNumber([0, 2n, acc]);
+                    let difference, mid;
+
+                    do {
+                        // 执行一次牛顿法迭代
+                        mid = result;
+                        result = MathPlus.divide(
+                            MathPlus.plus(mid, MathPlus.divide(absInput, mid)),
+                            const_2
+                        );
+
+                        // 计算新旧结果之差的绝对值，用于判断是否收敛
+                        difference = MathPlus.minus(mid, result).re;
+                        i++;
+                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+
+                    if (i === max) {
+                        console.warn(`[MathPlus] Square root (${x.toString()}) calculation takes too long.`);
+                        useAlternative = true;
+                    }
+                }
 
                 // 步骤 3: 如果牛顿法收敛过慢，则使用 ln/exp 方法作为备用。
                 // 公式: √x = x^0.5 = e^(0.5 * ln(x))
-                if (i === max) {
-                    console.warn(`[MathPlus] Square root (${x.toString()}) calculation takes too long.`);
+                if (useAlternative) {
                     result = MathPlus.exp(
                         MathPlus.times(MathPlus.ln(absInput), new ComplexNumber([-1, 5n, acc]))
                     );
@@ -1756,6 +1770,8 @@
             // --- 路径 1: 纯实数优化 ---
             if (input.onlyReal) {
                 const re = input.re;
+                let useAlternative = false;
+                let result;
 
                 // 基准情况: ³√0 = 0
                 if (re.mantissa === 0n) {
@@ -1765,37 +1781,49 @@
                 // 步骤 1: 生成一个低精度的初始猜测值，以加速收敛。
                 const lowAccuracyRe = new BigNumber(re, {acc: 15});
                 const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
-                let result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
 
-                // 步骤 2: 进行迭代
-                // 采用牛顿迭代法的立方根特化公式
-                // x_(n+1) = (2x_n + x / x_n^2) / 3
-                let i = 0;
-                const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
-                const minPower = -2 * acc - 1; // 收敛阈值
-                const const_2 = new ComplexNumber([0, 2n, acc]);
-                const const_3 = new ComplexNumber([0, 3n, acc]);
-                let difference, mid;
+                // 防止出现无限值导致出错
+                if (!Number.isFinite(numberRe)) {
+                    useAlternative = true;
+                }
 
-                do {
-                    mid = result;
-                    const squareOfMid = MathPlus.times(mid, mid);
-                    result = MathPlus.divide(
-                        MathPlus.plus(
-                            MathPlus.times(mid, const_2),
-                            MathPlus.divide(re, squareOfMid)
-                        ),
-                        const_3
-                    );
+                if (!useAlternative) {
+                    result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
 
-                    // 计算新旧结果之差的绝对值，用于判断是否收敛
-                    difference = MathPlus.minus(mid, result).re;
-                    i++;
-                } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+                    // 步骤 2: 进行迭代
+                    // 采用牛顿迭代法的立方根特化公式
+                    // x_(n+1) = (2x_n + x / x_n^2) / 3
+                    let i = 0;
+                    const max = CalcConfig.globalCalcAccuracy + 5; // 设置最大迭代次数
+                    const minPower = -2 * acc - 1; // 收敛阈值
+                    const const_2 = new ComplexNumber([0, 2n, acc]);
+                    const const_3 = new ComplexNumber([0, 3n, acc]);
+                    let difference, mid;
+
+                    do {
+                        mid = result;
+                        const squareOfMid = MathPlus.times(mid, mid);
+                        result = MathPlus.divide(
+                            MathPlus.plus(
+                                MathPlus.times(mid, const_2),
+                                MathPlus.divide(re, squareOfMid)
+                            ),
+                            const_3
+                        );
+
+                        // 计算新旧结果之差的绝对值，用于判断是否收敛
+                        difference = MathPlus.minus(mid, result).re;
+                        i++;
+                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+
+                    if (i === max) {
+                        console.warn(`[MathPlus] Cube root (${x.toString()}) calculation takes too long.`);
+                        useAlternative = true;
+                    }
+                }
 
                 // 步骤 3: 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
-                if (i === max) {
-                    console.warn(`[MathPlus] Cube root (${x.toString()}) calculation takes too long.`);
+                if (useAlternative) {
                     return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
                 }
 
@@ -2776,14 +2804,14 @@
                     }
 
                     // 当范围很小时，直接计算，避免过多递归开销
-                    if (end - start < 10n) { // 这个阈值可以根据实际情况微调
+                    if (end - start < 13n) { // 这个阈值可以根据实际情况微调
                         let res = 1n;
                         for (let i = start; i <= end; i++) {
                             res *= i;
                         }
                         return res;
                     }
-                    if (end - start > 9999999n) {
+                    if (end - start > 99999999n) {
                         throw new Error('[MathPlus] mathematical error: The factorial exceeds the range limit.');
                     }
 
