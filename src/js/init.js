@@ -78,6 +78,7 @@ document.addEventListener('click', (event) => {
     const showMoreFunc = () => PageControlTools.changeSubKeyboard('SortSvg');
 
     switch (parentID) {
+        case 'setting_acc_control':
         case 'switch_knob_on':
         case 'switch_knob_off':
         case 'switch_knob':
