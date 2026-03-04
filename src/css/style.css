@@ -1209,12 +1209,6 @@ p {
     align-items: center;
 }
 
-#print_1_0_choose > p:last-child {
-    margin-left: auto;
-    position: relative;
-    right: 2dvmin;
-}
-
 .Print1ChooseOn {
     background-color: rgb(162, 196, 162);
     box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
@@ -1259,6 +1253,12 @@ p {
 #print_1_0_choose:active {
     background-color: rgba(211, 211, 211, 0.8);
     box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(250, 250, 250);
+}
+
+#print_1_0_choose > p:last-child {
+    margin-left: auto;
+    position: relative;
+    right: 2dvmin;
 }
 
 #export {
