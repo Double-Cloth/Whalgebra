@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.2 | Updated: 2026-3-3 -->
+    <!-- Whalgebra Version: v3.0.2 | Updated: 2026-3-4 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -11738,7 +11738,7 @@
                     let lastModel;
 
                     // 更新选择框的显示内容：添加前缀图标、空格和选中模型的图标
-                    HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model], {mode: 'replace'});
+                    HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model, '_print_content_1_arrow_'], {mode: 'replace'});
 
                     // 遍历所有模型选项，找到之前被选中的项并移除高亮状态
                     // 假设选项 ID 格式为 choose_ra_0 到 choose_ra_N
@@ -13993,6 +13993,11 @@
             content: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJf5Zu+5bGCXzIiIGRhdGEtbmFtZT0i5Zu+5bGCIDIiIHZpZXdCb3g9IjAgMCAyNy40NCAxMS4yNSI+PGRlZnM+PHN0eWxlPi5jbHMtMXtpc29sYXRpb246aXNvbGF0ZX0uY2xzLTJ7ZmlsbDojNjY2fTwvc3R5bGU+PC9kZWZzPjxnIGlkPSJtYWluIj48ZyBjbGFzcz0iY2xzLTEiPjxwYXRoIGQ9Ik00LjI3IDIuNzZjLjA4LjA4LjEzLjEyLjEzLjE2IDAgLjAyLS4wNi4wNC0uMTcuMDRIMi42MnYxLjMxYzEuMTMuNSAxLjU4Ljg5IDEuNTggMS4zMSAwIC4zMS0uMTYuNTMtLjI5LjUzLS4wNyAwLS4xMy0uMDQtLjItLjE4LS4yOC0uNTUtLjY0LTEuMDQtMS4wOS0xLjR2My43OGMwIC45MS4wMSAxLjY1LjA1IDIuMTl2LjA3YzAgLjE4LS4wNS4yNS0uMjUuMzQtLjE2LjA2LS4yNS4xLS4zMS4xLS4wNyAwLS4wOC0uMDQtLjA4LS4xMnYtLjA3Yy4wNC0uMzcuMDctLjg2LjA3LTIuNHYtNC4yQzEuNiA1LjYuOTIgNy4xLjE2IDguMjlMMCA4LjIxYy45Ni0xLjkyIDEuNi0zLjYgMS45Ni01LjIzSDEuNGMtLjI1IDAtLjYuMDUtLjguMTNsLS4zNC0uMzhjLjMuMDIuNi4wNS44OC4wNWguOTd2LTFjMC0uNDktLjAyLTEuMzEtLjA1LTEuNzVsLjc2LjMyYy4xLjA1LjE2LjA3LjE2LjEyIDAgLjA2LS4wNC4xLS4zNC4zN3YxLjkzaC43NmwuMzYtLjQ5LjUzLjVabTcuMSA3LjljLS40OSAwLS42OC4xLS45MS4zNy0uMDIuMDItLjA1LjA1LS4wOC4wNS0uMDUgMC0uMS0uMDItLjE4LS4wNy0xLjQyLS43NC0yLjE3LTEuNTktMi41OS0yLjY5aC0uMjJjLS40MiAxLjMyLTEuNjMgMi4yLTMuOTUgMi45M2wtLjA1LS4xNmMyLjIxLTEuMDEgMy4wMy0xLjY0IDMuNDItMi43N0g0LjQ3Yy0uMiAwLS4zNy4wMi0uNTkuMDdsLS40MS0uM2MuMzcuMDIuNjEuMDIuODMuMDJoMi41N2MuMS0uMzYuMi0xIC4yMy0xLjQ2SDUuNXYuMjhjMCAuMTktLjQyLjMtLjQ4LjMtLjA3IDAtLjExLS4wNS0uMTEtLjE5IDAtLjMyLjA1LS44My4wNS0xLjE0VjQuMTJjMC0uNDgtLjAxLS44OC0uMDQtMS4yNWwuODMuNThoMy42N2wuMjUtLjQyLjY0LjQ3Yy4wOC4wNi4xMi4xLjEyLjE0IDAgLjA2LS4wNC4wOC0uNDIuMzJ2MS40OGMwIC41NC4wMi45MS4wNiAxLjE5LjAxLjA1LjAxLjA4LjAxLjEyIDAgLjIzLS40NC4zNS0uNTIuMzUtLjEgMC0uMS0uMDUtLjEtLjQ0SDcuNjdjLS4wNi41NC0uMTYgMS4xNC0uMjUgMS40NmgyLjc1bC40NC0uNTQuNTkuNTRjLjA4LjA3LjEzLjEzLjEzLjE2IDAgLjA0LS4wNS4wNS0uMTMuMDVINy44MWMuNzQgMS4zMSAxLjkzIDEuOTggMy41NSAyLjE4di4xNlptLS4wNi04Ljk2Yy4wOC4wOC4xMy4xMy4xMy4xNyAwIC4wMi0uMDUuMDQtLjEzLjA0aC0yLjRjMCAuMjguMDEuNjguMDQuODggMCAuMDQuMDEuMDYuMDEuMDggMCAuMS0uMDUuMTMtLjIzLjItLjEyLjA1LS4yLjA4LS4yNi4wOC0uMDggMC0uMTEtLjA3LS4xMS0uMjQgMC0uMTQuMDEtLjg1LjAxLTEuMDFINi42OWMwIC4yNi4wMS42Mi4wNC44di4wNmMwIC4yMi0uNC4zNC0uNDguMzRzLS4xMS0uMDctLjExLS4yNWMwLS4xMy4wMS0uNzkuMDEtLjk1aC0xLjFjLS4yIDAtLjM3LjAyLS41OS4wN2wtLjQxLS4zYy4zNy4wMi42MS4wMi44My4wMmgxLjI3di0uNjFjMC0uMy0uMDEtLjY0LS4wNC0xLjAzbC43Ni4zM2MuMS4wNC4xMy4wNy4xMy4xMSAwIC4wNS0uMDIuMDctLjMxLjI0di45NmgxLjY4di0uNDZjMC0uMy0uMDEtLjYzLS4wNC0xLjAzbC43Ny4yOWMuMDcuMDIuMTIuMDYuMTIuMTEgMCAuMDYtLjA0LjA4LS4zMS4yNXYuODRoMS4zOWwuNDEtLjU1LjYuNTVaTTkuNDggNC45N1YzLjY2SDUuNTF2MS4zMXptMCAxLjQ4VjUuMTdINS41MXYxLjI4eiIgY2xhc3M9ImNscy0yIi8+PC9nPjxnIGNsYXNzPSJjbHMtMSI+PHBhdGggZD0iTTE5LjEgMy41NWMuMDUuMDYuMDcuMS4wNy4xMiAwIC4wNC0uMDQuMDUtLjEyLjA1aC0yLjAzdjEuMzZjMCAuNjggMCAxLjAyLjAyIDEuMzh2LjA3YzAgLjEzLS4wNC4xOC0uMjkuMjYtLjEuMDQtLjE3LjA2LS4yMy4wNi0uMDggMC0uMTEtLjA3LS4xMS0uMjN2LS4wOGMuMDItLjU2LjA0LS45Ni4wNC0xLjQ5VjMuNzJoLTEuNWMtLjA1IDEuNTctLjgyIDMuMTItMi42NiA0LjEzbC0uMTItLjExYzEuNjktMS4yMSAyLjItMi42IDIuMjMtNC4wMmgtMS4xYy0uMjQgMC0uNTkuMDUtLjc3LjEybC0uMzItLjQzYy4yOC4wMi41OC4wNS44NC4wNWgxLjM1VjEuMTloLS40MWMtLjI0IDAtLjU5LjA1LS43Ny4xMkwxMi45Ljg4Yy4yOC4wMi41OC4wNS44NC4wNWgzLjkzbC40NC0uNTYuNTkuNjRjLjA2LjA3LjEuMTIuMS4xNCAwIC4wNC0uMDUuMDUtLjE0LjA1aC0xLjY0djIuMjdoMS4wMWwuNDItLjYyLjY1LjcyWm00LjE1IDYuODJzLjA4LjEuMDguMTJjMCAuMDQtLjA1LjA1LS4xMy4wNWgtOS44M2MtLjI1IDAtLjYxLjA1LS44LjEybC0uMzQtLjQzYy4yOS4wMi42LjA1Ljg4LjA1aDQuNjFWOC40MmgtMi42NWMtLjI0IDAtLjU5LjA1LS43Ny4xMmwtLjMyLS40M2MuMjguMDIuNTguMDUuODQuMDVoMi45di0uNjJjMC0uNDctLjAxLS43Ni0uMDQtMS4xOGwuODYuNGMuMDYuMDQuMS4wNy4xLjEgMCAuMDQtLjAyLjA3LS4wNy4xbC0uMy4ydjEuMDFoMi4xNWwuNDktLjU2LjcyLjY2cy4wOC4xLjA4LjEyYzAgLjA0LS4wNS4wNS0uMTMuMDVoLTMuMzF2MS44NmgzLjY1bC41Ni0uNjguNzguNzhabS02Ljc5LTYuOTJWMS4xOWgtMS41djIuMjdoMS41Wm0zLjgxLTIuMTVjLjA2LjA0LjA4LjA2LjA4LjA4IDAgLjA0LS4wMi4wNi0uMDcuMWwtLjMxLjIydjEuODFjMCAuNjYgMCAxLjA2LjAyIDEuMzh2LjA2YzAgLjEyLS4wNC4xNi0uMjQuMjNhLjguOCAwIDAgMS0uMjQuMDZjLS4wOCAwLS4xMS0uMDYtLjExLS4xOXYtLjA4Yy4wMi0uNS4wNC0uOTcuMDQtMS40NnYtMS40YzAtLjM2LS4wMi0uOTItLjA0LTEuMjVsLjg2LjQ2Wk0yMi41LjU5Yy4wNi4wMi4wOC4wNi4wOC4wOHMtLjAyLjA1LS4wOC4wOGwtLjM2LjE5djUuMzRjMCAuNTQtLjA1LjY1LS43OSAxLjAyLS4wNC4wMi0uMDcuMDItLjEuMDItLjA0IDAtLjA2LS4wMi0uMDctLjA3LS4wNi0uMzEtLjItLjQ5LTEuMzItLjgybC4wMi0uMTRjLjYuMTEuOTguMTYgMS4yNC4xNi40MyAwIC40Ny0uMTQuNDctLjQ0VjEuNDljMC0uNTktLjAxLTEuMDYtLjA0LTEuNDJ6IiBjbGFzcz0iY2xzLTIiLz48L2c+PGcgY2xhc3M9ImNscy0xIj48cGF0aCBkPSJNMjYuNzYgNS45MWMtLjM3IDAtLjY4LS4zLS42OC0uNjdzLjMxLS42OC42OC0uNjguNjguMzEuNjguNjgtLjMxLjY3LS42OC42N20wIDQuNDZjLS4zNyAwLS42OC0uMy0uNjgtLjY3cy4zMS0uNjguNjgtLjY4LjY4LjMxLjY4LjY4LS4zMS42Ny0uNjguNjciIGNsYXNzPSJjbHMtMiIvPjwvZz48L2c+PC9zdmc+);
         }
 
+        ._print_content_1_arrow_ {
+            height: 6dvmin;
+            content: url(data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgNDAgNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHN0eWxlPi5jbHMtMSB7CiAgICAgICAgZmlsbDogbm9uZTsKICAgICAgICBzdHJva2U6ICM0YjU1NjM7CiAgICAgICAgc3Ryb2tlLWxpbmVjYXA6IHJvdW5kOwogICAgICAgIHN0cm9rZS1saW5lam9pbjogcm91bmQ7CiAgICAgICAgc3Ryb2tlLXdpZHRoOiAycHg7CiAgICAgIH0KCiAgICAgIC5jbHMtMiB7CiAgICAgICAgZmlsbDogI2YzZjRmNjsKICAgICAgfTwvc3R5bGU+PC9kZWZzPjxnIGlkPSJhIj48Y2lyY2xlIGNsYXNzPSJjbHMtMiIgY3g9IjIwIiBjeT0iMjAiIHI9IjIwIi8+PGc+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJtMTYgMTN2MTQiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Im0xMiAyMyA0IDQgNC00Ii8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJtMjQgMjd2LTE0Ii8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJtMjAgMTcgNC00IDQgNCIvPjwvZz48L2c+PC9zdmc+Cg==);
+        }
+
         ._print_content_1_content_0_ {
             height: 5dvmin;
             content: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJf5Zu+5bGCXzIiIGRhdGEtbmFtZT0i5Zu+5bGCIDIiIHZpZXdCb3g9IjAgMCAyNy4yNiAxMS4yIj48ZGVmcz48c3R5bGU+LmNscy0xe2lzb2xhdGlvbjppc29sYXRlfS5jbHMtMntmaWxsOiM2NjZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9Im1haW4iPjxnIGNsYXNzPSJjbHMtMSI+PHBhdGggZD0ibTQuNjggOC41NC0xLjg5LjY3Yy0xLjguNjQtMS45NC43MS0yLjIyLjkxLS4wNC4wMi0uMDYuMDUtLjA4LjA1LS4wNCAwLS4wNi0uMDItLjA4LS4wNmwtLjQtLjY3IDQuNjMtMS4wNy4wNS4xN1pNNC40NiA2LjZjLTIuOS43NC0yLjk1Ljc3LTMuMyAxLjAyLS4wNC4wMi0uMDcuMDUtLjEuMDUtLjA0IDAtLjA2LS4wMi0uMS0uMDdsLS40OC0uNjZjLjQ5LS4wOC42OC0uMjQgMS4wMy0uNzMuODMtMS4xNiAxLjAzLTEuNDUgMS40NC0yLjEzLTEuOTYuMjktMi4xMS4zNy0yLjM1LjUzLS4wNS4wMi0uMDguMDUtLjExLjA1cy0uMDUtLjAyLS4wNy0uMDdsLS40LS42NmMuNTQtLjE2LjY4LS4yNi45Ni0uNjhDMS43IDIuMTIgMi4zMS44OSAyLjU4LjE3bC43OS40M2MuMDYuMDIuMS4wNi4xLjA4cy0uMDQuMDYtLjEyLjFjLS4zMS4xNC0uNC4yMi0uNzIuNy0uODIgMS4xNy0xLjIgMS42OS0xLjgyIDIuNDhsMi4yOC0uMDhjLjIyLS4zNy40Mi0uNzYuNjItMS4ybC43MS40OGMuMDYuMDQuMDguMDcuMDguMSAwIC4wNC0uMDQuMDYtLjExLjA4LS4yOC4xLS4zNC4xNi0uNTUuNDQtLjQ2LjYyLTEuMjYgMS42My0yLjU1IDMuMTRsMy4xNy0uNDl6bTYuNjYtMy45cy4wNy4wOC4wNy4xMWMwIC4wNC0uMDQuMDUtLjExLjA1SDcuOTZ2Mi4xNmgxLjU1bC40My0uNTUuNzMuNjdjLjA2LjA1LjA4LjA4LjA4LjExcy0uMDQuMDQtLjExLjA0SDYuMTdjLS4yNSAwLS42LjA1LS44LjEzbC0uMzQtLjQ0Yy4zLjAyLjYuMDUuODguMDVoMS41VjIuODdoLTEuOGMtLjI1IDAtLjYxLjA1LS44LjEybC0uMzQtLjQzYy4yOS4wMi42LjA1Ljg4LjA1aDIuMDZWMS4xOWMwLS40Ny0uMDEtLjc2LS4wNC0xLjE4bC44OS40Yy4wOC4wNC4xMy4wNy4xMy4xMSAwIC4wMi0uMDQuMDYtLjExLjExbC0uMzIuMjJ2MS43Nkg5LjlsLjQ2LS42Ny43NS43OFptLS44OSA0LjI2cy4wNi4wNi4wNi4wOC0uMDEuMDUtLjA2LjA4bC0uMzIuMjRWOS4zYzAgLjc4LjAxIDEuMDguMDQgMS40MiAwIC4wNS4wMS4xLjAxLjEzIDAgLjE2LS4wNi4yLS4yNS4yOC0uMTIuMDUtLjIuMDctLjI1LjA3LS4wOCAwLS4xLS4wNS0uMS0uMTZ2LS44NUg1Ljc5di42NGMwIC4xMy0uMDIuMTYtLjI1LjI1LS4xMS4wNS0uMTguMDctLjIzLjA3LS4wNyAwLS4xMS0uMDctLjExLS4yMiAwLS4wNS4wMS0uMTEuMDEtLjE3LjAyLS41Ni4wNC0xLjA5LjA0LTEuNTVWNy41NWMwLS40NC0uMDEtLjg2LS4wNC0xLjI0bC43OC41OWgzLjIzbC4yOC0uNDkuNzQuNTNabS0uODggMi45N1Y3LjE4SDUuNzh2Mi43NXoiIGNsYXNzPSJjbHMtMiIvPjwvZz48ZyBjbGFzcz0iY2xzLTEiPjxwYXRoIGQ9Ik0yMy4xNCA5LjVjLS42OC4wMS0uOTUuMTktMS4xNS40Mi0uMDUuMDYtLjEuMDgtLjEzLjA4LS4xMiAwLTIuNDgtMS4xNi0zLjgtMy41N2gtLjE5djIuMDNjMCAuNy4wMSAxLjUxLjAyIDIuMSAwIC4yMi0uMDIuMjUtLjMuNGEuNS41IDAgMCAxLS4yMi4wN2MtLjA3IDAtLjEtLjA3LS4xLS4yMyAwLS4zMy4wMi0xLjk5LjAyLTIuMzZ2LTJoLS4xNmMtMS4zMSAxLjc4LTIuOTYgMy4yNC01LjA2IDQuMjdsLS4wNi0uMTZjMS44Ny0xLjA2IDMuNzEtMi44NSA0LjQ1LTQuMTFoLTMuMjVjLS4yNSAwLS42LjA1LS44LjEzbC0uMzQtLjQ0Yy4zLjAyLjYuMDUuODguMDVoNC4zNHYtMS42aC0yLjY0di4zNGMwIC4xNi0uMDUuMjItLjI4LjMyYS41LjUgMCAwIDEtLjIyLjA3Yy0uMDggMC0uMTEtLjA2LS4xMS0uMTh2LS4wNWMuMDQtLjU1LjA0LS45Ny4wNC0xLjU5VjEuMDdjMC0uMjktLjAxLS42NS0uMDQtMS4wMmwuNzguNmg1LjUybC4zNS0uNS43My41OGMuMDYuMDQuMDguMDcuMDguMTFzLS4wMi4wNi0uMDguMTFsLS4zMi4yNHYyLjA2YzAgLjQ4IDAgLjkyLjA0IDEuM3YuMDVjMCAuMjktLjQ0LjQ3LS41NC40Ny0uMDUgMC0uMDYtLjA0LS4wNi0uMTF2LS4zN2gtMi42OXYxLjZoMy41OWwuNTktLjYxLjY0LjYxYy4wOC4wNy4xMS4xMy4xMS4xOHMtLjA2LjA4LS4xNi4wOGgtNC4zMWMxLjMgMS42OSAyLjg5IDIuNzcgNC44MiAyLjkzdi4xNFpNMTcuMyAyLjUyVi45MWgtMi42NHYxLjYxem0wIDEuNzlWMi43OWgtMi42NHYxLjUyem0zLjI1LTEuNzlWLjkxaC0yLjY5djEuNjF6bTAgMS43OVYyLjc5aC0yLjY5djEuNTJ6IiBjbGFzcz0iY2xzLTIiLz48L2c+PGcgY2xhc3M9ImNscy0xIj48cGF0aCBkPSJNMjYuNTggNS44N2MtLjM3IDAtLjY4LS4zLS42OC0uNjdzLjMxLS42OC42OC0uNjguNjguMzEuNjguNjgtLjMxLjY3LS42OC42N20wIDQuNDZjLS4zNyAwLS42OC0uMy0uNjgtLjY3cy4zMS0uNjguNjgtLjY4LjY4LjMxLjY4LjY4LS4zMS42Ny0uNjguNjciIGNsYXNzPSJjbHMtMiIvPjwvZz48L2c+PC9zdmc+);
@@ -14635,7 +14640,7 @@
 
         .ScreenMain {
             width: 100dvw;
-            height: 28.5dvh;
+            height: calc(36.5dvh - min(8dvh, 13.5dvmin));
         }
 
         .ScreenNoDisplay {
@@ -14652,7 +14657,7 @@
         #screen_0_display {
             width: 100dvw;
             height: min(24dvmin, 16dvh);
-            margin-top: calc(14.25dvh - min(12dvmin, 8dvh));
+            margin-top: calc(18.25dvh - min(4dvh, 6.75dvmin) - min(12dvmin, 8dvh));
         }
 
         #screen_0_display > div {
@@ -14665,7 +14670,7 @@
 
         #screen_1 > div.Lines {
             z-index: 1;
-            height: 28.5dvh;
+            height: calc(36.5dvh - min(8dvh, 13.5dvmin));
         }
 
         #screen_1 > div.Lines:first-child {
@@ -14704,7 +14709,7 @@
 
         #grid_data {
             width: 100dvw;
-            height: calc(28.5dvh - 6dvmin);
+            height: calc(36.5dvh - 6dvmin - min(8dvh, 13.5dvmin));
         }
 
         #grid_data div {
@@ -14802,8 +14807,8 @@
 
         #screen_2_0,
         #screen_4 {
-            height: 25.25dvh;
-            margin-top: 3.25dvh;
+            height: calc(29.25dvh - min(8dvh, 13.5dvmin) + min(4dvh, 6.75dvmin));
+            margin-top: calc(7.25dvh - min(4dvh, 6.75dvmin));
         }
 
         #screen_2_0 > div > div:first-child {
@@ -14814,8 +14819,11 @@
             width: calc(85dvw - max(14dvmin, 9.5dvw));
         }
 
-        #screen_2_1 {
+        #screen_2_1,
+        #screen_3 {
+            height: calc(36.5dvh - min(8dvh, 13.5dvmin) - max(4dvh - 6.75dvmin, 0px));
             grid-template-rows: repeat(3, 9.5dvh);
+            margin-top: max(4dvh - 6.75dvmin, 0px);
         }
 
         #screen_2_1 > div > div:first-child {
@@ -14828,7 +14836,6 @@
 
         #screen_3 {
             grid-template-columns: repeat(2, 50dvw);
-            grid-template-rows: repeat(3, 9.5dvh);
         }
 
         #screen_3 > div {
@@ -14852,10 +14859,10 @@
         #input {
             position: absolute;
             z-index: 0;
-            top: 41.5dvh;
+            top: calc(49.5dvh - min(8dvh, 13.5dvmin));
             left: 0;
             width: 100dvw;
-            height: 8dvh;
+            height: min(8dvh, 13.5dvmin);
             border-top: 0.5dvmin solid rgb(95, 158, 160);
             border-bottom: 0.5dvmin solid rgb(95, 158, 160);
             background-color: rgba(237, 242, 250, 0.75);
@@ -14877,7 +14884,7 @@
         #cursor {
             flex-shrink: 0;
             width: 0.6dvmin;
-            height: 6dvh;
+            height: min(6dvh, 10.5dvmin);
             margin: auto 0.35dvmin auto;
             animation: flicker 1s linear infinite;
             border-radius: 100dvmax;
@@ -15555,6 +15562,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+
+        #print_1_0_choose > p:last-child {
+            margin-left: auto;
+            position: relative;
+            right: 2dvmin;
         }
 
         .Print1ChooseOn {
@@ -16764,6 +16777,7 @@
                 </div>
                 <div class="Paragraph" id="print_1_0_choose">
                     <p class="_print_1_0_choose_"></p>
+                    <p class="_print_content_1_arrow_"></p>
                 </div>
                 <div>
                     <p class="_print_content_1_content_0_"></p>
