@@ -285,7 +285,7 @@ p {
 
 .ScreenMain {
     width: 100dvw;
-    height: 28.5dvh;
+    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
 }
 
 .ScreenNoDisplay {
@@ -302,7 +302,7 @@ p {
 #screen_0_display {
     width: 100dvw;
     height: min(24dvmin, 16dvh);
-    margin-top: calc(14.25dvh - min(12dvmin, 8dvh));
+    margin-top: calc(18.25dvh - min(4dvh, 6.75dvmin) - min(12dvmin, 8dvh));
 }
 
 #screen_0_display > div {
@@ -315,7 +315,7 @@ p {
 
 #screen_1 > div.Lines {
     z-index: 1;
-    height: 28.5dvh;
+    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
 }
 
 #screen_1 > div.Lines:first-child {
@@ -354,7 +354,7 @@ p {
 
 #grid_data {
     width: 100dvw;
-    height: calc(28.5dvh - 6dvmin);
+    height: calc(36.5dvh - 6dvmin - min(8dvh, 13.5dvmin));
 }
 
 #grid_data div {
@@ -452,8 +452,8 @@ p {
 
 #screen_2_0,
 #screen_4 {
-    height: 25.25dvh;
-    margin-top: 3.25dvh;
+    height: calc(29.25dvh - min(8dvh, 13.5dvmin) + min(4dvh, 6.75dvmin));
+    margin-top: calc(7.25dvh - min(4dvh, 6.75dvmin));
 }
 
 #screen_2_0 > div > div:first-child {
@@ -464,8 +464,11 @@ p {
     width: calc(85dvw - max(14dvmin, 9.5dvw));
 }
 
-#screen_2_1 {
+#screen_2_1,
+#screen_3 {
+    height: calc(36.5dvh - min(8dvh, 13.5dvmin) - max(4dvh - 6.75dvmin, 0px));
     grid-template-rows: repeat(3, 9.5dvh);
+    margin-top: max(4dvh - 6.75dvmin, 0px);
 }
 
 #screen_2_1 > div > div:first-child {
@@ -478,7 +481,6 @@ p {
 
 #screen_3 {
     grid-template-columns: repeat(2, 50dvw);
-    grid-template-rows: repeat(3, 9.5dvh);
 }
 
 #screen_3 > div {
@@ -502,10 +504,10 @@ p {
 #input {
     position: absolute;
     z-index: 0;
-    top: 41.5dvh;
+    top: calc(49.5dvh - min(8dvh, 13.5dvmin));
     left: 0;
     width: 100dvw;
-    height: 8dvh;
+    height: min(8dvh, 13.5dvmin);
     border-top: 0.5dvmin solid rgb(95, 158, 160);
     border-bottom: 0.5dvmin solid rgb(95, 158, 160);
     background-color: rgba(237, 242, 250, 0.75);
@@ -527,7 +529,7 @@ p {
 #cursor {
     flex-shrink: 0;
     width: 0.6dvmin;
-    height: 6dvh;
+    height: min(6dvh, 10.5dvmin);
     margin: auto 0.35dvmin auto;
     animation: flicker 1s linear infinite;
     border-radius: 100dvmax;
@@ -1205,6 +1207,12 @@ p {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#print_1_0_choose > p:last-child {
+    margin-left: auto;
+    position: relative;
+    right: 2dvmin;
 }
 
 .Print1ChooseOn {

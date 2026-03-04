@@ -3385,7 +3385,7 @@
             let lastModel;
 
             // 更新选择框的显示内容：添加前缀图标、空格和选中模型的图标
-            HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model], {mode: 'replace'});
+            HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model, '_print_content_1_arrow_'], {mode: 'replace'});
 
             // 遍历所有模型选项，找到之前被选中的项并移除高亮状态
             // 假设选项 ID 格式为 choose_ra_0 到 choose_ra_N
