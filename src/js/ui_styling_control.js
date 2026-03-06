@@ -1049,14 +1049,14 @@
          * @type {number}
          * @description 输入框最多能输入的字符数。
          */
-        static _MAX_INPUT_LEN = 1111;
+        static _MAX_INPUT_LEN = 1234;
 
         /**
          * @static
          * @type {number}
          * @description 统计模式最大统计数据行数。
          */
-        static MAX_STATISTICS_ROW = 211;
+        static MAX_STATISTICS_ROW = 985;
 
         /**
          * @constructor
@@ -2467,12 +2467,14 @@
                 return null;
             }
 
+            // 设置监听参数
             const observerOptions = {
                 root: bigContainer,
                 rootMargin: '600px 0px',
                 threshold: 0
             };
 
+            // 设置监听器
             return new IntersectionObserver((entries) => {
                 requestAnimationFrame(() => {
                     entries.forEach(entry => {
@@ -2523,14 +2525,12 @@
         static _batchRender(container, result, onlyFuncG, signal, observer) {
             return new Promise((resolve, reject) => {
                 // 每帧最大处理条数。可根据单个 DOM 的复杂度调整大小，以平衡渲染总耗时与页面流畅度
-                const CHUNK_SIZE = CalcConfig.outputAccuracy > 50 ? 25 : 50;
+                const chunkSize = CalcConfig.outputAccuracy > 50 ? 25 : 50;
 
                 // 记录当前已经处理到的数据索引
                 let index = 0;
-
                 // 获取数据的总长度
                 const n = result.varList.length;
-
                 // 记录 requestAnimationFrame 的返回值，方便精准取消
                 let rafId = null;
 
@@ -2538,7 +2538,6 @@
                 if (signal?.aborted) {
                     return reject(new DOMException('[PrintManager] Rendering was aborted.', 'AbortError'));
                 }
-
                 // 2. 监听外部的中断信号
                 if (signal) {
                     signal.addEventListener('abort', () => {
@@ -2568,8 +2567,7 @@
                     const fragment = document.createDocumentFragment();
 
                     // 计算当前批次渲染的结束索引（不能超过数据总长度 n）
-                    const end = Math.min(index + CHUNK_SIZE, n);
-
+                    const end = Math.min(index + chunkSize, n);
                     // 新建一个数组，用来临时存放这一批创建的行容器
                     const currentBatchRows = [];
                     for (let i = index; i < end; i++) {
@@ -2657,7 +2655,7 @@
             this._currentAbortController = new AbortController();
 
             // 步骤 3：清空旧视图。务必在中止旧任务之后执行此操作，防止旧任务的闭包继续向空容器内追加节点
-            container.innerHTML = '';
+            container.replaceChildren();
 
             // 步骤 4：启动底层渲染逻辑，并将当前的新信号传入以便后续控制
             this._batchRender(
@@ -3979,15 +3977,13 @@
             }
             // 特殊逻辑：当处于函数列表定义模式 ('2_0') 时
             if (PageConfig.keyboardType === 0) {
-                // 在普通键盘模式下
-                // 如果正在定义 f(x) (子模式 '0')，按钮显示为 'x'
-                // 否则，按钮显示为 'f'，用于在 g(x) 的定义中调用 f(x)
-                dealArea.className = PageConfig.subModes['2_0'] === '0' ? '_x_mathit_' : '_f_';
+                // 在普通键盘模式下，按钮显示为 'x'
+                dealArea.className = '_x_mathit_';
             } else if (PageConfig.keyboardType === 1) {
                 // 在第二功能键盘模式下
-                // 如果正在定义 g(x) (子模式 '1')，按钮显示为 'x'
+                // 如果正在定义 g(x) (子模式 '1')，按钮显示为 'f(x)'
                 // 否则，按钮显示为 'g'，用于在 f(x) 的定义中调用 g(x)
-                dealArea.className = PageConfig.subModes['2_0'] === '1' ? '_x_mathit_' : '_g_';
+                dealArea.className = PageConfig.subModes['2_0'] === '1' ? '_f_' : '_g_';
             }
         }
 

@@ -5945,7 +5945,7 @@
 
             if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && MathPlus.minus(i, end).re.mantissa <= 0n) {
                 overflow = true;
-                end = MathPlus.minus(i, step);
+                end = MathPlus.minus(i, MathPlus.divide(step, 2n));
                 varList.push('[print_content_omit]');
             }
 
@@ -5971,8 +5971,8 @@
             // 步骤 4: 计算并返回结果。
             return {
                 varList: varList,
-                f: overflow ? [...resultF, '[space]'] : resultF,
-                g: overflow ? [...resultG, '[space]'] : resultG
+                f: overflow ? [...resultF, '[not_applicable]'] : resultF,
+                g: overflow ? [...resultG, '[not_applicable]'] : resultG
             };
         }
     }
