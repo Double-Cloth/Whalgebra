@@ -69,6 +69,7 @@ document.addEventListener('click', (event) => {
         case 'back_btn':
         case 'back_btn_child1':
         case 'back_btn_child2':
+        case 'back_btn_father':
             PageConfig.currentMode = '2_0';
             return;
     }

@@ -5915,6 +5915,7 @@
          * // 返回: { varList: ['1', '2', '3'], f: ['1', '4', '9'], g: ['0', '3', '8'] }
          */
         static valueList(f, g, start, step, end) {
+            let overflow = false;
             // 步骤 1: 将区间的起始、步长和结束值转换为高精度的 ComplexNumber 实例，并修正潜在的浮点误差。
             start = Public.zeroCorrect(MathPlus.calc(start)[0]);
             step = Public.zeroCorrect(MathPlus.calc(step)[0]);
@@ -5937,30 +5938,41 @@
             // 步骤 3: 生成自变量 'x' 的值列表。
             // 这个列表将用于函数求值，并作为结果的一部分返回。
             const varList = [];
-            for (let i = start; MathPlus.minus(i, end).re.mantissa <= 0n; i = MathPlus.plus(i, step)) {
+            let i = start;
+            for (; MathPlus.minus(i, end).re.mantissa <= 0n && varList.length < CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS; i = MathPlus.plus(i, step)) {
                 varList.push(Public.idealizationToString(i));
             }
+
+            if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && MathPlus.minus(i, end).re.mantissa <= 0n) {
+                overflow = true;
+                end = MathPlus.minus(i, step);
+                varList.push('[print_content_omit]');
+            }
+
+            // 为函数 f(x) 生成值列表。
+            // Public.functionValueList 会遍历从 start 到 end 的范围。
+            // 对于范围内的每个值 x，它会调用传入的匿名函数。
+            // 该匿名函数使用 MathPlus.calc 来计算 f 的表达式。
+            // 关键点：在调用 calc 时，将函数 g 的表达式作为依赖传入，
+            // 这样在 f 的表达式中就可以通过 'g(x)' 来调用它。
+            const resultF = Public.idealizationToString(Public.functionValueList(
+                x => MathPlus.calc(f, {g: g, unknown: x})[0],
+                start, step, end
+            ));
+
+            // 为函数 g(x) 生成值列表。
+            // 逻辑与 f(x) 相同，但这次将 f 的表达式作为依赖传入，
+            // 这样在 g 的表达式中就可以通过 'f(x)' 来调用它。
+            const resultG = Public.idealizationToString(Public.functionValueList(
+                x => MathPlus.calc(g, {f: f, unknown: x})[0],
+                start, step, end
+            ));
 
             // 步骤 4: 计算并返回结果。
             return {
                 varList: varList,
-                // 为函数 f(x) 生成值列表。
-                // Public.functionValueList 会遍历从 start 到 end 的范围。
-                // 对于范围内的每个值 x，它会调用传入的匿名函数。
-                // 该匿名函数使用 MathPlus.calc 来计算 f 的表达式。
-                // 关键点：在调用 calc 时，将函数 g 的表达式作为依赖传入，
-                // 这样在 f 的表达式中就可以通过 'g(x)' 来调用它。
-                f: Public.idealizationToString(Public.functionValueList(
-                    x => MathPlus.calc(f, {g: g, unknown: x})[0],
-                    start, step, end
-                )),
-                // 为函数 g(x) 生成值列表。
-                // 逻辑与 f(x) 相同，但这次将 f 的表达式作为依赖传入，
-                // 这样在 g 的表达式中就可以通过 'f(x)' 来调用它。
-                g: Public.idealizationToString(Public.functionValueList(
-                    x => MathPlus.calc(g, {f: f, unknown: x})[0],
-                    start, step, end
-                ))
+                f: overflow ? [...resultF, '[space]'] : resultF,
+                g: overflow ? [...resultG, '[space]'] : resultG
             };
         }
     }

@@ -254,10 +254,18 @@ p {
     gap: 1dvmin;
 }
 
+#back_btn_father {
+    width: calc(min(7.5dvh, 12dvmin) + 0.55dvw);
+    height: calc(6.5dvh - 0.5dvmin);
+    display: flex;
+    justify-content: right;
+    align-items: center;
+    overflow: hidden;
+}
+
 #back_btn {
     width: min(7.5dvh, 12dvmin);
     height: min(4.5dvh, 7.2dvmin);
-    margin-left: 0.5dvw;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
