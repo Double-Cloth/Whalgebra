@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.2 | Updated: 2026-3-4 -->
+    <!-- Whalgebra Version: v3.0.2 | Updated: 2026-3-6 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -801,6 +801,14 @@
                  * 用于防止当 n 非常大时，生成一个过长的结果列表。
                  */
                 static RADICAL_FUNCTION_MAX_SHOW_RESULTS = 20;
+
+                /**
+                 * @static
+                 * @type {number}
+                 * @description 生成函数列表时，最多显示的数值解的数量。
+                 * 用于防止当 n 非常大时，生成一个过长的结果列表。
+                 */
+                static VALUE_LIST_MAX_SHOW_RESULTS = 999;
 
                 /**
                  * @static
@@ -7329,6 +7337,7 @@
                  * // 返回: { varList: ['1', '2', '3'], f: ['1', '4', '9'], g: ['0', '3', '8'] }
                  */
                 static valueList(f, g, start, step, end) {
+                    let overflow = false;
                     // 步骤 1: 将区间的起始、步长和结束值转换为高精度的 ComplexNumber 实例，并修正潜在的浮点误差。
                     start = Public.zeroCorrect(MathPlus.calc(start)[0]);
                     step = Public.zeroCorrect(MathPlus.calc(step)[0]);
@@ -7351,30 +7360,41 @@
                     // 步骤 3: 生成自变量 'x' 的值列表。
                     // 这个列表将用于函数求值，并作为结果的一部分返回。
                     const varList = [];
-                    for (let i = start; MathPlus.minus(i, end).re.mantissa <= 0n; i = MathPlus.plus(i, step)) {
+                    let i = start;
+                    for (; MathPlus.minus(i, end).re.mantissa <= 0n && varList.length < CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS; i = MathPlus.plus(i, step)) {
                         varList.push(Public.idealizationToString(i));
                     }
+
+                    if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && MathPlus.minus(i, end).re.mantissa <= 0n) {
+                        overflow = true;
+                        end = MathPlus.minus(i, step);
+                        varList.push('[print_content_omit]');
+                    }
+
+                    // 为函数 f(x) 生成值列表。
+                    // Public.functionValueList 会遍历从 start 到 end 的范围。
+                    // 对于范围内的每个值 x，它会调用传入的匿名函数。
+                    // 该匿名函数使用 MathPlus.calc 来计算 f 的表达式。
+                    // 关键点：在调用 calc 时，将函数 g 的表达式作为依赖传入，
+                    // 这样在 f 的表达式中就可以通过 'g(x)' 来调用它。
+                    const resultF = Public.idealizationToString(Public.functionValueList(
+                        x => MathPlus.calc(f, {g: g, unknown: x})[0],
+                        start, step, end
+                    ));
+
+                    // 为函数 g(x) 生成值列表。
+                    // 逻辑与 f(x) 相同，但这次将 f 的表达式作为依赖传入，
+                    // 这样在 g 的表达式中就可以通过 'f(x)' 来调用它。
+                    const resultG = Public.idealizationToString(Public.functionValueList(
+                        x => MathPlus.calc(g, {f: f, unknown: x})[0],
+                        start, step, end
+                    ));
 
                     // 步骤 4: 计算并返回结果。
                     return {
                         varList: varList,
-                        // 为函数 f(x) 生成值列表。
-                        // Public.functionValueList 会遍历从 start 到 end 的范围。
-                        // 对于范围内的每个值 x，它会调用传入的匿名函数。
-                        // 该匿名函数使用 MathPlus.calc 来计算 f 的表达式。
-                        // 关键点：在调用 calc 时，将函数 g 的表达式作为依赖传入，
-                        // 这样在 f 的表达式中就可以通过 'g(x)' 来调用它。
-                        f: Public.idealizationToString(Public.functionValueList(
-                            x => MathPlus.calc(f, {g: g, unknown: x})[0],
-                            start, step, end
-                        )),
-                        // 为函数 g(x) 生成值列表。
-                        // 逻辑与 f(x) 相同，但这次将 f 的表达式作为依赖传入，
-                        // 这样在 g 的表达式中就可以通过 'f(x)' 来调用它。
-                        g: Public.idealizationToString(Public.functionValueList(
-                            x => MathPlus.calc(g, {f: f, unknown: x})[0],
-                            start, step, end
-                        ))
+                        f: overflow ? [...resultF, '[space]'] : resultF,
+                        g: overflow ? [...resultG, '[space]'] : resultG
                     };
                 }
             }
@@ -9151,32 +9171,30 @@
                  * @static
                  * @method appendDOMs
                  * @description 高效地向指定的父元素批量添加或插入子元素。
-                 * @param {HTMLElement | string | DocumentFragment} parentElement - 目标父元素或其 ID 选择器。
-                 * @param {string[]} nameList - 类名数组。
+                 * @param {HTMLElement | string | DocumentFragment} parentElement - 目标父元素或其标识符。
+                 * @param {Array<string | string[]>} nameList - 属性值数组。可包含字符串或字符串数组（与 nameType 一一对应）。
                  * @param {object} [options={}] - 配置选项。
-                 * @param {HTMLElement} [options.referenceNode=null] - 明确的参照节点。
-                 * @param {number} [options.index=-1] - 插入位置索引。
-                 * @param {string} [options.mode='add'] - (可选) 插入的模式。
-                 *   - `'add'`: (默认) 直接添加元素。
-                 *   - `'replace'`: 先清空父元素，再添加元素。
-                 * @param {'className' | 'id'} [options.nameType='className'] - 指定 nameList 中的字符串默认是作为类名还是 ID。
-                 *  - `'className'`: (默认) 将字符串赋值给 className。
-                 *  - `'id'`: 将字符串赋值给 id。
-                 * @param {string} [options.appendType='p'] - 标签类型。
+                 * @param {HTMLElement|null} [options.referenceNode=null] - 明确的参照插入节点。
+                 * @param {number} [options.index=-1] - 插入位置的子节点索引（当未指定 referenceNode 时生效）。
+                 * @param {string} [options.mode='add'] - 插入模式：
+                 * - `'add'`: (默认) 追加或插入元素。
+                 * - `'replace'`: 先清空父元素，再添加元素。
+                 * @param {string[]} [options.nameType=['class']] - 默认绑定的属性名数组，对应 nameList 中的子数组。
+                 * @param {string} [options.appendType='p'] - 要创建的 HTML 标签类型。
                  */
                 static appendDOMs(parentElement, nameList, {
                     referenceNode = null,
                     index = -1,
                     mode = 'add',
                     appendType = 'p',
-                    nameType = 'className'
+                    nameType = ['class']
                 } = {}) {
-                    // 1. 统一处理父元素：如果是字符串则查找，否则直接使用。
-                    const targetParent = typeof parentElement === 'string' ?
-                                         HtmlTools.getHtml(parentElement) :
-                                         parentElement;
+                    // 1. 获取并统一目标父元素
+                    const targetParent = typeof parentElement === 'string'
+                                         ? HtmlTools.getHtml(parentElement)
+                                         : parentElement;
 
-                    // 2. 健壮性检查：确保父元素存在且类名数组有效。
+                    // 2. 健壮性检查
                     if (!targetParent || !Array.isArray(nameList) || nameList.length === 0) {
                         return;
                     }
@@ -9187,41 +9205,49 @@
                     }
 
                     const fragment = document.createDocumentFragment();
-                    let hasValidElements = false; // 标记是否有实际元素被创建
 
-                    // 3. 循环创建元素
+                    // 4. 批量创建并组装 DOM
                     for (const name of nameList) {
-                        // 业务逻辑：过滤掉以 [id] 开头的特殊标识
+                        // 过滤空值
                         if (!name) {
                             continue;
                         }
 
                         const element = document.createElement(appendType);
-                        if (name.startsWith('[id]')) {
-                            element.id = name.slice(4);
-                        } else if (name.startsWith('[class]')) {
-                            element.className = name.slice(7);
-                        } else {
-                            element[nameType] = name;
+
+                        // 使用原生 Array.isArray，性能更好
+                        if (Array.isArray(name)) {
+                            if (nameType.length !== name.length) {
+                                throw new Error('[HtmlTools] The number of attribute names does not match the number of values.');
+                            }
+                            for (let i = 0; i < nameType.length; i++) {
+                                element.setAttribute(nameType[i], name[i]);
+                            }
+                        } else if (typeof name === 'string') {
+                            // 业务逻辑：处理带有特殊前缀的字符串标识
+                            if (name.startsWith('[id]')) {
+                                element.id = name.slice(4);
+                            } else if (name.startsWith('[class]')) {
+                                element.className = name.slice(7);
+                            } else {
+                                element.setAttribute(nameType[0], name);
+                            }
                         }
+
                         fragment.appendChild(element);
-                        hasValidElements = true;
                     }
 
-                    // 如果没有创建任何有效元素（例如全都被过滤了），直接返回
-                    if (!hasValidElements) {
+                    // 直接使用原生 API 判断 fragment 是否有子节点，替代手动布尔值标记
+                    if (!fragment.hasChildNodes()) {
                         return;
                     }
 
-                    // 4. 归一化插入逻辑
-                    // 确定参照节点：如果未指定 referenceNode，且 index 有效，则从 children 中获取
+                    // 5. 确定插入参照节点
                     if (!referenceNode && index !== -1) {
-                        // 注意：如果 index 超出范围，children[index] 为 undefined，这也是我们要的预期行为
                         referenceNode = targetParent.children[index];
                     }
 
-                    // 核心优化：insertBefore 的第二个参数如果是 null，行为等同于 appendChild。
-                    // 这样可以消除 if-else 分支，统一为一种操作。
+                    // 6. 统一插入逻辑（insertBefore 第二个参数为 null 时等同于 appendChild）
                     targetParent.insertBefore(fragment, referenceNode || null);
                 }
 
@@ -10413,6 +10439,25 @@
 
                 /**
                  * @static
+                 * @type {IntersectionObserver|null}
+                 * @description 全局 IntersectionObserver 实例。
+                 * 存储用于管理 Base64 字符图片懒加载的观察者对象。
+                 * 暴露为全局变量，以便在页面的任何生命周期阶段（如关闭弹窗、页面卸载）
+                 * 都能方便地调用 `globalObserverInstance.disconnect()` 来销毁监听并释放内存。
+                 */
+                static _observerInstance = null;
+
+                /**
+                 * @static
+                 * @type {AbortController | null}
+                 * 当前正在执行的渲染任务的中断控制器实例。
+                 * * 用于在启动新的渲染任务或离开当前页面时，随时中止上一轮未完成的异步分批渲染（`batchRender`）操作，
+                 * 从而避免不必要的计算资源浪费、内存泄漏以及 DOM 竞态问题（例如新旧渲染交替插入到同一容器中）。
+                 */
+                static _currentAbortController = null;
+
+                /**
+                 * @static
                  * @type {boolean}
                  * @description Worker 是否正在计算 mode0ShowOnScreen 发送的任务。
                  */
@@ -10781,6 +10826,252 @@
                 }
 
                 /**
+                 * @private
+                 * @static
+                 * @method _createLazyObserver
+                 * @description 创建并初始化一个基于 IntersectionObserver 的懒加载观察者。
+                 * 该观察者会自动监听进入视口范围的特定 DOM 节点，并为其内部的 p 标签动态添加或移除背景样式类。
+                 * @param {string} [scrollSelector='#print_content_2_inner'] - 滚动的目标容器选择器
+                 * @returns {IntersectionObserver | null} 返回创建的观察者实例；若未找到目标容器则返回 null
+                 */
+                static _createLazyObserver(scrollSelector = '#print_content_2_inner') {
+                    const bigContainer = document.querySelector(scrollSelector);
+                    if (!bigContainer) {
+                        return null;
+                    }
+
+                    const observerOptions = {
+                        root: bigContainer,
+                        rootMargin: '600px 0px',
+                        threshold: 0
+                    };
+
+                    return new IntersectionObserver((entries) => {
+                        requestAnimationFrame(() => {
+                            entries.forEach(entry => {
+                                const rowContainer = entry.target;
+                                const pElements = rowContainer.querySelectorAll('p.lazy-bg[data-lazy-bg-class]');
+
+                                if (entry.isIntersecting) {
+                                    pElements.forEach(p => p.classList.add(p.getAttribute('data-lazy-bg-class')));
+                                } else {
+                                    pElements.forEach(p => p.classList.remove(p.getAttribute('data-lazy-bg-class')));
+                                }
+                            });
+                        });
+                    }, observerOptions);
+                }
+
+                /**
+                 * @private
+                 * @static
+                 * @method _stopLazyObserver
+                 * @description 手动终止当前正在进行的懒加载监听任务。
+                 * 通过调用 disconnect() 断开所有已挂载 DOM 节点的视窗监听，随后清空引用以释放内存。
+                 * @returns {void}
+                 */
+                static _stopLazyObserver() {
+                    if (this._observerInstance) {
+                        this._observerInstance.disconnect();
+                    }
+                    this._observerInstance = null;
+                }
+
+                /**
+                 * @private
+                 * @static
+                 * @method _batchRender
+                 * @description 异步分批渲染长列表 DOM 数据，防止海量节点渲染阻塞主线程。
+                 * 内部结合使用了 requestAnimationFrame (分帧渲染) 和 DocumentFragment (减少重排)。
+                 * @param {HTMLElement} container - 目标挂载的 DOM 容器节点
+                 * @param {Object} result - 包含计算结果的数据源对象
+                 * @param {Array<any>} result.varList - 自变量数据集合
+                 * @param {Array<any>} result.f - 函数 f(x) 对应的结果集合，长度应与 varList 一致
+                 * @param {Array<any>} result.g - 函数 g(x) 对应的结果集合，长度应与 varList 一致
+                 * @param {boolean} onlyFuncG - 数据顺序模式标识。true: [自变量, g(x), f(x)], false: [自变量, f(x), g(x)]
+                 * @param {AbortSignal} [signal] - 可选。用于外部随时中断渲染的信号对象
+                 * @param {IntersectionObserver} [observer] - 可选。用于对新生成的 DOM 行进行懒加载观察的实例
+                 * @returns {Promise<void>} 返回一个 Promise，所有批次渲染完毕后 resolve，若被中断则 reject
+                 */
+                static _batchRender(container, result, onlyFuncG, signal, observer) {
+                    return new Promise((resolve, reject) => {
+                        // 每帧最大处理条数。可根据单个 DOM 的复杂度调整大小，以平衡渲染总耗时与页面流畅度
+                        const CHUNK_SIZE = CalcConfig.outputAccuracy > 50 ? 25 : 50;
+
+                        // 记录当前已经处理到的数据索引
+                        let index = 0;
+
+                        // 获取数据的总长度
+                        const n = result.varList.length;
+
+                        // 记录 requestAnimationFrame 的返回值，方便精准取消
+                        let rafId = null;
+
+                        // 1. 如果在调用时就已经触发了中断，直接驳回并退出
+                        if (signal?.aborted) {
+                            return reject(new DOMException('[PrintManager] Rendering was aborted.', 'AbortError'));
+                        }
+
+                        // 2. 监听外部的中断信号
+                        if (signal) {
+                            signal.addEventListener('abort', () => {
+                                // 如果当前有正在等待执行的帧，取消它
+                                if (rafId !== null) {
+                                    cancelAnimationFrame(rafId);
+                                }
+                                reject(new DOMException('[PrintManager] Rendering was aborted.', 'AbortError'));
+                            }, {once: true}); // once: true 确保监听器只触发一次，避免内存泄漏
+                        }
+
+                        /**
+                         * 执行单批次数据渲染的内部递归函数。
+                         * 通过闭包读取并修改外层函数的局部变量（index, n 等）。
+                         * 每次执行处理 CHUNK_SIZE 条数据，组装后通过 DocumentFragment 一次性挂载。
+                         * @inner
+                         * @function renderNextBatch
+                         * @returns {void} 无返回值。通过 resolve() 通知外部整体执行完毕。
+                         */
+                        function renderNextBatch() {
+                            // 每次执行渲染批次前，再次检查是否被中断
+                            if (signal?.aborted) {
+                                return;
+                            }
+
+                            // 使用文档碎片(DocumentFragment)，将多次 DOM 插入操作合并为一次，有效减少页面重排(Reflow)和重绘(Repaint)
+                            const fragment = document.createDocumentFragment();
+
+                            // 计算当前批次渲染的结束索引（不能超过数据总长度 n）
+                            const end = Math.min(index + CHUNK_SIZE, n);
+
+                            // 新建一个数组，用来临时存放这一批创建的行容器
+                            const currentBatchRows = [];
+                            for (let i = index; i < end; i++) {
+                                // 根据模式标识，组装当前行的列数据来源顺序
+                                const sources = onlyFuncG ?
+                                    [result.varList[i], result.g[i], result.f[i]] :
+                                    [result.varList[i], result.f[i], result.g[i]];
+
+                                // 创建该行的外层包裹容器 (如一行数据对应一个 div)
+                                const currentDiv = document.createElement('div');
+
+                                // 遍历组装好的数据列：通常为 x, f(x), g(x) 三项
+                                sources.forEach(data => {
+                                    // 创建该列的外层和内层包裹 div
+                                    const subWrapper = document.createElement('div');
+                                    const subContent = document.createElement('div');
+
+                                    // 1. PrintManager._printHandleError(data): 将原生数据进行格式化或异常捕获处理
+                                    // 2. map(...): 为处理后的数据项附加上 'lazy-bg' 的标识，用于后续实现懒加载样式等
+                                    const formattedNodes = PrintManager._printHandleError(data).map(item => ['lazy-bg', item]);
+
+                                    // 3. HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
+                                    // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
+                                    HtmlTools.appendDOMs(
+                                        subContent,
+                                        formattedNodes,
+                                        {nameType: ['class', 'data-lazy-bg-class']}
+                                    );
+
+                                    // 建立层级关系：将列内容放入列容器，再将列容器放入行容器
+                                    subWrapper.appendChild(subContent);
+                                    currentDiv.appendChild(subWrapper);
+                                });
+
+                                // 将完整的一行节点先缓存进内存中的文档碎片里，并设置监听
+                                currentBatchRows.push(currentDiv);
+                                fragment.appendChild(currentDiv);
+                            }
+
+                            // 一次性将这一批次的所有节点挂载到真实的 DOM 树中
+                            container.appendChild(fragment);
+                            if (observer) {
+                                currentBatchRows.forEach(row => observer.observe(row));
+                            }
+
+                            // 更新当前已处理的索引进度
+                            index = end;
+
+                            // 判断是否还有未渲染的数据
+                            if (index < n) {
+                                // 如果还有剩余数据，使用 requestAnimationFrame 把下一批渲染任务推迟到浏览器的下一帧执行，
+                                // 并记录 rafId 供后续可能的中断使用
+                                rafId = requestAnimationFrame(renderNextBatch);
+                            } else {
+                                // 所有数据已全部挂载完毕，释放 Promise 状态，通知外部调用者
+                                resolve();
+                            }
+                        }
+
+                        // 启动第一次渲染任务
+                        renderNextBatch();
+                    });
+                }
+
+                /**
+                 * @private
+                 * @static
+                 * @method _startNewRender
+                 * @description 触发全新的异步分批渲染流程。
+                 * 具备防竞态特性：在启动新任务前自动中止并清理未完成的旧任务和旧监听器，防止新旧数据重叠。
+                 * @param {HTMLElement} container - 需要挂载渲染结果的目标 DOM 容器节点
+                 * @param {Object} resultData - 包含计算结果的数据源对象
+                 * @param {boolean} onlyFuncG - 数据顺序模式标识。true: [自变量, g(x), f(x)], false: [自变量, f(x), g(x)]
+                 * @returns {void}
+                 */
+                static _startNewRender(container, resultData, onlyFuncG) {
+                    // 步骤 1：中止旧任务。如果存在正在运行的渲染任务，立即触发中断信号
+                    if (this._currentAbortController) {
+                        this._currentAbortController.abort();
+                    }
+                    this._stopLazyObserver();
+
+                    // 步骤 2：创建新信号。为本次即将开始的渲染任务实例化一个全新的控制器
+                    this._observerInstance = this._createLazyObserver();
+                    this._currentAbortController = new AbortController();
+
+                    // 步骤 3：清空旧视图。务必在中止旧任务之后执行此操作，防止旧任务的闭包继续向空容器内追加节点
+                    container.innerHTML = '';
+
+                    // 步骤 4：启动底层渲染逻辑，并将当前的新信号传入以便后续控制
+                    this._batchRender(
+                        container,
+                        resultData,
+                        onlyFuncG,
+                        this._currentAbortController.signal,
+                        this._observerInstance
+                    )
+                        .then(() => {
+                            // 渲染成功结束后，主动将控制器引用置空，释放内存并重置运行状态
+                            this._currentAbortController = null;
+                        })
+                        .catch(err => {
+                            if (err.name !== 'AbortError') {
+                                console.error('[PrintManager] Render failed with unexpected error:', err);
+                            }
+                            // 被打断了，什么都不用做，或者保持 Loading 状态让新的任务接管
+                        });
+                }
+
+                /**
+                 * @public
+                 * @static
+                 * @method stopRenderManually
+                 * @description 手动终止当前正在进行的渲染任务，并同步清理配套的懒加载监听器。
+                 * 建议在组件卸载 (unmount)、路由切换或用户点击取消按钮时主动调用，以避免内存泄漏和无用计算。
+                 * @returns {void}
+                 */
+                static stopRenderManually() {
+                    // 1. 停止渲染动作
+                    if (this._currentAbortController) {
+                        this._currentAbortController.abort();
+                        this._currentAbortController = null;
+                    }
+
+                    // 2. 停止懒加载动作
+                    this._stopLazyObserver();
+                }
+
+                /**
                  * @static
                  * @method setMode1RaResults
                  * @description 更新统计回归模式（模式 1）下特定回归模型的结果显示。
@@ -11103,8 +11394,6 @@
                  * @returns {Promise<void>} 此方法没有返回值，其主要作用是通过DOM操作来更新页面内容。
                  */
                 static async _exeMode2() {
-                    // 创建一个 DocumentFragment 以进行高效的批量 DOM 操作，减少重排和重绘。
-                    const fragment = document.createDocumentFragment();
                     // 获取表头中用于显示函数名的元素，以便后续根据单/双函数模式进行更新。
                     const headInit = HtmlTools.getHtml('#print_content_2_head').children[1].children[0];
                     // 默认设置为双函数显示模式。
@@ -11139,43 +11428,18 @@
                         }
                         // 调用 Web Worker 异步计算函数值列表。
                         const result = await WorkerTools.valueList(fx, gx, start, step, end);
-                        const n = result.varList.length;
-                        // 遍历计算结果，为每一组 (x, f(x), g(x)) 创建一个表格行。
-                        for (let i = 0; i < n; i++) {
-                            // 根据是否为单 g(x) 模式，确定数据源的顺序。
-                            const sources = onlyFuncG ?
-                                [
-                                    result.varList[i],
-                                    result.g[i],
-                                    result.f[i]
-                                ] :
-                                [
-                                    result.varList[i],
-                                    result.f[i],
-                                    result.g[i]
-                                ];
-                            // 创建行容器。
-                            const currentDiv = document.createElement('div');
-                            // 遍历 x, f(x), g(x) 的值，为每个值创建单元格。
-                            sources.forEach(data => {
-                                const subWrapper = document.createElement('div');
-                                const subContent = document.createElement('div');
-                                // 如果计算结果为 'error'，则显示错误图标，否则将数值转换为 HTML 类。
-                                HtmlTools.appendDOMs(subContent, this._printHandleError(data));
-                                // 组装单元格结构。
-                                subWrapper.appendChild(subContent);
-                                currentDiv.appendChild(subWrapper);
-                            });
-                            fragment.appendChild(currentDiv);
-                        }
+                        // 创建页面加载器
+                        this._startNewRender(
+                            HtmlTools.getHtml('#print_content_2_inner'),
+                            result,
+                            onlyFuncG
+                        );
                         // 成功生成表格，隐藏错误提示。
                         HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
                     } catch {
                         // 如果在获取输入或调用 Worker 时发生错误，则显示错误提示。
                         HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
-                    } finally {
-                        // 无论成功与否，都使用生成的 DocumentFragment (可能为空) 更新表格内容。
-                        HtmlTools.getHtml('#print_content_2_inner').replaceChildren(fragment);
+                        HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
                     }
                 }
 
@@ -12113,16 +12377,20 @@
                     // 为 #main 元素添加 'Input' 类，以触发 CSS 过渡，
                     // 将视图从打印/结果界面切换回主输入界面。
                     HtmlTools.getHtml('#main').classList.add('Input');
-                    if (PageConfig.currentMode === '0') {
-                        PrintManager.mode0ShowOnScreen.cancel();
-                        if (PrintManager.mode0ScreenInCalc) {
-                            WorkerTools.restart();
-                        }
-                        InputManager.ac(HtmlTools.getHtml('#print_content_0_content_0'));
-                        InputManager.ac(HtmlTools.getHtml('#print_content_0_content_1'));
-                    }
-                    if (PageConfig.currentMode === '1') {
-                        PageControlTools._exportRaRecover();
+                    switch (PageConfig.currentMode) {
+                        case '0':
+                            PrintManager.mode0ShowOnScreen.cancel();
+                            if (PrintManager.mode0ScreenInCalc) {
+                                WorkerTools.restart();
+                            }
+                            InputManager.ac(HtmlTools.getHtml('#print_content_0_content_0'));
+                            InputManager.ac(HtmlTools.getHtml('#print_content_0_content_1'));
+                            return;
+                        case '1':
+                            return PageControlTools._exportRaRecover();
+                        case '2_1':
+                            PrintManager.stopRenderManually();
+                            return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
                     }
                 }
 
@@ -12556,6 +12824,7 @@
                 case 'back_btn':
                 case 'back_btn_child1':
                 case 'back_btn_child2':
+                case 'back_btn_father':
                     PageConfig.currentMode = '2_0';
                     return;
             }
@@ -14209,7 +14478,7 @@
             content: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MS4zMyAxMS4zMiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtpc29sYXRpb246aXNvbGF0ZX0uY2xzLTJ7ZmlsbDojNjY2fTwvc3R5bGU+PC9kZWZzPjxnIGNsYXNzPSJjbHMtMSI+PHBhdGggZD0iTTExLjA5IDcuNzdjLjA4LjA3LjEyLjEyLjEyLjE2cy0uMDYuMDYtLjE3LjA2aC05LjljLS4yNSAwLS42LjA1LS44LjEzTDAgNy42OGMuMy4wMi42LjA1Ljg4LjA1aDEuODlWMi4xYzAtLjQ4LS4wMi0xLjI4LS4wNS0xLjcxbC43OC42Mkg4bC40Mi0uNTMuNzMuNjZjLjA2LjA1LjA4LjA4LjA4LjExIDAgLjA0LS4wMi4wNi0uMDguMWwtLjQ0LjI4djYuMUg5LjlsLjQ2LS42Ljc0LjY1Wk00LjgxIDguODhjLjA2LjA1LjA4LjA4LjA4LjEyIDAgLjA1LS4wMi4wNS0uMTcuMDUtLjE4IDAtLjM0LjA2LS41My4xNi0xLjk5IDEuMDQtMi42NiAxLjM3LTMuOTIgMS44NWwtLjA2LS4xNGMxLjQ4LS43MyAzLjExLTEuNyAzLjkyLTIuNTVsLjY3LjUzWm0zLjMzLTYuMjJWMS4yN0gzLjMzdjEuMzl6bTAgMS42NlYyLjkzSDMuMzN2MS4zOXptMCAxLjc0VjQuNThIMy4zM3YxLjQ4em0wIDEuNjZ2LTEuNEgzLjMzdjEuNHptLTEuNDUuOTVjMi4xMS41OSAzLjE4IDEuMTkgMy4zNyAxLjU2cS4xMi4yNC4xMi40MmMwIC4xNC0uMDYuMzUtLjI2LjM1LS4xMSAwLS4yMi0uMDUtLjM4LS4yNS0uNTMtLjY3LTEuNjMtMS40NS0yLjkxLTEuOTJsLjA3LS4xNloiIGNsYXNzPSJjbHMtMiIvPjwvZz48ZyBjbGFzcz0iY2xzLTEiPjxwYXRoIGQ9Ik0xNS41OC43N2MuMTEuMDYuMTYuMTEuMTYuMTRzLS4wNS4wNi0uMTYuMWMtLjI2LjA3LS4zMS4xNC0uNDMuNDMtLjM0Ljc5LS42MiAxLjQ1LS45MSAyLjA0bC40NC4xOXMuMDcuMDUuMDcuMDgtLjAyLjA3LS4wNy4xMWwtLjMuMjl2NC42MmMwIC43NCAwIDEuMjUuMDQgMS44NXYuMDZjMCAuMTctLjA1LjI1LS4zMS40MS0uMTIuMDctLjE5LjEyLS4yNC4xMi0uMDYgMC0uMDctLjA2LS4wNy0uMTd2LS4wN2MuMDQtLjcyLjA1LTEuNi4wNS0yLjIyVjQuMzFjLS41MyAxLjAxLTEuMDYgMS44MS0xLjc5IDIuNzJsLS4xMi0uMWMxLjI2LTIgMi4zLTQuNDQgMi45MS02LjY3bC43My41Wm03Ljc0IDcuODRjLS4yLS4wNC0uMzctLjA2LS41LS4wNi0uMjQgMC0uNC4wNi0uNTUuMi0uMDIuMDItLjA1LjA0LS4wNy4wNC0uMDQgMC0uMDctLjAyLS4xMS0uMDYtMS42MS0xLjktMi4xMi0zLjY3LTIuMzYtNS42OGgtLjU1VjguMWguNzhsLjQxLS41My42OC41NGMuMDYuMDUuMDguMTEuMDguMTQgMCAuMDYtLjA1LjExLS4xNC4xMWgtMS44MWMwIC44OC4wMSAxLjg1LjA0IDIuMzd2LjA2YzAgLjE4LS4wNi4yNS0uMzQuNDMtLjEuMDYtLjE3LjEtLjIyLjEtLjA2IDAtLjA3LS4wNi0uMDctLjIyIDAtLjM4LjAyLTIuMzEuMDItMi43NUgxNy40Yy0uMjQgMC0uNTkuMDUtLjc3LjEybC0uMzItLjQzYy4yOC4wMi41OC4wNS44NC4wNWgxLjQ2VjMuNTFjLS45NSAyLjM0LTIuMDQgNC4yNi0zLjk5IDUuOTJsLS4xLS4xMWMxLjgzLTEuOTcgMi42NC0zLjQ1IDMuNjctNi4yOGgtMi4wNmMtLjI1IDAtLjYuMDUtLjguMTNsLS4zNC0uNDRjLjMuMDIuNi4wNS44OC4wNWgyLjc1VjEuNzVjMC0uNDktLjAyLTEuMzEtLjA1LTEuNzVsLjkyLjQ0Yy4wNi4wMi4xMS4wNi4xMS4xcy0uMDIuMDctLjA4LjEybC0uMzQuMjZ2MS44NmgyLjI4bC40OC0uNjYuODIuNjdjLjA2LjA1LjEuMTEuMS4xNCAwIC4wNi0uMDYuMTEtLjE4LjExaC0yLjdjLjM1IDIuMzMgMS43IDQuODggMy4zNiA1LjQ0di4xMloiIGNsYXNzPSJjbHMtMiIvPjwvZz48ZyBjbGFzcz0iY2xzLTEiPjxwYXRoIGQ9Im0yOC43NSA4LjY0LTEuODkuNjdjLTEuOC42NC0xLjk0LjcxLTIuMjIuOTEtLjA0LjAyLS4wNi4wNS0uMDguMDUtLjA0IDAtLjA2LS4wMi0uMDgtLjA2bC0uNC0uNjcgNC42My0xLjA3LjA1LjE3Wm0tLjIyLTEuOTVjLTIuOS43NC0yLjk1Ljc3LTMuMyAxLjAyLS4wNC4wMi0uMDcuMDUtLjEuMDUtLjA0IDAtLjA2LS4wMi0uMS0uMDdsLS40OC0uNjZjLjQ5LS4wOC42OC0uMjQgMS4wMy0uNzMuODMtMS4xNiAxLjAzLTEuNDUgMS40NC0yLjEzLTEuOTYuMjktMi4xMS4zNy0yLjM1LjUzLS4wNS4wMi0uMDguMDUtLjExLjA1cy0uMDUtLjAyLS4wNy0uMDdsLS40MS0uNjRjLjU0LS4xNi42OC0uMjYuOTYtLjY4LjcyLTEuMTMgMS4zMy0yLjM2IDEuNTktMy4wOGwuNzkuNDNjLjA2LjAyLjEuMDYuMS4wOHMtLjA0LjA2LS4xMi4xYy0uMzEuMTQtLjQuMjItLjcyLjctLjgyIDEuMTgtMS4yIDEuNjktMS44MiAyLjQ4bDIuMjgtLjA4Yy4yMi0uMzcuNDItLjc2LjYyLTEuMmwuNzEuNDhjLjA2LjA0LjA4LjA3LjA4LjEgMCAuMDQtLjA0LjA2LS4xMS4wOC0uMjguMS0uMzQuMTYtLjU1LjQ0LS40Ni42Mi0xLjI2IDEuNjMtMi41NSAzLjE0bDMuMTctLjQ5di4xN1ptNi42Ni0zLjlzLjA3LjA4LjA3LjExYzAgLjA0LS4wNC4wNS0uMTEuMDVoLTMuMTJ2Mi4xNmgxLjU1bC40My0uNTUuNzMuNjdjLjA2LjA1LjA4LjA4LjA4LjExcy0uMDQuMDQtLjExLjA0aC00LjQ3Yy0uMjUgMC0uNi4wNS0uOC4xM2wtLjM0LS40NGMuMy4wMi42LjA1Ljg4LjA1aDEuNVYyLjk2aC0xLjhjLS4yNSAwLS42MS4wNS0uOC4xMmwtLjMzLS40M2MuMjkuMDIuNi4wNS44OC4wNWgyLjA2VjEuMjhjMC0uNDctLjAxLS43Ni0uMDQtMS4xOGwuODkuNGMuMDguMDQuMTMuMDcuMTMuMTEgMCAuMDItLjA0LjA2LS4xMS4xMWwtLjMyLjIyVjIuN2gxLjk0bC40Ni0uNjcuNzUuNzhabS0uODkgNC4yNnMuMDYuMDYuMDYuMDgtLjAxLjA1LS4wNi4wOGwtLjMyLjI0djEuOTRjMCAuNzguMDEgMS4wOC4wNCAxLjQyIDAgLjA1LjAxLjEuMDEuMTMgMCAuMTYtLjA2LjItLjI1LjI4LS4xMi4wNS0uMi4wNy0uMjUuMDctLjA4IDAtLjEtLjA1LS4xLS4xNnYtLjg1aC0zLjU3di42NGMwIC4xMy0uMDIuMTYtLjI1LjI1LS4xMS4wNS0uMTguMDctLjIzLjA3LS4wNyAwLS4xMS0uMDctLjExLS4yMiAwLS4wNS4wMS0uMTEuMDEtLjE3LjAyLS41Ni4wNC0xLjA5LjA0LTEuNTVWNy42NGMwLS40NC0uMDEtLjg2LS4wNC0xLjI0bC43OC41OWgzLjIzbC4yOC0uNDkuNzQuNTNabS0uODggMi45OFY3LjI4aC0zLjU3djIuNzV6IiBjbGFzcz0iY2xzLTIiLz48L2c+PGcgY2xhc3M9ImNscy0xIj48cGF0aCBkPSJNNDcuMjEgOS41OWMtLjY4LjAxLS45NS4xOS0xLjE1LjQyLS4wNS4wNi0uMS4wOC0uMTMuMDgtLjEyIDAtMi40OC0xLjE2LTMuOC0zLjU3aC0uMTl2Mi4wM2MwIC43LjAxIDEuNTEuMDIgMi4xIDAgLjIyLS4wMi4yNS0uMy40YS41LjUgMCAwIDEtLjIyLjA3Yy0uMDcgMC0uMS0uMDctLjEtLjIzIDAtLjM0LjAyLTEuOTkuMDItMi4zNnYtMmgtLjE2Yy0xLjMxIDEuNzctMi45NiAzLjI0LTUuMDYgNC4yN2wtLjA2LS4xNmMxLjg3LTEuMDYgMy43MS0yLjg1IDQuNDUtNC4xMWgtMy4yNWMtLjI1IDAtLjYuMDUtLjguMTNsLS4zMy0uNDRjLjMuMDIuNi4wNS44OC4wNWg0LjM0di0xLjZoLTIuNjR2LjM0YzAgLjE2LS4wNS4yMi0uMjguMzJhLjUuNSAwIDAgMS0uMjIuMDdjLS4wOCAwLS4xMS0uMDYtLjExLS4xOHYtLjA1Yy4wNC0uNTUuMDQtLjk3LjA0LTEuNlYxLjE2YzAtLjI5LS4wMS0uNjUtLjA0LTEuMDJsLjc4LjZoNS41MmwuMzUtLjUuNzMuNThjLjA2LjA0LjA4LjA3LjA4LjExcy0uMDIuMDYtLjA4LjExbC0uMzIuMjR2Mi4wNmMwIC40OCAwIC45Mi4wNCAxLjN2LjA1YzAgLjI5LS40NC40Ny0uNTQuNDctLjA1IDAtLjA2LS4wNC0uMDYtLjExdi0uMzdoLTIuNjl2MS42aDMuNTlsLjU5LS42MS42NC42MWMuMDguMDcuMTEuMTMuMTEuMThzLS4wNi4wOC0uMTYuMDhoLTQuMzFjMS4yOSAxLjY5IDIuODkgMi43NyA0LjgyIDIuOTN2LjE0Wm0tNS44NC02Ljk4VjFoLTIuNjR2MS42MXptMCAxLjc5VjIuODhoLTIuNjRWNC40em0zLjI1LTEuNzlWMWgtMi42OXYxLjYxem0wIDEuNzlWMi44OGgtMi42OVY0LjR6IiBjbGFzcz0iY2xzLTIiLz48L2c+PGcgY2xhc3M9ImNscy0xIj48cGF0aCBkPSJNNTAuNjQgNS45NmMtLjM3IDAtLjY4LS4zLS42OC0uNjdzLjMxLS42OC42OC0uNjguNjguMzEuNjguNjgtLjMxLjY3LS42OC42N20wIDQuNDZjLS4zNyAwLS42OC0uMy0uNjgtLjY3cy4zMS0uNjguNjgtLjY4LjY4LjMxLjY4LjY4LS4zMS42Ny0uNjguNjciIGNsYXNzPSJjbHMtMiIvPjwvZz48L3N2Zz4=);
         }
 
-        ._print_content_4_omit_ {
+        ._print_content_omit_ {
             height: 5dvmin;
             content: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA3MS4xMyAxMS4zNiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtpc29sYXRpb246aXNvbGF0ZX08L3N0eWxlPjwvZGVmcz48cGF0aCBkPSJNMTEuMDYgNy44MmMuMS4wOC4xNC4xNC4xNC4xOSAwIC4wNC0uMDYuMDYtLjE5LjA2SDEuMTRjLS4yNSAwLS42LjA1LS44LjEzTDAgNy43NmMuMy4wMi42LjA1Ljg4LjA1aDIuNVYyLjM5SDEuODRjLS4yNSAwLS42LjA1LS44LjEzTC43IDIuMDhjLjMuMDIuNi4wNS44OC4wNWgxLjhjMC0uMjggMC0xLjE0LS4wNS0yLjAzbC44My4zOGMuMDguMDQuMTMuMDcuMTMuMTEgMCAuMDUtLjA0LjA4LS4zNS4zNnYxLjE4aDMuNzljMC0uMzYgMC0xLjE5LS4wNS0yLjA4bC44Ni40NGMuMDguMDQuMTMuMDcuMTMuMTFzLS4wNC4wNy0uMS4xM2wtLjI4LjI1djEuMTRoMS4yMmwuNDctLjYyLjY4LjYyYy4wOC4wOC4xMy4xNC4xMy4xOXMtLjA2LjA3LS4xOC4wN0g4LjI4VjcuOGgxLjU2bC40Ny0uNjQuNzMuNjVaTTQuOTEgOS4wM2MuMDYuMDUuMS4xLjEuMTIgMCAuMDUtLjA3LjA2LS4xOS4wNi0uMDggMC0uMjQuMDYtLjU1LjI1LTEuNDYuOTEtMi41MyAxLjQzLTMuODQgMS45bC0uMDctLjEyQzIuNyA5Ljk2IDMuNDEgOS40MSA0LjI1IDguNDlsLjY3LjU0Wm0yLjgxLTUuMDJWMi4zOUgzLjkzdjEuNjJ6bTAgMS44OFY0LjI3SDMuOTN2MS42MnptMCAxLjkyVjYuMTZIMy45M3YxLjY1em0tMS4wNS44N2MxLjYzLjM3IDIuODMuOTEgMy4yNSAxLjI4LjI4LjI0LjM3LjUuMzcuNzIgMCAuMjQtLjEzLjQyLS4yNi40Mi0uMDggMC0uMTMtLjA0LS4zNy0uMzItLjQtLjQ3LTEuMzEtMS4yNi0zLjAzLTEuOTRsLjA1LS4xNlpNMjMuMzIgNC43MWMtLjU2IDAtLjk1LjEyLTEuMTQuMzgtLjA1LjA2LS4wNy4wOC0uMTEuMDhxLS4wMyAwLS4xMi0uMDZjLTEuODYtMS4wOC0yLjkzLTIuMDctNC4xLTQuMi0xLjgxIDIuMDYtMy4yNCAzLjU0LTUuNzYgNC44OWwtLjExLS4xMmMyLjI1LTEuNDUgNC4xNS0zLjM2IDUuNDctNS42NWwuODYuNDFjLjEyLjA1LjE3LjEuMTcuMTIgMCAuMDQtLjA1LjA2LS4xNy4wOC0uMS4wMi0uMi4wNi0uMjkuMTEgMS4zNiAyLjM2IDMuNDUgMy42NiA1LjI5IDMuOHYuMTRaTTE1LjkgNy43NWMuMTEuMDcuMTcuMTMuMTcuMTcgMCAuMDUtLjA3LjA3LS4yLjFzLS4zNy4xNi0uNDQuMjRjLTEuMDIgMS4wOC0xLjgzIDEuOC0yLjg1IDIuNDhsLS4wNy0uMTRjMS4xMi0uOTIgMi4xOC0yLjMxIDIuNzUtMy4zbC42Ni40NlptNS44NS0xLjE5Yy4xMS4xMS4xNi4xNy4xNi4yIDAgLjA1LS4wNi4wNi0uMi4wNmgtMy43OXYzYzAgLjc5LS4wNC45Ni0uNzkgMS4zNy0uMDcuMDQtLjEyLjA2LS4xNi4wNi0uMDUgMC0uMDctLjA1LS4wOC0uMTQtLjA2LS40Mi0uMzUtLjY0LTEuNjItMS4wM2wuMDQtLjE2Yy45MS4xOCAxLjQyLjI2IDEuNy4yNi4zMiAwIC4zNS0uMTEuMzUtLjMyVjYuODNoLTMuMDljLS4yNSAwLS42LjA1LS44LjEzbC0uMzQtLjQ0Yy4zLjAyLjYuMDUuODguMDVoMy4zNnYtMS43aC0xLjUxYy0uMjUgMC0uNi4wNS0uOC4xM2wtLjM0LS40NGMuMy4wMi42LjA1Ljg4LjA1aDMuNDVsLjQ3LS42Mi42My42MmMuMTEuMS4xNi4xNy4xNi4yIDAgLjA1LS4wNi4wNi0uMi4wNmgtMi4xN3YxLjdoMi43bC40Ny0uNjcuNjcuNjdabS0yLjc4IDEuMDdjMS40OC42NCAyLjQgMS4yMSAyLjg3IDEuODEuMTQuMTguMi4zOC4yLjU4IDAgLjMxLS4xNy41Ni0uMzQuNTYtLjEyIDAtLjIzLS4xNC0uNDctLjYyLS4yMy0uNDctMS4yNi0xLjU3LTIuMzUtMi4xOWwuMDgtLjEzWk0yOC43MSA4LjY1bC0xLjkuNjdjLTEuOC42NC0xLjk0LjcxLTIuMjIuOTEtLjA0LjAyLS4wNi4wNS0uMDguMDUtLjA0IDAtLjA2LS4wMi0uMDgtLjA2bC0uNC0uNjcgNC42My0xLjA3em0tLjIyLTEuOTVjLTIuOS43NC0yLjk1Ljc3LTMuMyAxLjAyLS4wNC4wMi0uMDcuMDUtLjEuMDUtLjA0IDAtLjA2LS4wMi0uMS0uMDdsLS40OC0uNjZjLjQ5LS4wOC42OC0uMjQgMS4wMy0uNzMuODMtMS4xNiAxLjAzLTEuNDUgMS40NC0yLjEzLTEuOTYuMjktMi4xMS4zNy0yLjM1LjUzLS4wNS4wMi0uMDguMDUtLjExLjA1cy0uMDUtLjAyLS4wNy0uMDdsLS40MS0uNjRjLjU0LS4xNi42OC0uMjYuOTYtLjY4LjcyLTEuMTMgMS4zMy0yLjM2IDEuNi0zLjA4bC43OS40M2MuMDYuMDIuMS4wNi4xLjA4cy0uMDQuMDYtLjEyLjFjLS4zMS4xNC0uNC4yMi0uNzIuNy0uODIgMS4xOC0xLjIgMS42OS0xLjgyIDIuNDhMMjcuMTEgNGMuMjItLjM3LjQyLS43Ni42Mi0xLjJsLjcxLjQ4Yy4wNi4wNC4wOC4wNy4wOC4xIDAgLjA0LS4wNC4wNi0uMTEuMDgtLjI4LjEtLjM0LjE2LS41NS40NC0uNDYuNjItMS4yNiAxLjYzLTIuNTUgMy4xNGwzLjE3LS40OXYuMTdabTYuNjYtMy44OXMuMDcuMDguMDcuMTFjMCAuMDQtLjA0LjA1LS4xMS4wNWgtMy4xMnYyLjE2aDEuNTVsLjQzLS41NS43My42N2MuMDYuMDUuMDguMDguMDguMTFzLS4wNC4wNC0uMTEuMDRIMzAuMmMtLjI1IDAtLjYuMDUtLjguMTNsLS4zNC0uNDRjLjMuMDIuNi4wNS44OC4wNWgxLjVWMi45OGgtMS44Yy0uMjUgMC0uNjEuMDUtLjguMTJsLS4zNC0uNDNjLjI5LjAyLjYuMDUuODguMDVoMi4wNlYxLjNjMC0uNDctLjAxLS43Ni0uMDQtMS4xOGwuODkuNGMuMDguMDQuMTMuMDcuMTMuMTEgMCAuMDItLjA0LjA2LS4xMS4xMWwtLjMyLjIydjEuNzZoMS45NGwuNDYtLjY3Ljc2Ljc4Wm0tLjg5IDQuMjVzLjA2LjA2LjA2LjA4LS4wMS4wNS0uMDYuMDhsLS4zMi4yNFY5LjRjMCAuNzguMDEgMS4wOC4wNCAxLjQyIDAgLjA1LjAxLjEuMDEuMTMgMCAuMTYtLjA2LjItLjI1LjI4LS4xMi4wNS0uMi4wNy0uMjUuMDctLjA4IDAtLjEtLjA1LS4xLS4xNnYtLjg1aC0zLjU3di42NGMwIC4xMy0uMDIuMTYtLjI1LjI1LS4xMS4wNS0uMTguMDctLjIzLjA3LS4wNyAwLS4xMS0uMDctLjExLS4yMiAwLS4wNS4wMS0uMTEuMDEtLjE3LjAyLS41Ni4wNC0xLjA5LjA0LTEuNTVWNy42NWMwLS40NC0uMDEtLjg2LS4wNC0xLjI0bC43OC41OWgzLjIzbC4yOC0uNDkuNzQuNTNabS0uODcgMi45OFY3LjI5aC0zLjU3djIuNzV6TTQ3LjE3IDkuNjFjLS42OC4wMS0uOTUuMTktMS4xNS40Mi0uMDUuMDYtLjEuMDgtLjEzLjA4LS4xMiAwLTIuNDgtMS4xNi0zLjgtMy41N2gtLjE5djIuMDNjMCAuNy4wMSAxLjUxLjAyIDIuMSAwIC4yMi0uMDIuMjUtLjMuNGEuNS41IDAgMCAxLS4yMi4wN2MtLjA3IDAtLjEtLjA3LS4xLS4yMyAwLS4zNC4wMi0xLjk5LjAyLTIuMzZ2LTJoLS4xNmMtMS4zMSAxLjc3LTIuOTYgMy4yNC01LjA2IDQuMjdsLS4wNi0uMTZjMS44Ny0xLjA2IDMuNzEtMi44NSA0LjQ1LTQuMTFoLTMuMjVjLS4yNSAwLS42LjA1LS44LjEzbC0uMzQtLjQ0Yy4zLjAyLjYuMDUuODguMDVoNC4zNHYtMS42aC0yLjY0di4zNGMwIC4xNi0uMDUuMjItLjI4LjMyYS41LjUgMCAwIDEtLjIyLjA3Yy0uMDggMC0uMTEtLjA2LS4xMS0uMTh2LS4wNWMuMDQtLjU1LjA0LS45Ny4wNC0xLjZWMS4xOGMwLS4yOS0uMDEtLjY1LS4wNC0xLjAybC43OC42aDUuNTJsLjM1LS41LjczLjU4Yy4wNi4wNC4wOC4wNy4wOC4xMXMtLjAyLjA2LS4wOC4xMWwtLjMyLjI0djIuMDZjMCAuNDggMCAuOTIuMDQgMS4zdi4wNWMwIC4yOS0uNDQuNDctLjU0LjQ3LS4wNSAwLS4wNi0uMDQtLjA2LS4xMVY0LjdoLTIuNjl2MS42aDMuNTlsLjU5LS42MS42NC42MWMuMDguMDcuMTEuMTMuMTEuMThzLS4wNi4wOC0uMTYuMDhoLTQuMzFjMS4zIDEuNjkgMi44OSAyLjc3IDQuODIgMi45M3YuMTRabS01Ljg0LTYuOThWMS4wMmgtMi42NHYxLjYxem0wIDEuNzhWMi44OWgtMi42NHYxLjUyem0zLjI1LTEuNzhWMS4wMmgtMi42OXYxLjYxem0wIDEuNzhWMi44OWgtMi42OXYxLjUyek01Ny41NCA1LjM0Yy4wNy4wNS4xMS4wOC4xMS4xMnMtLjA0LjA3LS4xMS4xMmwtLjM3LjI5djIuNzVjMCAuOTEuMDIgMS42Ni4wNiAyLjE5di4wOGMwIC4xOC0uMDUuMjMtLjI4LjMyLS4xMi4wNS0uMTkuMDctLjI0LjA3LS4wOCAwLS4xLS4wNS0uMS0uMTZ2LS42MWgtNC45NXYuNDFjMCAuMTYtLjAxLjE4LS4yMy4yOC0uMTIuMDYtLjIuMDgtLjI2LjA4LS4wOCAwLS4xLS4wNi0uMS0uMjR2LS4xMmMuMDItLjY1LjA0LTEuNjIuMDQtMi4yM1Y2LjIyYy0uODguNDctMi4wNC45OC0yLjg3IDEuMjJsLS4wNi0uMTdjMS4xMy0uNTMgMS41NS0uNzQgMi45My0xLjUyIDAtLjMyLS4wMS0uNTgtLjA0LS44NGwuNTQuMzdoLjNjMS44MS0xLjA2IDMuMi0yLjA0IDQuMDItMi45M2wuNTguNGMuMTEuMDcuMTYuMTMuMTYuMTdzLS4wNS4wNS0uMTQuMDVjLS4xMiAwLS4yLjAxLS40Ni4xOS0uOS42Mi0yLjA4IDEuMzgtMy4zMiAyLjEyaDMuNzFsLjM3LS40OC43Mi41M1pNNTIuMTMgMS42Yy4xMi4wOC4xNy4xNi4xNy4xOSAwIC4wNS0uMDUuMDYtLjE0LjA3LS4xNy4wMS0uMy4xLS40Ny4zLS45NSAxLjEtMS44OCAyLjAyLTMuMDMgMi44MWwtLjEtLjEzYzEuNTEtMS40NSAyLjI0LTIuNDYgMi45NS0zLjczem00LjQ5IDUuMjV2LTEuM0g1Mi4zYy0uMi4xMy0uNDIuMjUtLjY0LjM3di45Mmg0Ljk1Wm0wIDEuNTlWNy4xMWgtNC45NXYxLjMzem0wIDEuODFWOC43aC00Ljk1djEuNTV6TTU0LjQ3LjVjLjA3LjA0LjExLjA3LjExLjEgMCAuMDQtLjA0LjA2LS4xMS4xbC0uMy4xNnYxLjE5YzAgLjQ4LjAxLjkyLjA1IDEuMjF2LjA1YzAgLjE4LS40Ni4yOC0uNTQuMjhzLS4xLS4wNS0uMS0uMTZ2LS4wN2MuMDItLjM3LjA0LS45Ny4wNC0xLjMydi0uOThjMC0uMjktLjAyLS43OC0uMDUtMS4wNGwuOS41Wm0xLjUxLjY5YzEuMzcuNTQgMi4yNyAxLjAzIDIuODEgMS41NS4yLjE5LjI4LjQyLjI4LjYxIDAgLjMtLjE2LjU0LS4zMi41NC0uMDggMC0uMTgtLjEtLjM0LS4zNi0uMi0uMzYtMS4wNy0xLjIyLTIuNDktMi4xOWwuMDctLjE0Wk02NC41NCAxLjY5Yy4wNy4wNS4xLjA4LjEuMTJzLS4wMi4wNi0uMS4xMWwtLjMxLjE4djQuN2MwIC45Ny4wMiAxLjc2LjA2IDIuMjl2LjFjMCAuMTgtLjA0LjIzLS4yOC4zMi0uMTIuMDUtLjE5LjA3LS4yNC4wNy0uMDcgMC0uMDgtLjA2LS4wOC0uMTZ2LS44aC0yLjYxdi44OGMwIC4xNi0uMDUuMjItLjI1LjNhLjUuNSAwIDAgMS0uMjIuMDdjLS4xIDAtLjEyLS4wOC0uMTItLjI4di0uMWMuMDItLjcuMDQtMS43NS4wNC0yLjQxVjIuMzFjMC0uNC0uMDEtLjg0LS4wNC0xLjJsLjYxLjU5aDIuMzlsLjMzLS41NXptLTIuNDEgMy4yVjEuOTdoLTEuMDZWNC45aDEuMDZabTAgMy40N3YtMy4yaC0xLjA2djMuMnptMS41NS0zLjQ3VjEuOTdoLTEuMDFWNC45aDEuMDFabTAgMy40N3YtMy4yaC0xLjAxdjMuMnptNy40NS0yLjM1Yy0uNi4wNC0uOS4xOC0xLjAzLjQxLS4wNC4wNi0uMDYuMDctLjEuMDctLjA1IDAtMS42My0uNzMtMi41LTEuNTctLjUyLjU4LTEuMTUgMS4xMi0xLjgxIDEuNTdsLjU2LjVoMi40MWwuMzYtLjQ4LjY4LjVjLjA3LjA1LjExLjEuMTEuMTNsLS40LjI2djEuOTFjMCAuMjMuMDUgMS4yNC4wNSAxLjQgMCAuMTgtLjA1LjIzLS4zLjM0LS4xMS4wNS0uMTguMDYtLjIzLjA2LS4wNyAwLS4wOC0uMDUtLjA4LS4xNnYtLjhoLTIuNzJ2LjY2YzAgLjE2LS4wMi4yMi0uMjUuMy0uMTIuMDYtLjE5LjEtLjI1LjEtLjA4IDAtLjEtLjA4LS4xLS4yOCAwLS4yNi4wNC0xLjU2LjA0LTEuN1Y3LjI1YTEzIDEzIDAgMCAwLS4wMi0uNjdjLS4zNy4yNS0uNzUuNDctMS4xMi42NWwtLjA4LS4xN2MxLjEzLS43OCAyLjEtMS41OSAyLjgzLTIuNTEtLjQ3LS41OC0uNzctMS4yNS0xLjEzLTIuMjEtLjY1IDEuMTItLjk3IDEuNi0xLjQ4IDIuMjNsLS4xMy0uMDhjLjg2LTEuNDkgMS42Ny0zLjIgMi4wMi00LjRsLjc0LjQ3cy4wNi4wNS4wNi4wN2MwIC4wNC0uMDQuMDctLjExLjEyLS4yNC4xNC0uMjkuMTgtLjM1LjMtLjA4LjE2LS4xNy4zLS4yNS40M2gyLjE2bC4zNi0uNDguNzEuNjFjLjA3LjA2LjExLjExLjExLjE0IDAgLjA1LS4wNS4wNy0uMTQuMTEtLjMyLjExLS41Mi4zMS0uNzMuNzctLjI1LjUzLS43IDEuMjctMS4yIDEuOTEuNzcuNjUgMS43OSAxLjAyIDMuMzEgMS4zM1Y2Wm0tMi4yNiAzLjg4VjcuMjVoLTIuNzJ2Mi42NHptLTIuNDUtOC4xNWMtLjA3LjEzLS4xNC4yNS0uMi4zNi4zNi45Ljc0IDEuNTggMS4yNCAyLjExLjU4LS43OC45OC0xLjU2IDEuMzMtMi40N2gtMi4zNloiIGNsYXNzPSJjbHMtMSIvPjwvc3ZnPg==);
         }
@@ -14609,10 +14878,18 @@
             gap: 1dvmin;
         }
 
+        #back_btn_father {
+            width: calc(min(7.5dvh, 12dvmin) + 0.55dvw);
+            height: calc(6.5dvh - 0.5dvmin);
+            display: flex;
+            justify-content: right;
+            align-items: center;
+            overflow: hidden;
+        }
+
         #back_btn {
             width: min(7.5dvh, 12dvmin);
             height: min(4.5dvh, 7.2dvmin);
-            margin-left: 0.5dvw;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
@@ -16267,12 +16544,16 @@
                 <p class="_mode_title_2_0_"></p>
             </div>
             <div class="NoDisplay" id="title_mode_2_1">
-                <svg xmlns="http://www.w3.org/2000/svg" id="back_btn" viewBox="0 0 60 36" fill="none">
-                    <rect id="back_btn_child1" width="60" height="36" rx="18" fill="currentColor" opacity="0.1"></rect>
-                    <path id="back_btn_child2" d="M31 11L24 18L31 25M24 18h14" stroke="currentColor" stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"></path>
-                </svg>
+                <div id="back_btn_father">
+                    <svg xmlns="http://www.w3.org/2000/svg" id="back_btn" viewBox="0 0 60 36" fill="none">
+                        <rect id="back_btn_child1" width="60" height="36" rx="18" fill="currentColor"
+                              opacity="0.1"></rect>
+                        <path id="back_btn_child2" d="M31 11L24 18L31 25M24 18h14" stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"></path>
+                    </svg>
+                </div>
                 <p class="_mode_title_2_1_"></p>
             </div>
             <div class="NoDisplay Paragraph" id="title_mode_3">
@@ -16979,7 +17260,7 @@
                 </div>
                 <div class="NotPrintDefault MultipleLines" id="print_content_4_content_2"></div>
                 <div class="NoDisplay" id="print_omit">
-                    <p class="_print_content_4_omit_"></p>
+                    <p class="_print_content_omit_"></p>
                 </div>
             </div>
         </div>

@@ -794,6 +794,14 @@
 
         /**
          * @static
+         * @type {number}
+         * @description 生成函数列表时，最多显示的数值解的数量。
+         * 用于防止当 n 非常大时，生成一个过长的结果列表。
+         */
+        static VALUE_LIST_MAX_SHOW_RESULTS = 999;
+
+        /**
+         * @static
          * @readonly
          * @enum {object}
          * @description 定义一个包含高精度数学常量的集合。
