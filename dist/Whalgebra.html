@@ -11864,6 +11864,29 @@
                 }
 
                 /**
+                 * @private
+                 * @static
+                 * @method _resetButton
+                 * @description 重置按钮状态
+                 * @param {HTMLElement} btn - 需要重置的按钮元素
+                 */
+                static _resetButton(btn) {
+                    if (!btn) {
+                        return;
+                    }
+
+                    const ripples = btn.querySelectorAll('.Ripple');
+
+                    // 执行褪色动画并清理
+                    ripples.forEach(r => {
+                        r.classList.add('IsFadingOut');
+                        setTimeout(() => r.remove(), 600);
+                    });
+
+                    btn.classList.remove('IsSelected');
+                }
+
+                /**
                  * @static
                  * @method moveShip
                  * @description 控制彩蛋动画的函数。
