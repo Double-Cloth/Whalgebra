@@ -1257,30 +1257,51 @@
             this._maxChunkSize = options.maxChunkSize || 100;
 
             // --- 核心状态与观察者实例 ---
-            /** * 交叉观察器，用于元素进入可视区时的懒加载
+            /**
              * @type {IntersectionObserver|null}
+             * @description 交叉观察器，用于元素进入可视区时的懒加载
              */
             this._observerInstance = null;
-            /** * DOM 变动观察器，用于监听容器内部的外部节点插入
+            /**
              * @type {MutationObserver|null}
+             * @description DOM 变动观察器，用于监听容器内部的外部节点插入
              */
             this._mutationObserver = null;
-            /** * 中断控制器，用于 stopRender 时快速阻断后续 Promise 执行
+            /**
              * @type {AbortController|null}
+             * @description 中断控制器，用于 stopRender 时快速阻断后续 Promise 执行
              */
             this._abortController = null;
-            /** * 记录当前正在执行的渲染任务 Promise 链，用于 append 时的队列排期
+            /**
+             * @type {WeakMap<Element, Element[]>}
+             * @description 弱引用映射，建立 DOM 节点与其内部懒加载目标的映射，防止内存泄漏
+             */
+            this._lazyTargetsMap = new WeakMap();
+            /**
              * @type {Promise<void>}
+             * @description 记录当前正在执行的渲染任务 Promise 链，用于 append 时的队列排期
              */
             this._renderTask = Promise.resolve();
 
             // --- 暂停与恢复控制 ---
             /** @type {boolean} 当前是否处于暂停状态 */
             this._isPaused = false;
-            /** * 被挂起的渲染函数引用。当触发暂停时，保存下一帧本该执行的函数
+            /**
              * @type {Function|null}
+             * @description 被挂起的渲染函数引用。当触发暂停时，保存下一帧本该执行的函数
              */
             this._resumeCallback = null;
+        }
+
+        /**
+         * 获取数据源的长度或键数量
+         * 作为内部辅助函数，兼容处理数组和对象类型的数据源，并对空值进行安全兜底。
+         * * @private
+         * @param {any[] | Object | null | undefined} data - 需要计算长度的数据源
+         * @returns {number} 如果是数组则返回 length，如果是对象则返回 keys 的数量，空值返回 0
+         */
+        _getLength(data) {
+            return Array.isArray(data) ? data.length : Object.keys(data || {}).length;
         }
 
         /**
@@ -1298,7 +1319,28 @@
                 entries.forEach(entry => {
                     const isVisible = entry.isIntersecting;
 
-                    const targetElements = entry.target.__lazyTargets || [];
+                    let targetElements;
+
+                    // 1. 判断该节点是否已经被 WeakMap 记录过（用 .has 判断）
+                    if (!this._lazyTargetsMap.has(entry.target)) {
+                        targetElements = [];
+
+                        // 2. 如果没记录过，且是外部强插的节点，现场查一次 DOM
+                        if (entry.target.dataset?.asyncInternal !== 'true') {
+                            const lazyNodes = Array.from(entry.target.querySelectorAll(this._lazyBgSelector));
+                            if (entry.target.matches?.(this._lazyBgSelector)) {
+                                lazyNodes.push(entry.target);
+                            }
+                            targetElements.push(...lazyNodes);
+                        }
+
+                        // 3. 无论查到几个懒加载节点（哪怕是 0 个），都作为结果缓存进去！
+                        // 这样下次再触发，.has() 就会返回 true，直接跳过这段逻辑。
+                        this._lazyTargetsMap.set(entry.target, targetElements);
+                    } else {
+                        // 4. 命中缓存，直接取值（即使取出来是 []，也不会报错）
+                        targetElements = this._lazyTargetsMap.get(entry.target);
+                    }
 
                     targetElements.forEach(el => {
                         const bgClassAttr = el.getAttribute('data-lazy-bg-class');
@@ -1320,7 +1362,8 @@
         }
 
         /**
-         * 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点
+         * 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点，
+         * 并负责清理被删除节点的监听以防止内存泄漏。
          * @private
          * @param {HTMLElement} container - 需要被深度监听的挂载容器
          */
@@ -1335,14 +1378,27 @@
                 }
 
                 for (const mutation of mutationsList) {
-                    // 仅处理新增节点的场景
-                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                        mutation.addedNodes.forEach(node => {
-                            // 仅处理 Element 且过滤掉自己内部渲染的节点
-                            if (node.nodeType === 1 && node.dataset.asyncInternal !== 'true') {
-                                this._observerInstance?.observe(node);
-                            }
-                        });
+                    if (mutation.type === 'childList') {
+
+                        // 1. 处理新增节点（原有逻辑，接管外部强插节点）
+                        if (mutation.addedNodes.length > 0) {
+                            mutation.addedNodes.forEach(node => {
+                                if (node.nodeType === 1 && node.dataset.asyncInternal !== 'true') {
+                                    this._observerInstance?.observe(node);
+                                }
+                            });
+                        }
+
+                        // 2. ★ 核心修复：处理被删除的节点，切断强引用防止内存泄漏
+                        if (mutation.removedNodes.length > 0) {
+                            mutation.removedNodes.forEach(node => {
+                                if (node.nodeType === 1) {
+                                    // 解除节点本身的观察并清理 Map
+                                    this._observerInstance?.unobserve(node);
+                                    this._lazyTargetsMap.delete(node);
+                                }
+                            });
+                        }
                     }
                 }
             });
@@ -1389,7 +1445,6 @@
                         return;
                     }
 
-                    // 修复 1：抛弃 rAF 传入的 timestamp。
                     // 必须使用当前回调真实开始执行的时间，防止被同帧内的其他任务“偷拍”时间。
                     const frameStartTime = performance.now();
                     let renderedInThisFrame = 0;
@@ -1400,38 +1455,39 @@
                     try {
                         while (
                             index < endIndex &&
-                            renderedInThisFrame < this._maxChunkSize
+                            renderedInThisFrame < this._maxChunkSize &&
+                            performance.now() - frameStartTime < this._timeSliceMs
                             ) {
                             const rowDOM = this._rowRenderer(dataSource, index);
                             // 在 _batchRender 的 while 循环中处理 rowDOM 时：
                             if (rowDOM) {
-                                if (rowDOM.nodeType === 1) {
-                                    // 【核心优化】：利用时间分片，提前查找并将结果挂载到 DOM 节点的自定义属性上
-                                    // 将查找耗时均摊到每帧的空闲时间，彻底释放 IntersectionObserver 的压力
-                                    const lazyElements = Array.from(rowDOM.querySelectorAll(this._lazyBgSelector));
-                                    if (rowDOM.matches(this._lazyBgSelector)) {
-                                        lazyElements.push(rowDOM);
-                                    }
+                                let topLevelElements = [];
 
-                                    // 如果内部有需要懒加载的元素，才把它加入监听队列
-                                    if (lazyElements.length > 0) {
-                                        rowDOM.__lazyTargets = lazyElements;
-                                        elementsToObserve.push(rowDOM); // 只 observe 顶级容器！
-                                    }
-
-                                    // 标记为内部节点，防止 MutationObserver 误伤
-                                    rowDOM.dataset.asyncInternal = 'true';
+                                if (rowDOM.nodeType === 1) { // 普通元素
+                                    topLevelElements = [rowDOM];
+                                } else if (rowDOM.nodeType === 11) { // DocumentFragment
+                                    // 提取 Fragment 中所有的顶级 Element
+                                    topLevelElements = Array.from(rowDOM.children);
                                 }
+
+                                topLevelElements.forEach(el => {
+                                    const lazyElements = Array.from(el.querySelectorAll(this._lazyBgSelector));
+                                    if (el.matches(this._lazyBgSelector)) {
+                                        lazyElements.push(el);
+                                    }
+
+                                    if (lazyElements.length > 0) {
+                                        this._lazyTargetsMap.set(el, lazyElements);
+                                        elementsToObserve.push(el);
+                                    }
+                                    // 标记为内部节点
+                                    el.dataset.asyncInternal = 'true';
+                                });
 
                                 fragment.appendChild(rowDOM);
                             }
                             index++;
                             renderedInThisFrame++;
-
-                            // 将时间检测完全收敛到这里：每渲染 5 个节点才查一次表
-                            if (renderedInThisFrame % 5 === 0 && (performance.now() - frameStartTime >= this._timeSliceMs)) {
-                                break;
-                            }
                         }
                     } catch (error) {
                         // 捕获 rAF 内部错误，释放 Promise 并清理监听
@@ -1452,13 +1508,6 @@
                         }
                     } else {
                         container.appendChild(fragment);
-                    }
-
-                    // 修复 2：静默清理内部插入引发的 Mutation 记录
-                    // 因为我们有 elementsToObserve 专门处理内部节点的懒加载绑定，
-                    // 所以我们需要清空刚刚 appendChild 产生的记录，防止 MutationObserver 重复工作导致卡顿。
-                    if (this._mutationObserver) {
-                        this._mutationObserver.takeRecords();
                     }
 
                     if (this._observerInstance && elementsToObserve.length > 0) {
@@ -1509,7 +1558,7 @@
 
             const container = document.querySelector(this._containerSelector);
             if (!container) {
-                console.warn(`[AsyncListRenderer] 找不到指定的容器: ${this._containerSelector}`);
+                console.warn(`[AsyncListRenderer] The specified container cannot be found: ${this._containerSelector}`);
                 return Promise.resolve();
             }
 
@@ -1522,7 +1571,7 @@
             // 原生高效清空容器
             container.replaceChildren();
 
-            const count = totalCount ?? dataSource.length;
+            const count = totalCount ?? this._getLength(dataSource);
             if (typeof count !== 'number' || count <= 0) {
                 return Promise.resolve();
             }
@@ -1556,14 +1605,14 @@
             }
             const signal = this._abortController.signal;
 
-            const count = appendCount ?? (dataSource.length - startIndex);
-            const endIndex = startIndex + count;
-
             // 利用 Promise 链确保上一次渲染或追加结束后，才执行本次追加
             this._renderTask = this._renderTask.then(async () => {
                 if (signal.aborted) {
                     return;
                 }
+
+                const count = appendCount ?? (this._getLength(dataSource) - startIndex);
+                const endIndex = startIndex + count;
 
                 const freshContainer = document.querySelector(this._containerSelector);
                 if (!freshContainer) {
@@ -1578,6 +1627,17 @@
                 if (!this._observerInstance) {
                     this._observerInstance = this._createLazyObserver();
                     this._startDOMWatcher(freshContainer);
+
+                    // 1. 获取容器内所有已被标记为内部渲染的顶层节点
+                    const legacyNodes = freshContainer.querySelectorAll('[data-async-internal="true"]');
+
+                    legacyNodes.forEach(node => {
+                        // 2. 利用 WeakMap 过滤：只有存在懒加载目标的节点才重新 observe
+                        // 这样既恢复了监听，又避免了将没有懒加载需求的纯文本节点误加进去浪费性能
+                        if (this._lazyTargetsMap.has(node)) {
+                            this._observerInstance.observe(node);
+                        }
+                    });
                 }
 
                 await this._batchRender(freshContainer, dataSource, startIndex, endIndex, signal, insertTarget);
