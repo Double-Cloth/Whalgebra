@@ -698,7 +698,12 @@
             // 使用 for 循环进行指定范围的遍历 (替换了原有的 for...of 全量遍历)
             for (let i = validStart; i < validEnd; i++) {
                 const child = children[i];
-                const className = child.className;
+                let className;
+                if (child.classList.contains('lazy-bg')) {
+                    className = child.dataset.lazyBgClass;
+                } else {
+                    className = child.className;
+                }
 
                 // 根据 ignoreSpace 选项，决定是否跳过代表空格的元素。
                 if (ignoreSpace && className === '_space_') {
@@ -1034,6 +1039,611 @@
             // scrollLeft + clientWidth 大于等于 scrollWidth - 1 (容错 1px)
             return scrollLeft + clientWidth >= scrollWidth - 1;
         }
+
+        /**
+         * @static
+         * @method debounce
+         * @description 防抖函数
+         * @param {Function} func - 要执行的函数
+         * @param {Number} wait - 等待时间 (毫秒)
+         * @param {Object} options - 配置对象
+         * @param {Boolean} [options.leading=false] - 指定在延迟开始前是否调用
+         * @param {Boolean} [options.trailing=true] - 指定在延迟结束后是否调用
+         * @param {Number} [options.maxWait] - 设置函数允许被延迟的最大值
+         * @returns {Function} - 返回防抖处理后的函数
+         */
+        static debounce(func, wait, options = {}) {
+            let lastArgs,
+                lastThis,
+                maxWait,
+                result,
+                timerId,
+                lastCallTime;
+
+            let lastInvokeTime = 0; // 上次真正执行 func 的时间
+            let leading = false;
+            let maxing = false; // 是否设置了 maxWait
+            let trailing = true;
+
+            // 1. 初始化配置
+            wait = +wait || 0; // 转为数字
+            if (isObject(options)) {
+                leading = !!options.leading;
+                maxing = 'maxWait' in options;
+                // 如果设置了 maxWait，则最大等待时间必须大于 wait
+                maxWait = maxing ? Math.max(+options.maxWait || 0, wait) : undefined;
+                trailing = 'trailing' in options ? !!options.trailing : trailing;
+            }
+
+            // 辅助函数：判断是否是对象
+            function isObject(value) {
+                const type = typeof value;
+                return value != null && (type === 'object' || type === 'function');
+            }
+
+            // 2. 真正执行 func 的函数
+            function invokeFunc(time) {
+                const args = lastArgs;
+                const thisArg = lastThis;
+
+                lastArgs = lastThis = undefined;
+                lastInvokeTime = time;
+                result = func.apply(thisArg, args);
+                return result;
+            }
+
+            // 3. 开始定时器
+            function startTimer(pendingFunc, wait) {
+                return setTimeout(pendingFunc, wait);
+            }
+
+            // 4. 计算剩余等待时间
+            function remainingWait(time) {
+                const timeSinceLastCall = time - lastCallTime;
+                const timeSinceLastInvoke = time - lastInvokeTime;
+                const timeWaiting = wait - timeSinceLastCall;
+
+                // 如果设置了 maxWait，通过比较 "剩余wait时间" 和 "剩余maxWait时间" 决定
+                return maxing
+                       ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
+                       : timeWaiting;
+            }
+
+            // 5. 判断是否应该执行 func
+            function shouldInvoke(time) {
+                const timeSinceLastCall = time - lastCallTime;
+                const timeSinceLastInvoke = time - lastInvokeTime;
+
+                // 几种情况需要执行：
+                // 1. 第一次调用
+                // 2. 距离上次调用已经超过了 wait 时间 (正常防抖结束)
+                // 3. 系统时间倒退 (极其罕见)
+                // 4. 设置了 maxWait 并且距离上次真正执行早已超过 maxWait
+                return (
+                    lastCallTime === undefined ||
+                    timeSinceLastCall >= wait ||
+                    timeSinceLastCall < 0 ||
+                    (maxing && timeSinceLastInvoke >= maxWait)
+                );
+            }
+
+            // 6. 定时器回调
+            function timerExpired() {
+                const time = Date.now();
+                if (shouldInvoke(time)) {
+                    return trailingEdge(time);
+                }
+                // 如果没到时间，重置定时器
+                timerId = startTimer(timerExpired, remainingWait(time));
+            }
+
+            // 7. 处理边界：Leading (开始边界)
+            function leadingEdge(time) {
+                // 重置 lastInvokeTime
+                lastInvokeTime = time;
+                // 开启定时器
+                timerId = startTimer(timerExpired, wait);
+                // 如果配置了 leading，则立即执行
+                return leading ? invokeFunc(time) : result;
+            }
+
+            // 8. 处理边界：Trailing (结束边界)
+            function trailingEdge(time) {
+                timerId = undefined;
+
+                // 只有在有参数并且配置了 trailing 时才执行
+                // (lastArgs 存在意味着在 wait 期间有新的调用)
+                if (trailing && lastArgs) {
+                    return invokeFunc(time);
+                }
+                // 如果 args 为空，说明 leading 已经执行过了，且后续没有新调用
+                lastArgs = lastThis = undefined;
+                return result;
+            }
+
+            // 9. 取消功能
+            function cancel() {
+                if (timerId !== undefined) {
+                    clearTimeout(timerId);
+                }
+                lastInvokeTime = 0;
+                lastArgs = lastCallTime = lastThis = timerId = undefined;
+            }
+
+            // 10. 立即执行功能 (Flush)
+            function flush() {
+                return timerId === undefined ? result : trailingEdge(Date.now());
+            }
+
+            // 11. 判断当前是否有挂起的任务
+            function pending() {
+                return timerId !== undefined;
+            }
+
+            // 12. 返回的主函数
+            function debounced(...args) {
+                const time = Date.now();
+                const isInvoking = shouldInvoke(time);
+
+                lastArgs = args;
+                lastThis = this;
+                lastCallTime = time;
+
+                if (isInvoking) {
+                    // 如果没有定时器，说明是周期的开始 (Leading edge)
+                    if (timerId === undefined) {
+                        return leadingEdge(time);
+                    }
+                    // 如果设置了 maxWait，即使定时器存在，也要在 maxWait 到达时执行
+                    if (maxing) {
+                        clearTimeout(timerId);
+                        timerId = startTimer(timerExpired, wait);
+                        return invokeFunc(time);
+                    }
+                }
+
+                if (timerId === undefined) {
+                    timerId = startTimer(timerExpired, wait);
+                }
+                return result;
+            }
+
+            // 挂载工具方法
+            debounced.cancel = cancel;
+            debounced.flush = flush;
+            debounced.pending = pending;
+
+            return debounced;
+        }
+    }
+
+    /**
+     * @class AsyncListRenderer
+     * @description 异步长列表渲染核心类。
+     * 解决大数据量场景下单次渲染造成的主线程卡顿（掉帧）问题。
+     *
+     * 核心特性：
+     * 1. 时间分片 (Time Slicing)：将巨量 DOM 挂载任务拆分到多个浏览器的渲染帧中。
+     * 2. 懒加载 (Lazy Load)：内置 IntersectionObserver，支持图片/背景/动画的按需触发。
+     * 3. 强行插入接管：内置 MutationObserver，自动监听并接管第三方组件库或业务代码强行插入容器的 DOM 节点。
+     * 4. 任务控制：支持随时暂停 (pause)、恢复 (resume)、追加 (append) 和彻底终止 (stop)。
+     */
+    class AsyncListRenderer {
+        /**
+         * 实例化异步渲染器
+         * @param {Object} options - 配置参数
+         * @param {string} options.scrollSelector - 滚动容器的 CSS 选择器（作为 IntersectionObserver 的 root 边界）。
+         * @param {string} options.containerSelector - 列表真实挂载容器的 CSS 选择器（如 <ul> 或 <tbody>）。
+         * @param {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)} options.rowRenderer - 行渲染函数，接收数据源和当前索引，需返回构建好的 DOM 节点。
+         * @param {string} [options.lazyBgSelector='.lazy-bg[data-lazy-bg-class]'] - 触发懒加载的内部元素选择器。
+         * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒），建议控制在 16.6ms 内以避免影响 60Hz 屏幕的刷新。
+         * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值（双重保险，防止极小节点死循环）。
+         */
+        constructor(options) {
+            // --- 基础配置 ---
+            /** @type {string} */
+            this._scrollSelector = options.scrollSelector;
+            /** @type {string} */
+            this._containerSelector = options.containerSelector;
+            /** @type {function(any[], number): (HTMLElement|null|DocumentFragment)} */
+            this._rowRenderer = options.rowRenderer;
+            /** @type {string} */
+            this._lazyBgSelector = options.lazyBgSelector || '.lazy-bg[data-lazy-bg-class]';
+
+            // --- 性能调优参数 ---
+            /** @type {number} */
+            this._timeSliceMs = options.timeSliceMs || 14;
+            /** @type {number} */
+            this._maxChunkSize = options.maxChunkSize || 100;
+
+            // --- 核心状态与观察者实例 ---
+            /** * 交叉观察器，用于元素进入可视区时的懒加载
+             * @type {IntersectionObserver|null}
+             */
+            this._observerInstance = null;
+            /** * DOM 变动观察器，用于监听容器内部的外部节点插入
+             * @type {MutationObserver|null}
+             */
+            this._mutationObserver = null;
+            /** * 中断控制器，用于 stopRender 时快速阻断后续 Promise 执行
+             * @type {AbortController|null}
+             */
+            this._abortController = null;
+            /** * 记录当前正在执行的渲染任务 Promise 链，用于 append 时的队列排期
+             * @type {Promise<void>}
+             */
+            this._renderTask = Promise.resolve();
+
+            // --- 暂停与恢复控制 ---
+            /** @type {boolean} 当前是否处于暂停状态 */
+            this._isPaused = false;
+            /** * 被挂起的渲染函数引用。当触发暂停时，保存下一帧本该执行的函数
+             * @type {Function|null}
+             */
+            this._resumeCallback = null;
+        }
+
+        /**
+         * 创建用于背景图、动态类名懒加载的 IntersectionObserver
+         * @private
+         * @returns {IntersectionObserver|null} 观察器实例或 null（找不到滚动容器时）
+         */
+        _createLazyObserver() {
+            const bigContainer = document.querySelector(this._scrollSelector);
+            if (!bigContainer) {
+                return null;
+            }
+
+            return new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const isVisible = entry.isIntersecting;
+
+                    const targetElements = entry.target.__lazyTargets || [];
+
+                    targetElements.forEach(el => {
+                        const bgClassAttr = el.getAttribute('data-lazy-bg-class');
+                        if (!bgClassAttr) {
+                            return;
+                        }
+
+                        const bgClasses = bgClassAttr.split(' ').filter(Boolean);
+                        if (bgClasses.length > 0) {
+                            if (isVisible) {
+                                el.classList.add(...bgClasses);
+                            } else {
+                                el.classList.remove(...bgClasses);
+                            }
+                        }
+                    });
+                });
+            }, {root: bigContainer, rootMargin: '500px 0px', threshold: 0});
+        }
+
+        /**
+         * 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点
+         * @private
+         * @param {HTMLElement} container - 需要被深度监听的挂载容器
+         */
+        _startDOMWatcher(container) {
+            if (this._mutationObserver) {
+                this._mutationObserver.disconnect();
+            }
+
+            this._mutationObserver = new MutationObserver((mutationsList) => {
+                if (!this._observerInstance) {
+                    return;
+                }
+
+                for (const mutation of mutationsList) {
+                    // 仅处理新增节点的场景
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        mutation.addedNodes.forEach(node => {
+                            // 仅处理 Element 且过滤掉自己内部渲染的节点
+                            if (node.nodeType === 1 && node.dataset.asyncInternal !== 'true') {
+                                this._observerInstance?.observe(node);
+                            }
+                        });
+                    }
+                }
+            });
+
+            // 开启深层监听 (subtree: true)
+            this._mutationObserver.observe(container, {childList: true, subtree: true});
+        }
+
+        /**
+         * 核心渲染引擎：利用 requestAnimationFrame 配合时间分片处理 DOM 挂载
+         * @private
+         * @param {HTMLElement} container - 目标挂载容器
+         * @param {any[]} dataSource - 完整数据源
+         * @param {number} startIndex - 批次渲染的起始索引
+         * @param {number} endIndex - 批次渲染的结束索引
+         * @param {AbortSignal} signal - 任务终止信号
+         * @param {string|HTMLElement|null} [insertTarget=null] - 插入基准节点（如有，则使用 insertBefore）
+         * @returns {Promise<void>} 渲染全部完成时 resolve
+         */
+        _batchRender(container, dataSource, startIndex, endIndex, signal, insertTarget = null) {
+            return new Promise((resolve, reject) => {
+                let index = startIndex;
+                let rafId = null;
+
+                if (signal?.aborted) {
+                    return reject(new DOMException('[AsyncListRenderer] Rendering aborted initially.', 'AbortError'));
+                }
+
+                const abortHandler = () => {
+                    if (rafId !== null) {
+                        cancelAnimationFrame(rafId);
+                    }
+                    reject(new DOMException('[AsyncListRenderer] Rendering aborted during process.', 'AbortError'));
+                };
+                signal.addEventListener('abort', abortHandler, {once: true});
+
+                const renderNextBatch = () => {
+                    if (signal?.aborted) {
+                        return;
+                    }
+
+                    if (this._isPaused) {
+                        this._resumeCallback = renderNextBatch;
+                        return;
+                    }
+
+                    // 修复 1：抛弃 rAF 传入的 timestamp。
+                    // 必须使用当前回调真实开始执行的时间，防止被同帧内的其他任务“偷拍”时间。
+                    const frameStartTime = performance.now();
+                    let renderedInThisFrame = 0;
+
+                    const fragment = document.createDocumentFragment();
+                    const elementsToObserve = [];
+
+                    try {
+                        while (
+                            index < endIndex &&
+                            renderedInThisFrame < this._maxChunkSize
+                            ) {
+                            const rowDOM = this._rowRenderer(dataSource, index);
+                            // 在 _batchRender 的 while 循环中处理 rowDOM 时：
+                            if (rowDOM) {
+                                if (rowDOM.nodeType === 1) {
+                                    // 【核心优化】：利用时间分片，提前查找并将结果挂载到 DOM 节点的自定义属性上
+                                    // 将查找耗时均摊到每帧的空闲时间，彻底释放 IntersectionObserver 的压力
+                                    const lazyElements = Array.from(rowDOM.querySelectorAll(this._lazyBgSelector));
+                                    if (rowDOM.matches(this._lazyBgSelector)) {
+                                        lazyElements.push(rowDOM);
+                                    }
+
+                                    // 如果内部有需要懒加载的元素，才把它加入监听队列
+                                    if (lazyElements.length > 0) {
+                                        rowDOM.__lazyTargets = lazyElements;
+                                        elementsToObserve.push(rowDOM); // 只 observe 顶级容器！
+                                    }
+
+                                    // 标记为内部节点，防止 MutationObserver 误伤
+                                    rowDOM.dataset.asyncInternal = 'true';
+                                }
+
+                                fragment.appendChild(rowDOM);
+                            }
+                            index++;
+                            renderedInThisFrame++;
+
+                            // 将时间检测完全收敛到这里：每渲染 5 个节点才查一次表
+                            if (renderedInThisFrame % 5 === 0 && (performance.now() - frameStartTime >= this._timeSliceMs)) {
+                                break;
+                            }
+                        }
+                    } catch (error) {
+                        // 捕获 rAF 内部错误，释放 Promise 并清理监听
+                        signal.removeEventListener('abort', abortHandler);
+                        reject(error);
+                        return;
+                    }
+
+                    // 将本帧攒好的节点一次性挂载到真实 DOM 树
+                    if (insertTarget) {
+                        const refNode = typeof insertTarget === 'string'
+                                        ? container.querySelector(insertTarget)
+                                        : insertTarget;
+                        if (refNode && refNode.parentNode === container) {
+                            container.insertBefore(fragment, refNode);
+                        } else {
+                            container.appendChild(fragment);
+                        }
+                    } else {
+                        container.appendChild(fragment);
+                    }
+
+                    // 修复 2：静默清理内部插入引发的 Mutation 记录
+                    // 因为我们有 elementsToObserve 专门处理内部节点的懒加载绑定，
+                    // 所以我们需要清空刚刚 appendChild 产生的记录，防止 MutationObserver 重复工作导致卡顿。
+                    if (this._mutationObserver) {
+                        this._mutationObserver.takeRecords();
+                    }
+
+                    if (this._observerInstance && elementsToObserve.length > 0) {
+                        // 优化：使用 queueMicrotask 替代原有的 requestAnimationFrame
+                        // 微任务会在当前宏任务（即本次 rAF 的渲染工作）和 UI 重绘之间执行。
+                        // 这样既能保证 Observer 绑定及时，又不会导致过多的 rAF 嵌套，减轻调度引擎负担。
+                        queueMicrotask(() => {
+                            if (signal?.aborted) {
+                                return;
+                            }
+                            elementsToObserve.forEach(el => {
+                                if (this._observerInstance && el.isConnected) {
+                                    this._observerInstance.observe(el);
+                                }
+                            });
+                        });
+                    }
+
+                    if (renderedInThisFrame > 0) {
+                        // 测试稳定后建议移除这行 console，频繁的 I/O 也会影响极端情况下的性能
+                        console.log(`[AsyncListRenderer] 批次渲染完成: 本帧耗时 ${(performance.now() - frameStartTime).toFixed(2)}ms, 渲染 ${renderedInThisFrame} 个节点, 进度 ${index}/${endIndex}`);
+                    }
+
+                    // 调度下一帧
+                    if (index < endIndex) {
+                        rafId = requestAnimationFrame(renderNextBatch);
+                    } else {
+                        signal.removeEventListener('abort', abortHandler);
+                        resolve();
+                    }
+                };
+
+                // 立即同步启动第一批渲染
+                renderNextBatch();
+            });
+        }
+
+        /**
+         * 开始全量渲染（会清空容器现存内容）
+         * @async
+         * @param {any[]|{}} dataSource - 列表数据源
+         * @param {number} [totalCount] - 限制最大渲染数量，默认为 dataSource.length
+         * @returns {Promise<void>} 渲染完成的 Promise
+         */
+        async startRender(dataSource, totalCount) {
+            // 先停掉上一轮可能还在执行的旧任务
+            this.stopRender();
+
+            const container = document.querySelector(this._containerSelector);
+            if (!container) {
+                console.warn(`[AsyncListRenderer] 找不到指定的容器: ${this._containerSelector}`);
+                return Promise.resolve();
+            }
+
+            this._observerInstance = this._createLazyObserver();
+            this._startDOMWatcher(container);
+
+            this._abortController = new AbortController();
+            const signal = this._abortController.signal;
+
+            // 原生高效清空容器
+            container.replaceChildren();
+
+            const count = totalCount ?? dataSource.length;
+            if (typeof count !== 'number' || count <= 0) {
+                return Promise.resolve();
+            }
+
+            // 将渲染任务赋给 this._renderTask 形成队列
+            this._renderTask = this._batchRender(container, dataSource, 0, count, signal).catch(err => {
+                if (err?.name !== 'AbortError') {
+                    console.error(err);
+                }
+            });
+
+            return this._renderTask;
+        }
+
+        /**
+         * 追加渲染：在不清理现有节点的情况下，向列表尾部或指定位置追加新内容
+         * 任务会自动链式调用排队，确保渲染顺序正确
+         * @async
+         * @param {any[]|{}} dataSource - 列表数据源
+         * @param {Object} [options={}] - 追加配置项
+         * @param {number} [options.startIndex=0] - 提取 dataSource 时的起始索引
+         * @param {number} [options.appendCount] - 需要追加的数据量
+         * @param {string|HTMLElement|Element|null} [options.insertTarget=null] - 指定插入位置的参考节点
+         * @returns {Promise<void>}
+         */
+        async appendRender(dataSource, options = {}) {
+            const {startIndex = 0, appendCount, insertTarget = null} = options;
+
+            if (!this._abortController) {
+                this._abortController = new AbortController();
+            }
+            const signal = this._abortController.signal;
+
+            const count = appendCount ?? (dataSource.length - startIndex);
+            const endIndex = startIndex + count;
+
+            // 利用 Promise 链确保上一次渲染或追加结束后，才执行本次追加
+            this._renderTask = this._renderTask.then(async () => {
+                if (signal.aborted) {
+                    return;
+                }
+
+                const freshContainer = document.querySelector(this._containerSelector);
+                if (!freshContainer) {
+                    return;
+                }
+
+                // Observer 健康度检查：如果根容器丢失，则销毁重建
+                if (this._observerInstance && this._observerInstance.root && !this._observerInstance.root.isConnected) {
+                    this._observerInstance.disconnect();
+                    this._observerInstance = null;
+                }
+                if (!this._observerInstance) {
+                    this._observerInstance = this._createLazyObserver();
+                    this._startDOMWatcher(freshContainer);
+                }
+
+                await this._batchRender(freshContainer, dataSource, startIndex, endIndex, signal, insertTarget);
+            }).catch(err => {
+                if (err?.name !== 'AbortError') {
+                    console.error(err);
+                }
+            });
+
+            return this._renderTask;
+        }
+
+        /**
+         * 暂停当前正在执行的时间分片渲染任务。
+         * 渲染会在当前帧结束后挂起，并且不会销毁容器节点和所有的监听器。
+         * 常用于为优先级更高的用户交互（如高频拖拽、动画）让出主线程。
+         */
+        pauseRender() {
+            this._isPaused = true;
+        }
+
+        /**
+         * 恢复之前被 pauseRender 暂停的渲染任务。
+         * 采用无缝唤醒机制，任务将紧接着暂停前的那个索引继续渲染。
+         */
+        resumeRender() {
+            if (!this._isPaused) {
+                return;
+            }
+
+            this._isPaused = false;
+
+            // 提取被封存的渲染函数上下文，并重新扔进 rAF 调度队列
+            if (this._resumeCallback) {
+                const callback = this._resumeCallback;
+                this._resumeCallback = null;
+                requestAnimationFrame(callback);
+            }
+        }
+
+        /**
+         * 硬终止渲染。
+         * 彻底抛弃当前进行中的所有渲染任务、清理内存并注销所有 Observer 监听。
+         * 容器内的已有节点会保留，但不会再继续渲染新节点。
+         */
+        stopRender() {
+            if (this._abortController) {
+                this._abortController.abort();
+                this._abortController = null;
+            }
+            if (this._observerInstance) {
+                this._observerInstance.disconnect();
+                this._observerInstance = null;
+            }
+            if (this._mutationObserver) {
+                this._mutationObserver.disconnect();
+                this._mutationObserver = null;
+            }
+
+            // 重置暂停状态机
+            this._isPaused = false;
+            this._resumeCallback = null;
+
+            // 将主任务队列置为空 Promise，防止旧任务阻塞未来的 startRender
+            this._renderTask = Promise.resolve();
+        }
     }
 
     /**
@@ -1057,6 +1667,39 @@
          * @description 统计模式最大统计数据行数。
          */
         static MAX_STATISTICS_ROW = 985;
+
+        /**
+         * @static
+         * @type {AsyncListRenderer}
+         * @description statisticsRenderer 实例。
+         * 用于管理统计模式的列表显示。
+         */
+        static statisticsRenderer = new AsyncListRenderer({
+            scrollSelector: '#grid_data',   // 滚动区域的选择器
+            containerSelector: '#grid_data',// 真实 DOM 的挂载点选择器
+
+            /**
+             * @function rowRenderer
+             * @param {Object} dataSource - 外部传入的完整数据包装对象
+             * @param {number} index - 当前渲染的行索引
+             * @returns {HTMLElement} 返回拼装好的一行 DOM
+             * @description 负责单行 DOM 的组装
+             */
+            rowRenderer: (dataSource, index) => {
+                /**
+                 * @function toClassList
+                 * @param {string|Array} input - 待转换的输入值，可以是原始类名字符串或其他格式
+                 * @returns {Array} 如果输入是字符串，则返回处理后的标准类名格式；否则原样返回
+                 * @description 将输入的字符串转换为标准的 HTML 类名列表，非字符串类型则直接返回原数据
+                 */
+                const toClassList = input => typeof input === 'string' ? HtmlTools.textToHtmlClass(input) : input;
+                return this._statisticsCreateLine({
+                    index,
+                    inputListX: toClassList(dataSource[index][0]),
+                    inputListY: toClassList(dataSource[index][1])
+                });
+            }
+        });
 
         /**
          * @constructor
@@ -1464,16 +2107,27 @@
             target.style.display = 'none';
 
             // 删除空格
+            let isLazyBg = false;
             for (let i = totalRangeStart; i < totalRangeEnd; i++) {
                 const curr = children[i];
-                if (curr.className === '_space_') {
+                if (curr.className === '_space_' || curr.dataset.lazyBgClass === '_space_') {
                     curr.remove();
                     totalRangeEnd -= 1;
+                }
+                if (!isLazyBg && curr.classList.contains('lazy-bg')) {
+                    isLazyBg = true;
                 }
             }
             // 批量插入空格
             for (let i = addIndex.length - 1; i >= 0; i--) {
-                HtmlTools.appendDOMs(target, ['_space_'], {index: addIndex[i]});
+                HtmlTools.appendDOMs(
+                    target,
+                    isLazyBg ? [['lazy-bg', '_space_']] : ['_space_'],
+                    {
+                        index: addIndex[i],
+                        nameType: isLazyBg ? ['class', 'data-lazy-bg-class'] : ['class']
+                    }
+                );
             }
 
             // 恢复显示
@@ -1873,6 +2527,70 @@
         }
 
         /**
+         * @private
+         * @static
+         * @method _statisticsCreateLine
+         * @description (内部辅助方法) 创建并返回统计模式数据网格中的单行 DOM 结构。
+         * 此方法负责组装包含序号、X 值和 Y 值的三列，并为懒加载背景图设置必要的类和数据属性。
+         *
+         * @param {object} options - 包含行数据的配置对象。
+         * @param {number} [options.index=0] - 当前行的索引（从 0 开始），用于生成行号。
+         * @param {string[]} [options.inputListX=[]] - 代表 X 单元格内容的 CSS 类名数组。
+         * @param {string[]} [options.inputListY=[]] - 代表 Y 单元格内容的 CSS 类名数组。
+         * @returns {HTMLElement} 一个 `<div>` 元素，代表完整的数据网格行。
+         */
+        static _statisticsCreateLine(
+            {
+                index = 0,
+                inputListX = [],
+                inputListY = []
+            }
+        ) {
+            // 创建新行的 DOM 元素
+            const insert = document.createElement('div');
+
+            // 创建序号列的 DOM 结构
+            const serialNumberGrandfather = document.createElement('div');
+            const serialNumberFather = document.createElement('div');
+            const addNum = HtmlTools.textToHtmlClass((index + 1).toString());
+            HtmlTools.appendDOMs(
+                serialNumberFather,
+                addNum.map(item => ['lazy-bg', item]),
+                {nameType: ['class', 'data-lazy-bg-class']}
+            );
+            serialNumberGrandfather.appendChild(serialNumberFather);
+
+            // 创建 X 数据列的 DOM 结构
+            const gridX = document.createElement('div');
+            gridX.classList.add('DataX');
+            // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
+            // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
+            HtmlTools.appendDOMs(
+                gridX,
+                inputListX.map(item => ['lazy-bg', item]),
+                {nameType: ['class', 'data-lazy-bg-class']}
+            );
+
+            // 创建 Y 数据列的 DOM 结构
+            const gridY = document.createElement('div');
+            gridY.classList.add('DataY');
+            // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
+            // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
+            HtmlTools.appendDOMs(
+                gridY,
+                inputListY.map(item => ['lazy-bg', item]),
+                {nameType: ['class', 'data-lazy-bg-class']}
+            );
+
+            // 将所有列添加到新行中
+            insert.appendChild(serialNumberGrandfather);
+            insert.appendChild(gridX);
+            insert.appendChild(gridY);
+
+            return insert;
+        }
+
+        /**
          * @static
          * @method statisticsAddLine
          * @description 在统计模式的数据网格中添加一行新的数据。
@@ -1884,15 +2602,13 @@
          *   - 如果为数组 `[rowIndex, colIndex]`，则在指定行之前插入。
          * @param {string[]} [options.inputListX=[]] - (可选) 新行中 x 值的初始类名数组。
          * @param {string[]} [options.inputListY=[]] - (可选) 新行中 y 值的初始类名数组。
-         * @param {boolean} [options.recoverMode=false] - (可选) 是否为恢复模式。
-         * @returns {boolean} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
+         * @returns {Promise<boolean>} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
          */
-        static statisticsAddLine(
+        static async statisticsAddLine(
             {
                 location = null,
                 inputListX = [],
-                inputListY = [],
-                recoverMode = false
+                inputListY = []
             } = {}
         ) {
             // 获取数据网格的父元素和其所有子行
@@ -1903,7 +2619,8 @@
             let target, position;
             // 确定新行的插入位置和参照目标
             if (location === null) {
-                position = len - 1;
+                const pos = len - 1;
+                position = pos < 0 ? 0 : pos;
                 target = null;
             } else if (Array.isArray(location)) {
                 position = location[0];
@@ -1929,44 +2646,25 @@
 
             // 提升性能
             gridData.style.display = 'none';
-            // 创建新行的 DOM 元素
-            const insert = document.createElement('div');
-
-            // 创建序号列的 DOM 结构
-            const serialNumberGrandfather = document.createElement('div');
-            const serialNumberFather = document.createElement('div');
-            const addNum = HtmlTools.textToHtmlClass((position + 1).toString());
-            HtmlTools.appendDOMs(serialNumberFather, addNum);
-            serialNumberGrandfather.appendChild(serialNumberFather);
-
-            // 创建 X 数据列的 DOM 结构
-            const gridX = document.createElement('div');
-            gridX.classList.add('DataX');
-            HtmlTools.appendDOMs(gridX, inputListX);
-
-            // 创建 Y 数据列的 DOM 结构
-            const gridY = document.createElement('div');
-            gridY.classList.add('DataY');
-            HtmlTools.appendDOMs(gridY, inputListY);
-
-            // 将所有列添加到新行中
-            insert.appendChild(serialNumberGrandfather);
-            insert.appendChild(gridX);
-            insert.appendChild(gridY);
-
-            // 将新行插入到数据网格中
-            gridData.insertBefore(insert, target);
-
+            // 创建数据行
+            await this.statisticsRenderer.appendRender([[inputListX, inputListY]], {insertTarget: target});
             // 更新后续行的序号
-            for (let i = position + 1; i < gridDataChildren.length; i++) {
+            for (let i = position; i < gridDataChildren.length; i++) {
                 const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
                 const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
+                // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
+                // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
+                HtmlTools.appendDOMs(
+                    positionContainer,
+                    newNum.map(item => ['lazy-bg', item]),
+                    {
+                        nameType: ['class', 'data-lazy-bg-class'],
+                        mode: 'replace'
+                    }
+                );
             }
 
-            if (!recoverMode) {
-                PageConfig.setScreenData();
-            }
+            PageConfig.setScreenData();
             const currentSubMode = PageConfig.subModes['1'];
             HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
             gridDataChildren[currentSubMode[0]].children[currentSubMode[1] + 1].classList.add('GridOn');
@@ -2031,7 +2729,14 @@
             for (let i = position; i < gridDataChildren.length; i++) {
                 const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
                 const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
+                HtmlTools.appendDOMs(
+                    positionContainer,
+                    newNum.map(item => ['lazy-bg', item]),
+                    {
+                        nameType: ['class', 'data-lazy-bg-class'],
+                        mode: 'replace'
+                    }
+                );
             }
             gridData.style.display = display;
             HtmlTools.scrollToView();
@@ -2066,22 +2771,57 @@
 
         /**
          * @static
-         * @type {IntersectionObserver|null}
-         * @description 全局 IntersectionObserver 实例。
-         * 存储用于管理 Base64 字符图片懒加载的观察者对象。
-         * 暴露为全局变量，以便在页面的任何生命周期阶段（如关闭弹窗、页面卸载）
-         * 都能方便地调用 `globalObserverInstance.disconnect()` 来销毁监听并释放内存。
+         * @type {AsyncListRenderer}
+         * @description AsyncListRenderer 实例。
+         * 用于管理函数列表输出的显示。
          */
-        static _observerInstance = null;
+        static printListRenderer = new AsyncListRenderer({
+            scrollSelector: '#print_content_2_inner',   // 滚动区域的选择器
+            containerSelector: '#print_content_2_inner',// 真实 DOM 的挂载点选择器
 
-        /**
-         * @static
-         * @type {AbortController | null}
-         * 当前正在执行的渲染任务的中断控制器实例。
-         * * 用于在启动新的渲染任务或离开当前页面时，随时中止上一轮未完成的异步分批渲染（`batchRender`）操作，
-         * 从而避免不必要的计算资源浪费、内存泄漏以及 DOM 竞态问题（例如新旧渲染交替插入到同一容器中）。
-         */
-        static _currentAbortController = null;
+            /**
+             * @function rowRenderer
+             * @param {Object} dataSource - 外部传入的完整数据包装对象
+             * @param {number} index - 当前渲染的行索引
+             * @returns {HTMLElement} 返回拼装好的一行 DOM
+             * @description 负责单行 DOM 的组装
+             */
+            rowRenderer: (dataSource, index) => {
+                // 从外部传入的数据源中解构出当前需要的所有状态，不依赖外部闭包变量
+                const {result, onlyFuncG} = dataSource;
+
+                // 1. 根据模式标识，组装当前行的列数据来源顺序
+                const sources = onlyFuncG ?
+                    [result.varList[index], result.g[index], result.f[index]] :
+                    [result.varList[index], result.f[index], result.g[index]];
+
+                // 2. 创建该行的外层包裹容器
+                const currentDiv = document.createElement('div');
+
+                // 3. 遍历组装好的数据列
+                sources.forEach(dataItem => {
+                    const subWrapper = document.createElement('div');
+                    const subContent = document.createElement('div');
+
+                    // 处理原生数据并映射为带有 'lazy-bg' 标识的数组
+                    const formattedNodes = PrintManager._printHandleError(dataItem);
+
+                    // 将处理后的节点追加到内容容器中
+                    HtmlTools.appendDOMs(
+                        subContent,
+                        formattedNodes.map(item => ['lazy-bg', item]),
+                        {nameType: ['class', 'data-lazy-bg-class']}
+                    );
+
+                    // 建立层级关系
+                    subWrapper.appendChild(subContent);
+                    currentDiv.appendChild(subWrapper);
+                });
+
+                // 返回完整的一行 DOM 树交给底层批量挂载
+                return currentDiv;
+            }
+        });
 
         /**
          * @static
@@ -2106,7 +2846,7 @@
          * @description 一个防抖（debounced）函数，用于在标准计算模式（模式 '0'）下，在屏幕上异步显示当前输入表达式的实时计算结果。
          *
          * 该方法通过以下步骤工作：
-         * 1. **防抖**: 使用 `_debounce` 包装器，确保只有在用户停止输入一段预设的时间（`this.DELAY_TIME`）后，计算和UI更新才会被触发。这可以防止在用户快速打字时进行不必要的、耗费资源的计算。
+         * 1. **防抖**: 使用 `debounce` 包装器，确保只有在用户停止输入一段预设的时间（`this.DELAY_TIME`）后，计算和UI更新才会被触发。这可以防止在用户快速打字时进行不必要的、耗费资源的计算。
          * 2. **获取输入**: 从主输入区域获取当前的表达式字符串。
          * 3. **异步计算**: 调用 `WorkerTools.exec` 将表达式发送到 Web Worker 进行异步计算。这可以防止复杂的计算阻塞主线程，保持界面的响应性。计算使用较低的“普通精度”以获得更快的响应。
          * 4. **显示结果**:
@@ -2114,7 +2854,7 @@
          *    - 如果计算失败（例如，表达式有语法错误），它会隐藏结果显示区域，不显示任何内容。
          * @returns {Promise<void>} 此方法本身不直接返回任何内容，但它触发的异步计算会返回一个 Promise。
          */
-        static mode0ShowOnScreen = this._debounce(this._mode0ShowOnScreenFunc, this._DELAY_TIME, {
+        static mode0ShowOnScreen = HtmlTools.debounce(this._mode0ShowOnScreenFunc, this._DELAY_TIME, {
             leading: true,
             trailing: true,
             maxWait: this._MAX_DELAY_TIME
@@ -2131,183 +2871,6 @@
             // 抛出错误以明确表示这是一个静态类，不应创建实例。
             // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
             throw new Error('[PrintManager] PrintManager is a static class and should not be instantiated.');
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _debounce
-         * @description 防抖函数
-         * @param {Function} func - 要执行的函数
-         * @param {Number} wait - 等待时间 (毫秒)
-         * @param {Object} options - 配置对象
-         * @param {Boolean} [options.leading=false] - 指定在延迟开始前是否调用
-         * @param {Boolean} [options.trailing=true] - 指定在延迟结束后是否调用
-         * @param {Number} [options.maxWait] - 设置函数允许被延迟的最大值
-         * @returns {Function} - 返回防抖处理后的函数
-         */
-        static _debounce(func, wait, options = {}) {
-            let lastArgs,
-                lastThis,
-                maxWait,
-                result,
-                timerId,
-                lastCallTime;
-
-            let lastInvokeTime = 0; // 上次真正执行 func 的时间
-            let leading = false;
-            let maxing = false; // 是否设置了 maxWait
-            let trailing = true;
-
-            // 1. 初始化配置
-            wait = +wait || 0; // 转为数字
-            if (isObject(options)) {
-                leading = !!options.leading;
-                maxing = 'maxWait' in options;
-                // 如果设置了 maxWait，则最大等待时间必须大于 wait
-                maxWait = maxing ? Math.max(+options.maxWait || 0, wait) : undefined;
-                trailing = 'trailing' in options ? !!options.trailing : trailing;
-            }
-
-            // 辅助函数：判断是否是对象
-            function isObject(value) {
-                const type = typeof value;
-                return value != null && (type === 'object' || type === 'function');
-            }
-
-            // 2. 真正执行 func 的函数
-            function invokeFunc(time) {
-                const args = lastArgs;
-                const thisArg = lastThis;
-
-                lastArgs = lastThis = undefined;
-                lastInvokeTime = time;
-                result = func.apply(thisArg, args);
-                return result;
-            }
-
-            // 3. 开始定时器
-            function startTimer(pendingFunc, wait) {
-                return setTimeout(pendingFunc, wait);
-            }
-
-            // 4. 计算剩余等待时间
-            function remainingWait(time) {
-                const timeSinceLastCall = time - lastCallTime;
-                const timeSinceLastInvoke = time - lastInvokeTime;
-                const timeWaiting = wait - timeSinceLastCall;
-
-                // 如果设置了 maxWait，通过比较 "剩余wait时间" 和 "剩余maxWait时间" 决定
-                return maxing
-                       ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
-                       : timeWaiting;
-            }
-
-            // 5. 判断是否应该执行 func
-            function shouldInvoke(time) {
-                const timeSinceLastCall = time - lastCallTime;
-                const timeSinceLastInvoke = time - lastInvokeTime;
-
-                // 几种情况需要执行：
-                // 1. 第一次调用
-                // 2. 距离上次调用已经超过了 wait 时间 (正常防抖结束)
-                // 3. 系统时间倒退 (极其罕见)
-                // 4. 设置了 maxWait 并且距离上次真正执行早已超过 maxWait
-                return (
-                    lastCallTime === undefined ||
-                    timeSinceLastCall >= wait ||
-                    timeSinceLastCall < 0 ||
-                    (maxing && timeSinceLastInvoke >= maxWait)
-                );
-            }
-
-            // 6. 定时器回调
-            function timerExpired() {
-                const time = Date.now();
-                if (shouldInvoke(time)) {
-                    return trailingEdge(time);
-                }
-                // 如果没到时间，重置定时器
-                timerId = startTimer(timerExpired, remainingWait(time));
-            }
-
-            // 7. 处理边界：Leading (开始边界)
-            function leadingEdge(time) {
-                // 重置 lastInvokeTime
-                lastInvokeTime = time;
-                // 开启定时器
-                timerId = startTimer(timerExpired, wait);
-                // 如果配置了 leading，则立即执行
-                return leading ? invokeFunc(time) : result;
-            }
-
-            // 8. 处理边界：Trailing (结束边界)
-            function trailingEdge(time) {
-                timerId = undefined;
-
-                // 只有在有参数并且配置了 trailing 时才执行
-                // (lastArgs 存在意味着在 wait 期间有新的调用)
-                if (trailing && lastArgs) {
-                    return invokeFunc(time);
-                }
-                // 如果 args 为空，说明 leading 已经执行过了，且后续没有新调用
-                lastArgs = lastThis = undefined;
-                return result;
-            }
-
-            // 9. 取消功能
-            function cancel() {
-                if (timerId !== undefined) {
-                    clearTimeout(timerId);
-                }
-                lastInvokeTime = 0;
-                lastArgs = lastCallTime = lastThis = timerId = undefined;
-            }
-
-            // 10. 立即执行功能 (Flush)
-            function flush() {
-                return timerId === undefined ? result : trailingEdge(Date.now());
-            }
-
-            // 11. 判断当前是否有挂起的任务
-            function pending() {
-                return timerId !== undefined;
-            }
-
-            // 12. 返回的主函数
-            function debounced(...args) {
-                const time = Date.now();
-                const isInvoking = shouldInvoke(time);
-
-                lastArgs = args;
-                lastThis = this;
-                lastCallTime = time;
-
-                if (isInvoking) {
-                    // 如果没有定时器，说明是周期的开始 (Leading edge)
-                    if (timerId === undefined) {
-                        return leadingEdge(time);
-                    }
-                    // 如果设置了 maxWait，即使定时器存在，也要在 maxWait 到达时执行
-                    if (maxing) {
-                        clearTimeout(timerId);
-                        timerId = startTimer(timerExpired, wait);
-                        return invokeFunc(time);
-                    }
-                }
-
-                if (timerId === undefined) {
-                    timerId = startTimer(timerExpired, wait);
-                }
-                return result;
-            }
-
-            // 挂载工具方法
-            debounced.cancel = cancel;
-            debounced.flush = flush;
-            debounced.pending = pending;
-
-            return debounced;
         }
 
         /**
@@ -2450,250 +3013,6 @@
             Object.entries(resultsToOutputArea).forEach(([key, value]) => {
                 HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._printHandleError(resultList[key]), {mode: 'replace'});
             });
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _createLazyObserver
-         * @description 创建并初始化一个基于 IntersectionObserver 的懒加载观察者。
-         * 该观察者会自动监听进入视口范围的特定 DOM 节点，并为其内部的 p 标签动态添加或移除背景样式类。
-         * @param {string} [scrollSelector='#print_content_2_inner'] - 滚动的目标容器选择器
-         * @returns {IntersectionObserver | null} 返回创建的观察者实例；若未找到目标容器则返回 null
-         */
-        static _createLazyObserver(scrollSelector = '#print_content_2_inner') {
-            const bigContainer = document.querySelector(scrollSelector);
-            if (!bigContainer) {
-                return null;
-            }
-
-            // 设置监听参数
-            const observerOptions = {
-                root: bigContainer,
-                rootMargin: '600px 0px',
-                threshold: 0
-            };
-
-            // 设置监听器
-            return new IntersectionObserver((entries) => {
-                requestAnimationFrame(() => {
-                    entries.forEach(entry => {
-                        const rowContainer = entry.target;
-                        const pElements = rowContainer.querySelectorAll('p.lazy-bg[data-lazy-bg-class]');
-
-                        if (entry.isIntersecting) {
-                            pElements.forEach(p => p.classList.add(p.getAttribute('data-lazy-bg-class')));
-                        } else {
-                            pElements.forEach(p => p.classList.remove(p.getAttribute('data-lazy-bg-class')));
-                        }
-                    });
-                });
-            }, observerOptions);
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _stopLazyObserver
-         * @description 手动终止当前正在进行的懒加载监听任务。
-         * 通过调用 disconnect() 断开所有已挂载 DOM 节点的视窗监听，随后清空引用以释放内存。
-         * @returns {void}
-         */
-        static _stopLazyObserver() {
-            if (this._observerInstance) {
-                this._observerInstance.disconnect();
-            }
-            this._observerInstance = null;
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _batchRender
-         * @description 异步分批渲染长列表 DOM 数据，防止海量节点渲染阻塞主线程。
-         * 内部结合使用了 requestAnimationFrame (分帧渲染) 和 DocumentFragment (减少重排)。
-         * @param {HTMLElement} container - 目标挂载的 DOM 容器节点
-         * @param {Object} result - 包含计算结果的数据源对象
-         * @param {Array<any>} result.varList - 自变量数据集合
-         * @param {Array<any>} result.f - 函数 f(x) 对应的结果集合，长度应与 varList 一致
-         * @param {Array<any>} result.g - 函数 g(x) 对应的结果集合，长度应与 varList 一致
-         * @param {boolean} onlyFuncG - 数据顺序模式标识。true: [自变量, g(x), f(x)], false: [自变量, f(x), g(x)]
-         * @param {AbortSignal} [signal] - 可选。用于外部随时中断渲染的信号对象
-         * @param {IntersectionObserver} [observer] - 可选。用于对新生成的 DOM 行进行懒加载观察的实例
-         * @returns {Promise<void>} 返回一个 Promise，所有批次渲染完毕后 resolve，若被中断则 reject
-         */
-        static _batchRender(container, result, onlyFuncG, signal, observer) {
-            return new Promise((resolve, reject) => {
-                // 每帧最大处理条数。可根据单个 DOM 的复杂度调整大小，以平衡渲染总耗时与页面流畅度
-                const chunkSize = CalcConfig.outputAccuracy > 50 ? 25 : 50;
-
-                // 记录当前已经处理到的数据索引
-                let index = 0;
-                // 获取数据的总长度
-                const n = result.varList.length;
-                // 记录 requestAnimationFrame 的返回值，方便精准取消
-                let rafId = null;
-
-                // 1. 如果在调用时就已经触发了中断，直接驳回并退出
-                if (signal?.aborted) {
-                    return reject(new DOMException('[PrintManager] Rendering was aborted.', 'AbortError'));
-                }
-                // 2. 监听外部的中断信号
-                if (signal) {
-                    signal.addEventListener('abort', () => {
-                        // 如果当前有正在等待执行的帧，取消它
-                        if (rafId !== null) {
-                            cancelAnimationFrame(rafId);
-                        }
-                        reject(new DOMException('[PrintManager] Rendering was aborted.', 'AbortError'));
-                    }, {once: true}); // once: true 确保监听器只触发一次，避免内存泄漏
-                }
-
-                /**
-                 * 执行单批次数据渲染的内部递归函数。
-                 * 通过闭包读取并修改外层函数的局部变量（index, n 等）。
-                 * 每次执行处理 CHUNK_SIZE 条数据，组装后通过 DocumentFragment 一次性挂载。
-                 * @inner
-                 * @function renderNextBatch
-                 * @returns {void} 无返回值。通过 resolve() 通知外部整体执行完毕。
-                 */
-                function renderNextBatch() {
-                    // 每次执行渲染批次前，再次检查是否被中断
-                    if (signal?.aborted) {
-                        return;
-                    }
-
-                    // 使用文档碎片(DocumentFragment)，将多次 DOM 插入操作合并为一次，有效减少页面重排(Reflow)和重绘(Repaint)
-                    const fragment = document.createDocumentFragment();
-
-                    // 计算当前批次渲染的结束索引（不能超过数据总长度 n）
-                    const end = Math.min(index + chunkSize, n);
-                    // 新建一个数组，用来临时存放这一批创建的行容器
-                    const currentBatchRows = [];
-                    for (let i = index; i < end; i++) {
-                        // 根据模式标识，组装当前行的列数据来源顺序
-                        const sources = onlyFuncG ?
-                            [result.varList[i], result.g[i], result.f[i]] :
-                            [result.varList[i], result.f[i], result.g[i]];
-
-                        // 创建该行的外层包裹容器 (如一行数据对应一个 div)
-                        const currentDiv = document.createElement('div');
-
-                        // 遍历组装好的数据列：通常为 x, f(x), g(x) 三项
-                        sources.forEach(data => {
-                            // 创建该列的外层和内层包裹 div
-                            const subWrapper = document.createElement('div');
-                            const subContent = document.createElement('div');
-
-                            // 1. PrintManager._printHandleError(data): 将原生数据进行格式化或异常捕获处理
-                            // 2. map(...): 为处理后的数据项附加上 'lazy-bg' 的标识，用于后续实现懒加载样式等
-                            const formattedNodes = PrintManager._printHandleError(data).map(item => ['lazy-bg', item]);
-
-                            // 3. HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
-                            // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
-                            HtmlTools.appendDOMs(
-                                subContent,
-                                formattedNodes,
-                                {nameType: ['class', 'data-lazy-bg-class']}
-                            );
-
-                            // 建立层级关系：将列内容放入列容器，再将列容器放入行容器
-                            subWrapper.appendChild(subContent);
-                            currentDiv.appendChild(subWrapper);
-                        });
-
-                        // 将完整的一行节点先缓存进内存中的文档碎片里，并设置监听
-                        currentBatchRows.push(currentDiv);
-                        fragment.appendChild(currentDiv);
-                    }
-
-                    // 一次性将这一批次的所有节点挂载到真实的 DOM 树中
-                    container.appendChild(fragment);
-                    if (observer) {
-                        currentBatchRows.forEach(row => observer.observe(row));
-                    }
-
-                    // 更新当前已处理的索引进度
-                    index = end;
-
-                    // 判断是否还有未渲染的数据
-                    if (index < n) {
-                        // 如果还有剩余数据，使用 requestAnimationFrame 把下一批渲染任务推迟到浏览器的下一帧执行，
-                        // 并记录 rafId 供后续可能的中断使用
-                        rafId = requestAnimationFrame(renderNextBatch);
-                    } else {
-                        // 所有数据已全部挂载完毕，释放 Promise 状态，通知外部调用者
-                        resolve();
-                    }
-                }
-
-                // 启动第一次渲染任务
-                renderNextBatch();
-            });
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _startNewRender
-         * @description 触发全新的异步分批渲染流程。
-         * 具备防竞态特性：在启动新任务前自动中止并清理未完成的旧任务和旧监听器，防止新旧数据重叠。
-         * @param {HTMLElement} container - 需要挂载渲染结果的目标 DOM 容器节点
-         * @param {Object} resultData - 包含计算结果的数据源对象
-         * @param {boolean} onlyFuncG - 数据顺序模式标识。true: [自变量, g(x), f(x)], false: [自变量, f(x), g(x)]
-         * @returns {void}
-         */
-        static _startNewRender(container, resultData, onlyFuncG) {
-            // 步骤 1：中止旧任务。如果存在正在运行的渲染任务，立即触发中断信号
-            if (this._currentAbortController) {
-                this._currentAbortController.abort();
-            }
-            this._stopLazyObserver();
-
-            // 步骤 2：创建新信号。为本次即将开始的渲染任务实例化一个全新的控制器
-            this._observerInstance = this._createLazyObserver();
-            this._currentAbortController = new AbortController();
-
-            // 步骤 3：清空旧视图。务必在中止旧任务之后执行此操作，防止旧任务的闭包继续向空容器内追加节点
-            container.replaceChildren();
-
-            // 步骤 4：启动底层渲染逻辑，并将当前的新信号传入以便后续控制
-            this._batchRender(
-                container,
-                resultData,
-                onlyFuncG,
-                this._currentAbortController.signal,
-                this._observerInstance
-            )
-                .then(() => {
-                    // 渲染成功结束后，主动将控制器引用置空，释放内存并重置运行状态
-                    this._currentAbortController = null;
-                })
-                .catch(err => {
-                    if (err.name !== 'AbortError') {
-                        console.error('[PrintManager] Render failed with unexpected error:', err);
-                    }
-                    // 被打断了，什么都不用做，或者保持 Loading 状态让新的任务接管
-                });
-        }
-
-        /**
-         * @public
-         * @static
-         * @method stopRenderManually
-         * @description 手动终止当前正在进行的渲染任务，并同步清理配套的懒加载监听器。
-         * 建议在组件卸载 (unmount)、路由切换或用户点击取消按钮时主动调用，以避免内存泄漏和无用计算。
-         * @returns {void}
-         */
-        static stopRenderManually() {
-            // 1. 停止渲染动作
-            if (this._currentAbortController) {
-                this._currentAbortController.abort();
-                this._currentAbortController = null;
-            }
-
-            // 2. 停止懒加载动作
-            this._stopLazyObserver();
         }
 
         /**
@@ -2960,15 +3279,23 @@
 
                 // 如果单元格为空，自动填充为 0，并更新 DOM 显示
                 if (currentPushA.length === 0) {
-                    HtmlTools.appendDOMs(currentA, ['_0_']);
+                    HtmlTools.appendDOMs(
+                        currentA,
+                        [['lazy-bg', '_0_']],
+                        {nameType: ['class', 'data-lazy-bg-class']}
+                    );
                     currentPushA = '0';
                 }
                 if (currentPushB.length === 0) {
-                    HtmlTools.appendDOMs(currentB, ['_0_']);
+                    HtmlTools.appendDOMs(
+                        currentB,
+                        [['lazy-bg', '_0_']],
+                        {nameType: ['class', 'data-lazy-bg-class']}
+                    );
                     currentPushB = '0';
                 }
 
-                // 将类名转换为文本表达式，并添加到列表中
+                // 将为文本表达式添加到列表中
                 listA.push(currentPushA);
                 listB.push(currentPushB);
             }
@@ -3054,10 +3381,9 @@
                 // 调用 Web Worker 异步计算函数值列表。
                 const result = await WorkerTools.valueList(fx, gx, start, step, end);
                 // 创建页面加载器
-                this._startNewRender(
-                    HtmlTools.getHtml('#print_content_2_inner'),
-                    result,
-                    onlyFuncG
+                void this.printListRenderer.startRender(
+                    {result, onlyFuncG},
+                    result.varList.length
                 );
                 // 成功生成表格，隐藏错误提示。
                 HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
@@ -3387,7 +3713,7 @@
          */
         static async exe() {
             const currentMode = PageConfig.currentMode;
-            if (HtmlTools.getHtml('.InputTip') === undefined && currentMode !== '0') {
+            if (HtmlTools.getHtml('.InputTip') === undefined) {
                 await PageControlTools.syncInputToScreen();
                 return;
             }
@@ -3408,6 +3734,8 @@
                     await this._exeMode0();
                     break;
                 case '1':
+                    // 暂停渲染屏幕
+                    InputManager.statisticsRenderer.pauseRender();
                     await this._exeMode1();
                     break;
                 case '2_1':
@@ -3476,6 +3804,7 @@
         }
 
         /**
+         * @private
          * @static
          * @method _exportRaRecover
          * @description 重置回归分析导出按钮的视觉状态。
@@ -3488,6 +3817,112 @@
             HtmlTools.appendDOMs(HtmlTools.getHtml('#export_0'), ['_export_fx_'], {mode: 'replace'});
             // 重置 #export_1 按钮的内容为默认的 g(x) 导出图标
             HtmlTools.appendDOMs(HtmlTools.getHtml('#export_1'), ['_export_gx_'], {mode: 'replace'});
+        }
+
+        /**
+         * @private
+         * @static
+         * @method _resetButton
+         * @description 重置按钮状态，与 triggerSelection 相配合
+         * @param {HTMLElement} btn - 需要重置的按钮元素
+         */
+        static _resetButton(btn) {
+            if (!btn) {
+                return;
+            }
+
+            const ripples = btn.querySelectorAll('.Ripple');
+
+            // 执行褪色动画并清理
+            ripples.forEach(r => {
+                r.classList.add('IsFadingOut');
+                setTimeout(() => r.remove(), 600);
+            });
+
+            btn.classList.remove('IsSelected');
+        }
+
+        /**
+         * @static
+         * @method triggerSelection
+         * @description 处理列表项的单选逻辑。
+         * 用于在设置菜单或其他选项列表中，当用户点击某一项时，更新 UI 样式（添加选中态类名）并触发相应的后续操作。
+         *
+         * @param {HTMLElement} target - 接收操作的目标按钮元素
+         * @param {MouseEvent} [e] - (可选) 点击事件对象，用于计算波纹起始坐标
+         *
+         */
+        static triggerSelection(target, e) {
+            // 参数校验
+            if (!target || target.classList.contains('IsSelected')) {
+                return;
+            }
+
+            target.classList.add('IsSelected');
+
+            // 创建并添加波纹
+            const circle = document.createElement('span');
+            circle.classList.add('Ripple');
+
+            const diameter = Math.max(target.clientWidth, target.clientHeight);
+            const radius = diameter / 2;
+            const rect = target.getBoundingClientRect();
+
+            // 计算扩散中心（优先使用鼠标点击位置，如果没有则默认居中）
+            let x = rect.width / 2;
+            let y = rect.height / 2;
+
+            if (e && e.clientX !== undefined) {
+                x = e.clientX - rect.left;
+                y = e.clientY - rect.top;
+            }
+
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${x - radius}px`;
+            circle.style.top = `${y - radius}px`;
+
+            target.appendChild(circle);
+        }
+
+        /**
+         * @static
+         * @method switchStatisticsResults
+         * @description 切换统计结果窗口的显示模式（X、Y 或 XY）。
+         * 此函数通过修改 DOM 元素的类名来控制统计结果面板的滑动切换效果。
+         *
+         * @param {'x'|'y'|'xy'} target - 要切换到的目标模式。
+         *   - `'x'`: 显示 X 数据的统计结果。
+         *   - `'y'`: 显示 Y 数据的统计结果。
+         *   - `'xy'`: 显示 X 和 Y 的回归分析/相关性结果。
+         */
+        static switchStatisticsResults(target) {
+            const topBar = HtmlTools.getHtml('#statistics_results_top');
+            const resultWindow = HtmlTools.getHtml('#statistics_results_window');
+
+            // 定义所有可能的模式类名
+            const modeClasses = ['ResultX', 'ResultY', 'ResultXY'];
+            const targetUpper = target.toUpperCase();
+
+            // 1. 批量更新 DOM 类名
+            [topBar, resultWindow].forEach(el => {
+                if (!el) {
+                    return;
+                } // 安全检查
+                el.classList.remove(...modeClasses); // 使用扩展运算符一次移除
+                el.classList.add(`Result${targetUpper}`);
+            });
+
+            // 2. 处理按钮重置逻辑
+            // 建立 target 到 索引 的映射关系，代替复杂的 if/else
+            const indexMap = {'x': 0, 'y': 1, 'xy': 2};
+            const skipIndex = indexMap[target.toLowerCase()] ?? 3; // 默认为 3
+
+            // 将 HTMLCollection 转换为数组以使用 forEach
+            Array.from(topBar.children).forEach((child, index) => {
+                if (index !== skipIndex) {
+                    this._resetButton(child);
+                }
+            });
         }
 
         /**
@@ -3701,111 +4136,6 @@
 
         /**
          * @static
-         * @method switchStatisticsResults
-         * @description 切换统计结果窗口的显示模式（X、Y 或 XY）。
-         * 此函数通过修改 DOM 元素的类名来控制统计结果面板的滑动切换效果。
-         *
-         * @param {'x'|'y'|'xy'} target - 要切换到的目标模式。
-         *   - `'x'`: 显示 X 数据的统计结果。
-         *   - `'y'`: 显示 Y 数据的统计结果。
-         *   - `'xy'`: 显示 X 和 Y 的回归分析/相关性结果。
-         */
-        static switchStatisticsResults(target) {
-            const topBar = HtmlTools.getHtml('#statistics_results_top');
-            const resultWindow = HtmlTools.getHtml('#statistics_results_window');
-
-            // 定义所有可能的模式类名
-            const modeClasses = ['ResultX', 'ResultY', 'ResultXY'];
-            const targetUpper = target.toUpperCase();
-
-            // 1. 批量更新 DOM 类名
-            [topBar, resultWindow].forEach(el => {
-                if (!el) {
-                    return;
-                } // 安全检查
-                el.classList.remove(...modeClasses); // 使用扩展运算符一次移除
-                el.classList.add(`Result${targetUpper}`);
-            });
-
-            // 2. 处理按钮重置逻辑
-            // 建立 target 到 索引 的映射关系，代替复杂的 if/else
-            const indexMap = {'x': 0, 'y': 1, 'xy': 2};
-            const skipIndex = indexMap[target.toLowerCase()] ?? 3; // 默认为 3
-
-            // 将 HTMLCollection 转换为数组以使用 forEach
-            Array.from(topBar.children).forEach((child, index) => {
-                if (index !== skipIndex) {
-                    this._resetButton(child);
-                }
-            });
-        }
-
-        /**
-         * @static
-         * @method triggerSelection
-         * @description 处理列表项的单选逻辑。
-         * 用于在设置菜单或其他选项列表中，当用户点击某一项时，更新 UI 样式（添加选中态类名）并触发相应的后续操作。
-         *
-         * @param {HTMLElement} target - 接收操作的目标按钮元素
-         * @param {MouseEvent} [e] - (可选) 点击事件对象，用于计算波纹起始坐标
-         *
-         */
-        static triggerSelection(target, e) {
-            // 参数校验
-            if (!target || target.classList.contains('IsSelected')) {
-                return;
-            }
-
-            target.classList.add('IsSelected');
-
-            // 创建并添加波纹
-            const circle = document.createElement('span');
-            circle.classList.add('Ripple');
-
-            const diameter = Math.max(target.clientWidth, target.clientHeight);
-            const radius = diameter / 2;
-            const rect = target.getBoundingClientRect();
-
-            // 计算扩散中心（优先使用鼠标点击位置，如果没有则默认居中）
-            let x = rect.width / 2;
-            let y = rect.height / 2;
-
-            if (e && e.clientX !== undefined) {
-                x = e.clientX - rect.left;
-                y = e.clientY - rect.top;
-            }
-
-            circle.style.width = circle.style.height = `${diameter}px`;
-            circle.style.left = `${x - radius}px`;
-            circle.style.top = `${y - radius}px`;
-
-            target.appendChild(circle);
-        }
-
-        /**
-         * @static
-         * @method _resetButton
-         * @description 重置按钮状态
-         * @param {HTMLElement} btn - 需要重置的按钮元素
-         */
-        static _resetButton(btn) {
-            if (!btn) {
-                return;
-            }
-
-            const ripples = btn.querySelectorAll('.Ripple');
-
-            // 执行褪色动画并清理
-            ripples.forEach(r => {
-                r.classList.add('IsFadingOut');
-                setTimeout(() => r.remove(), 600);
-            });
-
-            btn.classList.remove('IsSelected');
-        }
-
-        /**
-         * @static
          * @method changeScreen
          * @description 切换当前显示的屏幕内容，以匹配新的计算模式。
          * 此方法通过为当前屏幕添加隐藏类并为新屏幕移除隐藏类来工作。
@@ -4010,9 +4340,10 @@
                     InputManager.ac(HtmlTools.getHtml('#print_content_0_content_1'));
                     return;
                 case '1':
+                    InputManager.statisticsRenderer.resumeRender();
                     return PageControlTools._exportRaRecover();
                 case '2_1':
-                    PrintManager.stopRenderManually();
+                    PrintManager.printListRenderer.stopRender();
                     return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
             }
         }
@@ -4306,6 +4637,12 @@
         static async syncInputToScreen(moveCursor = true) {
             // 获取当前计算器模式和主输入区域的 DOM 元素。
             const currentMode = PageConfig.currentMode;
+
+            // 提前返回
+            if (currentMode === '0') {
+                return;
+            }
+
             const inputEl = HtmlTools.getHtml('#input');
             // 从主输入区域的 DOM 元素中重建表达式字符串。
             const currentInputArray = HtmlTools.getClassList(inputEl, {ignoreSpace: true});
@@ -4330,7 +4667,11 @@
             // 获取当前活动的子屏幕输入区域。
             const target = HtmlTools.getCurrentSubscreenArea();
             // 使用格式化后的表达式内容替换目标区域的现有内容。
-            HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
+            const exprList = currentMode === '1' ? expr.map(item => ['lazy-bg', item]) : expr;
+            const nameType = currentMode === '1' ? ['class', 'data-lazy-bg-class'] : ['class'];
+            HtmlTools.appendDOMs(target, exprList,
+                {nameType, mode: 'replace'}
+            );
             // 为新渲染的表达式添加适当的空格以提高可读性。
             InputManager.addSpace({area: target});
             // 清空主输入区域，并恢复其输入提示。
@@ -4344,13 +4685,16 @@
                 let addSucceed = true;
                 // 检查最后一行是否已有数据。如果是，则自动添加一个新行。
                 if (gridDataLast[1].children.length !== 0 || gridDataLast[2].children.length !== 0) {
-                    addSucceed = InputManager.statisticsAddLine();
+                    addSucceed = await InputManager.statisticsAddLine();
                 }
                 // 更新并持久化屏幕数据。
                 PageConfig.setScreenData();
                 // 如果成功添加了新行，则将高亮光标移动到新行。
                 if (moveCursor && addSucceed) {
                     InputManager.moveCursor('down');
+                    if (HtmlTools.getHtml('.InputTip') === undefined) {
+                        InputManager.ac();
+                    }
                 }
             } else {
                 // 对于其他模式...
@@ -4359,6 +4703,9 @@
                 // 如果当前子屏幕不是该模式下的最后一个，则自动将焦点移动到下一个子屏幕。
                 if (moveCursor && HtmlTools.getHtml(`#screen_${currentMode}`).children.length !== Number(PageConfig.subModes[currentMode]) + 1) {
                     InputManager.moveCursor('right');
+                    if (HtmlTools.getHtml('.InputTip') === undefined) {
+                        InputManager.ac();
+                    }
                 }
             }
             // 确保新激活的区域在视图中可见。
@@ -4369,6 +4716,7 @@
     // 导出对象
     window.PageConfig = PageConfig;
     window.HtmlTools = HtmlTools;
+    window.AsyncListRenderer = AsyncListRenderer;
     window.InputManager = InputManager;
     window.PrintManager = PrintManager;
     window.PageControlTools = PageControlTools;
