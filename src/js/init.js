@@ -147,7 +147,10 @@ document.addEventListener('click', (event) => {
     if (/^mode_[0-4]$/.test(targetID)) {
         const mode = targetID.slice(-1);
         PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
-        // 使用箭头函数替代字符串，更安全且性能更好
+        PageConfig.currentMode === '1' ?
+        InputManager.statisticsRenderer.resumeRender() : // 开启渲染屏幕
+        InputManager.statisticsRenderer.pauseRender();   // 暂停渲染屏幕
+        // 收起说明页面
         setTimeout(() => PageControlTools.clickMainCover(), 340);
         return;
     }
@@ -391,33 +394,30 @@ window.addEventListener('load', () => {
     // --- 开始恢复 (恢复顺序：数据层 -> UI层) ---
 
     // 屏幕数据
-    recoverData('screenData', (data) => {
-        data = JSON.parse(data);
-        for (const key in data) {
-            if (key !== '1') {
-                const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
+    recoverData(
+        'screenData',
+        (data) => {
+            data = JSON.parse(data);
+            for (const key in data) {
                 const inner = data[key];
-                HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
-                PageConfig.screenData = {[key]: inner};
-            } else {
-                const list = data[key];
-                const len = list.length;
-                for (let i = 0; i < len; i++) {
-                    InputManager.statisticsAddLine({
-                        location: [i, 0],
-                        inputListX: HtmlTools.textToHtmlClass(list[i][0]),
-                        inputListY: HtmlTools.textToHtmlClass(list[i][1]),
-                        recoverMode: true
-                    });
+                if (key === '1') {
+                    InputManager.statisticsRenderer.startRender([...inner, [[], []]]);
+                } else {
+                    const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
+                    HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
                 }
-                PageConfig.screenData = {['1']: list};
+                PageConfig.screenData = {[key]: inner};
             }
-        }
-    });
+        },
+        () => InputManager.statisticsAddLine()
+    );
 
     // 子模式 (需要 JSON.parse)
     recoverData('subModes', (data) => {
-        PageConfig.subModes = JSON.parse(data);
+        data = JSON.parse(data);
+        // 将当前选中模式设置到顶层，防止未加载完成而产生错误。
+        data['1'][0] = 0;
+        PageConfig.subModes = data;
     });
 
     // 键盘类型
