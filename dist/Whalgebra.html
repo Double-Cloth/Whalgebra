@@ -12146,7 +12146,7 @@
                  */
                 static async exe() {
                     const currentMode = PageConfig.currentMode;
-                    if (HtmlTools.getHtml('.InputTip') === undefined) {
+                    if (HtmlTools.getHtml('.InputTip') === undefined && currentMode !== '0') {
                         await PageControlTools.syncInputToScreen();
                         return;
                     }
