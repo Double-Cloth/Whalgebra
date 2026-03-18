@@ -147,9 +147,11 @@ document.addEventListener('click', (event) => {
     if (/^mode_[0-4]$/.test(targetID)) {
         const mode = targetID.slice(-1);
         PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
+
         PageConfig.currentMode === '1' ?
         InputManager.statisticsRenderer.resumeRender() : // 开启渲染屏幕
         InputManager.statisticsRenderer.pauseRender();   // 暂停渲染屏幕
+
         // 收起说明页面
         setTimeout(() => PageControlTools.clickMainCover(), 340);
         return;

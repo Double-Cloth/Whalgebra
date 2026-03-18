@@ -1230,6 +1230,14 @@
      */
     class AsyncListRenderer {
         /**
+         * @static
+         * @readonly
+         * @type {string}
+         * @description 懒加载触发的缓冲区大小。
+         */
+        static DEFAULT_ROOT_MARGIN = '500px';
+
+        /**
          * 实例化异步渲染器
          * @param {Object} options - 配置参数
          * @param {string} options.scrollSelector - 滚动容器的 CSS 选择器（作为 IntersectionObserver 的 root 边界）。
@@ -1358,7 +1366,7 @@
                         }
                     });
                 });
-            }, {root: bigContainer, rootMargin: '500px 0px', threshold: 0});
+            }, {root: bigContainer, rootMargin: `${AsyncListRenderer.DEFAULT_ROOT_MARGIN} 0px`, threshold: 0});
         }
 
         /**
@@ -1389,7 +1397,7 @@
                             });
                         }
 
-                        // 2. ★ 核心修复：处理被删除的节点，切断强引用防止内存泄漏
+                        // 2. 处理被删除的节点，切断强引用防止内存泄漏
                         if (mutation.removedNodes.length > 0) {
                             mutation.removedNodes.forEach(node => {
                                 if (node.nodeType === 1) {
@@ -1456,7 +1464,8 @@
                         while (
                             index < endIndex &&
                             renderedInThisFrame < this._maxChunkSize &&
-                            performance.now() - frameStartTime < this._timeSliceMs
+                            performance.now() - frameStartTime < this._timeSliceMs &&
+                            !signal.aborted
                             ) {
                             const rowDOM = this._rowRenderer(dataSource, index);
                             // 在 _batchRender 的 while 循环中处理 rowDOM 时：
@@ -1511,7 +1520,7 @@
                     }
 
                     if (this._observerInstance && elementsToObserve.length > 0) {
-                        // 优化：使用 queueMicrotask 替代原有的 requestAnimationFrame
+                        // 使用 queueMicrotask 替代 requestAnimationFrame
                         // 微任务会在当前宏任务（即本次 rAF 的渲染工作）和 UI 重绘之间执行。
                         // 这样既能保证 Observer 绑定及时，又不会导致过多的 rAF 嵌套，减轻调度引擎负担。
                         queueMicrotask(() => {
@@ -1526,10 +1535,10 @@
                         });
                     }
 
-                    if (renderedInThisFrame > 0) {
-                        // 测试稳定后建议移除这行 console，频繁的 I/O 也会影响极端情况下的性能
-                        console.log(`[AsyncListRenderer] 批次渲染完成: 本帧耗时 ${(performance.now() - frameStartTime).toFixed(2)}ms, 渲染 ${renderedInThisFrame} 个节点, 进度 ${index}/${endIndex}`);
-                    }
+                    // if (renderedInThisFrame > 0) {
+                    //     // 测试稳定后建议移除这行 console，频繁的 I/O 也会影响极端情况下的性能
+                    //     console.log(`[AsyncListRenderer] Frame took ${(performance.now() - frameStartTime).toFixed(2)}ms; rendered ${renderedInThisFrame} node(s) (${index}/${endIndex}).`);
+                    // }
 
                     // 调度下一帧
                     if (index < endIndex) {
@@ -1752,7 +1761,7 @@
                  * @returns {Array} 如果输入是字符串，则返回处理后的标准类名格式；否则原样返回
                  * @description 将输入的字符串转换为标准的 HTML 类名列表，非字符串类型则直接返回原数据
                  */
-                const toClassList = input => typeof input === 'string' ? HtmlTools.textToHtmlClass(input) : input;
+                const toClassList = (input) => typeof input === 'string' ? HtmlTools.textToHtmlClass(input) : input;
                 return this._statisticsCreateLine({
                     index,
                     inputListX: toClassList(dataSource[index][0]),
@@ -2786,6 +2795,7 @@
             // 提升性能
             gridData.offsetHeight;
             gridData.style.display = 'none';
+            // 更新后续行的序号
             for (let i = position; i < gridDataChildren.length; i++) {
                 const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
                 const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
@@ -3773,7 +3783,7 @@
          */
         static async exe() {
             const currentMode = PageConfig.currentMode;
-            if (HtmlTools.getHtml('.InputTip') === undefined) {
+            if (HtmlTools.getHtml('.InputTip') === undefined && currentMode !== '0') {
                 await PageControlTools.syncInputToScreen();
                 return;
             }
