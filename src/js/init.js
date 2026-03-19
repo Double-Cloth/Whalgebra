@@ -21,6 +21,7 @@ document.addEventListener('click', (event) => {
     const parent = target.parentNode;
     const parentID = parent?.id || '';
 
+    // 打印点击事件
     // console.log({parentID, targetID, targetClass, firstChildClass});
 
     // --- 策略 1: 基于明确 ID 的快速分发 (Exact Matches) ---
@@ -411,7 +412,10 @@ window.addEventListener('load', () => {
                 PageConfig.screenData = {[key]: inner};
             }
         },
-        () => InputManager.statisticsAddLine()
+        async () => {
+            await InputManager.statisticsAddLine();
+            PageConfig.subModes = {'1': [0, 0]};
+        }
     );
 
     // 子模式 (需要 JSON.parse)

@@ -154,7 +154,7 @@
                     [name[0], name[1]] = [Number(name[0]), Number(name[1])];
                     // 验证数组格式和索引范围。
                     if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
-                        throw new Error('[PageConfig] Unsupported sub-mode');
+                        throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
                     }
                     // `children[name[0]]` 是行 `<div>`，其子元素中数据单元格从索引 1 开始。
                     index = children[name[0]].children[name[1] + 1];
@@ -1227,16 +1227,16 @@
      * 2. 懒加载 (Lazy Load)：内置 IntersectionObserver，支持图片/背景/动画的按需触发。
      * 3. 强行插入接管：内置 MutationObserver，自动监听并接管第三方组件库或业务代码强行插入容器的 DOM 节点。
      * 4. 任务控制：支持随时暂停 (pause)、恢复 (resume)、追加 (append) 和彻底终止 (stop)。
+     *
+     * @todo 【架构演进】应对万级以上极限数据量场景
+     * - 局限性说明：
+     * 当前的时间分片 (Time Slicing) 机制虽解决了“单次挂载卡顿”问题，但当 DOM 节点总数突破 5000+ 时，
+     * 驻留的庞大 DOM 树依然会导致严重的内存占用和滚动时的 Reflow (回流) 掉帧。
+     * - 重构建议：
+     * 若未来业务面临此类极端场景，需引入虚拟滚动 (Virtual Scrolling) 技术，仅渲染可视区及其缓冲区的 DOM 节点。
+     * 为保证类的职责单一，请勿在此类上强行修改，建议新建 `VirtualListRenderer` 类作为专项替代方案。
      */
     class AsyncListRenderer {
-        /**
-         * @static
-         * @readonly
-         * @type {string}
-         * @description 懒加载触发的缓冲区大小。
-         */
-        static DEFAULT_ROOT_MARGIN = '500px';
-
         /**
          * 实例化异步渲染器
          * @param {Object} options - 配置参数
@@ -1246,6 +1246,7 @@
          * @param {string} [options.lazyBgSelector='.lazy-bg[data-lazy-bg-class]'] - 触发懒加载的内部元素选择器。
          * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒），建议控制在 16.6ms 内以避免影响 60Hz 屏幕的刷新。
          * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值（双重保险，防止极小节点死循环）。
+         * @param {string} [options.rootMargin='500px'] - 懒加载触发的缓冲区大小。
          */
         constructor(options) {
             // --- 基础配置 ---
@@ -1263,6 +1264,8 @@
             this._timeSliceMs = options.timeSliceMs || 14;
             /** @type {number} */
             this._maxChunkSize = options.maxChunkSize || 100;
+            /** @type {string} */
+            this._rootMargin = options.rootMargin || '500px';
 
             // --- 核心状态与观察者实例 ---
             /**
@@ -1342,7 +1345,7 @@
                             targetElements.push(...lazyNodes);
                         }
 
-                        // 3. 无论查到几个懒加载节点（哪怕是 0 个），都作为结果缓存进去！
+                        // 3. 无论查到几个懒加载节点（哪怕是 0 个），都作为结果缓存进去
                         // 这样下次再触发，.has() 就会返回 true，直接跳过这段逻辑。
                         this._lazyTargetsMap.set(entry.target, targetElements);
                     } else {
@@ -1366,14 +1369,14 @@
                         }
                     });
                 });
-            }, {root: bigContainer, rootMargin: `${AsyncListRenderer.DEFAULT_ROOT_MARGIN} 0px`, threshold: 0});
+            }, {root: bigContainer, rootMargin: `${this._rootMargin} 0px`, threshold: 0});
         }
 
         /**
-         * 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点，
-         * 并负责清理被删除节点的监听以防止内存泄漏。
          * @private
          * @param {HTMLElement} container - 需要被深度监听的挂载容器
+         * @description 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点，
+         * 并负责清理被删除节点的监听以防止内存泄漏。
          */
         _startDOMWatcher(container) {
             if (this._mutationObserver) {
@@ -1388,7 +1391,7 @@
                 for (const mutation of mutationsList) {
                     if (mutation.type === 'childList') {
 
-                        // 1. 处理新增节点（原有逻辑，接管外部强插节点）
+                        // 1. 处理新增节点（接管外部强插节点）
                         if (mutation.addedNodes.length > 0) {
                             mutation.addedNodes.forEach(node => {
                                 if (node.nodeType === 1 && node.dataset.asyncInternal !== 'true') {
@@ -1535,8 +1538,8 @@
                         });
                     }
 
+                    // 测试稳定后移除 console，频繁的 I/O 也会影响极端情况下的性能
                     // if (renderedInThisFrame > 0) {
-                    //     // 测试稳定后建议移除这行 console，频繁的 I/O 也会影响极端情况下的性能
                     //     console.log(`[AsyncListRenderer] Frame took ${(performance.now() - frameStartTime).toFixed(2)}ms; rendered ${renderedInThisFrame} node(s) (${index}/${endIndex}).`);
                     // }
 
