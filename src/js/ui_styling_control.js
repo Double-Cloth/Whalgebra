@@ -1234,7 +1234,7 @@
      * 驻留的庞大 DOM 树依然会导致严重的内存占用和滚动时的 Reflow (回流) 掉帧。
      * - 重构建议：
      * 若未来业务面临此类极端场景，需引入虚拟滚动 (Virtual Scrolling) 技术，仅渲染可视区及其缓冲区的 DOM 节点。
-     * 为保证类的职责单一，请勿在此类上强行修改，建议新建 `VirtualListRenderer` 类作为专项替代方案。
+     * 为保证类的职责单一，请勿在此类上强行修改，建议新建 `VirtualScroll` 类作为专项替代方案。
      */
     class AsyncListRenderer {
         /**
@@ -1715,6 +1715,621 @@
 
             // 将主任务队列置为空 Promise，防止旧任务阻塞未来的 startRender
             this._renderTask = Promise.resolve();
+        }
+    }
+
+    /**
+     * @class VirtualScroll
+     * @classdesc 长期复用的高性能虚拟滚动类。
+     *
+     * 列表项作为容器的直接子节点挂载，容器上针对子 `div` 的 CSS 规则自然生效。
+     * 上下占位使用自定义标签 `<vs-spacer>`，不匹配 `div` 选择器。
+     *
+     * 核心能力：
+     * - **直接挂载**：列表项是容器的直接子节点，`> div` 样式自然生效。
+     * - **长期复用**：实例创建一次，`load(data, length)` 反复调用。
+     * - **延迟解析容器**：传入 `'#id'`，首次 `load()` 才查找 DOM。
+     * - **renderItem 接收完整 data**：`(index, data) => HTMLElement | string`。
+     * - **自动测量行高**：样本项作为容器直接子节点测量，确保 CSS 命中。
+     * - **自动缓冲区**：`clamp(⌈visibleCount × 0.5⌉, 3, 20)`。
+     * - **动态监听容器尺寸**：ResizeObserver + window resize 双重监听，
+     *   `_render` 内部自检容器高度变化，屏幕旋转 / 窗口缩放 / CSS 变化均能正确响应。
+     * - **统一调度**：scroll / resize 统一经 `_scheduleRender()` 合并到同一个 rAF，
+     *   每帧最多渲染一次。
+     * - **状态机**：`IDLE → RUNNING ↔ PAUSED → DESTROYED`。
+     */
+    class VirtualScroll {
+
+        /**
+         * @static
+         * @enum {string}
+         * @description 实例的生命周期状态。
+         */
+        static State = Object.freeze({
+            IDLE: 'idle',
+            RUNNING: 'running',
+            PAUSED: 'paused',
+            DESTROYED: 'destroyed'
+        });
+
+        /* ===========================================================================
+         *  构造函数
+         * =========================================================================== */
+
+        /**
+         * @constructor
+         * @description 创建虚拟滚动实例。构造阶段不渲染任何内容，需调用 `load()` 启动。
+         * @param {Object} config - 固定配置。
+         * @param {string} config.container - 容器 CSS ID 选择器，格式 `'#id'`。
+         * @param {Function} config.renderItem - 渲染回调 `(index, data) => HTMLElement | string`。
+         * @throws {Error} 参数不合法时抛出。
+         */
+        constructor(config) {
+            this._validateConfig(config);
+
+            /** @private @member {string} */
+            this._selector = config.container;
+
+            /** @member {HTMLElement|null} container @readonly */
+            this.container = null;
+
+            /** @member {Function} renderItem @readonly */
+            this.renderItem = config.renderItem;
+
+            /** @member {string} state @readonly */
+            this.state = VirtualScroll.State.IDLE;
+
+            /** @member {Array} data @readonly */
+            this.data = [];
+
+            /** @member {number} totalCount @readonly */
+            this.totalCount = 0;
+
+            /** @member {number} itemHeight @readonly - 自动测量的行高（px，整数） */
+            this.itemHeight = 0;
+
+            /** @member {number} bufferSize @readonly - 单侧缓冲区条数 */
+            this.bufferSize = 0;
+
+            /** @private */ this._startIndex = -1;
+            /** @private */ this._endIndex = -1;
+            /** @private */ this._renderRAF = null;  // 统一的 rAF ID
+            /** @private */ this._spacerTop = null;
+            /** @private */ this._spacerBottom = null;
+            /** @private */ this._ro = null;  // ResizeObserver
+            /** @private */ this._handleScroll = null;
+            /** @private */ this._handleWindowResize = null;
+            /** @private */ this._measured = false;
+            /** @private */ this._lastContainerHeight = 0;     // 上次渲染时的容器高度
+        }
+
+        /* ===========================================================================
+         *  公共方法
+         * =========================================================================== */
+
+        /**
+         * @public
+         * @method load
+         * @description 加载（或替换）数据并开始渲染。
+         * 可从 `IDLE / RUNNING / PAUSED` 调用，调用后统一切为 `RUNNING`。
+         * @param {Array|{}} data   - 数据数组。
+         * @param {number} length - 总条数。
+         * @param {Object} [options]
+         * @param {boolean} [options.remeasure=false]  - 是否强制重测行高。
+         * @param {boolean} [options.resetScroll=true] - 是否重置滚动到顶部。
+         * @returns {void}
+         */
+        load(data, length, options = {}) {
+            this._assertNotDestroyed('load');
+            this._resolveContainer();
+
+            const {remeasure = false, resetScroll = true} = options;
+
+            this.data = data;
+            this.totalCount = length;
+
+            if (!this._measured || remeasure) {
+                this._setupContainer();
+                this._measureItemHeight();
+                this._measured = true;
+            }
+
+            this._lastContainerHeight = this.container.clientHeight;
+            this._calcBufferSize();
+
+            if (!this._spacerTop) {
+                this._buildDOM();
+            }
+
+            if (resetScroll) {
+                this.container.scrollTop = 0;
+            }
+
+            this._bindEvents();
+            this._forceRender();
+
+            this.state = VirtualScroll.State.RUNNING;
+        }
+
+        /**
+         * @public
+         * @method pause
+         * @description 暂停虚拟滚动。移除滚动监听，画面冻结。
+         * ResizeObserver 和 window resize 监听保持活跃，但回调中会因状态检查而跳过渲染，
+         * `resume()` 时 `_render` 会自动检测高度变化并适配。
+         * @returns {void}
+         */
+        pause() {
+            this._assertNotDestroyed('pause');
+            if (this.state !== VirtualScroll.State.RUNNING) {
+                console.warn(`[VirtualScroll] pause() only works in RUNNING state, current: ${this.state}`);
+                return;
+            }
+            this._unbindScroll();
+            this._cancelScheduledRender();
+            this.state = VirtualScroll.State.PAUSED;
+        }
+
+        /**
+         * @public
+         * @method resume
+         * @description 恢复虚拟滚动。重新绑定滚动监听，并立即渲染。
+         * 若暂停期间容器尺寸变化，`_render` 内部自动检测并适配。
+         * @returns {void}
+         */
+        resume() {
+            this._assertNotDestroyed('resume');
+            if (this.state !== VirtualScroll.State.PAUSED) {
+                console.warn(`[VirtualScroll] resume() only works in PAUSED state, current: ${this.state}`);
+                return;
+            }
+            this.state = VirtualScroll.State.RUNNING;
+            this._bindScroll();
+            this._forceRender();
+        }
+
+        /**
+         * @public
+         * @method clear
+         * @description 清空渲染内容，回到空闲状态。实例仍可复用。
+         * @returns {void}
+         */
+        clear() {
+            this._assertNotDestroyed('clear');
+            this._unbindScroll();
+            this._unbindResize();
+            this._cancelScheduledRender();
+
+            if (this.container) {
+                this.container.innerHTML = '';
+            }
+
+            this._spacerTop = null;
+            this._spacerBottom = null;
+            this._startIndex = -1;
+            this._endIndex = -1;
+            this._lastContainerHeight = 0;
+            this.data = [];
+            this.totalCount = 0;
+            this.state = VirtualScroll.State.IDLE;
+        }
+
+        /**
+         * @public
+         * @method scrollToIndex
+         * @description 滚动到指定索引，约束在 `[0, totalCount - 1]`。
+         * @param {number} index - 目标索引。
+         * @param {Object} [options]
+         * @param {string} [options.behavior='auto'] - `'auto'` 或 `'smooth'`。
+         * @returns {void}
+         */
+        scrollToIndex(index, options = {}) {
+            this._assertNotDestroyed('scrollToIndex');
+            if (this.state === VirtualScroll.State.IDLE || !this.container) {
+                return;
+            }
+            const i = Math.max(0, Math.min(index, this.totalCount - 1));
+            const top = i * this.itemHeight;
+            if (options.behavior === 'smooth') {
+                this.container.scrollTo({top, behavior: 'smooth'});
+            } else {
+                this.container.scrollTop = top;
+            }
+        }
+
+        /** @public */
+        scrollToTop(options) {
+            this.scrollToIndex(0, options);
+        }
+
+        /** @public */
+        scrollToBottom(options) {
+            this.scrollToIndex(this.totalCount - 1, options);
+        }
+
+        /**
+         * @public
+         * @method getMetrics
+         * @description 获取运行指标。
+         * @returns {Object}
+         */
+        getMetrics() {
+            return {
+                state: this.state,
+                itemHeight: this.itemHeight,
+                bufferSize: this.bufferSize,
+                visibleCount: this.itemHeight && this.container
+                              ? Math.ceil(this.container.clientHeight / this.itemHeight) : 0,
+                renderedCount: Math.max(0, this._endIndex - this._startIndex),
+                totalCount: this.totalCount,
+                startIndex: this._startIndex,
+                endIndex: this._endIndex,
+                scrollTop: this.container ? this.container.scrollTop : 0
+            };
+        }
+
+        /** @public @returns {boolean} */
+        isPaused() {
+            return this.state === VirtualScroll.State.PAUSED;
+        }
+
+        /** @public @returns {boolean} */
+        isRunning() {
+            return this.state === VirtualScroll.State.RUNNING;
+        }
+
+        /**
+         * @public
+         * @method destroy
+         * @description 彻底销毁实例。
+         * @returns {void}
+         */
+        destroy() {
+            if (this.state === VirtualScroll.State.DESTROYED) {
+                return;
+            }
+            this._unbindScroll();
+            this._unbindResize();
+            this._cancelScheduledRender();
+            if (this.container) {
+                this.container.innerHTML = '';
+            }
+            this._spacerTop = null;
+            this._spacerBottom = null;
+            this._handleScroll = null;
+            this._handleWindowResize = null;
+            this._lastContainerHeight = 0;
+            this.container = null;
+            this.data = [];
+            this.totalCount = 0;
+            this.state = VirtualScroll.State.DESTROYED;
+        }
+
+        /* ===========================================================================
+         *  私有方法
+         * =========================================================================== */
+
+        /** @private */
+        _validateConfig(config) {
+            if (typeof config.container !== 'string' || !config.container.startsWith('#')) {
+                throw new Error('[VirtualScroll] config.container must be an ID selector string in "#id" format');
+            }
+            if (typeof config.renderItem !== 'function') {
+                throw new Error('[VirtualScroll] config.renderItem must be a function');
+            }
+        }
+
+        /** @private */
+        _resolveContainer() {
+            if (this.container) {
+                return;
+            }
+            const el = document.getElementById(this._selector.slice(1));
+            if (!el) {
+                throw new Error(
+                    `[VirtualScroll] Container element "${this._selector}" not found in the DOM. ` +
+                    'Make sure the element exists before calling load().'
+                );
+            }
+            this.container = el;
+        }
+
+        /** @private */
+        _assertNotDestroyed(methodName) {
+            if (this.state === VirtualScroll.State.DESTROYED) {
+                throw new Error(`[VirtualScroll] Instance has been destroyed, cannot call ${methodName}()`);
+            }
+        }
+
+        /** @private - 设置容器基础 CSS */
+        _setupContainer() {
+            if (getComputedStyle(this.container).position === 'static') {
+                this.container.style.position = 'relative';
+            }
+            this.container.style.overflow = 'auto';
+        }
+
+        /**
+         * @private
+         * @method _measureItemHeight
+         * @description 自动测量行高。样本项作为容器直接子节点插入，确保 CSS 规则命中。
+         * 结果取整消除亚像素累积误差。
+         */
+        _measureItemHeight() {
+            if (this.totalCount === 0) {
+                this.itemHeight = 50;
+                console.warn('[VirtualScroll] Data is empty, item height falls back to 50px');
+                return;
+            }
+
+            this.container.innerHTML = '';
+            const sampleCount = Math.min(3, this.totalCount);
+            const samples = [];
+
+            for (let i = 0; i < sampleCount; i++) {
+                const el = this._toElement(this.renderItem(i, this.data));
+                this.container.appendChild(el);
+                samples.push(el);
+            }
+
+            // 强制同步布局
+            this.container.offsetHeight;
+
+            if (sampleCount >= 2) {
+                const firstTop = samples[0].getBoundingClientRect().top;
+                const lastTop = samples[sampleCount - 1].getBoundingClientRect().top;
+                this.itemHeight = Math.round((lastTop - firstTop) / (sampleCount - 1));
+            } else {
+                const rect = samples[0].getBoundingClientRect();
+                const style = getComputedStyle(samples[0]);
+                this.itemHeight = Math.round(
+                    rect.height + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+                );
+            }
+
+            this.container.innerHTML = '';
+            this._spacerTop = null;
+            this._spacerBottom = null;
+
+            if (this.itemHeight <= 0) {
+                console.warn('[VirtualScroll] Measured item height is 0, falling back to 50px');
+                this.itemHeight = 50;
+            }
+        }
+
+        /**
+         * @private
+         * @description `clamp(⌈visibleCount × 0.5⌉, 3, 20)`
+         */
+        _calcBufferSize() {
+            const ch = this.container.clientHeight;
+            if (ch <= 0) {
+                this.bufferSize = 5;
+                return;
+            }
+            const visibleCount = Math.ceil(ch / this.itemHeight);
+            this.bufferSize = Math.min(20, Math.max(3, Math.ceil(visibleCount * 0.5)));
+        }
+
+        /** @private - 构建上下 `<vs-spacer>` 占位 */
+        _buildDOM() {
+            const spacerStyle = {
+                display: 'block', width: '100%', height: '0px',
+                margin: '0', padding: '0', border: 'none',
+                visibility: 'hidden', overflow: 'hidden',
+                lineHeight: '0', fontSize: '0'
+            };
+
+            this._spacerTop = document.createElement('vs-spacer');
+            Object.assign(this._spacerTop.style, spacerStyle);
+
+            this._spacerBottom = document.createElement('vs-spacer');
+            Object.assign(this._spacerBottom.style, spacerStyle);
+
+            this.container.innerHTML = '';
+            this.container.appendChild(this._spacerTop);
+            this.container.appendChild(this._spacerBottom);
+        }
+
+        /* ---------- 事件绑定 ---------- */
+
+        /** @private - 绑定所有事件监听（幂等） */
+        _bindEvents() {
+            this._bindScroll();
+            this._bindResize();
+        }
+
+        /** @private - 绑定 scroll（幂等） */
+        _bindScroll() {
+            if (this._handleScroll) {
+                return;
+            }
+            this._handleScroll = () => this._scheduleRender();
+            this.container.addEventListener('scroll', this._handleScroll, {passive: true});
+        }
+
+        /** @private */
+        _unbindScroll() {
+            if (this._handleScroll && this.container) {
+                this.container.removeEventListener('scroll', this._handleScroll);
+                this._handleScroll = null;
+            }
+        }
+
+        /**
+         * @private
+         * @method _bindResize
+         * @description 绑定容器尺寸监听（幂等）。双重保障：
+         * 1. **ResizeObserver**（主力）：监听容器元素自身，任何原因导致的尺寸变化都能捕获。
+         * 2. **window `resize`**（兜底）：兼容不支持 ResizeObserver 的环境，
+         *    或 ResizeObserver 因浏览器实现差异未触发的情况。
+         *
+         * 两者回调均指向同一个 `_scheduleRender()`，由统一的 rAF 合并，
+         * 确保同一帧内无论几个事件源触发，`_render()` 只执行一次。
+         */
+        _bindResize() {
+            // ---- 1. ResizeObserver ----
+            if (!this._ro && typeof ResizeObserver !== 'undefined') {
+                this._ro = new ResizeObserver(() => {
+                    if (this.state === VirtualScroll.State.RUNNING) {
+                        this._scheduleRender();
+                    }
+                });
+                this._ro.observe(this.container);
+            }
+
+            // ---- 2. window resize 兜底 ----
+            if (!this._handleWindowResize) {
+                this._handleWindowResize = () => {
+                    if (this.state === VirtualScroll.State.RUNNING) {
+                        this._scheduleRender();
+                    }
+                };
+                window.addEventListener('resize', this._handleWindowResize, {passive: true});
+            }
+        }
+
+        /** @private */
+        _unbindResize() {
+            if (this._ro) {
+                this._ro.disconnect();
+                this._ro = null;
+            }
+            if (this._handleWindowResize) {
+                window.removeEventListener('resize', this._handleWindowResize);
+                this._handleWindowResize = null;
+            }
+        }
+
+        /* ---------- 渲染调度 ---------- */
+
+        /**
+         * @private
+         * @method _scheduleRender
+         * @description 统一的异步渲染调度入口。
+         * 所有触发源（scroll / ResizeObserver / window resize）都经此方法，
+         * 利用 `requestAnimationFrame` 合并为同一帧内最多一次 `_render()` 调用。
+         */
+        _scheduleRender() {
+            if (this._renderRAF) {
+                return;
+            }
+            this._renderRAF = requestAnimationFrame(() => {
+                this._renderRAF = null;
+                this._render();
+            });
+        }
+
+        /**
+         * @private
+         * @method _cancelScheduledRender
+         * @description 取消已排队的 rAF 渲染。
+         */
+        _cancelScheduledRender() {
+            if (this._renderRAF) {
+                cancelAnimationFrame(this._renderRAF);
+                this._renderRAF = null;
+            }
+        }
+
+        /**
+         * @private
+         * @method _forceRender
+         * @description 强制同步渲染。取消排队的 rAF，重置范围索引，立即执行 `_render()`。
+         * 用于 `load()` / `resume()` 等需要立即生效的场景。
+         */
+        _forceRender() {
+            this._cancelScheduledRender();
+            this._startIndex = -1;
+            this._endIndex = -1;
+            this._render();
+        }
+
+        /* ---------- 核心渲染 ---------- */
+
+        /**
+         * @private
+         * @method _render
+         * @description 核心渲染逻辑。
+         *
+         * **内置容器高度自检**：每次执行时读取 `clientHeight`，与 `_lastContainerHeight` 比较。
+         * 高度变化时自动执行：
+         * 1. 重算 `bufferSize`。
+         * 2. 钳制 `scrollTop`（防止超出最大可滚动范围导致底部空白）。
+         * 3. 由于 `bufferSize` 变化或 `scrollTop` 被钳制，渲染范围必然与上次不同，触发重新渲染。
+         *
+         * 这样无论触发源是什么（scroll / resize / resume / load），都能正确适配当前容器尺寸。
+         */
+        _render() {
+            const {itemHeight, totalCount, data} = this;
+            if (!this.container || !itemHeight || !totalCount) {
+                return;
+            }
+
+            const clientHeight = this.container.clientHeight;
+            if (clientHeight <= 0) {
+                return;
+            } // 容器不可见，跳过
+
+            // ========== 容器高度变化自检 ==========
+            const heightChanged = clientHeight !== this._lastContainerHeight;
+
+            if (heightChanged) {
+                this._lastContainerHeight = clientHeight;
+                this._calcBufferSize();
+
+                // 钳制 scrollTop：容器变大后旧值可能超出最大可滚动范围
+                const maxScroll = Math.max(0, totalCount * itemHeight - clientHeight);
+                if (this.container.scrollTop > maxScroll) {
+                    this.container.scrollTop = maxScroll;
+                }
+            }
+
+            // ========== 计算渲染范围 ==========
+            const scrollTop = this.container.scrollTop;
+            const visibleStart = Math.floor(scrollTop / itemHeight);
+            const visibleEnd = Math.ceil((scrollTop + clientHeight) / itemHeight);
+
+            const start = Math.max(0, visibleStart - this.bufferSize);
+            const end = Math.min(totalCount, visibleEnd + this.bufferSize);
+
+            // 高度未变 且 范围未变 → 跳过
+            if (!heightChanged && start === this._startIndex && end === this._endIndex) {
+                return;
+            }
+
+            this._startIndex = start;
+            this._endIndex = end;
+
+            // ========== 更新占位高度 ==========
+            const totalHeight = totalCount * itemHeight;
+            const topH = start * itemHeight;
+            const renderedH = (end - start) * itemHeight;
+            const bottomH = totalHeight - topH - renderedH;
+
+            this._spacerTop.style.height = topH + 'px';
+            this._spacerBottom.style.height = Math.max(0, bottomH) + 'px';
+
+            // ========== 替换列表项 ==========
+            while (this._spacerTop.nextSibling !== this._spacerBottom) {
+                this._spacerTop.nextSibling.remove();
+            }
+
+            const frag = document.createDocumentFragment();
+            for (let i = start; i < end; i++) {
+                frag.appendChild(this._toElement(this.renderItem(i, data)));
+            }
+            this.container.insertBefore(frag, this._spacerBottom);
+        }
+
+        /** @private */
+        _toElement(result) {
+            if (result instanceof HTMLElement) {
+                return result;
+            }
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = result;
+            return wrapper.firstElementChild || wrapper;
         }
     }
 
@@ -2844,13 +3459,12 @@
 
         /**
          * @static
-         * @type {AsyncListRenderer}
-         * @description AsyncListRenderer 实例。
+         * @type {VirtualScroll}
+         * @description VirtualScroll 实例。
          * 用于管理函数列表输出的显示。
          */
-        static printListRenderer = new AsyncListRenderer({
-            scrollSelector: '#print_content_2_inner',   // 滚动区域的选择器
-            containerSelector: '#print_content_2_inner',// 真实 DOM 的挂载点选择器
+        static printListRenderer = new VirtualScroll({
+            container: '#print_content_2_inner',   // 滚动区域的选择器
 
             /**
              * @function rowRenderer
@@ -2859,7 +3473,7 @@
              * @returns {HTMLElement} 返回拼装好的一行 DOM
              * @description 负责单行 DOM 的组装
              */
-            rowRenderer: (dataSource, index) => {
+            renderItem(index, dataSource) {
                 // 从外部传入的数据源中解构出当前需要的所有状态，不依赖外部闭包变量
                 const {result, onlyFuncG} = dataSource;
 
@@ -2880,16 +3494,17 @@
                     const formattedNodes = PrintManager._printHandleError(dataItem);
 
                     // 将处理后的节点追加到内容容器中
-                    HtmlTools.appendDOMs(
-                        subContent,
-                        formattedNodes.map(item => ['lazy-bg', item]),
-                        {nameType: ['class', 'data-lazy-bg-class']}
-                    );
+                    HtmlTools.appendDOMs(subContent, formattedNodes);
 
                     // 建立层级关系
                     subWrapper.appendChild(subContent);
                     currentDiv.appendChild(subWrapper);
                 });
+
+                // 4.加入奇偶顺序
+                if (result.varList.length > 4) {
+                    currentDiv.classList.add(index % 2 === 0 ? 'Even' : 'Odd');
+                }
 
                 // 返回完整的一行 DOM 树交给底层批量挂载
                 return currentDiv;
@@ -3454,9 +4069,10 @@
                 // 调用 Web Worker 异步计算函数值列表。
                 const result = await WorkerTools.valueList(fx, gx, start, step, end);
                 // 创建页面加载器
-                void this.printListRenderer.startRender(
+                void this.printListRenderer.load(
                     {result, onlyFuncG},
-                    result.varList.length
+                    result.varList.length,
+                    {remeasure: true}
                 );
                 // 成功生成表格，隐藏错误提示。
                 HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
@@ -4416,7 +5032,7 @@
                     InputManager.statisticsRenderer.resumeRender();
                     return PageControlTools._exportRaRecover();
                 case '2_1':
-                    PrintManager.printListRenderer.stopRender();
+                    PrintManager.printListRenderer.clear();
                     return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
             }
         }
@@ -4790,6 +5406,7 @@
     window.PageConfig = PageConfig;
     window.HtmlTools = HtmlTools;
     window.AsyncListRenderer = AsyncListRenderer;
+    window.VirtualScroll = VirtualScroll;
     window.InputManager = InputManager;
     window.PrintManager = PrintManager;
     window.PageControlTools = PageControlTools;
