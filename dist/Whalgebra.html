@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html dir="ltr" lang="en">
 <head>
-    <!-- Whalgebra Version: v3.0.2 | Updated: 2026-3-19 -->
+    <!-- Whalgebra Version: v3.1.0 | Updated: 2026-3-22 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -9607,7 +9607,7 @@
              * 驻留的庞大 DOM 树依然会导致严重的内存占用和滚动时的 Reflow (回流) 掉帧。
              * - 重构建议：
              * 若未来业务面临此类极端场景，需引入虚拟滚动 (Virtual Scrolling) 技术，仅渲染可视区及其缓冲区的 DOM 节点。
-             * 为保证类的职责单一，请勿在此类上强行修改，建议新建 `VirtualListRenderer` 类作为专项替代方案。
+             * 为保证类的职责单一，请勿在此类上强行修改，建议新建 `VirtualScroll` 类作为专项替代方案。
              */
             class AsyncListRenderer {
                 /**
@@ -10088,6 +10088,621 @@
 
                     // 将主任务队列置为空 Promise，防止旧任务阻塞未来的 startRender
                     this._renderTask = Promise.resolve();
+                }
+            }
+
+            /**
+             * @class VirtualScroll
+             * @classdesc 长期复用的高性能虚拟滚动类。
+             *
+             * 列表项作为容器的直接子节点挂载，容器上针对子 `div` 的 CSS 规则自然生效。
+             * 上下占位使用自定义标签 `<vs-spacer>`，不匹配 `div` 选择器。
+             *
+             * 核心能力：
+             * - **直接挂载**：列表项是容器的直接子节点，`> div` 样式自然生效。
+             * - **长期复用**：实例创建一次，`load(data, length)` 反复调用。
+             * - **延迟解析容器**：传入 `'#id'`，首次 `load()` 才查找 DOM。
+             * - **renderItem 接收完整 data**：`(index, data) => HTMLElement | string`。
+             * - **自动测量行高**：样本项作为容器直接子节点测量，确保 CSS 命中。
+             * - **自动缓冲区**：`clamp(⌈visibleCount × 0.5⌉, 3, 20)`。
+             * - **动态监听容器尺寸**：ResizeObserver + window resize 双重监听，
+             *   `_render` 内部自检容器高度变化，屏幕旋转 / 窗口缩放 / CSS 变化均能正确响应。
+             * - **统一调度**：scroll / resize 统一经 `_scheduleRender()` 合并到同一个 rAF，
+             *   每帧最多渲染一次。
+             * - **状态机**：`IDLE → RUNNING ↔ PAUSED → DESTROYED`。
+             */
+            class VirtualScroll {
+
+                /**
+                 * @static
+                 * @enum {string}
+                 * @description 实例的生命周期状态。
+                 */
+                static State = Object.freeze({
+                    IDLE: 'idle',
+                    RUNNING: 'running',
+                    PAUSED: 'paused',
+                    DESTROYED: 'destroyed'
+                });
+
+                /* ===========================================================================
+                 *  构造函数
+                 * =========================================================================== */
+
+                /**
+                 * @constructor
+                 * @description 创建虚拟滚动实例。构造阶段不渲染任何内容，需调用 `load()` 启动。
+                 * @param {Object} config - 固定配置。
+                 * @param {string} config.container - 容器 CSS ID 选择器，格式 `'#id'`。
+                 * @param {Function} config.renderItem - 渲染回调 `(index, data) => HTMLElement | string`。
+                 * @throws {Error} 参数不合法时抛出。
+                 */
+                constructor(config) {
+                    this._validateConfig(config);
+
+                    /** @private @member {string} */
+                    this._selector = config.container;
+
+                    /** @member {HTMLElement|null} container @readonly */
+                    this.container = null;
+
+                    /** @member {Function} renderItem @readonly */
+                    this.renderItem = config.renderItem;
+
+                    /** @member {string} state @readonly */
+                    this.state = VirtualScroll.State.IDLE;
+
+                    /** @member {Array} data @readonly */
+                    this.data = [];
+
+                    /** @member {number} totalCount @readonly */
+                    this.totalCount = 0;
+
+                    /** @member {number} itemHeight @readonly - 自动测量的行高（px，整数） */
+                    this.itemHeight = 0;
+
+                    /** @member {number} bufferSize @readonly - 单侧缓冲区条数 */
+                    this.bufferSize = 0;
+
+                    /** @private */ this._startIndex = -1;
+                    /** @private */ this._endIndex = -1;
+                    /** @private */ this._renderRAF = null;  // 统一的 rAF ID
+                    /** @private */ this._spacerTop = null;
+                    /** @private */ this._spacerBottom = null;
+                    /** @private */ this._ro = null;  // ResizeObserver
+                    /** @private */ this._handleScroll = null;
+                    /** @private */ this._handleWindowResize = null;
+                    /** @private */ this._measured = false;
+                    /** @private */ this._lastContainerHeight = 0;     // 上次渲染时的容器高度
+                }
+
+                /* ===========================================================================
+                 *  公共方法
+                 * =========================================================================== */
+
+                /**
+                 * @public
+                 * @method load
+                 * @description 加载（或替换）数据并开始渲染。
+                 * 可从 `IDLE / RUNNING / PAUSED` 调用，调用后统一切为 `RUNNING`。
+                 * @param {Array|{}} data   - 数据数组。
+                 * @param {number} length - 总条数。
+                 * @param {Object} [options]
+                 * @param {boolean} [options.remeasure=false]  - 是否强制重测行高。
+                 * @param {boolean} [options.resetScroll=true] - 是否重置滚动到顶部。
+                 * @returns {void}
+                 */
+                load(data, length, options = {}) {
+                    this._assertNotDestroyed('load');
+                    this._resolveContainer();
+
+                    const {remeasure = false, resetScroll = true} = options;
+
+                    this.data = data;
+                    this.totalCount = length;
+
+                    if (!this._measured || remeasure) {
+                        this._setupContainer();
+                        this._measureItemHeight();
+                        this._measured = true;
+                    }
+
+                    this._lastContainerHeight = this.container.clientHeight;
+                    this._calcBufferSize();
+
+                    if (!this._spacerTop) {
+                        this._buildDOM();
+                    }
+
+                    if (resetScroll) {
+                        this.container.scrollTop = 0;
+                    }
+
+                    this._bindEvents();
+                    this._forceRender();
+
+                    this.state = VirtualScroll.State.RUNNING;
+                }
+
+                /**
+                 * @public
+                 * @method pause
+                 * @description 暂停虚拟滚动。移除滚动监听，画面冻结。
+                 * ResizeObserver 和 window resize 监听保持活跃，但回调中会因状态检查而跳过渲染，
+                 * `resume()` 时 `_render` 会自动检测高度变化并适配。
+                 * @returns {void}
+                 */
+                pause() {
+                    this._assertNotDestroyed('pause');
+                    if (this.state !== VirtualScroll.State.RUNNING) {
+                        console.warn(`[VirtualScroll] pause() only works in RUNNING state, current: ${this.state}`);
+                        return;
+                    }
+                    this._unbindScroll();
+                    this._cancelScheduledRender();
+                    this.state = VirtualScroll.State.PAUSED;
+                }
+
+                /**
+                 * @public
+                 * @method resume
+                 * @description 恢复虚拟滚动。重新绑定滚动监听，并立即渲染。
+                 * 若暂停期间容器尺寸变化，`_render` 内部自动检测并适配。
+                 * @returns {void}
+                 */
+                resume() {
+                    this._assertNotDestroyed('resume');
+                    if (this.state !== VirtualScroll.State.PAUSED) {
+                        console.warn(`[VirtualScroll] resume() only works in PAUSED state, current: ${this.state}`);
+                        return;
+                    }
+                    this.state = VirtualScroll.State.RUNNING;
+                    this._bindScroll();
+                    this._forceRender();
+                }
+
+                /**
+                 * @public
+                 * @method clear
+                 * @description 清空渲染内容，回到空闲状态。实例仍可复用。
+                 * @returns {void}
+                 */
+                clear() {
+                    this._assertNotDestroyed('clear');
+                    this._unbindScroll();
+                    this._unbindResize();
+                    this._cancelScheduledRender();
+
+                    if (this.container) {
+                        this.container.innerHTML = '';
+                    }
+
+                    this._spacerTop = null;
+                    this._spacerBottom = null;
+                    this._startIndex = -1;
+                    this._endIndex = -1;
+                    this._lastContainerHeight = 0;
+                    this.data = [];
+                    this.totalCount = 0;
+                    this.state = VirtualScroll.State.IDLE;
+                }
+
+                /**
+                 * @public
+                 * @method scrollToIndex
+                 * @description 滚动到指定索引，约束在 `[0, totalCount - 1]`。
+                 * @param {number} index - 目标索引。
+                 * @param {Object} [options]
+                 * @param {string} [options.behavior='auto'] - `'auto'` 或 `'smooth'`。
+                 * @returns {void}
+                 */
+                scrollToIndex(index, options = {}) {
+                    this._assertNotDestroyed('scrollToIndex');
+                    if (this.state === VirtualScroll.State.IDLE || !this.container) {
+                        return;
+                    }
+                    const i = Math.max(0, Math.min(index, this.totalCount - 1));
+                    const top = i * this.itemHeight;
+                    if (options.behavior === 'smooth') {
+                        this.container.scrollTo({top, behavior: 'smooth'});
+                    } else {
+                        this.container.scrollTop = top;
+                    }
+                }
+
+                /** @public */
+                scrollToTop(options) {
+                    this.scrollToIndex(0, options);
+                }
+
+                /** @public */
+                scrollToBottom(options) {
+                    this.scrollToIndex(this.totalCount - 1, options);
+                }
+
+                /**
+                 * @public
+                 * @method getMetrics
+                 * @description 获取运行指标。
+                 * @returns {Object}
+                 */
+                getMetrics() {
+                    return {
+                        state: this.state,
+                        itemHeight: this.itemHeight,
+                        bufferSize: this.bufferSize,
+                        visibleCount: this.itemHeight && this.container
+                                      ? Math.ceil(this.container.clientHeight / this.itemHeight) : 0,
+                        renderedCount: Math.max(0, this._endIndex - this._startIndex),
+                        totalCount: this.totalCount,
+                        startIndex: this._startIndex,
+                        endIndex: this._endIndex,
+                        scrollTop: this.container ? this.container.scrollTop : 0
+                    };
+                }
+
+                /** @public @returns {boolean} */
+                isPaused() {
+                    return this.state === VirtualScroll.State.PAUSED;
+                }
+
+                /** @public @returns {boolean} */
+                isRunning() {
+                    return this.state === VirtualScroll.State.RUNNING;
+                }
+
+                /**
+                 * @public
+                 * @method destroy
+                 * @description 彻底销毁实例。
+                 * @returns {void}
+                 */
+                destroy() {
+                    if (this.state === VirtualScroll.State.DESTROYED) {
+                        return;
+                    }
+                    this._unbindScroll();
+                    this._unbindResize();
+                    this._cancelScheduledRender();
+                    if (this.container) {
+                        this.container.innerHTML = '';
+                    }
+                    this._spacerTop = null;
+                    this._spacerBottom = null;
+                    this._handleScroll = null;
+                    this._handleWindowResize = null;
+                    this._lastContainerHeight = 0;
+                    this.container = null;
+                    this.data = [];
+                    this.totalCount = 0;
+                    this.state = VirtualScroll.State.DESTROYED;
+                }
+
+                /* ===========================================================================
+                 *  私有方法
+                 * =========================================================================== */
+
+                /** @private */
+                _validateConfig(config) {
+                    if (typeof config.container !== 'string' || !config.container.startsWith('#')) {
+                        throw new Error('[VirtualScroll] config.container must be an ID selector string in "#id" format');
+                    }
+                    if (typeof config.renderItem !== 'function') {
+                        throw new Error('[VirtualScroll] config.renderItem must be a function');
+                    }
+                }
+
+                /** @private */
+                _resolveContainer() {
+                    if (this.container) {
+                        return;
+                    }
+                    const el = document.getElementById(this._selector.slice(1));
+                    if (!el) {
+                        throw new Error(
+                            `[VirtualScroll] Container element "${this._selector}" not found in the DOM. ` +
+                            'Make sure the element exists before calling load().'
+                        );
+                    }
+                    this.container = el;
+                }
+
+                /** @private */
+                _assertNotDestroyed(methodName) {
+                    if (this.state === VirtualScroll.State.DESTROYED) {
+                        throw new Error(`[VirtualScroll] Instance has been destroyed, cannot call ${methodName}()`);
+                    }
+                }
+
+                /** @private - 设置容器基础 CSS */
+                _setupContainer() {
+                    if (getComputedStyle(this.container).position === 'static') {
+                        this.container.style.position = 'relative';
+                    }
+                    this.container.style.overflow = 'auto';
+                }
+
+                /**
+                 * @private
+                 * @method _measureItemHeight
+                 * @description 自动测量行高。样本项作为容器直接子节点插入，确保 CSS 规则命中。
+                 * 结果取整消除亚像素累积误差。
+                 */
+                _measureItemHeight() {
+                    if (this.totalCount === 0) {
+                        this.itemHeight = 50;
+                        console.warn('[VirtualScroll] Data is empty, item height falls back to 50px');
+                        return;
+                    }
+
+                    this.container.innerHTML = '';
+                    const sampleCount = Math.min(3, this.totalCount);
+                    const samples = [];
+
+                    for (let i = 0; i < sampleCount; i++) {
+                        const el = this._toElement(this.renderItem(i, this.data));
+                        this.container.appendChild(el);
+                        samples.push(el);
+                    }
+
+                    // 强制同步布局
+                    this.container.offsetHeight;
+
+                    if (sampleCount >= 2) {
+                        const firstTop = samples[0].getBoundingClientRect().top;
+                        const lastTop = samples[sampleCount - 1].getBoundingClientRect().top;
+                        this.itemHeight = Math.round((lastTop - firstTop) / (sampleCount - 1));
+                    } else {
+                        const rect = samples[0].getBoundingClientRect();
+                        const style = getComputedStyle(samples[0]);
+                        this.itemHeight = Math.round(
+                            rect.height + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+                        );
+                    }
+
+                    this.container.innerHTML = '';
+                    this._spacerTop = null;
+                    this._spacerBottom = null;
+
+                    if (this.itemHeight <= 0) {
+                        console.warn('[VirtualScroll] Measured item height is 0, falling back to 50px');
+                        this.itemHeight = 50;
+                    }
+                }
+
+                /**
+                 * @private
+                 * @description `clamp(⌈visibleCount × 0.5⌉, 3, 20)`
+                 */
+                _calcBufferSize() {
+                    const ch = this.container.clientHeight;
+                    if (ch <= 0) {
+                        this.bufferSize = 5;
+                        return;
+                    }
+                    const visibleCount = Math.ceil(ch / this.itemHeight);
+                    this.bufferSize = Math.min(20, Math.max(3, Math.ceil(visibleCount * 0.5)));
+                }
+
+                /** @private - 构建上下 `<vs-spacer>` 占位 */
+                _buildDOM() {
+                    const spacerStyle = {
+                        display: 'block', width: '100%', height: '0px',
+                        margin: '0', padding: '0', border: 'none',
+                        visibility: 'hidden', overflow: 'hidden',
+                        lineHeight: '0', fontSize: '0'
+                    };
+
+                    this._spacerTop = document.createElement('vs-spacer');
+                    Object.assign(this._spacerTop.style, spacerStyle);
+
+                    this._spacerBottom = document.createElement('vs-spacer');
+                    Object.assign(this._spacerBottom.style, spacerStyle);
+
+                    this.container.innerHTML = '';
+                    this.container.appendChild(this._spacerTop);
+                    this.container.appendChild(this._spacerBottom);
+                }
+
+                /* ---------- 事件绑定 ---------- */
+
+                /** @private - 绑定所有事件监听（幂等） */
+                _bindEvents() {
+                    this._bindScroll();
+                    this._bindResize();
+                }
+
+                /** @private - 绑定 scroll（幂等） */
+                _bindScroll() {
+                    if (this._handleScroll) {
+                        return;
+                    }
+                    this._handleScroll = () => this._scheduleRender();
+                    this.container.addEventListener('scroll', this._handleScroll, {passive: true});
+                }
+
+                /** @private */
+                _unbindScroll() {
+                    if (this._handleScroll && this.container) {
+                        this.container.removeEventListener('scroll', this._handleScroll);
+                        this._handleScroll = null;
+                    }
+                }
+
+                /**
+                 * @private
+                 * @method _bindResize
+                 * @description 绑定容器尺寸监听（幂等）。双重保障：
+                 * 1. **ResizeObserver**（主力）：监听容器元素自身，任何原因导致的尺寸变化都能捕获。
+                 * 2. **window `resize`**（兜底）：兼容不支持 ResizeObserver 的环境，
+                 *    或 ResizeObserver 因浏览器实现差异未触发的情况。
+                 *
+                 * 两者回调均指向同一个 `_scheduleRender()`，由统一的 rAF 合并，
+                 * 确保同一帧内无论几个事件源触发，`_render()` 只执行一次。
+                 */
+                _bindResize() {
+                    // ---- 1. ResizeObserver ----
+                    if (!this._ro && typeof ResizeObserver !== 'undefined') {
+                        this._ro = new ResizeObserver(() => {
+                            if (this.state === VirtualScroll.State.RUNNING) {
+                                this._scheduleRender();
+                            }
+                        });
+                        this._ro.observe(this.container);
+                    }
+
+                    // ---- 2. window resize 兜底 ----
+                    if (!this._handleWindowResize) {
+                        this._handleWindowResize = () => {
+                            if (this.state === VirtualScroll.State.RUNNING) {
+                                this._scheduleRender();
+                            }
+                        };
+                        window.addEventListener('resize', this._handleWindowResize, {passive: true});
+                    }
+                }
+
+                /** @private */
+                _unbindResize() {
+                    if (this._ro) {
+                        this._ro.disconnect();
+                        this._ro = null;
+                    }
+                    if (this._handleWindowResize) {
+                        window.removeEventListener('resize', this._handleWindowResize);
+                        this._handleWindowResize = null;
+                    }
+                }
+
+                /* ---------- 渲染调度 ---------- */
+
+                /**
+                 * @private
+                 * @method _scheduleRender
+                 * @description 统一的异步渲染调度入口。
+                 * 所有触发源（scroll / ResizeObserver / window resize）都经此方法，
+                 * 利用 `requestAnimationFrame` 合并为同一帧内最多一次 `_render()` 调用。
+                 */
+                _scheduleRender() {
+                    if (this._renderRAF) {
+                        return;
+                    }
+                    this._renderRAF = requestAnimationFrame(() => {
+                        this._renderRAF = null;
+                        this._render();
+                    });
+                }
+
+                /**
+                 * @private
+                 * @method _cancelScheduledRender
+                 * @description 取消已排队的 rAF 渲染。
+                 */
+                _cancelScheduledRender() {
+                    if (this._renderRAF) {
+                        cancelAnimationFrame(this._renderRAF);
+                        this._renderRAF = null;
+                    }
+                }
+
+                /**
+                 * @private
+                 * @method _forceRender
+                 * @description 强制同步渲染。取消排队的 rAF，重置范围索引，立即执行 `_render()`。
+                 * 用于 `load()` / `resume()` 等需要立即生效的场景。
+                 */
+                _forceRender() {
+                    this._cancelScheduledRender();
+                    this._startIndex = -1;
+                    this._endIndex = -1;
+                    this._render();
+                }
+
+                /* ---------- 核心渲染 ---------- */
+
+                /**
+                 * @private
+                 * @method _render
+                 * @description 核心渲染逻辑。
+                 *
+                 * **内置容器高度自检**：每次执行时读取 `clientHeight`，与 `_lastContainerHeight` 比较。
+                 * 高度变化时自动执行：
+                 * 1. 重算 `bufferSize`。
+                 * 2. 钳制 `scrollTop`（防止超出最大可滚动范围导致底部空白）。
+                 * 3. 由于 `bufferSize` 变化或 `scrollTop` 被钳制，渲染范围必然与上次不同，触发重新渲染。
+                 *
+                 * 这样无论触发源是什么（scroll / resize / resume / load），都能正确适配当前容器尺寸。
+                 */
+                _render() {
+                    const {itemHeight, totalCount, data} = this;
+                    if (!this.container || !itemHeight || !totalCount) {
+                        return;
+                    }
+
+                    const clientHeight = this.container.clientHeight;
+                    if (clientHeight <= 0) {
+                        return;
+                    } // 容器不可见，跳过
+
+                    // ========== 容器高度变化自检 ==========
+                    const heightChanged = clientHeight !== this._lastContainerHeight;
+
+                    if (heightChanged) {
+                        this._lastContainerHeight = clientHeight;
+                        this._calcBufferSize();
+
+                        // 钳制 scrollTop：容器变大后旧值可能超出最大可滚动范围
+                        const maxScroll = Math.max(0, totalCount * itemHeight - clientHeight);
+                        if (this.container.scrollTop > maxScroll) {
+                            this.container.scrollTop = maxScroll;
+                        }
+                    }
+
+                    // ========== 计算渲染范围 ==========
+                    const scrollTop = this.container.scrollTop;
+                    const visibleStart = Math.floor(scrollTop / itemHeight);
+                    const visibleEnd = Math.ceil((scrollTop + clientHeight) / itemHeight);
+
+                    const start = Math.max(0, visibleStart - this.bufferSize);
+                    const end = Math.min(totalCount, visibleEnd + this.bufferSize);
+
+                    // 高度未变 且 范围未变 → 跳过
+                    if (!heightChanged && start === this._startIndex && end === this._endIndex) {
+                        return;
+                    }
+
+                    this._startIndex = start;
+                    this._endIndex = end;
+
+                    // ========== 更新占位高度 ==========
+                    const totalHeight = totalCount * itemHeight;
+                    const topH = start * itemHeight;
+                    const renderedH = (end - start) * itemHeight;
+                    const bottomH = totalHeight - topH - renderedH;
+
+                    this._spacerTop.style.height = topH + 'px';
+                    this._spacerBottom.style.height = Math.max(0, bottomH) + 'px';
+
+                    // ========== 替换列表项 ==========
+                    while (this._spacerTop.nextSibling !== this._spacerBottom) {
+                        this._spacerTop.nextSibling.remove();
+                    }
+
+                    const frag = document.createDocumentFragment();
+                    for (let i = start; i < end; i++) {
+                        frag.appendChild(this._toElement(this.renderItem(i, data)));
+                    }
+                    this.container.insertBefore(frag, this._spacerBottom);
+                }
+
+                /** @private */
+                _toElement(result) {
+                    if (result instanceof HTMLElement) {
+                        return result;
+                    }
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = result;
+                    return wrapper.firstElementChild || wrapper;
                 }
             }
 
@@ -11217,13 +11832,12 @@
 
                 /**
                  * @static
-                 * @type {AsyncListRenderer}
-                 * @description AsyncListRenderer 实例。
+                 * @type {VirtualScroll}
+                 * @description VirtualScroll 实例。
                  * 用于管理函数列表输出的显示。
                  */
-                static printListRenderer = new AsyncListRenderer({
-                    scrollSelector: '#print_content_2_inner',   // 滚动区域的选择器
-                    containerSelector: '#print_content_2_inner',// 真实 DOM 的挂载点选择器
+                static printListRenderer = new VirtualScroll({
+                    container: '#print_content_2_inner',   // 滚动区域的选择器
 
                     /**
                      * @function rowRenderer
@@ -11232,7 +11846,7 @@
                      * @returns {HTMLElement} 返回拼装好的一行 DOM
                      * @description 负责单行 DOM 的组装
                      */
-                    rowRenderer: (dataSource, index) => {
+                    renderItem(index, dataSource) {
                         // 从外部传入的数据源中解构出当前需要的所有状态，不依赖外部闭包变量
                         const {result, onlyFuncG} = dataSource;
 
@@ -11253,16 +11867,17 @@
                             const formattedNodes = PrintManager._printHandleError(dataItem);
 
                             // 将处理后的节点追加到内容容器中
-                            HtmlTools.appendDOMs(
-                                subContent,
-                                formattedNodes.map(item => ['lazy-bg', item]),
-                                {nameType: ['class', 'data-lazy-bg-class']}
-                            );
+                            HtmlTools.appendDOMs(subContent, formattedNodes);
 
                             // 建立层级关系
                             subWrapper.appendChild(subContent);
                             currentDiv.appendChild(subWrapper);
                         });
+
+                        // 4.加入奇偶顺序
+                        if (result.varList.length > 4) {
+                            currentDiv.classList.add(index % 2 === 0 ? 'Even' : 'Odd');
+                        }
 
                         // 返回完整的一行 DOM 树交给底层批量挂载
                         return currentDiv;
@@ -11827,9 +12442,10 @@
                         // 调用 Web Worker 异步计算函数值列表。
                         const result = await WorkerTools.valueList(fx, gx, start, step, end);
                         // 创建页面加载器
-                        void this.printListRenderer.startRender(
+                        void this.printListRenderer.load(
                             {result, onlyFuncG},
-                            result.varList.length
+                            result.varList.length,
+                            {remeasure: true}
                         );
                         // 成功生成表格，隐藏错误提示。
                         HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
@@ -12789,7 +13405,7 @@
                             InputManager.statisticsRenderer.resumeRender();
                             return PageControlTools._exportRaRecover();
                         case '2_1':
-                            PrintManager.printListRenderer.stopRender();
+                            PrintManager.printListRenderer.clear();
                             return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
                     }
                 }
@@ -13163,6 +13779,7 @@
             window.PageConfig = PageConfig;
             window.HtmlTools = HtmlTools;
             window.AsyncListRenderer = AsyncListRenderer;
+            window.VirtualScroll = VirtualScroll;
             window.InputManager = InputManager;
             window.PrintManager = PrintManager;
             window.PageControlTools = PageControlTools;
@@ -14955,7 +15572,7 @@
 
         ._info_show_ {
             height: min(5dvh, 6dvmin);
-            content: url(data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyLjg5IDEyLjE5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxzdHlsZT4uY2xzLTEgewogICAgICAgIGZpbGw6ICNlYTQzMzU7CiAgICAgIH0KCiAgICAgIC5jbHMtMiB7CiAgICAgICAgZmlsbDogIzQyODVmNDsKICAgICAgfQoKICAgICAgLmNscy0zIHsKICAgICAgICBmaWxsOiAjMzRhODUzOwogICAgICB9CgogICAgICAuY2xzLTQgewogICAgICAgIGZpbGw6ICNiM2IzYjM7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgZmlsbDogI2ZiYmMwNTsKICAgICAgfTwvc3R5bGU+PC9kZWZzPjxnIGlkPSJhIj48Zz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0xMy42LjI1Yy0uMTYuMTQtLjI3LjI0LS4zMi4zMi0uMDYuMDgtLjEzLjIyLS4yLjQybC0uMzEuOTRjLS4zNC45OS0uNjkgMS45OS0xLjA2IDIuOThsLS42NiAxLjhjLS4yNi43NC0uNDggMS4zLS42NyAxLjY4LS40Ny4wNi0uODguMTUtMS4yNS4yNy0uMTktLjU3LS4zNy0xLjE0LS41NC0xLjcxLS40LTEuMzktLjc1LTIuNjctMS4wNi0zLjg1LS4xOS0uNzMtLjM1LTEuMzYtLjQ5LTEuODktLjM4IDEuMTEtLjc1IDIuMjItMS4xMiAzLjMzLS4yMy42Ni0uNDcgMS4zMS0uNzEgMS45Ny0uMjguODktLjUyIDEuNTEtLjcxIDEuODgtLjUxLjA2LS45NC4xNS0xLjMuMjctLjItLjY3LS40LTEuMzUtLjU4LTIuMDMtLjM2LTEuMzQtLjcxLTIuNzgtMS4wOC00LjMxLS4xNS0uNjEtLjI5LTEuMjMtLjQ0LTEuODhsLTEuMDguMDQuNzItLjQ4aDIuMDhsLS4yNC4zYy0uMTEuMTEtLjE2LjIyLS4xNi4zMyAwIC4xNi4wNy41Mi4yMiAxLjA3LjA5LjMyLjE2LjY1LjIzLjk3bC42MSAyLjQxYy4xMy41Mi4yNiAxLjA0LjM5IDEuNTQuMTUuNi4yOCAxLjAzLjM2IDEuMy4yNS0uNjcuNTktMS42NCAxLjA0LTIuOTFsLjUxLTEuNDljLjU1LTEuNjcuODYtMi43LjkzLTMuMDdoLTEuMDdsLjc1LS40NGgyLjIxbC0uMjcuMzRjLS4xLjA5LS4xNi4yLS4xNi4zNSAwIC4wMyAwIC4wNy4wMS4xMS0uMDIuMDIuMDcuMzYuMjYgMS4wMy4wMS4wNS4xMy41LjM1IDEuMzZsLjU2IDIuMDZjLjEzLjQ3LjI2LjkzLjM5IDEuMzguMTUuNTUuMjkuOTguNCAxLjI4LjM5LS45OS43My0xLjkyIDEuMDQtMi44MWwuNzItMS45OWMuMTUtLjQ2LjI5LS45Mi40NC0xLjM4LjE5LS41Ny4zMS0xIC4zNy0xLjI4aC0xLjQxbC43OC0uNDRoMS44bC0uMjcuMjV6Ii8+PHBhdGggY2xhc3M9ImNscy0yIiBkPSJtMTkuOSA4LjQ4aC0xLjkyYy4xMi0uMTQuMTktLjI0LjIyLS4zMnMuMDUtLjIuMDUtLjM0bC4wNS0yLjI2Yy4wMi0uMzggMC0uNzMtLjAzLTEuMDMtLjA0LS4zLS4xNS0uNTQtLjM0LS43MnMtLjQzLS4yNi0uNy0uMjZjLS4yOCAwLS41LjA4LS42Ny4yMi0uMTkuMTQtLjMzLjI3LS40Mi4zOS0uMTcuMjEtLjI4LjM4LS4zNC40OGwtLjAyIDIuODFjMCAuMjEuMDIuMzYuMDUuNDcuMDMuMS4xMS4xNy4yNC4yMi4yNC4wNC40OS4wNy43NC4xMWwtLjQuMjVoLTIuMDJjLjExLS4xNC4xOS0uMjQuMjItLjMxLjAyLS4wNy4wMy0uMTguMDMtLjMxdi0xLjAzYy4wMi0xLjQ1LjA0LTIuODguMDctNC4yOC4wMy0xLjM0LjA1LTIuMDUuMDUtMi4xMmwtLjkyLjA1LjkyLS40OWgxLjYyYy0uMjkuMi0uNDMuMzMtLjQzLjM5LS4wNS4wOS0uMDcuMjctLjA4LjU2LS4wMi40OC0uMDQuOTctLjA0IDEuNDhsLS4wNCAxLjUyYy4wNy0uMDkuMTctLjE5LjI4LS4zMXMuMjUtLjI0LjQtLjM1Yy4xNi0uMTIuMzYtLjIyLjU4LS4zLjIyLS4wNy40Ny0uMTEuNzUtLjExLjE3IDAgLjM2LjAyLjU3LjA3LjIuMDUuNC4xOC42LjM5LjIuMjIuMzIuNDYuMzcuNzIuMDMuMjcuMDUuNTMuMDUuOCAwIC45Ni0uMDMgMS45MS0uMDYgMi44NnYuMDZjMCAuMTMuMDIuMjEuMDYuMjVzLjA4LjA2LjEyLjA3Yy4wNCAwIC4wOSAwIC4xNy4wMy4wOCAwIC4xNy4wMi4yNi4wNC4yMS4wMi4zNS4wNC40NC4wNmwtLjQ5LjI2eiIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTI0LjU2IDUuOWMuMTcuNjMuMzUgMS4xOS41MyAxLjY3LjEyLjI4LjIyLjQ5LjMxLjY0LjA5LjE0LjE4LjI3LjI3LjM4LS4xMi4wMi0uMjQuMDMtLjM0LjA0LS4yNS0uMDEtLjQ5LS4wOC0uNzItLjIyLS4xOS0uMTItLjMyLS4yNS0uNDEtLjM4LS4xLS4xNC0uMTgtLjI2LS4yMy0uMzdsLS41NS41NWMtLjExLjA3LS4yOC4xNS0uNTEuMjUtLjI0LjExLS41NC4xNy0uOTEuMTgtLjQ4IDAtLjg0LS4xNC0xLjA3LS4zOS0uMjUtLjI0LS4zNy0uNTItLjM3LS44NiAwLS4zNS4xLS42Ni4zMS0uOTIuMTktLjI2LjQzLS40OS43Mi0uNjcuMjktLjE5LjU4LS4zNS44OS0uNDcuMjgtLjEyLjUyLS4yMS43Mi0uMjdsLS4xOC0uNTRjLS4xOC0uNTUtLjM5LS44OS0uNjMtMS4wMi0uMjUtLjEyLS42Mi0uMTctMS4xMi0uMTNsLjg1LS4zNmMuMjYgMCAuNTIgMCAuNzcuMDIuMjQuMDIuNDYuMS42NC4yMy4yLjE0LjM2LjM0LjQ3LjYycy4yMy42Ny4zNiAxLjE3bC4yMy44NXptLTEuMTYtLjA2Yy0uMDUtLjI5LS4xNC0uNDQtLjI3LS40My0uMTYgMC0uNDMuMTQtLjgxLjQxLS4xOC4xMy0uMzMuMjktLjQ1LjQ4LS4xNC4xOS0uMjEuNDItLjIxLjY4IDAgLjE3LjA0LjMxLjEyLjQzLjA3LjEzLjE2LjIzLjI3LjMxLjIyLjE2LjQ3LjI0LjczLjI0LjMgMCAuNTUtLjA2LjczLS4xOS4xNy0uMTEuMjktLjIxLjM2LS4yOS0uMTEtLjMxLS4yMy0uNzEtLjM2LTEuMjNsLS4xMS0uNDF6Ii8+PHBhdGggY2xhc3M9ImNscy01IiBkPSJtMjguMTUgOC40OGgtMi4wNmMuMTQtLjE4LjIzLS4zLjI3LS4zNy4wMy0uMDcuMDUtLjE2LjA1LS4yN3YtMS45NWMwLTEuMDIuMDItMi4xOS4wNS0zLjUyLjAyLS42Ny4wNS0xLjMyLjA3LTEuOTNoLS45MWwuODctLjQzaDEuNjZjLS4xNy4xLS4yOS4xOS0uMzcuMjgtLjA4LjA4LS4xMi4yMy0uMTUuNDMtLjA4Ljk4LS4xMiAyLjM0LS4xMSA0LjA5djIuNzdjMCAuMjIuMDMuMzcuMS40NS4wNy4wNy4xOS4xMi4zNy4xM2wuNi4wNi0uNDMuMjZ6Ii8+PHBhdGggY2xhc3M9ImNscy01IiBkPSJtMzIuNDQgMy40OGMuMDguMDUuMTYuMTIuMjUuMjFzLjE4LjIxLjI3LjM1Yy4wOC4xMy4xNi4yOC4yMi40Ni4wNS4xOC4wOC4zOC4wOC42MiAwIC40My0uMS43Ny0uMjggMS4wMy0uMDkuMTItLjE4LjI0LS4yOC4zNS0uMTEuMTEtLjIzLjIxLS4zNS4zMi0uMDcuMDctLjE0LjE2LS4yLjI1LS4wNy4xLS4xMS4yMS0uMTEuMzRzLjA0LjIzLjExLjMxYy4wNi4wOC4xMi4xNS4xOC4yMWwuNDEuMzNjLjI1LjIxLjQ4LjQ0LjY3LjY5LjE4LjI1LjI3LjU5LjI4IDEgMCAuNTgtLjI2IDEuMS0uNzcgMS41NS0uNTMuNDYtMS4zLjcxLTIuMzEuNzItLjg0IDAtMS40Ny0uMTktMS44OC0uNTQtLjQyLS4zMy0uNjMtLjcyLS42My0xLjE4IDAtLjIyLjA3LS40Ny4yLS43NHMuMzctLjUxLjcyLS43MmMuMzktLjIyLjgtLjM3IDEuMjMtLjQ0LjQyLS4wNi43OC0uMSAxLjA2LS4xMS0uMDktLjExLS4xNi0uMjQtLjIzLS4zNy0uMDgtLjEzLS4xMi0uMjgtLjEyLS40NSAwLS4xMS4wMi0uMTkuMDUtLjI3LjAzLS4wNy4wNS0uMTQuMDctLjIxLS4xNC4wMi0uMjcuMDItLjM5LjAyLS42NCAwLTEuMTMtLjIxLTEuNDYtLjYtLjM1LS4zNy0uNTMtLjc5LS41My0xLjI4IDAtLjU5LjI1LTEuMTIuNzUtMS42LjM0LS4yOC43LS40NiAxLjA2LS41NS4zNi0uMDcuNzEtLjExIDEuMDItLjExaDIuNGwtLjc0LjQzaC0uNzR6bS40NiA2LjkyYzAtLjMxLS4xLS41Ny0uMy0uOC0uMjEtLjIxLS41NC0uNDgtLjk5LS43OS0uMDggMC0uMTctLjAxLS4yNy0uMDEtLjA2IDAtLjIyIDAtLjQ3LjAyLS4yNS4wNC0uNS4wOS0uNzYuMTctLjA2LjAyLS4xNS4wNi0uMjYuMTFzLS4yMi4xMi0uMzQuMjJjLS4xMS4xLS4yLjIyLS4yOC4zNi0uMDkuMTUtLjEzLjM0LS4xMy41NSAwIC40Mi4xOS43Ny41NyAxLjA0LjM2LjI3Ljg2LjQxIDEuNDkuNDIuNTcgMCAxLS4xMyAxLjMtLjM4LjI5LS4yNC40NC0uNTQuNDQtLjkyem0tMS42Ny0zLjUzYy4zMi0uMDEuNTgtLjEyLjc5LS4zNC4xLS4xNS4xNy0uMzEuMi0uNDcuMDItLjE2LjAzLS4zLjAzLS40MSAwLS40Ny0uMTItLjk1LS4zNi0xLjQzLS4xMS0uMjMtLjI2LS40Mi0uNDUtLjU2cy0uNDEtLjIxLS42NS0uMjJjLS4zMyAwLS42LjE0LS44MS4zOS0uMTguMjctLjI3LjU2LS4yNi44OSAwIC40My4xMy44OS4zOCAxLjM2LjEyLjIyLjI4LjQxLjQ4LjU2LjE5LjE1LjQyLjIzLjY3LjIzeiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0ibTM4LjYxIDguMjNjLS4xMi4wOC0uMjUuMTUtLjM5LjIxLS4zOS4xNi0uNzcuMjMtMS4xMi4yMy0uMTkgMC0uNDEtLjAzLS42OS0uMDgtLjI3LS4wNS0uNTYtLjE5LS44Ni0uMzktLjQtLjMxLS43LS43LS44OS0xLjE3LS4xOS0uNDYtLjI5LS45MS0uMjktMS4zNy4wMi0uOTQuMzEtMS42My44OS0yLjA5LjU1LS40NSAxLjE0LS42OCAxLjc3LS42OC40NCAwIC44My4xMSAxLjIuMzMuMjkuMi40OS40MS42MS42My4xMS4yMi4xOC40MS4yMS41NmwtMi43MyAxLjE0LS45LjA4Yy4xNi43Ni40NyAxLjM1LjkxIDEuNzcuNDMuNDMuOTMuNjUgMS40OS42NS4zIDAgLjU3LS4wNS43OS0uMTQuMjItLjA4LjQzLS4xNy42My0uMjhsLS42Mi42em0tMS4wOS0zLjU4Yy4yMy0uMDcuMzQtLjE4LjM0LS4zMyAwLS4yNS0uMTItLjQ5LS4zNC0uN3MtLjQ5LS4zMi0uODEtLjMzYy0uMTIgMC0uMjUuMDItLjM5LjA2LS4xNi4wNS0uMy4xNS0uNDQuMjgtLjE0LjEyLS4yNi4zLS4zNS41Mi0uMS4yMi0uMTUuNDktLjE1LjgxIDAgLjIxLjAxLjQyLjA0LjYzbDIuMTEtLjk0eiIvPjxwYXRoIGNsYXNzPSJjbHMtMyIgZD0ibTM5LjY3IDguNDhjLjE3LS4xNy4yOC0uMy4zMi0uNC4wMi0uMDkuMDMtLjI0LjAzLS40M3YtLjU2YzAtMS4xOC4wMi0yLjI1LjA0LTMuMTkuMDItMS4xMi4wNS0yLjI5LjA5LTMuNDloLS44NWwuODUtLjQxaDEuNTZjLS4xOS4xMS0uMzEuMjEtLjM2LjMtLjA2LjExLS4wOS4yNy0uMS41bC0uMSAyLjQ4Ljc3LS4yOWMuMTQgMCAuMjggMCAuNDMtLjAxLjkzLjAyIDEuNjEuMjggMi4wNS43OC40My41LjY1IDEuMS42NSAxLjc4IDAgLjYtLjE2IDEuMTUtLjQ5IDEuNjMtLjMzLjQ5LS44NC44Ni0xLjUzIDEuMTEtLjQxLjEzLS43OC4xOS0xLjExLjE4aC0yLjI0em0xLjQ2LTQuMDVjMCAuODMtLjAxIDEuNjYtLjAxIDIuNDggMCAuNTIgMCAuOC4wMi44NCAwIC4xMi4wNC4yMi4xMS4yOS4wNy4wOC4yNS4xMi41Ni4xMi4zMiAwIC41OC0uMDMuNzktLjA5LjI4LS4wOS41MS0uMjEuNy0uMzcuMTctLjE1LjMtLjMzLjQtLjUyLjExLS4yLjE4LS40MS4yMS0uNjJzLjA1LS40LjA1LS41OWMwLS4zNy0uMDgtLjgxLS4yNy0xLjMxLS4xLS4yNC0uMjUtLjQ3LS40Ni0uNjgtLjE5LS4yLS40NS0uMzYtLjc3LS40OC0uMjYtLjEtLjQ5LS4xNi0uNy0uMTgtLjIyLS4wMi0uNDItLjAyLS42MiAwdjEuMDl6Ii8+PHBhdGggY2xhc3M9ImNscy0zIiBkPSJtNDguMjcgOC40OGgtMi4wMWMuMTMtLjE5LjIyLS4zNS4yNS0uNDcuMDItLjEyLjAzLS4yOS4wMy0uNTIgMC0xLjUuMDItMi44Ni4wMy00LjA3aC0uODlsLjc5LS4zOWgxLjQxYy0uMTUuMTUtLjIzLjMzLS4yMy41NHYuMzhjLjA5LS4xLjItLjIxLjMzLS4zMi4xMi0uMTEuMjctLjIyLjQzLS4zMi4zMy0uMjMuNzItLjM1IDEuMTgtLjM2LjEyIDAgLjIxIDAgLjI3LjAyLjA1LjAyLjEuMDUuMTUuMDdsLS40OCAxLjIzLS4zMy4xOS4xLS41OHMtLjEtLjA2LS4xNS0uMDljLS4wNS0uMDItLjE0LS4wMi0uMjYtLjAyLS4yMSAwLS40Mi4wNi0uNjMuMTctLjIxLjEzLS40MS4zNC0uNjEuNjNsLS4wMiAzLjAzYzAgLjIyLjA0LjM1LjExLjQxLjA3LjA3LjE5LjEuMzQuMTFsLjYxLjAyLS40My4zM3oiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Im01NC4wOCA1LjljLjE3LjYzLjM1IDEuMTkuNTMgMS42Ny4xMi4yOC4yMi40OS4zMS42NC4wOS4xNC4xOC4yNy4yNy4zOC0uMTIuMDItLjI0LjAzLS4zNC4wNC0uMjUtLjAxLS40OS0uMDgtLjcyLS4yMi0uMTktLjEyLS4zMi0uMjUtLjQxLS4zOC0uMS0uMTQtLjE4LS4yNi0uMjMtLjM3bC0uNTUuNTVjLS4xMS4wNy0uMjguMTUtLjUxLjI1LS4yNC4xMS0uNTQuMTctLjkxLjE4LS40OCAwLS44NC0uMTQtMS4wNy0uMzktLjI1LS4yNC0uMzctLjUyLS4zNy0uODYgMC0uMzUuMS0uNjYuMzEtLjkyLjE5LS4yNi40My0uNDkuNzItLjY3LjI5LS4xOS41OC0uMzUuODktLjQ3LjI4LS4xMi41Mi0uMjEuNzItLjI3bC0uMTgtLjU0Yy0uMTgtLjU1LS4zOS0uODktLjYzLTEuMDItLjI1LS4xMi0uNjItLjE3LTEuMTItLjEzbC44NS0uMzZjLjI2IDAgLjUyIDAgLjc3LjAyLjI0LjAyLjQ2LjEuNjQuMjMuMi4xNC4zNi4zNC40Ny42MnMuMjMuNjcuMzYgMS4xN2wuMjMuODV6bS0xLjE2LS4wNmMtLjA1LS4yOS0uMTQtLjQ0LS4yNy0uNDMtLjE2IDAtLjQzLjE0LS44MS40MS0uMTguMTMtLjMzLjI5LS40NS40OC0uMTQuMTktLjIxLjQyLS4yMS42OCAwIC4xNy4wNC4zMS4xMi40My4wNy4xMy4xNi4yMy4yNy4zMS4yMi4xNi40Ny4yNC43My4yNC4zIDAgLjU1LS4wNi43My0uMTkuMTctLjExLjI5LS4yMS4zNi0uMjktLjExLS4zMS0uMjMtLjcxLS4zNi0xLjIzbC0uMTEtLjQxeiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTY0LjQyIDguNDgtMi4xMy02LjIxaDEuNjJsMS40OCA0LjgyaC4xMWwxLjQ4LTQuODJoMS42MmwtMi4xMyA2LjIxaC0yLjA0eiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTcxLjA3IDQuOTctLjE0LTEuMzVjLjU1LS4wNy45OS0uMTcgMS4zMy0uM3MuNTktLjI5Ljc1LS40OC4yNC0uNC4yNC0uNjNjMC0uMjItLjA3LS4zOS0uMjItLjUxcy0uMzYtLjE4LS42NS0uMThjLS4zMSAwLS42Ni4wNi0xLjAzLjE5cy0uNzMuMzEtMS4wNy41NmwtLjgxLTEuMmMuMzgtLjM2LjgxLS42MiAxLjI5LS43OHMxLjAzLS4yNCAxLjYzLS4yNGMuNzkgMCAxLjQuMTYgMS44My40OHMuNjQuNzguNjQgMS4zOGMwIC41Mi0uMTguOTgtLjU0IDEuMzZzLS44Mi42NS0xLjQuOHYuNmwtMS44OC4yOXptLjc4IDMuNjNjLS40NSAwLS44Ni0uMDMtMS4yNC0uMDhzLS43MS0uMTItMS0uMjFsLjE1LTEuNTJjLjI1LjA3LjU0LjE0Ljg1LjIxcy43MS4xMSAxLjE5LjExYy41MiAwIC45Mi0uMDkgMS4yLS4yN3MuNDItLjQzLjQyLS43NmMwLS4yNC0uMDgtLjQ1LS4yNS0uNjFzLS40Mi0uMjktLjc0LS4zOC0uNzItLjEzLTEuMTgtLjEzaC0uMTlsLS4xNC0xLjM1IDEuNjkuNjNjLjcyIDAgMS4zMS4xOSAxLjc2LjU0cy42OC44NC42OCAxLjQ3YzAgLjc0LS4yOCAxLjMyLS44NCAxLjczcy0xLjM1LjYyLTIuMzcuNjJ6Ii8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJtNzkuMjcgOC42Yy0uMyAwLS41NS0uMS0uNzYtLjMxcy0uMzEtLjQ2LS4zMS0uNzUuMS0uNTUuMzEtLjc2LjQ2LS4zMS43Ni0uMzEuNTUuMS43Ni4zMS4zMS40Ni4zMS43Ni0uMS41NC0uMzEuNzUtLjQ2LjMxLS43Ni4zMXoiLz48cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Im04Ni4xOCA4LjZjLTEuOTYgMC0yLjk0LTEuNDEtMi45NC00LjIycy45OC00LjMzIDIuOTQtNC4zMyAyLjk0IDEuNDUgMi45NCA0LjM0LS45OCA0LjIyLTIuOTQgNC4yMnptMC0xLjRjLjg5IDAgMS4zNC0uOTQgMS4zNC0yLjgycy0uNDUtMi45NC0xLjM0LTIuOTQtMS4zNi45OC0xLjM2IDIuOTQuNDUgMi44MiAxLjM2IDIuODJ6bS0uMDEtMS43NGMtLjIzIDAtLjQyLS4xLS41Ny0uMjlzLS4yMS0uNDYtLjIxLS43OC4wNy0uNTguMjEtLjc4LjMzLS4yOS41Ny0uMjkuNDIuMS41Ny4yOS4yMi40Ni4yMi43OC0uMDcuNTgtLjIyLjc4LS4zMy4yOS0uNTcuMjl6Ii8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJtOTMuMDkgOC42Yy0uMyAwLS41NS0uMS0uNzYtLjMxcy0uMzEtLjQ2LS4zMS0uNzUuMS0uNTUuMzEtLjc2LjQ2LS4zMS43Ni0uMzEuNTUuMS43Ni4zMS4zMS40Ni4zMS43Ni0uMS41NC0uMzEuNzUtLjQ2LjMxLS43Ni4zMXoiLz48cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Im05Ny4yOCA4LjQ4di0xLjY1YzEuMjItLjY0IDIuMTMtMS4zMiAyLjc0LTIuMDJzLjktMS40Mi45LTIuMTdjMC0uMzgtLjA5LS42Ni0uMjgtLjg1cy0uNDctLjI4LS44NS0uMjhjLS4zMyAwLS42OC4wOS0xLjA0LjI4cy0uNjcuNDMtLjkzLjczbC0uOS0xLjA1Yy4yOS0uNDMuNy0uNzggMS4yMy0xLjA0czEuMDktLjM5IDEuNjctLjM5Yy45MSAwIDEuNTkuMjEgMi4wNC42MnMuNjggMS4wNC42OCAxLjg4YzAgLjc4LS4yMyAxLjUyLS42OSAyLjIzcy0xLjE2IDEuMzktMi4xIDIuMDV2MS42NWgtMi40N3ptLjM1IDB2LTEuNDJoNS4yNnYxLjQyaC01LjI2eiIvPjwvZz48L2c+PC9zdmc+Cg==);
+            content: url(data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMTAyLjk0IDEyLjE5IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxzdHlsZT4uY2xzLTEgewogICAgICAgIGZpbGw6ICNlYTQzMzU7CiAgICAgIH0KCiAgICAgIC5jbHMtMiB7CiAgICAgICAgZmlsbDogIzQyODVmNDsKICAgICAgfQoKICAgICAgLmNscy0zIHsKICAgICAgICBmaWxsOiAjMzRhODUzOwogICAgICB9CgogICAgICAuY2xzLTQgewogICAgICAgIGZpbGw6ICNiM2IzYjM7CiAgICAgIH0KCiAgICAgIC5jbHMtNSB7CiAgICAgICAgZmlsbDogI2ZiYmMwNTsKICAgICAgfTwvc3R5bGU+PC9kZWZzPjxnIGlkPSJhIj48Zz48cGF0aCBjbGFzcz0iY2xzLTIiIGQ9Im0xMy42LjI1Yy0uMTYuMTQtLjI3LjI0LS4zMi4zMi0uMDYuMDgtLjEzLjIyLS4yLjQybC0uMzEuOTRjLS4zNC45OS0uNjkgMS45OS0xLjA2IDIuOThsLS42NiAxLjhjLS4yNi43NC0uNDggMS4zLS42NyAxLjY4LS40Ny4wNi0uODguMTUtMS4yNS4yNy0uMTktLjU3LS4zNy0xLjE0LS41NC0xLjcxLS40LTEuMzktLjc1LTIuNjctMS4wNi0zLjg1LS4xOS0uNzMtLjM1LTEuMzYtLjQ5LTEuODktLjM4IDEuMTEtLjc1IDIuMjItMS4xMiAzLjMzLS4yMy42Ni0uNDcgMS4zMS0uNzEgMS45Ny0uMjguODktLjUyIDEuNTEtLjcxIDEuODgtLjUxLjA2LS45NC4xNS0xLjMuMjctLjItLjY3LS40LTEuMzUtLjU4LTIuMDMtLjM2LTEuMzQtLjcxLTIuNzgtMS4wOC00LjMxLS4xNS0uNjEtLjI5LTEuMjMtLjQ0LTEuODhsLTEuMDguMDQuNzItLjQ4aDIuMDhsLS4yNC4zYy0uMTEuMTEtLjE2LjIyLS4xNi4zMyAwIC4xNi4wNy41Mi4yMiAxLjA3LjA5LjMyLjE2LjY1LjIzLjk3bC42MSAyLjQxYy4xMy41Mi4yNiAxLjA0LjM5IDEuNTQuMTUuNi4yOCAxLjAzLjM2IDEuMy4yNS0uNjcuNTktMS42NCAxLjA0LTIuOTFsLjUxLTEuNDljLjU1LTEuNjcuODYtMi43LjkzLTMuMDdoLTEuMDdsLjc1LS40NGgyLjIxbC0uMjcuMzRjLS4xLjA5LS4xNi4yLS4xNi4zNSAwIC4wMyAwIC4wNy4wMS4xMS0uMDIuMDIuMDcuMzYuMjYgMS4wMy4wMS4wNS4xMy41LjM1IDEuMzZsLjU2IDIuMDZjLjEzLjQ3LjI2LjkzLjM5IDEuMzguMTUuNTUuMjkuOTguNCAxLjI4LjM5LS45OS43My0xLjkyIDEuMDQtMi44MWwuNzItMS45OWMuMTUtLjQ2LjI5LS45Mi40NC0xLjM4LjE5LS41Ny4zMS0xIC4zNy0xLjI4aC0xLjQxbC43OC0uNDRoMS44bC0uMjcuMjV6Ii8+PHBhdGggY2xhc3M9ImNscy0yIiBkPSJtMTkuOSA4LjQ4aC0xLjkyYy4xMi0uMTQuMTktLjI0LjIyLS4zMnMuMDUtLjIuMDUtLjM0bC4wNS0yLjI2Yy4wMi0uMzggMC0uNzMtLjAzLTEuMDMtLjA0LS4zLS4xNS0uNTQtLjM0LS43MnMtLjQzLS4yNi0uNy0uMjZjLS4yOCAwLS41LjA4LS42Ny4yMi0uMTkuMTQtLjMzLjI3LS40Mi4zOS0uMTcuMjEtLjI4LjM4LS4zNC40OGwtLjAyIDIuODFjMCAuMjEuMDIuMzYuMDUuNDcuMDMuMS4xMS4xNy4yNC4yMi4yNC4wNC40OS4wNy43NC4xMWwtLjQuMjVoLTIuMDJjLjExLS4xNC4xOS0uMjQuMjItLjMxLjAyLS4wNy4wMy0uMTguMDMtLjMxdi0xLjAzYy4wMi0xLjQ1LjA0LTIuODguMDctNC4yOC4wMy0xLjM0LjA1LTIuMDUuMDUtMi4xMmwtLjkyLjA1LjkyLS40OWgxLjYyYy0uMjkuMi0uNDMuMzMtLjQzLjM5LS4wNS4wOS0uMDcuMjctLjA4LjU2LS4wMi40OC0uMDQuOTctLjA0IDEuNDhsLS4wNCAxLjUyYy4wNy0uMDkuMTctLjE5LjI4LS4zMXMuMjUtLjI0LjQtLjM1Yy4xNi0uMTIuMzYtLjIyLjU4LS4zLjIyLS4wNy40Ny0uMTEuNzUtLjExLjE3IDAgLjM2LjAyLjU3LjA3LjIuMDUuNC4xOC42LjM5LjIuMjIuMzIuNDYuMzcuNzIuMDMuMjcuMDUuNTMuMDUuOCAwIC45Ni0uMDMgMS45MS0uMDYgMi44NnYuMDZjMCAuMTMuMDIuMjEuMDYuMjVzLjA4LjA2LjEyLjA3Yy4wNCAwIC4wOSAwIC4xNy4wMy4wOCAwIC4xNy4wMi4yNi4wNC4yMS4wMi4zNS4wNC40NC4wNmwtLjQ5LjI2eiIvPjxwYXRoIGNsYXNzPSJjbHMtNSIgZD0ibTI0LjU2IDUuOWMuMTcuNjMuMzUgMS4xOS41MyAxLjY3LjEyLjI4LjIyLjQ5LjMxLjY0LjA5LjE0LjE4LjI3LjI3LjM4LS4xMi4wMi0uMjQuMDMtLjM0LjA0LS4yNS0uMDEtLjQ5LS4wOC0uNzItLjIyLS4xOS0uMTItLjMyLS4yNS0uNDEtLjM4LS4xLS4xNC0uMTgtLjI2LS4yMy0uMzdsLS41NS41NWMtLjExLjA3LS4yOC4xNS0uNTEuMjUtLjI0LjExLS41NC4xNy0uOTEuMTgtLjQ4IDAtLjg0LS4xNC0xLjA3LS4zOS0uMjUtLjI0LS4zNy0uNTItLjM3LS44NiAwLS4zNS4xLS42Ni4zMS0uOTIuMTktLjI2LjQzLS40OS43Mi0uNjcuMjktLjE5LjU4LS4zNS44OS0uNDcuMjgtLjEyLjUyLS4yMS43Mi0uMjdsLS4xOC0uNTRjLS4xOC0uNTUtLjM5LS44OS0uNjMtMS4wMi0uMjUtLjEyLS42Mi0uMTctMS4xMi0uMTNsLjg1LS4zNmMuMjYgMCAuNTIgMCAuNzcuMDIuMjQuMDIuNDYuMS42NC4yMy4yLjE0LjM2LjM0LjQ3LjYycy4yMy42Ny4zNiAxLjE3bC4yMy44NXptLTEuMTYtLjA2Yy0uMDUtLjI5LS4xNC0uNDQtLjI3LS40My0uMTYgMC0uNDMuMTQtLjgxLjQxLS4xOC4xMy0uMzMuMjktLjQ1LjQ4LS4xNC4xOS0uMjEuNDItLjIxLjY4IDAgLjE3LjA0LjMxLjEyLjQzLjA3LjEzLjE2LjIzLjI3LjMxLjIyLjE2LjQ3LjI0LjczLjI0LjMgMCAuNTUtLjA2LjczLS4xOS4xNy0uMTEuMjktLjIxLjM2LS4yOS0uMTEtLjMxLS4yMy0uNzEtLjM2LTEuMjNsLS4xMS0uNDF6Ii8+PHBhdGggY2xhc3M9ImNscy01IiBkPSJtMjguMTUgOC40OGgtMi4wNmMuMTQtLjE4LjIzLS4zLjI3LS4zNy4wMy0uMDcuMDUtLjE2LjA1LS4yN3YtMS45NWMwLTEuMDIuMDItMi4xOS4wNS0zLjUyLjAyLS42Ny4wNS0xLjMyLjA3LTEuOTNoLS45MWwuODctLjQzaDEuNjZjLS4xNy4xLS4yOS4xOS0uMzcuMjgtLjA4LjA4LS4xMi4yMy0uMTUuNDMtLjA4Ljk4LS4xMiAyLjM0LS4xMSA0LjA5djIuNzdjMCAuMjIuMDMuMzcuMS40NS4wNy4wNy4xOS4xMi4zNy4xM2wuNi4wNi0uNDMuMjZ6Ii8+PHBhdGggY2xhc3M9ImNscy01IiBkPSJtMzIuNDQgMy40OGMuMDguMDUuMTYuMTIuMjUuMjFzLjE4LjIxLjI3LjM1Yy4wOC4xMy4xNi4yOC4yMi40Ni4wNS4xOC4wOC4zOC4wOC42MiAwIC40My0uMS43Ny0uMjggMS4wMy0uMDkuMTItLjE4LjI0LS4yOC4zNS0uMTEuMTEtLjIzLjIxLS4zNS4zMi0uMDcuMDctLjE0LjE2LS4yLjI1LS4wNy4xLS4xMS4yMS0uMTEuMzRzLjA0LjIzLjExLjMxYy4wNi4wOC4xMi4xNS4xOC4yMWwuNDEuMzNjLjI1LjIxLjQ4LjQ0LjY3LjY5LjE4LjI1LjI3LjU5LjI4IDEgMCAuNTgtLjI2IDEuMS0uNzcgMS41NS0uNTMuNDYtMS4zLjcxLTIuMzEuNzItLjg0IDAtMS40Ny0uMTktMS44OC0uNTQtLjQyLS4zMy0uNjMtLjcyLS42My0xLjE4IDAtLjIyLjA3LS40Ny4yLS43NHMuMzctLjUxLjcyLS43MmMuMzktLjIyLjgtLjM3IDEuMjMtLjQ0LjQyLS4wNi43OC0uMSAxLjA2LS4xMS0uMDktLjExLS4xNi0uMjQtLjIzLS4zNy0uMDgtLjEzLS4xMi0uMjgtLjEyLS40NSAwLS4xMS4wMi0uMTkuMDUtLjI3LjAzLS4wNy4wNS0uMTQuMDctLjIxLS4xNC4wMi0uMjcuMDItLjM5LjAyLS42NCAwLTEuMTMtLjIxLTEuNDYtLjYtLjM1LS4zNy0uNTMtLjc5LS41My0xLjI4IDAtLjU5LjI1LTEuMTIuNzUtMS42LjM0LS4yOC43LS40NiAxLjA2LS41NS4zNi0uMDcuNzEtLjExIDEuMDItLjExaDIuNGwtLjc0LjQzaC0uNzR6bS40NiA2LjkyYzAtLjMxLS4xLS41Ny0uMy0uOC0uMjEtLjIxLS41NC0uNDgtLjk5LS43OS0uMDggMC0uMTctLjAxLS4yNy0uMDEtLjA2IDAtLjIyIDAtLjQ3LjAyLS4yNS4wNC0uNS4wOS0uNzYuMTctLjA2LjAyLS4xNS4wNi0uMjYuMTFzLS4yMi4xMi0uMzQuMjJjLS4xMS4xLS4yLjIyLS4yOC4zNi0uMDkuMTUtLjEzLjM0LS4xMy41NSAwIC40Mi4xOS43Ny41NyAxLjA0LjM2LjI3Ljg2LjQxIDEuNDkuNDIuNTcgMCAxLS4xMyAxLjMtLjM4LjI5LS4yNC40NC0uNTQuNDQtLjkyem0tMS42Ny0zLjUzYy4zMi0uMDEuNTgtLjEyLjc5LS4zNC4xLS4xNS4xNy0uMzEuMi0uNDcuMDItLjE2LjAzLS4zLjAzLS40MSAwLS40Ny0uMTItLjk1LS4zNi0xLjQzLS4xMS0uMjMtLjI2LS40Mi0uNDUtLjU2cy0uNDEtLjIxLS42NS0uMjJjLS4zMyAwLS42LjE0LS44MS4zOS0uMTguMjctLjI3LjU2LS4yNi44OSAwIC40My4xMy44OS4zOCAxLjM2LjEyLjIyLjI4LjQxLjQ4LjU2LjE5LjE1LjQyLjIzLjY3LjIzeiIvPjxwYXRoIGNsYXNzPSJjbHMtMSIgZD0ibTM4LjYxIDguMjNjLS4xMi4wOC0uMjUuMTUtLjM5LjIxLS4zOS4xNi0uNzcuMjMtMS4xMi4yMy0uMTkgMC0uNDEtLjAzLS42OS0uMDgtLjI3LS4wNS0uNTYtLjE5LS44Ni0uMzktLjQtLjMxLS43LS43LS44OS0xLjE3LS4xOS0uNDYtLjI5LS45MS0uMjktMS4zNy4wMi0uOTQuMzEtMS42My44OS0yLjA5LjU1LS40NSAxLjE0LS42OCAxLjc3LS42OC40NCAwIC44My4xMSAxLjIuMzMuMjkuMi40OS40MS42MS42My4xMS4yMi4xOC40MS4yMS41NmwtMi43MyAxLjE0LS45LjA4Yy4xNi43Ni40NyAxLjM1LjkxIDEuNzcuNDMuNDMuOTMuNjUgMS40OS42NS4zIDAgLjU3LS4wNS43OS0uMTQuMjItLjA4LjQzLS4xNy42My0uMjhsLS42Mi42em0tMS4wOS0zLjU4Yy4yMy0uMDcuMzQtLjE4LjM0LS4zMyAwLS4yNS0uMTItLjQ5LS4zNC0uN3MtLjQ5LS4zMi0uODEtLjMzYy0uMTIgMC0uMjUuMDItLjM5LjA2LS4xNi4wNS0uMy4xNS0uNDQuMjgtLjE0LjEyLS4yNi4zLS4zNS41Mi0uMS4yMi0uMTUuNDktLjE1LjgxIDAgLjIxLjAxLjQyLjA0LjYzbDIuMTEtLjk0eiIvPjxwYXRoIGNsYXNzPSJjbHMtMyIgZD0ibTM5LjY3IDguNDhjLjE3LS4xNy4yOC0uMy4zMi0uNC4wMi0uMDkuMDMtLjI0LjAzLS40M3YtLjU2YzAtMS4xOC4wMi0yLjI1LjA0LTMuMTkuMDItMS4xMi4wNS0yLjI5LjA5LTMuNDloLS44NWwuODUtLjQxaDEuNTZjLS4xOS4xMS0uMzEuMjEtLjM2LjMtLjA2LjExLS4wOS4yNy0uMS41bC0uMSAyLjQ4Ljc3LS4yOWMuMTQgMCAuMjggMCAuNDMtLjAxLjkzLjAyIDEuNjEuMjggMi4wNS43OC40My41LjY1IDEuMS42NSAxLjc4IDAgLjYtLjE2IDEuMTUtLjQ5IDEuNjMtLjMzLjQ5LS44NC44Ni0xLjUzIDEuMTEtLjQxLjEzLS43OC4xOS0xLjExLjE4aC0yLjI0em0xLjQ2LTQuMDVjMCAuODMtLjAxIDEuNjYtLjAxIDIuNDggMCAuNTIgMCAuOC4wMi44NCAwIC4xMi4wNC4yMi4xMS4yOS4wNy4wOC4yNS4xMi41Ni4xMi4zMiAwIC41OC0uMDMuNzktLjA5LjI4LS4wOS41MS0uMjEuNy0uMzcuMTctLjE1LjMtLjMzLjQtLjUyLjExLS4yLjE4LS40MS4yMS0uNjJzLjA1LS40LjA1LS41OWMwLS4zNy0uMDgtLjgxLS4yNy0xLjMxLS4xLS4yNC0uMjUtLjQ3LS40Ni0uNjgtLjE5LS4yLS40NS0uMzYtLjc3LS40OC0uMjYtLjEtLjQ5LS4xNi0uNy0uMTgtLjIyLS4wMi0uNDItLjAyLS42MiAwdjEuMDl6Ii8+PHBhdGggY2xhc3M9ImNscy0zIiBkPSJtNDguMjcgOC40OGgtMi4wMWMuMTMtLjE5LjIyLS4zNS4yNS0uNDcuMDItLjEyLjAzLS4yOS4wMy0uNTIgMC0xLjUuMDItMi44Ni4wMy00LjA3aC0uODlsLjc5LS4zOWgxLjQxYy0uMTUuMTUtLjIzLjMzLS4yMy41NHYuMzhjLjA5LS4xLjItLjIxLjMzLS4zMi4xMi0uMTEuMjctLjIyLjQzLS4zMi4zMy0uMjMuNzItLjM1IDEuMTgtLjM2LjEyIDAgLjIxIDAgLjI3LjAyLjA1LjAyLjEuMDUuMTUuMDdsLS40OCAxLjIzLS4zMy4xOS4xLS41OHMtLjEtLjA2LS4xNS0uMDljLS4wNS0uMDItLjE0LS4wMi0uMjYtLjAyLS4yMSAwLS40Mi4wNi0uNjMuMTctLjIxLjEzLS40MS4zNC0uNjEuNjNsLS4wMiAzLjAzYzAgLjIyLjA0LjM1LjExLjQxLjA3LjA3LjE5LjEuMzQuMTFsLjYxLjAyLS40My4zM3oiLz48cGF0aCBjbGFzcz0iY2xzLTMiIGQ9Im01NC4wOCA1LjljLjE3LjYzLjM1IDEuMTkuNTMgMS42Ny4xMi4yOC4yMi40OS4zMS42NC4wOS4xNC4xOC4yNy4yNy4zOC0uMTIuMDItLjI0LjAzLS4zNC4wNC0uMjUtLjAxLS40OS0uMDgtLjcyLS4yMi0uMTktLjEyLS4zMi0uMjUtLjQxLS4zOC0uMS0uMTQtLjE4LS4yNi0uMjMtLjM3bC0uNTUuNTVjLS4xMS4wNy0uMjguMTUtLjUxLjI1LS4yNC4xMS0uNTQuMTctLjkxLjE4LS40OCAwLS44NC0uMTQtMS4wNy0uMzktLjI1LS4yNC0uMzctLjUyLS4zNy0uODYgMC0uMzUuMS0uNjYuMzEtLjkyLjE5LS4yNi40My0uNDkuNzItLjY3LjI5LS4xOS41OC0uMzUuODktLjQ3LjI4LS4xMi41Mi0uMjEuNzItLjI3bC0uMTgtLjU0Yy0uMTgtLjU1LS4zOS0uODktLjYzLTEuMDItLjI1LS4xMi0uNjItLjE3LTEuMTItLjEzbC44NS0uMzZjLjI2IDAgLjUyIDAgLjc3LjAyLjI0LjAyLjQ2LjEuNjQuMjMuMi4xNC4zNi4zNC40Ny42MnMuMjMuNjcuMzYgMS4xN2wuMjMuODV6bS0xLjE2LS4wNmMtLjA1LS4yOS0uMTQtLjQ0LS4yNy0uNDMtLjE2IDAtLjQzLjE0LS44MS40MS0uMTguMTMtLjMzLjI5LS40NS40OC0uMTQuMTktLjIxLjQyLS4yMS42OCAwIC4xNy4wNC4zMS4xMi40My4wNy4xMy4xNi4yMy4yNy4zMS4yMi4xNi40Ny4yNC43My4yNC4zIDAgLjU1LS4wNi43My0uMTkuMTctLjExLjI5LS4yMS4zNi0uMjktLjExLS4zMS0uMjMtLjcxLS4zNi0xLjIzbC0uMTEtLjQxeiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTY0LjQyIDguNDgtMi4xMy02LjIxaDEuNjJsMS40OCA0LjgyaC4xMWwxLjQ4LTQuODJoMS42MmwtMi4xMyA2LjIxaC0yLjA0eiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTcxLjA3IDQuOTctLjE0LTEuMzVjLjU1LS4wNy45OS0uMTcgMS4zMy0uM3MuNTktLjI5Ljc1LS40OC4yNC0uNC4yNC0uNjNjMC0uMjItLjA3LS4zOS0uMjItLjUxcy0uMzYtLjE4LS42NS0uMThjLS4zMSAwLS42Ni4wNi0xLjAzLjE5cy0uNzMuMzEtMS4wNy41NmwtLjgxLTEuMmMuMzgtLjM2LjgxLS42MiAxLjI5LS43OHMxLjAzLS4yNCAxLjYzLS4yNGMuNzkgMCAxLjQuMTYgMS44My40OHMuNjQuNzguNjQgMS4zOGMwIC41Mi0uMTguOTgtLjU0IDEuMzZzLS44Mi42NS0xLjQuOHYuNmwtMS44OC4yOXptLjc4IDMuNjNjLS40NSAwLS44Ni0uMDMtMS4yNC0uMDhzLS43MS0uMTItMS0uMjFsLjE1LTEuNTJjLjI1LjA3LjU0LjE0Ljg1LjIxcy43MS4xMSAxLjE5LjExYy41MiAwIC45Mi0uMDkgMS4yLS4yN3MuNDItLjQzLjQyLS43NmMwLS4yNC0uMDgtLjQ1LS4yNS0uNjFzLS40Mi0uMjktLjc0LS4zOC0uNzItLjEzLTEuMTgtLjEzaC0uMTlsLS4xNC0xLjM1IDEuNjkuNjNjLjcyIDAgMS4zMS4xOSAxLjc2LjU0cy42OC44NC42OCAxLjQ3YzAgLjc0LS4yOCAxLjMyLS44NCAxLjczcy0xLjM1LjYyLTIuMzcuNjJ6Ii8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJtNzkuMjcgOC42Yy0uMyAwLS41NS0uMS0uNzYtLjMxcy0uMzEtLjQ2LS4zMS0uNzUuMS0uNTUuMzEtLjc2LjQ2LS4zMS43Ni0uMzEuNTUuMS43Ni4zMS4zMS40Ni4zMS43Ni0uMS41NC0uMzEuNzUtLjQ2LjMxLS43Ni4zMXoiLz48cGF0aCBjbGFzcz0iY2xzLTQiIGQ9Im04My41NiA4LjQ4di0xLjM3aDIuMTJ2MS4zN2gtMi4xMnptLjEyLTYuMTR2LTEuNDdsMS44OS0uN3YxLjVsLTEuODkuNjh6bTEuODggNi4xNHYtOC4zMmgxLjU4djguMzJoLTEuNTh6bTEuNDcgMHYtMS4zN2gxLjl2MS4zN2gtMS45eiIvPjxwYXRoIGNsYXNzPSJjbHMtNCIgZD0ibTkzLjA5IDguNmMtLjMgMC0uNTUtLjEtLjc2LS4zMXMtLjMxLS40Ni0uMzEtLjc1LjEtLjU1LjMxLS43Ni40Ni0uMzEuNzYtLjMxLjU1LjEuNzYuMzEuMzEuNDYuMzEuNzYtLjEuNTQtLjMxLjc1LS40Ni4zMS0uNzYuMzF6Ii8+PHBhdGggY2xhc3M9ImNscy00IiBkPSJtMTAwIDguNmMtMS45NiAwLTIuOTQtMS40MS0yLjk0LTQuMjJzLjk4LTQuMzMgMi45NC00LjMzIDIuOTQgMS40NSAyLjk0IDQuMzQtLjk4IDQuMjItMi45NCA0LjIyem0wLTEuNGMuODkgMCAxLjM0LS45NCAxLjM0LTIuODJzLS40NS0yLjk0LTEuMzQtMi45NC0xLjM2Ljk4LTEuMzYgMi45NC40NSAyLjgyIDEuMzYgMi44MnptLS4wMS0xLjc0Yy0uMjMgMC0uNDItLjEtLjU3LS4yOXMtLjIxLS40Ni0uMjEtLjc4LjA3LS41OC4yMS0uNzguMzMtLjI5LjU3LS4yOS40Mi4xLjU3LjI5LjIyLjQ2LjIyLjc4LS4wNy41OC0uMjIuNzgtLjMzLjI5LS41Ny4yOXoiLz48L2c+PC9nPjwvc3ZnPgo=);
         }
 
         /* explain 部分 */
@@ -16480,6 +17097,7 @@
             top: 6.5dvh;
             height: calc(92.5dvh - min(11dvmin, 7dvh));
             border-radius: 100dvmax;
+            z-index: 1;
         }
 
         #print_grid_line_1 {
@@ -16559,14 +17177,7 @@
             height: min(7.5dvh, 9dvmin);
         }
 
-        #print_content_2_inner > div:nth-child(2n+1):not(
-            :first-child:nth-last-child(4),
-            :first-child:nth-last-child(3),
-            :first-child:nth-last-child(2),
-            :first-child:last-child,
-            :nth-child(3):nth-last-child(2),
-            :nth-child(3):last-child
-        ),
+        #print_content_2_inner > div.Odd,
         #print_content_4_content_2 > div:nth-last-child(2n):not(
             :first-child:nth-last-child(4),
             :first-child:nth-last-child(3),
