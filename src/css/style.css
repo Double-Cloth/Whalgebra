@@ -1428,6 +1428,7 @@ span.Ripple.IsFadingOut {
     top: 6.5dvh;
     height: calc(92.5dvh - min(11dvmin, 7dvh));
     border-radius: 100dvmax;
+    z-index: 1;
 }
 
 #print_grid_line_1 {
@@ -1507,14 +1508,7 @@ span.Ripple.IsFadingOut {
     height: min(7.5dvh, 9dvmin);
 }
 
-#print_content_2_inner > div:nth-child(2n+1):not(
-    :first-child:nth-last-child(4),
-    :first-child:nth-last-child(3),
-    :first-child:nth-last-child(2),
-    :first-child:last-child,
-    :nth-child(3):nth-last-child(2),
-    :nth-child(3):last-child
-),
+#print_content_2_inner > div.Odd,
 #print_content_4_content_2 > div:nth-last-child(2n):not(
     :first-child:nth-last-child(4),
     :first-child:nth-last-child(3),
