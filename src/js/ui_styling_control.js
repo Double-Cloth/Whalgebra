@@ -1720,30 +1720,443 @@
 
     /**
      * @class VirtualScroll
-     * @classdesc 长期复用的高性能虚拟滚动类。
+     * @description 虚拟滚动控制器。
+     * * 核心思路：仅渲染当前视口附近的少量 DOM 节点，通过上下两个占位 spacer
+     *   撑开滚动容器，从而在数百万条数据下保持流畅滚动。
+     * * 支持超长列表（超过浏览器单元素 12 MB 高度限制）的"高度压缩"模式。
+     * * 内置状态机（IDLE → RUNNING ⇄ PAUSED → DESTROYED），防止非法调用。
+     * * 通过 ResizeObserver（或 window.resize 降级）自动响应容器尺寸变化。
      *
-     * 列表项作为容器的直接子节点挂载，容器上针对子 `div` 的 CSS 规则自然生效。
-     * 上下占位使用自定义标签 `<vs-spacer>`，不匹配 `div` 选择器。
-     *
-     * 核心能力：
-     * - **直接挂载**：列表项是容器的直接子节点，`> div` 样式自然生效。
-     * - **长期复用**：实例创建一次，`load(data, length)` 反复调用。
-     * - **延迟解析容器**：传入 `'#id'`，首次 `load()` 才查找 DOM。
-     * - **renderItem 接收完整 data**：`(index, data) => HTMLElement | string`。
-     * - **自动测量行高**：样本项作为容器直接子节点测量，确保 CSS 命中。
-     * - **自动缓冲区**：`clamp(⌈visibleCount × 0.5⌉, 3, 20)`。
-     * - **动态监听容器尺寸**：ResizeObserver + window resize 双重监听，
-     *   `_render` 内部自检容器高度变化，屏幕旋转 / 窗口缩放 / CSS 变化均能正确响应。
-     * - **统一调度**：scroll / resize 统一经 `_scheduleRender()` 合并到同一个 rAF，
-     *   每帧最多渲染一次。
-     * - **状态机**：`IDLE → RUNNING ↔ PAUSED → DESTROYED`。
+     * @example
+     * // 基础用法
+     * const vs = new VirtualScroll({
+     *   container: '#list',
+     *   renderItem: (index, data) => `<div class="item">${data[index]}</div>`,
+     * });
+     * vs.load(myArray, myArray.length);
      */
     class VirtualScroll {
 
+        /* ══════════════════════════════════════════════════════════════════════
+           内部辅助类
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @class VirtualScroll._StateMachine
+         * @description 有限状态机（FSM）辅助类。
+         * * 通过转换表（transition table）约束合法的状态跳转，非法跳转将抛出异常。
+         * * 支持可选的转换回调，便于外部监听状态变化。
+         *
+         * @example
+         * // 创建一个简单的状态机
+         * const sm = new VirtualScroll._StateMachine('idle', {
+         *   idle:    ['running'],
+         *   running: ['paused', 'idle'],
+         *   paused:  ['running', 'idle'],
+         * }, (prev, next) => console.log(`${prev} → ${next}`));
+         * sm.transition('running'); // 'idle → running'
+         */
+        static _StateMachine = class {
+
+            /**
+             * @constructor
+             * @param {string} initial - 初始状态名称。
+             * @param {Object.<string, string[]>} table
+             *   状态转换表，键为当前状态，值为允许跳转的目标状态数组。
+             * @param {((prev: string, next: string) => void) | null} [onTransition=null]
+             *   状态发生转换时的回调函数，参数依次为前一状态和新状态；可为 `null`。
+             */
+            constructor(initial, table, onTransition) {
+                this._state = initial;
+                this._table = Object.freeze(
+                    Object.fromEntries(
+                        Object.entries(table).map(([k, v]) => [k, new Set(v)])
+                    )
+                );
+                this._onTransition = onTransition ?? null;
+            }
+
+            /**
+             * @description 当前状态名称（只读）。
+             * @type {string}
+             * @readonly
+             */
+            get state() {
+                return this._state;
+            }
+
+            /**
+             * @method transition
+             * @description 将状态机切换到指定的下一个状态。
+             * * 若目标状态不在当前状态的允许列表中，将抛出 `Error`。
+             * * 切换成功后会触发构造时传入的 `onTransition` 回调。
+             *
+             * @param {string} next - 目标状态名称，必须在转换表中合法定义。
+             * @throws {Error} 当前状态没有转换表条目，或目标状态不被允许时抛出。
+             * @example
+             * sm.transition('running');
+             * sm.transition('paused');
+             */
+            transition(next) {
+                const allowed = this._table[this._state];
+                if (!allowed) {
+                    throw new Error(
+                        `[StateMachine] No transition table for state "${this._state}". Internal error.`
+                    );
+                }
+                if (!allowed.has(next)) {
+                    throw new Error(
+                        `[StateMachine] Illegal transition: "${this._state}" → "${next}". ` +
+                        `Allowed: ${[...allowed].join(', ') || '(none)'}`
+                    );
+                }
+                const prev = this._state;
+                this._state = next;
+                this._onTransition?.(prev, next);
+            }
+
+            /**
+             * @method is
+             * @description 检查当前状态是否是给定状态之一。
+             *
+             * @param {...string} states - 一个或多个待比对的状态名称。
+             * @returns {boolean} 若当前状态命中其中任一，则返回 `true`。
+             * @example
+             * sm.is('running', 'paused'); // true / false
+             */
+            is(...states) {
+                return states.includes(this._state);
+            }
+        };
+
+        /**
+         * @class VirtualScroll._HeightMapper
+         * @description 高度映射器。
+         * * 当列表总高度超过浏览器单元素高度上限（{@link _HeightMapper.MAX_ELEMENT_HEIGHT}，
+         *   约 12 MB px）时，自动进入"压缩模式"：
+         *   - 物理滚动高度固定为 `MAX_ELEMENT_HEIGHT`；
+         *   - 通过 `scrollRatio` 在物理坐标与虚拟坐标之间线性映射。
+         * * 不压缩时，虚拟坐标与物理坐标完全相同（ratio = 1）。
+         *
+         * @example
+         * const hm = new VirtualScroll._HeightMapper();
+         * hm.update(1_000_000, 50, 800); // totalCount=1M, itemHeight=50px, clientHeight=800px
+         * hm.compressed; // true（总高 50M px > 12M px 上限）
+         */
+        static _HeightMapper = class {
+
+            /**
+             * @static
+             * @description 浏览器单个元素允许的最大像素高度（约 12,000,000 px）。
+             * 超过此值将触发压缩模式。
+             * @type {number}
+             */
+            static MAX_ELEMENT_HEIGHT = 12_000_000;
+
+            /**
+             * @constructor
+             * @description 创建高度映射器并初始化所有状态。
+             */
+            constructor() {
+                this.reset();
+            }
+
+            /**
+             * @method reset
+             * @description 将所有映射状态重置为初始值（无压缩、ratio = 1）。
+             * @returns {void}
+             */
+            reset() {
+                /** @type {number} 虚拟总高度（px），等于 totalCount × itemHeight。 */
+                this.virtualHeight = 0;
+                /** @type {number} 物理总高度（px），压缩时上限为 MAX_ELEMENT_HEIGHT。 */
+                this.physicalHeight = 0;
+                /** @type {number} 物理滚动量 → 虚拟滚动量的换算比率（压缩时 > 1）。 */
+                this.scrollRatio = 1;
+                /** @type {boolean} 是否处于压缩模式。 */
+                this.compressed = false;
+            }
+
+            /**
+             * @method update
+             * @description 根据最新数据重新计算虚拟 / 物理高度及滚动比率。
+             * * 当 `virtualHeight > MAX_ELEMENT_HEIGHT` 时进入压缩模式。
+             * * 比率计算公式：`scrollRatio = (virtualH - clientH) / (physicalH - clientH)`，
+             *   确保顶部和底部对齐。
+             *
+             * @param {number} totalCount  - 列表总条数。
+             * @param {number} itemHeight  - 单条目高度（px）。
+             * @param {number} clientHeight - 容器可视高度（px）。
+             * @returns {void}
+             * @example
+             * hm.update(100_000, 50, 600);
+             * console.log(hm.compressed);     // false（总高 5M < 12M）
+             * console.log(hm.scrollRatio);    // 1
+             */
+            update(totalCount, itemHeight, clientHeight) {
+                this.virtualHeight = totalCount * itemHeight;
+                const MAX = VirtualScroll._HeightMapper.MAX_ELEMENT_HEIGHT;
+                this.compressed = this.virtualHeight > MAX;
+                this.physicalHeight = this.compressed ? MAX : this.virtualHeight;
+
+                if (this.compressed) {
+                    const effV = Math.max(0, this.virtualHeight - clientHeight);
+                    const effP = Math.max(1, this.physicalHeight - clientHeight);
+                    this.scrollRatio = effV / effP;
+                } else {
+                    this.scrollRatio = 1;
+                }
+            }
+
+            /**
+             * @method physicalToVirtual
+             * @description 将物理滚动偏移量换算为虚拟滚动偏移量。
+             * * 非压缩模式下直接返回原值。
+             *
+             * @param {number} physicalScroll - 物理 `scrollTop`（px）。
+             * @returns {number} 对应的虚拟滚动偏移量（px）。
+             * @example
+             * const virtScroll = hm.physicalToVirtual(container.scrollTop);
+             */
+            physicalToVirtual(physicalScroll) {
+                return this.compressed ? physicalScroll * this.scrollRatio : physicalScroll;
+            }
+
+            /**
+             * @method virtualToPhysical
+             * @description 将虚拟滚动偏移量换算为物理滚动偏移量。
+             * * 非压缩模式下直接返回原值。
+             * * 结果会被夹紧到 `[0, physicalHeight - clientHeight]`。
+             *
+             * @param {number} virtualOffset  - 虚拟偏移量（px）。
+             * @param {number} clientHeight   - 容器可视高度（px），用于计算有效滚动范围。
+             * @returns {number} 对应的物理滚动偏移量（px）。
+             * @example
+             * container.scrollTop = hm.virtualToPhysical(index * itemHeight, container.clientHeight);
+             */
+            virtualToPhysical(virtualOffset, clientHeight) {
+                if (!this.compressed) {
+                    return virtualOffset;
+                }
+                const effV = Math.max(0, this.virtualHeight - clientHeight);
+                const effP = Math.max(0, this.physicalHeight - clientHeight);
+                if (effV <= 0) {
+                    return 0;
+                }
+                return Math.min(effP, virtualOffset * (effP / effV));
+            }
+
+            /**
+             * @method calcSpacerHeights
+             * @description 计算上下两个占位 spacer 的物理高度。
+             * * 非压缩模式：`top = start × itemHeight`，`bottom = (totalCount - end) × itemHeight`。
+             * * 压缩模式：将虚拟像素坐标映射到物理坐标后取整。
+             *
+             * @param {number} start       - 当前渲染窗口起始索引（含）。
+             * @param {number} end         - 当前渲染窗口结束索引（不含）。
+             * @param {number} totalCount  - 列表总条数。
+             * @param {number} itemHeight  - 单条目高度（px）。
+             * @param {number} clientHeight - 容器可视高度（px）。
+             * @returns {{ top: number, bottom: number }} 上下 spacer 应设置的像素高度。
+             * @example
+             * const { top, bottom } = hm.calcSpacerHeights(50, 80, 10000, 50, 600);
+             * spacerTop.style.height    = `${top}px`;
+             * spacerBottom.style.height = `${bottom}px`;
+             */
+            calcSpacerHeights(start, end, totalCount, itemHeight, clientHeight) {
+                if (totalCount <= 0 || itemHeight <= 0) {
+                    return {top: 0, bottom: 0};
+                }
+
+                if (!this.compressed) {
+                    return {
+                        top: start * itemHeight,
+                        bottom: Math.max(0, (totalCount - end) * itemHeight)
+                    };
+                }
+
+                const physTop = Math.round(this.virtualToPhysical(start * itemHeight, clientHeight));
+
+                // 实际渲染的 DOM 高度是真实的物理像素，不应被压缩比例缩小
+                const actualRenderedHeight = (end - start) * itemHeight;
+
+                // 底部垫片 = 物理总高 - 顶部垫片 - 实际渲染高度
+                const physBottom = Math.max(0, this.physicalHeight - physTop - actualRenderedHeight);
+
+                return {top: physTop, bottom: physBottom};
+            }
+        };
+
+        /**
+         * @class VirtualScroll._NodePool
+         * @description DOM 节点对象池。
+         * * 复用由 `renderItem()` 返回 HTML 字符串时创建的包装 `<div>`，
+         *   减少 GC 压力和 DOM 创建开销。
+         * * 对用户直接返回的 `HTMLElement` 实例维护引用计数，
+         *   防止同一元素被重复挂载。
+         * * 池容量上限由构造参数 `limit` 控制。
+         *
+         * @example
+         * const pool = new VirtualScroll._NodePool(100);
+         * const el = pool.toElement('<span>hello</span>');
+         * pool.recycle(el); // 归还至池
+         */
+        static _NodePool = class {
+
+            /**
+             * @constructor
+             * @param {number} limit - 池的最大容量（超出后多余节点直接丢弃）。
+             */
+            constructor(limit) {
+                /** @type {number} 池容量上限。 */
+                this._limit = limit;
+                /** @type {HTMLElement[]} 可复用的包装元素队列。 */
+                this._pool = [];
+                /** @type {Set<HTMLElement>} 当前由池管理的包装元素集合。 */
+                this._wrapperSet = new Set();
+                /** @type {Map<HTMLElement, number>} 用户返回的原生元素 → 当前挂载引用计数。 */
+                this._userRefCnt = new Map();
+            }
+
+            /**
+             * @method toElement
+             * @description 将 `renderItem()` 的返回值规范化为一个 `HTMLElement`。
+             * * 若返回值是字符串，则从池中取出（或新建）包装 `<div>`，
+             *   将字符串赋给 `innerHTML`。
+             * * 若返回值是 `HTMLElement`，直接使用，同时检查重复挂载。
+             * * `measureOnly = true` 时仅用于临时测量，不更新池状态和引用计数。
+             *
+             * @param {string | HTMLElement} result     - `renderItem()` 的返回值。
+             * @param {boolean}              [measureOnly=false] - 是否仅用于测量（不入池、不计引用）。
+             * @returns {HTMLElement} 可直接插入 DOM 的元素。
+             * @throws {TypeError}  `result` 不是字符串或 `HTMLElement` 时抛出。
+             * @throws {Error}      同一 `HTMLElement` 实例被二次挂载时抛出。
+             * @example
+             * const el = pool.toElement('<li>Item 1</li>');
+             * container.appendChild(el);
+             */
+            toElement(result, measureOnly = false) {
+                if (result == null || (typeof result !== 'string' && !(result instanceof HTMLElement))) {
+                    throw new TypeError(
+                        `[VirtualScroll] renderItem() must return a string or HTMLElement, ` +
+                        `got: ${result === null ? 'null' : typeof result}`
+                    );
+                }
+
+                if (result instanceof HTMLElement) {
+                    if (!measureOnly) {
+                        const cnt = this._userRefCnt.get(result) ?? 0;
+                        if (cnt > 0) {
+                            throw new Error(
+                                '[VirtualScroll] renderItem() returned the same HTMLElement instance ' +
+                                'that is already mounted. Each rendered slot must receive a distinct element.'
+                            );
+                        }
+                        this._userRefCnt.set(result, cnt + 1);
+                    }
+                    return result;
+                }
+
+                const wrapper = (measureOnly ? null : this._pool.pop()) ?? document.createElement('div');
+                wrapper.innerHTML = result;
+                if (!measureOnly) {
+                    this._wrapperSet.add(wrapper);
+                }
+                return wrapper;
+            }
+
+            /**
+             * @method recycle
+             * @description 将一个元素从 DOM 中移除并归还至对象池。
+             * * 若该元素是用户返回的 `HTMLElement`，则递减引用计数，
+             *   计数归零时从 Map 中移除。
+             * * 若该元素是由池管理的包装 `<div>`，则清空其内容与样式后
+             *   压入池队列（不超过上限时）。
+             *
+             * @param {HTMLElement} el - 待回收的元素。
+             * @returns {void}
+             * @example
+             * pool.recycle(el); // el 被移出 DOM 并放回池
+             */
+            recycle(el) {
+                el.parentNode?.removeChild(el);
+
+                if (this._userRefCnt.has(el)) {
+                    const cnt = this._userRefCnt.get(el) - 1;
+                    if (cnt <= 0) {
+                        this._userRefCnt.delete(el);
+                    } else {
+                        this._userRefCnt.set(el, cnt);
+                    }
+                    return;
+                }
+
+                if (this._wrapperSet.has(el)) {
+                    this._wrapperSet.delete(el);
+                    if (this._pool.length < this._limit) {
+                        el.innerHTML = '';
+                        el.className = '';
+                        el.removeAttribute('style');
+                        for (const key of Object.keys(el.dataset)) {
+                            delete el.dataset[key];
+                        }
+                        this._pool.push(el);
+                    }
+                }
+            }
+
+            /**
+             * @method clear
+             * @description 清空对象池及所有追踪集合，释放全部内部引用。
+             * @returns {void}
+             */
+            clear() {
+                this._pool = [];
+                this._wrapperSet.clear();
+                this._userRefCnt.clear();
+            }
+
+            /**
+             * @description 当前池中空闲的可复用包装元素数量。
+             * @type {number}
+             * @readonly
+             */
+            get poolSize() {
+                return this._pool.length;
+            }
+
+            /**
+             * @description 当前正在使用中的包装 `<div>` 数量（已出池、未回收）。
+             * @type {number}
+             * @readonly
+             */
+            get wrapperCount() {
+                return this._wrapperSet.size;
+            }
+
+            /**
+             * @description 当前正在使用中的用户原生 `HTMLElement` 数量（引用计数 > 0）。
+             * @type {number}
+             * @readonly
+             */
+            get userElemCount() {
+                return this._userRefCnt.size;
+            }
+        };
+
+        /* ══════════════════════════════════════════════════════════════════════
+           公开常量
+        ══════════════════════════════════════════════════════════════════════ */
+
         /**
          * @static
-         * @enum {string}
-         * @description 实例的生命周期状态。
+         * @description 实例可处于的全部状态枚举（冻结对象，不可修改）。
+         * * `IDLE`      — 初始或 `clear()` 后的空闲状态，尚未加载数据。
+         * * `RUNNING`   — 正常运行，响应滚动与 resize 事件。
+         * * `PAUSED`    — 暂停，滚动监听已解绑；`scrollToIndex()` 会排队。
+         * * `DESTROYED` — 已销毁，所有资源释放完毕，不可再调用任何方法。
+         * @type {{ IDLE: string, RUNNING: string, PAUSED: string, DESTROYED: string }}
+         * @readonly
          */
         static State = Object.freeze({
             IDLE: 'idle',
@@ -1752,403 +2165,1032 @@
             DESTROYED: 'destroyed'
         });
 
-        /* ===========================================================================
-         *  构造函数
-         * =========================================================================== */
+        /* ══════════════════════════════════════════════════════════════════════
+           私有调参常量
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @static
+         * @description 缓冲区行数下限（视口外最少预渲染条数）。
+         * @type {number}
+         * @default 3
+         */
+        static _BUFFER_MIN = 3;
+
+        /**
+         * @static
+         * @description 缓冲区行数上限，防止单次渲染节点过多。
+         * @type {number}
+         * @default 20
+         */
+        static _BUFFER_MAX = 20;
+
+        /**
+         * @static
+         * @description 缓冲区行数相对于可见行数的比率（`bufferSize = ceil(visible × ratio)`）。
+         * @type {number}
+         * @default 0.5
+         */
+        static _BUFFER_RATIO = 0.5;
+
+        /**
+         * @static
+         * @description 缓冲区行数变化触发更新的最小阈值（迟滞量），避免频繁重计算。
+         * @type {number}
+         * @default 2
+         */
+        static _BUFFER_HYSTERESIS = 2;
+
+        /**
+         * @static
+         * @description 当行高无法测量时使用的回退高度（px）。
+         * @type {number}
+         * @default 50
+         */
+        static _FALLBACK_HEIGHT = 50;
+
+        /**
+         * @static
+         * @description 节点对象池的容量上限。
+         * @type {number}
+         * @default 100
+         */
+        static _POOL_LIMIT = 100;
+
+        /**
+         * @static
+         * @description 行高测量时的采样条目数（取平均值），兼顾精度与性能。
+         * @type {number}
+         * @default 5
+         */
+        static _MEASURE_SAMPLES = 5;
+
+        /**
+         * @static
+         * @description 合法行高的最小值（px），低于此值时触发警告并修正。
+         * @type {number}
+         * @default 1
+         */
+        static _MIN_ITEM_HEIGHT = 1;
+
+        /* ══════════════════════════════════════════════════════════════════════
+           构造
+        ══════════════════════════════════════════════════════════════════════ */
 
         /**
          * @constructor
-         * @description 创建虚拟滚动实例。构造阶段不渲染任何内容，需调用 `load()` 启动。
-         * @param {Object} config - 固定配置。
-         * @param {string} config.container - 容器 CSS ID 选择器，格式 `'#id'`。
-         * @param {Function} config.renderItem - 渲染回调 `(index, data) => HTMLElement | string`。
-         * @throws {Error} 参数不合法时抛出。
+         * @description 创建一个新的 `VirtualScroll` 实例。
+         * * 构造时只做参数校验和内部状态初始化，不访问 DOM。
+         * * 须调用 {@link VirtualScroll#load} 后实例才进入 `RUNNING` 状态。
+         *
+         * @param {Object}   config                         - 配置对象。
+         * @param {string}   config.container               - 滚动容器的 CSS 选择器（非空字符串）。
+         * @param {function | HTMLElement} config.renderItem
+         *   条目渲染函数，接收索引和数据数组，返回 HTML 字符串或 `HTMLElement`。
+         * @param {boolean}  [config.remeasureOnResize=true]
+         *   宽度变化时是否重新测量行高（适合响应式布局；若行高固定可设为 `false`）。
+         *
+         * @throws {Error} `config.container` 不是非空字符串时抛出。
+         * @throws {Error} `config.renderItem` 不是函数时抛出。
+         * @throws {Error} `config.remeasureOnResize` 存在但不是布尔值时抛出。
+         *
+         * @example
+         * const vs = new VirtualScroll({
+         *   container: '#scroll-container',
+         *   renderItem: (i, data) => `<div>${data[i].name}</div>`,
+         *   remeasureOnResize: true,
+         * });
          */
         constructor(config) {
             this._validateConfig(config);
 
-            /** @private @member {string} */
-            this._selector = config.container;
-
-            /** @member {HTMLElement|null} container @readonly */
+            /** @type {HTMLElement | null} 已解析的滚动容器 DOM 元素。 */
             this.container = null;
 
-            /** @member {Function} renderItem @readonly */
+            /**
+             * @type {function(index: number, data: any[]): string | HTMLElement}
+             * 条目渲染函数，由外部配置传入。
+             */
             this.renderItem = config.renderItem;
 
-            /** @member {string} state @readonly */
-            this.state = VirtualScroll.State.IDLE;
-
-            /** @member {Array} data @readonly */
+            /** @type {any[]|{}} 当前加载的数据源数组。 */
             this.data = [];
 
-            /** @member {number} totalCount @readonly */
+            /** @type {number} 当前渲染的列表总条数。 */
             this.totalCount = 0;
 
-            /** @member {number} itemHeight @readonly - 自动测量的行高（px，整数） */
+            /** @type {number} 测量所得的单条目高度（px）；0 表示尚未测量。 */
             this.itemHeight = 0;
 
-            /** @member {number} bufferSize @readonly - 单侧缓冲区条数 */
+            /** @type {number} 当前视口外预渲染的缓冲行数。 */
             this.bufferSize = 0;
 
-            /** @private */ this._startIndex = -1;
-            /** @private */ this._endIndex = -1;
-            /** @private */ this._renderRAF = null;  // 统一的 rAF ID
-            /** @private */ this._spacerTop = null;
-            /** @private */ this._spacerBottom = null;
-            /** @private */ this._ro = null;  // ResizeObserver
-            /** @private */ this._handleScroll = null;
-            /** @private */ this._handleWindowResize = null;
-            /** @private */ this._measured = false;
-            /** @private */ this._lastContainerHeight = 0;     // 上次渲染时的容器高度
+            /** @type {string} 容器 CSS 选择器字符串。 */
+            this._selector = config.container;
+
+            /** @type {boolean} 宽度变化时是否触发重新测量。 */
+            this._remeasureOnResize = config.remeasureOnResize ?? true;
+
+            /** @type {VirtualScroll._StateMachine} 内部状态机实例。 */
+            this._sm = new VirtualScroll._StateMachine(
+                VirtualScroll.State.IDLE,
+                {
+                    [VirtualScroll.State.IDLE]: [VirtualScroll.State.RUNNING],
+                    [VirtualScroll.State.RUNNING]: [
+                        VirtualScroll.State.PAUSED,
+                        VirtualScroll.State.IDLE,
+                        VirtualScroll.State.DESTROYED
+                    ],
+                    [VirtualScroll.State.PAUSED]: [
+                        VirtualScroll.State.RUNNING,
+                        VirtualScroll.State.IDLE,
+                        VirtualScroll.State.DESTROYED
+                    ],
+                    [VirtualScroll.State.DESTROYED]: []
+                }
+            );
+
+            /** @type {HTMLElement | null} 顶部占位 spacer 元素。 */
+            this._spacerTop = null;
+            /** @type {HTMLElement | null} 底部占位 spacer 元素。 */
+            this._spacerBottom = null;
+            /** @type {number} 当前渲染窗口起始索引（含）；-1 表示尚未渲染。 */
+            this._startIndex = -1;
+            /** @type {number} 当前渲染窗口结束索引（不含）；-1 表示尚未渲染。 */
+            this._endIndex = -1;
+
+            /** @type {Map<number, HTMLElement>} 索引 → 已渲染 DOM 节点的映射表。 */
+            this._renderedNodes = new Map();
+            /** @type {VirtualScroll._NodePool} DOM 节点对象池。 */
+            this._nodePool = new VirtualScroll._NodePool(VirtualScroll._POOL_LIMIT);
+            /** @type {VirtualScroll._HeightMapper} 高度映射器。 */
+            this._heightMapper = new VirtualScroll._HeightMapper();
+
+            /** @type {number} 上一次记录的容器可视高度（px），用于检测尺寸变化。 */
+            this._lastContainerHeight = 0;
+            /** @type {number} 上一次记录的容器可视宽度（px），用于检测尺寸变化。 */
+            this._lastContainerWidth = 0;
+
+            /** @type {((event: Event) => void) | null} 绑定到容器的 scroll 事件处理器。 */
+            this._handleScroll = null;
+            /** @type {(() => void) | null} 绑定到 window 的 resize 降级处理器。 */
+            this._handleWindowResize = null;
+            /** @type {ResizeObserver | null} 容器尺寸观测器（优先于 window.resize）。 */
+            this._ro = null;
+
+            /** @type {number | null} 渲染帧请求 ID（rAF）。 */
+            this._renderRAF = null;
+            /** @type {number | null} 重测帧请求 ID（rAF）。 */
+            this._remeasureRAF = null;
+            /** @type {number | null} 平滑滚动帧请求 ID（rAF）。 */
+            this._smoothRAF = null;
+
+            /** @type {boolean} 行高是否已完成初次测量。 */
+            this._measured = false;
+            /** @type {boolean} 是否已有一次 remeasure 请求在等待执行。 */
+            this._remeasurePending = false;
+            /** @type {boolean} 是否正处于自定义平滑滚动动画过程中。 */
+            this._isSmoothScrolling = false;
+
+            /**
+             * @type {Array<{index: number, behavior: string}>}
+             * PAUSED 状态下排队等待的 scrollToIndex 调用记录。
+             */
+            this._pendingScrollQueue = [];
         }
 
-        /* ===========================================================================
-         *  公共方法
-         * =========================================================================== */
+        /* ── 状态代理 ── */
 
         /**
-         * @public
-         * @method load
-         * @description 加载（或替换）数据并开始渲染。
-         * 可从 `IDLE / RUNNING / PAUSED` 调用，调用后统一切为 `RUNNING`。
-         * @param {Array|{}} data   - 数据数组。
-         * @param {number} length - 总条数。
-         * @param {Object} [options]
-         * @param {boolean} [options.remeasure=false]  - 是否强制重测行高。
-         * @param {boolean} [options.resetScroll=true] - 是否重置滚动到顶部。
-         * @returns {void}
+         * @description 当前实例状态名称，与 {@link VirtualScroll.State} 中的值对应（只读）。
+         * @type {string}
+         * @readonly
          */
-        load(data, length, options = {}) {
+        get state() {
+            return this._sm.state;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           公共 API
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @method load
+         * @description 加载数据并（重新）启动虚拟滚动。
+         * * 可在 `IDLE`、`RUNNING`、`PAUSED` 三种状态下调用。
+         * * 内部流程：解析容器 → 测量行高（按需）→ 构建 DOM → 绑定事件 → 首次渲染。
+         * * 若 `remeasure` 为 `false` 且已测量过，则仅对行高做一致性校验（偏差 > 20% 时警告）。
+         * * `resetScroll` 为 `false` 时，将尽量保持当前滚动位置，但不超过新的最大滚动值。
+         *
+         * @param {any[]|{}}   data                   - 数据源数组（任意结构，由 `renderItem` 自行解析）。
+         * @param {number}  length                    - 要渲染的条数（取整；非法值退化为 0）。
+         * @param {Object}  [options={}]              - 可选参数。
+         * @param {boolean} [options.remeasure=false] - 是否强制重新测量行高。
+         * @param {boolean} [options.resetScroll=true] - 是否将滚动位置重置到顶部。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @throws {Error} 容器元素不存在或已从 DOM 中移除时抛出。
+         *
+         * @example
+         * // 首次加载
+         * vs.load(items, items.length);
+         *
+         * // 替换数据，保留滚动位置，强制重测行高
+         * vs.load(newItems, newItems.length, { remeasure: true, resetScroll: false });
+         */
+        load(data, length, {remeasure = false, resetScroll = true} = {}) {
             this._assertNotDestroyed('load');
+
+            if (!this._sm.is(
+                VirtualScroll.State.IDLE,
+                VirtualScroll.State.RUNNING,
+                VirtualScroll.State.PAUSED
+            )) {
+                throw new Error(`[VirtualScroll] load() cannot be called in state "${this.state}"`);
+            }
+
+            const normalizedLength = this._normalizeLength(length, 'load');
+
+            this._unbindScroll();
+            this._unbindResize();
+            this._cancelAllRAF();
+            this._cancelSmoothScrollSilent();
+            this._pendingScrollQueue = [];
+
             this._resolveContainer();
 
-            const {remeasure = false, resetScroll = true} = options;
+            const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+            const oldRowIndex = this.itemHeight > 0
+                                ? Math.floor(oldVirtScroll / this.itemHeight)
+                                : 0;
 
             this.data = data;
-            this.totalCount = length;
+            this.totalCount = normalizedLength;
 
             if (!this._measured || remeasure) {
                 this._setupContainer();
-                this._measureItemHeight();
+                this._doMeasure();
                 this._measured = true;
+            } else {
+                this._verifyItemHeight();
+                this._heightMapper.update(
+                    this.totalCount, this.itemHeight, this.container.clientHeight
+                );
             }
 
-            this._lastContainerHeight = this.container.clientHeight;
-            this._calcBufferSize();
+            this._calcBufferSize(true);
 
-            if (!this._spacerTop) {
-                this._buildDOM();
+            if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
+                this._buildDOM(); // 修复 1.1 已保证 spacer 高度立即正确
             }
+
+            this._syncContainerSize();
+
+            // 先不设置 scrollTop，等 _forceRender 撑开 DOM 后再设置
+            // 用一个局部变量记录目标物理偏移
+            let targetScrollTop = null;
 
             if (resetScroll) {
                 this.container.scrollTop = 0;
+            } else {
+                // 记录目标值，延迟到 _forceRender 之后赋值
+                const clientHeight = this.container.clientHeight;
+                const hm = this._heightMapper;
+                const newVirtScroll = Math.min(
+                    oldRowIndex * this.itemHeight,
+                    Math.max(0, hm.virtualHeight - clientHeight)
+                );
+                targetScrollTop = hm.virtualToPhysical(newVirtScroll, clientHeight);
             }
 
             this._bindEvents();
-            this._forceRender();
+            this._forceRender(); // DOM 现在真正撑开了
 
-            this.state = VirtualScroll.State.RUNNING;
+            // _forceRender 已同步执行，DOM 已撑开，现在赋值可靠
+            if (targetScrollTop !== null) {
+                this.container.scrollTop = targetScrollTop;
+                // scrollTop 改变会触发 scroll 事件，但 _forceRender 刚执行完
+                // 需要再渲染一次以匹配新的 scrollTop 对应的窗口
+                this._forceRender();
+            }
+
+            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                this._sm.transition(VirtualScroll.State.RUNNING);
+            }
         }
 
         /**
-         * @public
          * @method pause
-         * @description 暂停虚拟滚动。移除滚动监听，画面冻结。
-         * ResizeObserver 和 window resize 监听保持活跃，但回调中会因状态检查而跳过渲染，
-         * `resume()` 时 `_render` 会自动检测高度变化并适配。
+         * @description 暂停虚拟滚动，解绑 scroll 事件监听器。
+         * * 仅在 `RUNNING` 状态下有效，其他状态下只打印警告。
+         * * 暂停期间调用 {@link VirtualScroll#scrollToIndex} 会将请求排队，
+         *   待 {@link VirtualScroll#resume} 后按序执行（仅最后一条生效）。
+         *
+         * @throws {Error} 实例已销毁时抛出。
          * @returns {void}
+         * @example
+         * vs.pause();
+         * console.log(vs.state); // 'paused'
          */
         pause() {
             this._assertNotDestroyed('pause');
-            if (this.state !== VirtualScroll.State.RUNNING) {
-                console.warn(`[VirtualScroll] pause() only works in RUNNING state, current: ${this.state}`);
+            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                console.warn(`[VirtualScroll] pause() requires RUNNING state, current: ${this.state}`);
                 return;
             }
             this._unbindScroll();
-            this._cancelScheduledRender();
-            this.state = VirtualScroll.State.PAUSED;
+            this._cancelAllRAF();
+            this._sm.transition(VirtualScroll.State.PAUSED);
         }
 
         /**
-         * @public
          * @method resume
-         * @description 恢复虚拟滚动。重新绑定滚动监听，并立即渲染。
-         * 若暂停期间容器尺寸变化，`_render` 内部自动检测并适配。
+         * @description 从暂停状态恢复虚拟滚动。
+         * * 仅在 `PAUSED` 状态下有效，其他状态下只打印警告。
+         * * 若暂停期间有排队的 `scrollToIndex()` 请求，恢复后将执行最后一条，
+         *   其余请求被丢弃（打印警告）。
+         *
+         * @throws {Error} 实例已销毁时抛出。
          * @returns {void}
+         * @example
+         * vs.resume();
+         * console.log(vs.state); // 'running'
          */
         resume() {
             this._assertNotDestroyed('resume');
-            if (this.state !== VirtualScroll.State.PAUSED) {
-                console.warn(`[VirtualScroll] resume() only works in PAUSED state, current: ${this.state}`);
+            if (!this._sm.is(VirtualScroll.State.PAUSED)) {
+                console.warn(`[VirtualScroll] resume() requires PAUSED state, current: ${this.state}`);
                 return;
             }
-            this.state = VirtualScroll.State.RUNNING;
+            this._sm.transition(VirtualScroll.State.RUNNING);
             this._bindScroll();
+
+            if (this._pendingScrollQueue.length > 0) {
+                if (this._pendingScrollQueue.length > 1) {
+                    console.warn(
+                        `[VirtualScroll] ${this._pendingScrollQueue.length - 1} scrollToIndex() ` +
+                        'call(s) were dropped while PAUSED (only the last one is applied).'
+                    );
+                }
+                const {index, behavior} = this._pendingScrollQueue.at(-1);
+                this._pendingScrollQueue = [];
+                this.scrollToIndex(index, {behavior});
+                this._forceRender();
+                return;
+            }
+
             this._forceRender();
         }
 
         /**
-         * @public
          * @method clear
-         * @description 清空渲染内容，回到空闲状态。实例仍可复用。
+         * @description 清空列表并将实例重置为 `IDLE` 状态。
+         * * 解绑所有事件、取消所有 rAF、清空 DOM 和节点池。
+         * * 清空后可再次调用 {@link VirtualScroll#load} 重新启动。
+         *
+         * @throws {Error} 实例已销毁时抛出。
          * @returns {void}
+         * @example
+         * vs.clear();
+         * console.log(vs.state); // 'idle'
          */
         clear() {
             this._assertNotDestroyed('clear');
-            this._unbindScroll();
-            this._unbindResize();
-            this._cancelScheduledRender();
 
-            if (this.container) {
-                this.container.innerHTML = '';
+            if (!this._sm.is(VirtualScroll.State.IDLE)) {
+                this._sm.transition(VirtualScroll.State.IDLE);
             }
-
-            this._spacerTop = null;
-            this._spacerBottom = null;
-            this._startIndex = -1;
-            this._endIndex = -1;
-            this._lastContainerHeight = 0;
-            this.data = [];
-            this.totalCount = 0;
-            this.state = VirtualScroll.State.IDLE;
+            this._teardown(false);
         }
 
         /**
-         * @public
-         * @method scrollToIndex
-         * @description 滚动到指定索引，约束在 `[0, totalCount - 1]`。
-         * @param {number} index - 目标索引。
-         * @param {Object} [options]
-         * @param {string} [options.behavior='auto'] - `'auto'` 或 `'smooth'`。
+         * @method destroy
+         * @description 永久销毁实例，释放所有资源。
+         * * 销毁后不可再调用任何方法（会抛出异常），也无法通过 `load()` 重启。
+         * * 若已处于 `DESTROYED` 状态则直接返回，不重复执行。
+         *
          * @returns {void}
+         * @example
+         * vs.destroy();
+         * console.log(vs.state); // 'destroyed'
          */
-        scrollToIndex(index, options = {}) {
-            this._assertNotDestroyed('scrollToIndex');
-            if (this.state === VirtualScroll.State.IDLE || !this.container) {
+        destroy() {
+            if (this._sm.is(VirtualScroll.State.DESTROYED)) {
                 return;
             }
-            const i = Math.max(0, Math.min(index, this.totalCount - 1));
-            const top = i * this.itemHeight;
-            if (options.behavior === 'smooth') {
-                this.container.scrollTo({top, behavior: 'smooth'});
+            this._sm.transition(VirtualScroll.State.DESTROYED);
+            this._teardown(false);
+        }
+
+        /**
+         * @method scrollToIndex
+         * @description 将滚动位置跳转到指定索引对应的条目。
+         * * `IDLE` 状态或容器不存在时静默返回。
+         * * `PAUSED` 状态时请求入队，`resume()` 后执行最后一条。
+         * * 压缩模式下 `'smooth'` 行为由内部 rAF 动画实现，而非浏览器原生滚动。
+         * * 索引会被夹紧到 `[0, totalCount - 1]`。
+         *
+         * @param {number} index                   - 目标条目索引（自动取整并夹紧）。
+         * @param {Object} [options={}]            - 可选参数。
+         * @param {'auto'|'smooth'} [options.behavior='auto'] - 滚动行为；`'smooth'` 为平滑滚动。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.scrollToIndex(999);                        // 即时跳转到第 999 条
+         * vs.scrollToIndex(999, { behavior: 'smooth' }); // 平滑滚动到第 999 条
+         */
+        scrollToIndex(index, {behavior = 'auto'} = {}) {
+            this._assertNotDestroyed('scrollToIndex');
+
+            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
+                return;
+            }
+            if (this.itemHeight <= 0) {
+                console.warn('[VirtualScroll] scrollToIndex() called before item height was measured');
+                return;
+            }
+
+            const i = Math.max(0, Math.min(index | 0, this.totalCount - 1));
+
+            if (this._sm.is(VirtualScroll.State.PAUSED)) {
+                this._pendingScrollQueue.push({index: i, behavior});
+                console.info(
+                    `[VirtualScroll] scrollToIndex(${i}) queued while PAUSED ` +
+                    `(queue length: ${this._pendingScrollQueue.length}). ` +
+                    'Only the last entry will be applied on resume().'
+                );
+                return;
+            }
+
+            const virtualTop = i * this.itemHeight;
+            const physicalTop = this._heightMapper.virtualToPhysical(
+                virtualTop, this.container.clientHeight
+            );
+
+            if (behavior === 'smooth') {
+                if (this._heightMapper.compressed) {
+                    this._smoothScrollTo(physicalTop);
+                } else {
+                    this.container.scrollTo({top: physicalTop, behavior: 'smooth'});
+                }
             } else {
-                this.container.scrollTop = top;
+                this._cancelSmoothScroll();
+                this.container.scrollTop = physicalTop;
             }
         }
 
-        /** @public */
+        /**
+         * @method scrollToTop
+         * @description 滚动到列表顶部（等同于 `scrollToIndex(0, options)`）。
+         *
+         * @param {Object}          [options]           - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
+         * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
+         * @returns {void}
+         * @example
+         * vs.scrollToTop({ behavior: 'smooth' });
+         */
         scrollToTop(options) {
             this.scrollToIndex(0, options);
         }
 
-        /** @public */
-        scrollToBottom(options) {
-            this.scrollToIndex(this.totalCount - 1, options);
+        /**
+         * @method scrollToBottom
+         * @description 滚动到列表底部。
+         * * 内部计算虚拟底部偏移量后转换为物理坐标进行滚动。
+         * * 压缩模式下 `'smooth'` 使用内部动画实现。
+         *
+         * @param {Object}          [options={}]               - 可选参数。
+         * @param {'auto'|'smooth'} [options.behavior='auto']  - 滚动行为。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.scrollToBottom({ behavior: 'smooth' });
+         */
+        scrollToBottom({behavior = 'auto'} = {}) {
+            this._assertNotDestroyed('scrollToBottom');
+            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
+                return;
+            }
+            if (this.itemHeight <= 0) {
+                console.warn('[VirtualScroll] scrollToBottom() called before item height was measured');
+                return;
+            }
+
+            const clientHeight = this.container.clientHeight;
+            const hm = this._heightMapper;
+            const virtualBottom = Math.max(0, hm.virtualHeight - clientHeight);
+            const physicalBottom = hm.virtualToPhysical(virtualBottom, clientHeight);
+
+            if (behavior === 'smooth') {
+                if (hm.compressed) {
+                    this._smoothScrollTo(physicalBottom);
+                } else {
+                    this.container.scrollTo({top: physicalBottom, behavior: 'smooth'});
+                }
+            } else {
+                this._cancelSmoothScroll();
+                this.container.scrollTop = physicalBottom;
+            }
         }
 
         /**
-         * @public
          * @method getMetrics
-         * @description 获取运行指标。
-         * @returns {Object}
+         * @description 返回当前实例的性能与状态快照（深度冻结，只读）。
+         * * 包含渲染窗口、节点池、高度映射、滚动状态等全部关键指标。
+         * * 用于调试、监控或单元测试断言。
+         *
+         * @returns {Readonly<{
+         *   state: string,
+         *   ready: boolean,
+         *   itemHeight: number,
+         *   bufferSize: number,
+         *   visibleCount: number,
+         *   renderedCount: number,
+         *   totalCount: number,
+         *   startIndex: number,
+         *   endIndex: number,
+         *   scrollTop: number,
+         *   poolSize: number,
+         *   wrapperCount: number,
+         *   userElemCount: number,
+         *   compressed: boolean,
+         *   virtualHeight: number,
+         *   physicalHeight: number,
+         *   scrollRatio: number,
+         *   pendingScrollQueue: ReadonlyArray<Readonly<{index: number, behavior: string}>>
+         * }>} 当前指标快照。
+         *
+         * @example
+         * const m = vs.getMetrics();
+         * console.log(m.renderedCount, m.totalCount, m.compressed);
          */
         getMetrics() {
-            return {
+            const visibleCount = (this.itemHeight && this.container)
+                                 ? Math.ceil(this.container.clientHeight / this.itemHeight)
+                                 : 0;
+            const hm = this._heightMapper;
+
+            return Object.freeze({
                 state: this.state,
+                ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
                 itemHeight: this.itemHeight,
                 bufferSize: this.bufferSize,
-                visibleCount: this.itemHeight && this.container
-                              ? Math.ceil(this.container.clientHeight / this.itemHeight) : 0,
-                renderedCount: Math.max(0, this._endIndex - this._startIndex),
+                visibleCount,
+                renderedCount: this._renderedNodes.size,
                 totalCount: this.totalCount,
                 startIndex: this._startIndex,
                 endIndex: this._endIndex,
-                scrollTop: this.container ? this.container.scrollTop : 0
-            };
-        }
-
-        /** @public @returns {boolean} */
-        isPaused() {
-            return this.state === VirtualScroll.State.PAUSED;
-        }
-
-        /** @public @returns {boolean} */
-        isRunning() {
-            return this.state === VirtualScroll.State.RUNNING;
+                scrollTop: this.container?.scrollTop ?? 0,
+                poolSize: this._nodePool.poolSize,
+                wrapperCount: this._nodePool.wrapperCount,
+                userElemCount: this._nodePool.userElemCount,
+                compressed: hm.compressed,
+                virtualHeight: hm.virtualHeight,
+                physicalHeight: hm.physicalHeight,
+                scrollRatio: hm.scrollRatio,
+                pendingScrollQueue: Object.freeze(
+                    this._pendingScrollQueue.map(e => Object.freeze({...e}))
+                )
+            });
         }
 
         /**
-         * @public
-         * @method destroy
-         * @description 彻底销毁实例。
-         * @returns {void}
+         * @method isPaused
+         * @description 判断实例是否处于 `PAUSED` 状态。
+         * @returns {boolean}
+         * @example
+         * if (vs.isPaused()) vs.resume();
          */
-        destroy() {
-            if (this.state === VirtualScroll.State.DESTROYED) {
-                return;
-            }
-            this._unbindScroll();
-            this._unbindResize();
-            this._cancelScheduledRender();
-            if (this.container) {
-                this.container.innerHTML = '';
-            }
-            this._spacerTop = null;
-            this._spacerBottom = null;
-            this._handleScroll = null;
-            this._handleWindowResize = null;
-            this._lastContainerHeight = 0;
-            this.container = null;
-            this.data = [];
-            this.totalCount = 0;
-            this.state = VirtualScroll.State.DESTROYED;
+        isPaused() {
+            return this._sm.is(VirtualScroll.State.PAUSED);
         }
 
-        /* ===========================================================================
-         *  私有方法
-         * =========================================================================== */
+        /**
+         * @method isRunning
+         * @description 判断实例是否处于 `RUNNING` 状态。
+         * @returns {boolean}
+         * @example
+         * if (!vs.isRunning()) vs.load(data, data.length);
+         */
+        isRunning() {
+            return this._sm.is(VirtualScroll.State.RUNNING);
+        }
 
-        /** @private */
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 参数校验
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _validateConfig
+         * @description 校验构造函数传入的配置对象，任何不合法项均抛出 `Error`。
+         * * `config.container` 须为非空字符串。
+         * * `config.renderItem` 须为函数。
+         * * `config.remeasureOnResize` 若存在须为布尔值。
+         *
+         * @param {Object} config - 待校验的配置对象。
+         * @throws {Error} 任意必填项不合法时抛出。
+         * @returns {void}
+         */
         _validateConfig(config) {
-            if (typeof config.container !== 'string' || !config.container.startsWith('#')) {
-                throw new Error('[VirtualScroll] config.container must be an ID selector string in "#id" format');
+            if (!config || typeof config.container !== 'string' || !config.container.trim()) {
+                throw new Error(
+                    '[VirtualScroll] config.container must be a non-empty CSS selector string'
+                );
             }
             if (typeof config.renderItem !== 'function') {
                 throw new Error('[VirtualScroll] config.renderItem must be a function');
             }
+            if ('remeasureOnResize' in config && typeof config.remeasureOnResize !== 'boolean') {
+                throw new Error('[VirtualScroll] config.remeasureOnResize must be a boolean');
+            }
         }
 
-        /** @private */
+        /**
+         * @private
+         * @method _normalizeLength
+         * @description 将外部传入的 `length` 参数规范化为非负整数。
+         * * `null` / `undefined` → 0（警告）。
+         * * 非有限数字 → 0（警告）。
+         * * 非整数 → 截断为整数（警告）。
+         * * 负数 → 0。
+         *
+         * @param {*}      length - 原始长度参数。
+         * @param {string} caller - 调用方法名，用于警告信息。
+         * @returns {number} 规范化后的非负整数。
+         */
+        _normalizeLength(length, caller) {
+            if (length == null) {
+                console.warn(`[VirtualScroll] ${caller}(): length is ${length}, treating as 0`);
+                return 0;
+            }
+            if (typeof length !== 'number' || !Number.isFinite(length)) {
+                console.warn(
+                    `[VirtualScroll] ${caller}(): length "${length}" is not a finite number, treating as 0`
+                );
+                return 0;
+            }
+            const int = length | 0;
+            if (int !== length) {
+                console.warn(
+                    `[VirtualScroll] ${caller}(): length ${length} is not an integer, truncated to ${int}`
+                );
+            }
+            return Math.max(0, int);
+        }
+
+        /**
+         * @private
+         * @method _assertNotDestroyed
+         * @description 若实例已处于 `DESTROYED` 状态则抛出错误，阻止后续操作。
+         *
+         * @param {string} method - 调用方方法名，用于错误信息。
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         */
+        _assertNotDestroyed(method) {
+            if (this._sm.is(VirtualScroll.State.DESTROYED)) {
+                throw new Error(`[VirtualScroll] Instance destroyed, cannot call ${method}()`);
+            }
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 容器初始化
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _resolveContainer
+         * @description 解析并缓存容器 DOM 元素。
+         * * 若已缓存且仍在文档中，直接返回。
+         * * 若选择器非法，抛出包含原始异常信息的 `Error`。
+         * * 若元素不存在或已被移出 DOM，抛出带有操作建议的 `Error`。
+         *
+         * @throws {Error} 选择器非法、元素不存在或已离开 DOM 时抛出。
+         * @returns {void}
+         */
         _resolveContainer() {
             if (this.container) {
+                if (!this.container.isConnected) {
+                    throw new Error(
+                        `[VirtualScroll] Container "${this._selector}" was removed from the DOM. ` +
+                        'Call clear() before re-mounting.'
+                    );
+                }
                 return;
             }
-            const el = document.getElementById(this._selector.slice(1));
+            let el;
+            try {
+                el = document.querySelector(this._selector);
+            } catch (e) {
+                throw new Error(
+                    `[VirtualScroll] Invalid selector "${this._selector}": ${e.message}`
+                );
+            }
             if (!el) {
                 throw new Error(
-                    `[VirtualScroll] Container element "${this._selector}" not found in the DOM. ` +
-                    'Make sure the element exists before calling load().'
+                    `[VirtualScroll] Container "${this._selector}" not found in the DOM. ` +
+                    'Ensure the element exists before calling load().'
                 );
             }
             this.container = el;
         }
 
-        /** @private */
-        _assertNotDestroyed(methodName) {
-            if (this.state === VirtualScroll.State.DESTROYED) {
-                throw new Error(`[VirtualScroll] Instance has been destroyed, cannot call ${methodName}()`);
-            }
-        }
-
-        /** @private - 设置容器基础 CSS */
+        /**
+         * @private
+         * @method _setupContainer
+         * @description 为容器元素补全必要的 CSS 样式（仅在初次测量前调用一次）。
+         * * `position: static` → 改为 `relative`（子元素绝对定位的基准）。
+         * * `overflow: visible / ''` → 改为 `auto`（启用滚动条）。
+         *
+         * @returns {void}
+         */
         _setupContainer() {
-            if (getComputedStyle(this.container).position === 'static') {
+            const cs = getComputedStyle(this.container);
+            if (cs.position === 'static') {
                 this.container.style.position = 'relative';
             }
-            this.container.style.overflow = 'auto';
+            if (cs.overflow === 'visible' || cs.overflow === '') {
+                this.container.style.overflow = 'auto';
+            }
         }
 
         /**
          * @private
-         * @method _measureItemHeight
-         * @description 自动测量行高。样本项作为容器直接子节点插入，确保 CSS 规则命中。
-         * 结果取整消除亚像素累积误差。
+         * @method _syncContainerSize
+         * @description 将容器当前的 `clientWidth` / `clientHeight` 同步到内部缓存字段。
+         * 用于后续 resize 检测的基准比对。
+         *
+         * @returns {void}
          */
-        _measureItemHeight() {
-            if (this.totalCount === 0) {
-                this.itemHeight = 50;
-                console.warn('[VirtualScroll] Data is empty, item height falls back to 50px');
+        _syncContainerSize() {
+            this._lastContainerHeight = this.container.clientHeight;
+            this._lastContainerWidth = this.container.clientWidth;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 行高校验
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _verifyItemHeight
+         * @description 在不重新测量（`remeasure: false`）时，通过采样少量条目来
+         *   校验缓存行高与新数据实际行高是否吻合。
+         * * 偏差超过 20% 时打印 `console.warn`，提示调用方传入 `{ remeasure: true }`。
+         * * 若 `totalCount === 0` 或 `itemHeight <= 0`，跳过检验。
+         * * 采样元素仅用于测量（`measureOnly = true`），不进入节点池。
+         *
+         * @returns {void}
+         */
+        _verifyItemHeight() {
+            if (this.totalCount === 0 || this.itemHeight <= 0) {
                 return;
             }
 
-            this.container.innerHTML = '';
             const sampleCount = Math.min(3, this.totalCount);
-            const samples = [];
+            const frag = document.createDocumentFragment();
+            const els = [];
 
             for (let i = 0; i < sampleCount; i++) {
-                const el = this._toElement(this.renderItem(i, this.data));
-                this.container.appendChild(el);
-                samples.push(el);
+                const result = this.renderItem(i, this.data);
+                const el = this._nodePool.toElement(result, true);
+                frag.appendChild(el);
+                els.push(el);
             }
 
-            // 强制同步布局
-            this.container.offsetHeight;
+            this.container.appendChild(frag);
+            void this.container.offsetHeight; // 强制同步布局，确保 offsetHeight 有效
 
-            if (sampleCount >= 2) {
-                const firstTop = samples[0].getBoundingClientRect().top;
-                const lastTop = samples[sampleCount - 1].getBoundingClientRect().top;
-                this.itemHeight = Math.round((lastTop - firstTop) / (sampleCount - 1));
-            } else {
-                const rect = samples[0].getBoundingClientRect();
-                const style = getComputedStyle(samples[0]);
-                this.itemHeight = Math.round(
-                    rect.height + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+            const heights = els.map(el => el.offsetHeight);
+            const avg = heights.reduce((s, h) => s + h, 0) / heights.length;
+
+            for (const el of els) {
+                el.parentNode?.removeChild(el);
+            }
+
+            if (avg > 0 && Math.abs(avg - this.itemHeight) / this.itemHeight > 0.2) {
+                console.warn(
+                    `[VirtualScroll] New data item height (~${avg.toFixed(1)}px) differs from ` +
+                    `cached height (${this.itemHeight}px) by more than 20%. ` +
+                    'Consider passing { remeasure: true } to load().'
                 );
             }
+        }
 
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 行高测量
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _doMeasure
+         * @description 执行完整的行高测量流程。
+         * * 将采样条目（最多 {@link VirtualScroll._MEASURE_SAMPLES} 条）临时插入容器，
+         *   强制同步布局后读取 `offsetHeight`，取平均值作为 `itemHeight`。
+         * * 测量完成后清空容器并更新 {@link VirtualScroll._HeightMapper}。
+         * * 边界处理：
+         *   - `totalCount === 0` → 回退到 `_FALLBACK_HEIGHT`（50px）并警告。
+         *   - 测量结果 `≤ 0` → 回退到 50px 并警告。
+         *   - 测量结果 `> 0` 但 `< _MIN_ITEM_HEIGHT` → 修正并警告。
+         * * 测量后会尝试恢复原来的滚动位置（将旧虚拟滚动量映射到新物理坐标）。
+         *
+         * @returns {void}
+         */
+        _doMeasure() {
+            this._unbindScroll();
+            this._recycleRenderedNodes();
             this.container.innerHTML = '';
             this._spacerTop = null;
             this._spacerBottom = null;
+            this._nodePool.clear();
 
-            if (this.itemHeight <= 0) {
-                console.warn('[VirtualScroll] Measured item height is 0, falling back to 50px');
-                this.itemHeight = 50;
+            if (this.totalCount === 0) {
+                this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
+                this._heightMapper.update(0, this.itemHeight, this.container.clientHeight);
+                console.warn('[VirtualScroll] Data is empty; item height falls back to 50px');
+                return;
             }
+
+            const sampleCount = Math.min(VirtualScroll._MEASURE_SAMPLES, this.totalCount);
+            const tempEls = [];
+
+            for (let i = 0; i < sampleCount; i++) {
+                const result = this.renderItem(i, this.data);
+                const el = this._nodePool.toElement(result, true);
+                this.container.appendChild(el);
+                tempEls.push(el);
+            }
+
+            void this.container.offsetHeight; // 强制同步布局
+
+            const heights = tempEls.map(el => el.offsetHeight);
+            const sum = heights.reduce((s, h) => s + h, 0);
+            let measured = sum / sampleCount;
+
+            this.container.innerHTML = '';
+            tempEls.length = 0;
+
+            if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
+                console.warn(
+                    `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
+                    `clamped to ${VirtualScroll._MIN_ITEM_HEIGHT}px`
+                );
+                measured = VirtualScroll._MIN_ITEM_HEIGHT;
+            }
+
+            if (measured <= 0) {
+                console.warn('[VirtualScroll] Measured item height is 0; falling back to 50px');
+                measured = VirtualScroll._FALLBACK_HEIGHT;
+            }
+
+            this.itemHeight = measured;
+
+            const clientHeight = this.container.clientHeight;
+            this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
         }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 缓冲区大小
+        ══════════════════════════════════════════════════════════════════════ */
 
         /**
          * @private
-         * @description `clamp(⌈visibleCount × 0.5⌉, 3, 20)`
+         * @method _calcBufferSize
+         * @description 根据容器高度和行高动态计算缓冲区行数。
+         * * 计算公式：`bufferSize = clamp(ceil(visibleRows × _BUFFER_RATIO), _BUFFER_MIN, _BUFFER_MAX)`。
+         * * 使用迟滞（`_BUFFER_HYSTERESIS`）机制：只有新值与旧值之差 ≥ 2 时才更新，
+         *   避免频繁小幅抖动。
+         * * `force = true` 时跳过迟滞检查，直接写入。
+         * * 容器高度或行高无效时，退化为 `_BUFFER_MIN`。
+         *
+         * @param {boolean} [force=false] - 是否强制更新（忽略迟滞阈值）。
+         * @returns {void}
          */
-        _calcBufferSize() {
+        _calcBufferSize(force = false) {
             const ch = this.container.clientHeight;
-            if (ch <= 0) {
-                this.bufferSize = 5;
+            if (ch <= 0 || this.itemHeight < VirtualScroll._MIN_ITEM_HEIGHT) {
+                this.bufferSize = VirtualScroll._BUFFER_MIN;
                 return;
             }
-            const visibleCount = Math.ceil(ch / this.itemHeight);
-            this.bufferSize = Math.min(20, Math.max(3, Math.ceil(visibleCount * 0.5)));
+            const visible = Math.ceil(ch / this.itemHeight);
+            const next = Math.min(
+                VirtualScroll._BUFFER_MAX,
+                Math.max(VirtualScroll._BUFFER_MIN, Math.ceil(visible * VirtualScroll._BUFFER_RATIO))
+            );
+            if (force || Math.abs(next - this.bufferSize) >= VirtualScroll._BUFFER_HYSTERESIS) {
+                this.bufferSize = next;
+            }
         }
 
-        /** @private - 构建上下 `<vs-spacer>` 占位 */
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— DOM 结构
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _buildDOM
+         * @description 重建容器内的基础 DOM 骨架（清空 + 创建上下 spacer）。
+         * * 回收所有已渲染节点并清空容器 `innerHTML`。
+         * * 创建两个自定义标签 `<vs-spacer>` 作为上下占位符，初始高度均为 0。
+         * * spacer 样式设置为不可见、不占位但仍参与文档流高度计算。
+         * * 调用后 `_startIndex` / `_endIndex` 被重置为 -1。
+         *
+         * @returns {void}
+         */
         _buildDOM() {
-            const spacerStyle = {
-                display: 'block', width: '100%', height: '0px',
-                margin: '0', padding: '0', border: 'none',
-                visibility: 'hidden', overflow: 'hidden',
-                lineHeight: '0', fontSize: '0'
-            };
+            this._recycleRenderedNodes();
 
-            this._spacerTop = document.createElement('vs-spacer');
-            Object.assign(this._spacerTop.style, spacerStyle);
-
-            this._spacerBottom = document.createElement('vs-spacer');
-            Object.assign(this._spacerBottom.style, spacerStyle);
+            if (this._spacerTop?.parentNode === this.container) {
+                this.container.removeChild(this._spacerTop);
+            }
+            if (this._spacerBottom?.parentNode === this.container) {
+                this.container.removeChild(this._spacerBottom);
+            }
 
             this.container.innerHTML = '';
+
+            const applySpacerStyle = el => Object.assign(el.style, {
+                display: 'block',
+                width: '100%',
+                height: '0px',
+                margin: '0',
+                padding: '0',
+                border: 'none',
+                visibility: 'hidden',
+                overflow: 'hidden',
+                lineHeight: '0',
+                fontSize: '0'
+            });
+
+            this._spacerTop = document.createElement('vs-spacer');
+            this._spacerBottom = document.createElement('vs-spacer');
+            applySpacerStyle(this._spacerTop);
+            applySpacerStyle(this._spacerBottom);
+
             this.container.appendChild(this._spacerTop);
             this.container.appendChild(this._spacerBottom);
+
+            this._startIndex = -1;
+            this._endIndex = -1;
+
+            // 立即用当前 heightMapper 状态撑开总高度
+            // 此时 start=0, end=0，所有高度都在 bottom spacer
+            const clientHeight = this.container.clientHeight;
+            const hm = this._heightMapper;
+            const {top, bottom} = hm.calcSpacerHeights(
+                0, 0, this.totalCount, this.itemHeight, clientHeight
+            );
+            this._spacerTop.style.height = `${top}px`;
+            this._spacerBottom.style.height = `${bottom}px`;
         }
 
-        /* ---------- 事件绑定 ---------- */
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 事件绑定
+        ══════════════════════════════════════════════════════════════════════ */
 
-        /** @private - 绑定所有事件监听（幂等） */
+        /**
+         * @private
+         * @method _bindEvents
+         * @description 同时绑定滚动事件和 resize 监听器。
+         * @returns {void}
+         */
         _bindEvents() {
             this._bindScroll();
             this._bindResize();
         }
 
-        /** @private - 绑定 scroll（幂等） */
+        /**
+         * @private
+         * @method _bindScroll
+         * @description 向容器绑定 `scroll` 事件监听器（被动模式）。
+         * * 若已绑定（`_handleScroll` 不为 `null`），直接返回，防止重复注册。
+         * * 平滑滚动动画期间（`_isSmoothScrolling = true`）忽略 scroll 事件，
+         *   由动画循环自行调用 `_render()`。
+         *
+         * @returns {void}
+         */
         _bindScroll() {
             if (this._handleScroll) {
                 return;
             }
-            this._handleScroll = () => this._scheduleRender();
+            this._handleScroll = () => {
+                if (this._isSmoothScrolling) {
+                    return;
+                }
+                this._scheduleRender();
+            };
             this.container.addEventListener('scroll', this._handleScroll, {passive: true});
         }
 
-        /** @private */
+        /**
+         * @private
+         * @method _unbindScroll
+         * @description 从容器移除 `scroll` 事件监听器并置空引用。
+         * @returns {void}
+         */
         _unbindScroll() {
             if (this._handleScroll && this.container) {
                 this.container.removeEventListener('scroll', this._handleScroll);
@@ -2159,37 +3201,97 @@
         /**
          * @private
          * @method _bindResize
-         * @description 绑定容器尺寸监听（幂等）。双重保障：
-         * 1. **ResizeObserver**（主力）：监听容器元素自身，任何原因导致的尺寸变化都能捕获。
-         * 2. **window `resize`**（兜底）：兼容不支持 ResizeObserver 的环境，
-         *    或 ResizeObserver 因浏览器实现差异未触发的情况。
+         * @description 绑定容器尺寸变化监听器。
+         * * 优先使用 `ResizeObserver`（现代浏览器）：精确监听容器自身的尺寸变化。
+         * * 降级方案：监听 `window.resize`，通过比对 `clientWidth / clientHeight` 判断变化。
+         * * 宽度变化且 `remeasureOnResize = true` 时触发重新测量。
+         * * 仅高度变化时重新计算缓冲区大小并调度渲染。
          *
-         * 两者回调均指向同一个 `_scheduleRender()`，由统一的 rAF 合并，
-         * 确保同一帧内无论几个事件源触发，`_render()` 只执行一次。
+         * @returns {void}
          */
         _bindResize() {
-            // ---- 1. ResizeObserver ----
-            if (!this._ro && typeof ResizeObserver !== 'undefined') {
-                this._ro = new ResizeObserver(() => {
-                    if (this.state === VirtualScroll.State.RUNNING) {
-                        this._scheduleRender();
+            if (typeof ResizeObserver !== 'undefined') {
+                if (this._ro) {
+                    return;
+                }
+                this._ro = new ResizeObserver(entries => {
+                    if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                        return;
                     }
+
+                    const entry = entries[0];
+                    if (!entry) {
+                        return;
+                    }
+
+                    // 直接从 target 获取 clientWidth/Height，保持与系统其他地方统一（包含 padding）
+                    const newW = entry.target.clientWidth;
+                    const newH = entry.target.clientHeight;
+
+                    const widthChanged = Math.round(newW) !== Math.round(this._lastContainerWidth);
+                    const heightChanged = Math.round(newH) !== Math.round(this._lastContainerHeight);
+
+                    if (widthChanged) {
+                        this._lastContainerWidth = newW;
+                        if (this._remeasureOnResize) {
+                            if (heightChanged) {
+                                this._lastContainerHeight = newH;
+                            }
+                            this._scheduleRemeasure();
+                            return;
+                        }
+                    }
+
+                    if (heightChanged) {
+                        this._lastContainerHeight = newH;
+                        this._calcBufferSize();
+                    }
+
+                    this._scheduleRender();
                 });
                 this._ro.observe(this.container);
-            }
-
-            // ---- 2. window resize 兜底 ----
-            if (!this._handleWindowResize) {
+            } else {
+                if (this._handleWindowResize) {
+                    return;
+                }
                 this._handleWindowResize = () => {
-                    if (this.state === VirtualScroll.State.RUNNING) {
-                        this._scheduleRender();
+                    if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                        return;
                     }
+
+                    const newW = this.container.clientWidth;
+                    const newH = this.container.clientHeight;
+                    const widthChanged = Math.round(newW) !== Math.round(this._lastContainerWidth);
+                    const heightChanged = Math.round(newH) !== Math.round(this._lastContainerHeight);
+
+                    if (widthChanged) {
+                        this._lastContainerWidth = newW;
+                        if (this._remeasureOnResize) {
+                            if (heightChanged) {
+                                this._lastContainerHeight = newH;
+                            }
+                            this._scheduleRemeasure();
+                            return;
+                        }
+                    }
+
+                    if (heightChanged) {
+                        this._lastContainerHeight = newH;
+                        this._calcBufferSize();
+                    }
+
+                    this._scheduleRender();
                 };
                 window.addEventListener('resize', this._handleWindowResize, {passive: true});
             }
         }
 
-        /** @private */
+        /**
+         * @private
+         * @method _unbindResize
+         * @description 断开 `ResizeObserver` 或移除 `window.resize` 监听器。
+         * @returns {void}
+         */
         _unbindResize() {
             if (this._ro) {
                 this._ro.disconnect();
@@ -2201,17 +3303,82 @@
             }
         }
 
-        /* ---------- 渲染调度 ---------- */
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 重测调度
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _scheduleRemeasure
+         * @description 使用 `requestAnimationFrame` 异步调度一次行高重测。
+         * * 通过 `_remeasurePending` 标志去重，同一帧内多次调用只生效一次。
+         * * 优先取消已挂起的渲染帧（`_cancelRenderRAF`），防止新旧渲染交叉。
+         * * 重测完成后重建 DOM 骨架并触发强制渲染。
+         *
+         * @returns {void}
+         */
+        _scheduleRemeasure() {
+            if (this._remeasurePending) {
+                return;
+            }
+            this._remeasurePending = true;
+            this._cancelRenderRAF();
+
+            this._remeasureRAF = requestAnimationFrame(() => {
+                this._remeasureRAF = null;
+
+                if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
+                    this._remeasurePending = false;
+                    return;
+                }
+
+                try {
+                    // 1. 在 DOM 被清空前，抓取旧的虚拟滚动位置
+                    const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+                    // 算出当前停留在第几行
+                    const oldRowIndex = this.itemHeight > 0
+                                        ? Math.floor(oldVirtScroll / this.itemHeight)
+                                        : 0;
+
+                    this._heightMapper.reset();
+                    this._doMeasure(); // 内部会清空 DOM，但此时不再操作 scrollTop
+                    this._syncContainerSize();
+                    this._calcBufferSize(true);
+
+                    // 2. 重新挂载 Spacer，这一步至关重要！此时 scrollHeight 终于被撑开了
+                    this._buildDOM();
+                    this._syncContainerSize();
+
+                    // 3. 既然 DOM 已经撑开，现在赋值 scrollTop 浏览器才会认账
+                    const clientHeight = this.container.clientHeight;
+                    const newVirtScroll = Math.min(
+                        oldRowIndex * this.itemHeight,
+                        Math.max(0, this._heightMapper.virtualHeight - clientHeight)
+                    );
+                    this.container.scrollTop = this._heightMapper.virtualToPhysical(newVirtScroll, clientHeight);
+
+                    this._bindScroll();
+                    this._forceRender();
+                } finally {
+                    this._remeasurePending = false;
+                }
+            });
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 渲染调度
+        ══════════════════════════════════════════════════════════════════════ */
 
         /**
          * @private
          * @method _scheduleRender
-         * @description 统一的异步渲染调度入口。
-         * 所有触发源（scroll / ResizeObserver / window resize）都经此方法，
-         * 利用 `requestAnimationFrame` 合并为同一帧内最多一次 `_render()` 调用。
+         * @description 通过 `requestAnimationFrame` 异步调度一次渲染。
+         * * 若已有渲染帧在等待，或重测帧正在挂起，则跳过本次请求。
+         *
+         * @returns {void}
          */
         _scheduleRender() {
-            if (this._renderRAF) {
+            if (this._renderRAF || this._remeasurePending) {
                 return;
             }
             this._renderRAF = requestAnimationFrame(() => {
@@ -2222,10 +3389,11 @@
 
         /**
          * @private
-         * @method _cancelScheduledRender
-         * @description 取消已排队的 rAF 渲染。
+         * @method _cancelRenderRAF
+         * @description 取消已挂起的渲染帧（`_renderRAF`）。
+         * @returns {void}
          */
-        _cancelScheduledRender() {
+        _cancelRenderRAF() {
             if (this._renderRAF) {
                 cancelAnimationFrame(this._renderRAF);
                 this._renderRAF = null;
@@ -2234,102 +3402,423 @@
 
         /**
          * @private
-         * @method _forceRender
-         * @description 强制同步渲染。取消排队的 rAF，重置范围索引，立即执行 `_render()`。
-         * 用于 `load()` / `resume()` 等需要立即生效的场景。
+         * @method _cancelRemeasureRAF
+         * @description 取消已挂起的重测帧（`_remeasureRAF`）并清除挂起标志。
+         * @returns {void}
          */
-        _forceRender() {
-            this._cancelScheduledRender();
-            this._startIndex = -1;
-            this._endIndex = -1;
-            this._render();
+        _cancelRemeasureRAF() {
+            if (this._remeasureRAF) {
+                cancelAnimationFrame(this._remeasureRAF);
+                this._remeasureRAF = null;
+                this._remeasurePending = false;
+            }
         }
 
-        /* ---------- 核心渲染 ---------- */
+        /**
+         * @private
+         * @method _cancelAllRAF
+         * @description 同时取消渲染帧和重测帧。
+         * @returns {void}
+         */
+        _cancelAllRAF() {
+            this._cancelRenderRAF();
+            this._cancelRemeasureRAF();
+        }
+
+        /**
+         * @private
+         * @method _forceRender
+         * @description 取消挂起的渲染帧后，同步（本帧内）执行一次强制渲染。
+         * * 与 {@link VirtualScroll#_scheduleRender} 的区别：本方法是同步调用，
+         *   不受"已有帧挂起"的跳过逻辑限制，且 `force = true` 会绕过范围未变的
+         *   提前返回检查。
+         *
+         * @returns {void}
+         */
+        _forceRender() {
+            this._cancelRenderRAF();
+            this._render(true);
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 核心渲染
+        ══════════════════════════════════════════════════════════════════════ */
 
         /**
          * @private
          * @method _render
-         * @description 核心渲染逻辑。
+         * @description 虚拟滚动核心渲染逻辑，计算当前视口对应的渲染窗口并更新 DOM。
+         * * **快速返回条件**：容器不存在、spacer 未挂载、无数据、容器高度为 0。
+         * * **高度变化处理**：若容器高度自上次渲染以来发生变化，重新计算缓冲区与
+         *   高度映射，并修正超出范围的 `scrollTop`。
+         * * **范围计算**：
+         *   - `physScrollTop` → `virtScrollTop`（高度映射）→ `visibleStart / visibleEnd`
+         *   - 加上缓冲区后得到 `[start, end)`。
+         * * **渲染决策**：
+         *   - `force = false` 且范围与高度均未变化 → 跳过。
+         *   - 新旧范围无重叠 → 全量回收 + 重渲染（{@link VirtualScroll#_recycleAllAndRender}）。
+         *   - 有重叠 → 增量更新（{@link VirtualScroll#_incrementalUpdate}）。
+         * * 每次渲染后更新 spacer 高度、`_startIndex`、`_endIndex`。
          *
-         * **内置容器高度自检**：每次执行时读取 `clientHeight`，与 `_lastContainerHeight` 比较。
-         * 高度变化时自动执行：
-         * 1. 重算 `bufferSize`。
-         * 2. 钳制 `scrollTop`（防止超出最大可滚动范围导致底部空白）。
-         * 3. 由于 `bufferSize` 变化或 `scrollTop` 被钳制，渲染范围必然与上次不同，触发重新渲染。
-         *
-         * 这样无论触发源是什么（scroll / resize / resume / load），都能正确适配当前容器尺寸。
+         * @param {boolean} [force=false]
+         *   为 `true` 时即使渲染范围未变也强制执行 DOM 更新。
+         * @returns {void}
          */
-        _render() {
-            const {itemHeight, totalCount, data} = this;
-            if (!this.container || !itemHeight || !totalCount) {
+        _render(force = false) {
+            if (!this.container) {
+                return;
+            }
+            if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
+                return;
+            }
+            if (this.totalCount <= 0 || this.itemHeight <= 0) {
                 return;
             }
 
             const clientHeight = this.container.clientHeight;
             if (clientHeight <= 0) {
                 return;
-            } // 容器不可见，跳过
+            }
 
-            // ========== 容器高度变化自检 ==========
             const heightChanged = clientHeight !== this._lastContainerHeight;
-
             if (heightChanged) {
                 this._lastContainerHeight = clientHeight;
                 this._calcBufferSize();
+                this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
 
-                // 钳制 scrollTop：容器变大后旧值可能超出最大可滚动范围
-                const maxScroll = Math.max(0, totalCount * itemHeight - clientHeight);
-                if (this.container.scrollTop > maxScroll) {
-                    this.container.scrollTop = maxScroll;
+                const hm = this._heightMapper;
+                const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
+                const currentST = this.container.scrollTop;
+
+                if (currentST > maxPhysical) {
+                    this._unbindScroll();
+                    this.container.scrollTop = maxPhysical;
+                    if (this._sm.is(VirtualScroll.State.RUNNING)) {
+                        this._bindScroll();
+                        this._cancelRenderRAF();
+                    }
                 }
             }
 
-            // ========== 计算渲染范围 ==========
-            const scrollTop = this.container.scrollTop;
-            const visibleStart = Math.floor(scrollTop / itemHeight);
-            const visibleEnd = Math.ceil((scrollTop + clientHeight) / itemHeight);
+            const hm = this._heightMapper;
+            const physScrollTop = this.container.scrollTop;
+            const virtScrollTop = hm.physicalToVirtual(physScrollTop);
 
+            const visibleStart = Math.floor(virtScrollTop / this.itemHeight);
+            const visibleEnd = Math.ceil((virtScrollTop + clientHeight) / this.itemHeight);
             const start = Math.max(0, visibleStart - this.bufferSize);
-            const end = Math.min(totalCount, visibleEnd + this.bufferSize);
+            const end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
 
-            // 高度未变 且 范围未变 → 跳过
-            if (!heightChanged && start === this._startIndex && end === this._endIndex) {
+            const rangeUnchanged = start === this._startIndex && end === this._endIndex;
+            if (!force && rangeUnchanged && !heightChanged) {
                 return;
+            }
+
+            const {top: spacerTopPx, bottom: spacerBottomPx} =
+                hm.calcSpacerHeights(start, end, this.totalCount, this.itemHeight, clientHeight);
+            this._spacerTop.style.height = `${spacerTopPx}px`;
+            this._spacerBottom.style.height = `${spacerBottomPx}px`;
+
+            const prevStart = this._startIndex;
+            const prevEnd = this._endIndex;
+            const noOverlap = prevStart < 0 || end <= prevStart || start >= prevEnd;
+
+            if (noOverlap) {
+                this._recycleAllAndRender(start, end);
+            } else {
+                this._incrementalUpdate(prevStart, prevEnd, start, end);
             }
 
             this._startIndex = start;
             this._endIndex = end;
+        }
 
-            // ========== 更新占位高度 ==========
-            const totalHeight = totalCount * itemHeight;
-            const topH = start * itemHeight;
-            const renderedH = (end - start) * itemHeight;
-            const bottomH = totalHeight - topH - renderedH;
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 增量更新
+        ══════════════════════════════════════════════════════════════════════ */
 
-            this._spacerTop.style.height = topH + 'px';
-            this._spacerBottom.style.height = Math.max(0, bottomH) + 'px';
+        /**
+         * @private
+         * @method _incrementalUpdate
+         * @description 在旧渲染窗口与新渲染窗口有重叠时，执行最小化 DOM 操作的增量更新。
+         * * **回收**：不再需要的旧索引节点归还给节点池。
+         * * **前插**：新窗口左侧扩展的索引，渲染后插入到现有节点前面。
+         * * **后追**：新窗口右侧扩展的索引，渲染后追加到 spacer 前面。
+         * * 最终重建 `_renderedNodes` Map，保持索引→节点的准确映射。
+         *
+         * @param {number} prevStart - 旧渲染窗口起始索引（含）。
+         * @param {number} prevEnd   - 旧渲染窗口结束索引（不含）。
+         * @param {number} newStart  - 新渲染窗口起始索引（含）。
+         * @param {number} newEnd    - 新渲染窗口结束索引（不含）。
+         * @returns {void}
+         */
+        _incrementalUpdate(prevStart, prevEnd, newStart, newEnd) {
+            const toRecycle = [];
+            const prependIndices = [];
+            const appendIndices = [];
 
-            // ========== 替换列表项 ==========
-            while (this._spacerTop.nextSibling !== this._spacerBottom) {
-                this._spacerTop.nextSibling.remove();
+            for (let i = prevStart; i < prevEnd; i++) {
+                if (i < newStart || i >= newEnd) {
+                    toRecycle.push(i);
+                }
+            }
+            for (let i = newStart; i < Math.min(prevStart, newEnd); i++) {
+                prependIndices.push(i);
+            }
+            for (let i = Math.max(prevEnd, newStart); i < newEnd; i++) {
+                appendIndices.push(i);
             }
 
+            for (const i of toRecycle) {
+                this._removeRenderedNode(i);
+            }
+
+            const newNodes = new Map();
+
+            for (const i of prependIndices) {
+                newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
+            }
+            for (const i of appendIndices) {
+                newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
+            }
+
+            if (prependIndices.length > 0) {
+                const anchor = this._getFirstRenderedNode() ?? this._spacerBottom;
+                const frag = document.createDocumentFragment();
+                for (const i of prependIndices) {
+                    frag.appendChild(newNodes.get(i));
+                }
+                this.container.insertBefore(frag, anchor);
+            }
+
+            if (appendIndices.length > 0) {
+                const frag = document.createDocumentFragment();
+                for (const i of appendIndices) {
+                    frag.appendChild(newNodes.get(i));
+                }
+                this.container.insertBefore(frag, this._spacerBottom);
+            }
+
+            const orderedMap = new Map();
+            for (let i = newStart; i < newEnd; i++) {
+                const el = newNodes.get(i) ?? this._renderedNodes.get(i);
+                if (el !== undefined) {
+                    orderedMap.set(i, el);
+                } else {
+                    console.error(
+                        `[VirtualScroll] _incrementalUpdate: missing element for index ${i}. ` +
+                        'This is an internal bug; please file an issue.'
+                    );
+                }
+            }
+            this._renderedNodes = orderedMap;
+        }
+
+        /**
+         * @private
+         * @method _getFirstRenderedNode
+         * @description 获取当前 `_renderedNodes` Map 中第一个（最小索引）已渲染节点。
+         * * Map 的迭代顺序即插入顺序，与索引递增顺序一致。
+         *
+         * @returns {HTMLElement | null} 第一个节点，若 Map 为空则返回 `null`。
+         */
+        _getFirstRenderedNode() {
+            const first = this._renderedNodes.values().next();
+            return first.done ? null : first.value;
+        }
+
+        /**
+         * @private
+         * @method _recycleAllAndRender
+         * @description 全量回收当前所有已渲染节点，然后从零渲染新窗口 `[start, end)` 内的条目。
+         * * 适用于新旧渲染窗口无重叠时的场景（例如大幅度跳转）。
+         * * 使用 `DocumentFragment` 批量插入，减少重排次数。
+         *
+         * @param {number} start - 新渲染窗口起始索引（含）。
+         * @param {number} end   - 新渲染窗口结束索引（不含）。
+         * @returns {void}
+         */
+        _recycleAllAndRender(start, end) {
+            this._recycleRenderedNodes();
             const frag = document.createDocumentFragment();
             for (let i = start; i < end; i++) {
-                frag.appendChild(this._toElement(this.renderItem(i, data)));
+                const el = this._nodePool.toElement(this.renderItem(i, this.data));
+                this._renderedNodes.set(i, el);
+                frag.appendChild(el);
             }
             this.container.insertBefore(frag, this._spacerBottom);
         }
 
-        /** @private */
-        _toElement(result) {
-            if (result instanceof HTMLElement) {
-                return result;
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 节点回收
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _removeRenderedNode
+         * @description 从 `_renderedNodes` 中移除单个索引对应的节点，并将其归还节点池。
+         * * 若指定索引不存在于 Map 中，静默返回。
+         *
+         * @param {number} index - 要移除的条目索引。
+         * @returns {void}
+         */
+        _removeRenderedNode(index) {
+            const el = this._renderedNodes.get(index);
+            if (!el) {
+                return;
             }
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = result;
-            return wrapper.firstElementChild || wrapper;
+            this._renderedNodes.delete(index);
+            this._nodePool.recycle(el);
+        }
+
+        /**
+         * @private
+         * @method _recycleRenderedNodes
+         * @description 将 `_renderedNodes` 中的所有节点批量归还节点池，并清空 Map。
+         * * 同时将 `_startIndex` / `_endIndex` 重置为 -1（表示当前无渲染窗口）。
+         *
+         * @returns {void}
+         */
+        _recycleRenderedNodes() {
+            for (const el of this._renderedNodes.values()) {
+                this._nodePool.recycle(el);
+            }
+            this._renderedNodes.clear();
+            this._startIndex = -1;
+            this._endIndex = -1;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— teardown
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _teardown
+         * @description 执行完整的资源清理流程，被 `clear()` 和 `destroy()` 共同调用。
+         * * 解绑事件、取消所有 rAF、清空节点池、清空 DOM、重置所有内部状态字段。
+         * * 执行后 `container` 置为 `null`，`_measured` 置为 `false`。
+         *
+         * @param {boolean} _keepContainer
+         *   保留参数（当前未使用，为未来扩展预留；传 `false` 即可）。
+         * @returns {void}
+         */
+        _teardown(_keepContainer) {
+            this._unbindScroll();
+            this._unbindResize();
+            this._cancelAllRAF();
+            this._cancelSmoothScrollSilent();
+
+            this._nodePool.clear();
+            this._renderedNodes.clear();
+            this._pendingScrollQueue = [];
+            this._remeasurePending = false;
+
+            if (this.container) {
+                this.container.innerHTML = '';
+            }
+
+            this._spacerTop = null;
+            this._spacerBottom = null;
+            this._startIndex = -1;
+            this._endIndex = -1;
+            this._lastContainerHeight = 0;
+            this._lastContainerWidth = 0;
+            this._measured = false;
+            this.data = [];
+            this.totalCount = 0;
+            this.container = null;
+            this._heightMapper.reset();
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           私有 —— 平滑滚动（压缩模式专用）
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @private
+         * @method _smoothScrollTo
+         * @description 在压缩模式下使用 rAF 动画实现平滑滚动到指定物理偏移量。
+         * * 浏览器原生 `scrollTo({ behavior: 'smooth' })` 在压缩模式下因高度不真实而
+         *   表现异常，此方法作为替代，在每一帧手动计算 easeInOut 插值并调用 `_render()`。
+         * * 动画时长固定 300 ms，缓动函数为二次 easeInOut。
+         * * 开始前取消上一次尚未完成的平滑滚动动画。
+         * * 动画期间 scroll 事件被 `_isSmoothScrolling` 标志屏蔽。
+         *
+         * @param {number} targetPhysical - 目标物理 `scrollTop`（px）。
+         * @returns {void}
+         */
+        _smoothScrollTo(targetPhysical) {
+            this._cancelSmoothScrollSilent();
+
+            const start = this.container.scrollTop;
+            const delta = targetPhysical - start;
+            const dur = 300; // 动画时长（ms）
+            let t0 = null;
+
+            /** 二次 easeInOut 缓动函数，t ∈ [0, 1] → [0, 1]。 */
+            const easeInOut = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+            this._isSmoothScrolling = true;
+
+            const step = ts => {
+                if (this._sm.is(VirtualScroll.State.DESTROYED) || !this.container) {
+                    this._smoothRAF = null;
+                    this._isSmoothScrolling = false;
+                    return;
+                }
+
+                if (t0 === null) {
+                    t0 = ts;
+                }
+                const elapsed = Math.min(ts - t0, dur);
+                const progress = easeInOut(elapsed / dur);
+
+                this.container.scrollTop = start + delta * progress;
+
+                if (elapsed < dur) {
+                    this._render();
+                    this._smoothRAF = requestAnimationFrame(step);
+                } else {
+                    this._smoothRAF = null;
+                    this._isSmoothScrolling = false;
+                    this._render();
+                }
+            };
+
+            this._smoothRAF = requestAnimationFrame(step);
+        }
+
+        /**
+         * @private
+         * @method _cancelSmoothScroll
+         * @description 取消正在进行的平滑滚动动画，并在之前处于动画状态时调度一次补充渲染。
+         * * 用于 `scrollToIndex({ behavior: 'auto' })` 打断 smooth 动画的场景。
+         *
+         * @returns {void}
+         */
+        _cancelSmoothScroll() {
+            const wasScrolling = this._isSmoothScrolling;
+            this._cancelSmoothScrollSilent();
+            if (wasScrolling) {
+                this._scheduleRender();
+            }
+        }
+
+        /**
+         * @private
+         * @method _cancelSmoothScrollSilent
+         * @description 静默取消平滑滚动动画，不触发后续渲染。
+         * * 用于 `load()` / `_teardown()` 等需要立即停止动画但不额外渲染的场合。
+         *
+         * @returns {void}
+         */
+        _cancelSmoothScrollSilent() {
+            if (this._smoothRAF) {
+                cancelAnimationFrame(this._smoothRAF);
+                this._smoothRAF = null;
+            }
+            this._isSmoothScrolling = false;
         }
     }
 
