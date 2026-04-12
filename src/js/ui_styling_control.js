@@ -2076,12 +2076,12 @@
                 const physTop = this._positionToPhysical(start * itemHeight);
                 const physEnd = this._positionToPhysical(end * itemHeight);
 
-                // Fix #4：底部用 ceil 补偿顶部 floor 的向下偏差，减少累积误差
+                // 底部用 ceil 补偿顶部 floor 的向下偏差，减少累积误差
                 const physBottom = Math.max(0, this.physicalHeight - physEnd);
 
                 return {
                     top: Math.floor(physTop),
-                    bottom: Math.ceil(physBottom)   // ← 修复：原为 Math.floor
+                    bottom: Math.ceil(physBottom)
                 };
             }
         };
@@ -2725,7 +2725,7 @@
                 return;
             }
 
-            const i = Math.max(0, Math.min(index | 0, this.totalCount - 1));
+            const i = Math.max(0, Math.min(Math.trunc(index), this.totalCount - 1));
 
             if (this._sm.is(VirtualScroll.State.PAUSED)) {
                 this._pendingScrollQueue.push({index: i, behavior});
@@ -2934,18 +2934,26 @@
          * @returns {number} 规范化后的非负整数。
          */
         _normalizeLength(length, caller) {
+            // 1. 处理空值
             if (length == null) {
                 console.warn(`[VirtualScroll] ${caller}(): length is ${length}, treating as 0.`);
                 return 0;
             }
-            if (typeof length !== 'number' || !Number.isFinite(length)) {
+
+            // 2. 转换为数字并校验有限性
+            const num = Number(length);
+            if (!Number.isFinite(num)) {
                 console.warn(`[VirtualScroll] ${caller}(): length "${length}" is not a finite number, treating as 0.`);
                 return 0;
             }
-            const int = length | 0;
-            if (int !== length) {
+
+            // 3. 截断小数并处理负数
+            const int = Math.trunc(num);
+
+            if (int !== num) {
                 console.warn(`[VirtualScroll] ${caller}(): length ${length} is not an integer, truncated to ${int}.`);
             }
+
             return Math.max(0, int);
         }
 
