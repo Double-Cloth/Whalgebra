@@ -1,4 +1,15 @@
 (function () {
+    /**
+     * @TODO 性能优化：使用 VirtualScroll 替换 AsyncListRenderer
+     * * @description
+     * 1. 核心目标：提升主列表与统计模式输入框的渲染性能。
+     * 2. 技术约束：VirtualScroll 模式下无法直接访问 GridOn 实例。
+     * * @step
+     * - 抽象数据层：创建独立类管理 `#grid_data`，解耦对 GridOn 的直接依赖。
+     * - 逻辑映射：重构所有 `#grid_data` 读取操作，通过管理类进行代理。
+     * - 组件迁移：完成上述重构后，将全量业务场景切换至 VirtualScroll。
+     */
+
     "use strict";
 
     /**
@@ -1228,13 +1239,9 @@
      * 3. 强行插入接管：内置 MutationObserver，自动监听并接管第三方组件库或业务代码强行插入容器的 DOM 节点。
      * 4. 任务控制：支持随时暂停 (pause)、恢复 (resume)、追加 (append) 和彻底终止 (stop)。
      *
-     * @todo 【架构演进】应对万级以上极限数据量场景
-     * - 局限性说明：
+     * 局限性说明：
      * 当前的时间分片 (Time Slicing) 机制虽解决了“单次挂载卡顿”问题，但当 DOM 节点总数突破 5000+ 时，
      * 驻留的庞大 DOM 树依然会导致严重的内存占用和滚动时的 Reflow (回流) 掉帧。
-     * - 重构建议：
-     * 若未来业务面临此类极端场景，需引入虚拟滚动 (Virtual Scrolling) 技术，仅渲染可视区及其缓冲区的 DOM 节点。
-     * 为保证类的职责单一，请勿在此类上强行修改，新建 `VirtualScroll` 类作为专项替代方案。
      */
     class AsyncListRenderer {
         /**
@@ -1734,9 +1741,6 @@
      *   renderItem: (index, data) => `<div class="item">${data[index]}</div>`,
      * });
      * vs.load(myArray, myArray.length);
-     *
-     * @todo 将统计模式输入也使用 VirtualScroll，抛弃 AsyncListRenderer
-     * 注意：使用 VirtualScroll 会导致无法直接读取 GridOn.
      */
     class VirtualScroll {
 
@@ -2725,7 +2729,9 @@
                 return;
             }
 
-            const i = Math.max(0, Math.min(Math.trunc(index), this.totalCount - 1));
+            const numericIndex = Number(index);
+            const normalizedIndex = Number.isFinite(numericIndex) ? Math.trunc(numericIndex) : 0;
+            const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
 
             if (this._sm.is(VirtualScroll.State.PAUSED)) {
                 this._pendingScrollQueue.push({index: i, behavior});
