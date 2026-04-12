@@ -1,11 +1,11 @@
 (function () {
     /**
-     * @TODO 性能优化：使用 VirtualScroll 替换 AsyncListRenderer
-     * * @description
+     * @todo 性能优化：使用 VirtualScroll 替换 AsyncListRenderer
+     * @description
      * 1. 核心目标：提升主列表与统计模式输入框的渲染性能。
-     * 2. 技术约束：VirtualScroll 模式下无法直接访问 GridOn 实例。
-     * * @step
-     * - 抽象数据层：创建独立类管理 `#grid_data`，解耦对 GridOn 的直接依赖。
+     * 2. 技术约束：VirtualScroll 模式下无法直接访问 `.GridOn` 实例。
+     * @step
+     * - 抽象数据层：创建独立类管理 `#grid_data`，解耦对 `.GridOn` 的直接依赖。
      * - 逻辑映射：重构所有 `#grid_data` 读取操作，通过管理类进行代理。
      * - 组件迁移：完成上述重构后，将全量业务场景切换至 VirtualScroll。
      */
