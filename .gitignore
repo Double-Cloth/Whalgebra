@@ -37,7 +37,7 @@ pnpm-debug.log*
 .env.test.local
 .env.production.local
 *.env
-! .env.example
+!.env.example
 
 # --- Testing & Quality Control ---
 
