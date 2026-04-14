@@ -506,6 +506,7 @@
             },
             // 提供所需依赖
             dependencies: [
+                {name: 'TokenConfig', value: TokenConfig},
                 {name: 'Public', value: Public},
                 {name: 'CalcConfig', value: CalcConfig},
                 {name: 'BigNumber', value: BigNumber},

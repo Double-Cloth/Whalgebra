@@ -2,6 +2,102 @@
     "use strict";
 
     /**
+     * @class TokenConfig
+     * @description 一个静态工具类，用于记录计算器使用的词元信息
+     */
+    class TokenConfig {
+        /**
+         * @private
+         * @function _complement
+         * @description (内部辅助函数) 计算两个数组的差集 (A \ B)，返回所有在数组 A 中但不在数组 B 中的元素。
+         * @param {Array<*>} arrA - 源数组（集合 A）。
+         * @param {Array<*>} arrB - 要从中减去的元素的数组（集合 B）。
+         * @returns {Array<*>} 一个新的数组，包含差集中的所有元素。
+         */
+        static _complement(arrA, arrB) {
+            const setB = new Set(arrB);
+            return arrA.filter(item => !setB.has(item));
+        }
+
+        // --- 基础数组定义 (私有，仅用于初始化) ---
+        // 放置在两个操作数之前的二元运算符
+        static _func_01_2 = ['log', 'nroot'];
+        // 放置在两个操作数之间的二元运算符（例如 a + b）
+        // '&' 是内部表示的隐式乘法。
+        static _func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'];
+        // 接受一个参数的函数（例如 sin(x)）
+        // 'N' (一元负号) 和 'A' (绝对值) 是内部表示。
+        static _func_01_1 = ['sqrt', 'cbrt', 'ln', 'exp', 'lg', 'f', 'g', 're', 'im', 'conj', 'ceil', 'floor', 'arg', 'sgn', '[gamma]', 'sin', 'arcsin', 'cos', 'arccos', 'tan', 'arctan', 'sh', 'arsh', 'ch', 'arch', 'th', 'arth', 'abs', 'A', 'N'];
+        // 放置在操作数之后的一元运算符（例如 5!）
+        static _func_10_1 = ['!', '[degree]'];
+        // 内部使用的私有函数/运算符，不应直接由用户输入。
+        static _private_func = ['A', 'N', '&'];
+        // 在 HTML 只占用一个类名的函数。
+        static _htmlClass_len_one_func = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
+
+        // 定义数字常量和变量 'x'。
+        static _baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
+        static _codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
+
+        // 其他有效符号。
+        static _other = ['|', ',', '(', ')'];
+
+        // --- 暴露给外部的高速 Set 集合 (O(1) 查询) ---
+        // 将所有函数和运算符合并到一个列表中，以便于查找。
+        static allFunc = new Set([...this._func_01_2, ...this._func_11_2, ...this._func_01_1, ...this._func_10_1]);
+        // 右结合运算符
+        static htmlClassLenOneFunc = new Set(this._htmlClass_len_one_func);
+        // 内部使用的私有函数/运算符，不应直接由用户输入。
+        static privateFunc = new Set(this._private_func);
+        // 需要特殊括号处理的函数和运算符
+        // 稍后用于添加临时标记以插入括号。
+        static rightAssocFunc = new Set([...this._func_01_1, '^']);
+        static needParensFunc = new Set(['^', ...this._complement(this._func_01_1, ['A', 'N'])]);
+
+        // 数字和常量
+        static baseNumbers = new Set(this._baseNumbers);
+        static codeNumbers = new Set(this._codeNumbers);
+
+        // 剩余符号
+        static other = new Set(this._other);
+
+        // 所有有效词法单元的完整列表
+        static allSigns = new Set([...this.allFunc, ...this._baseNumbers, ...this._codeNumbers, ...this._other]);
+
+        // 为快速判断参数数量和位置准备的 Set
+        // 按参数数量分组
+        static params_1_set = new Set([...this._func_01_1, ...this._func_10_1]);
+        static params_2_set = new Set([...this._func_01_2, ...this._func_11_2]);
+        // 按函数位置分组
+        static PlaceFrontSet = new Set([...this._func_01_2, ...this._func_01_1]);
+        static PlaceMiddleSet = new Set(this._func_11_2);
+        static PlaceBackSet = new Set(this._func_10_1);
+
+        // --- 预计算的优先级 Map ---
+        static priorityMap = new Map();
+
+        // 静态初始化块：只在类加载时执行一次，用于处理复杂的初始化逻辑
+        static {
+            const levels = [
+                [...this._func_01_2, ...this._complement(this._func_01_1, ['N'])], // l0
+                this._func_10_1, // l1
+                ['^'], // l2
+                ['N'], // l3
+                ['&'], // l4
+                this._complement(this._func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']), // l5
+                ['*', '/', 'mod'], // l6
+                ['+', '-'] // l7
+            ];
+
+            levels.forEach((levelTokens, index) => {
+                levelTokens.forEach(token => {
+                    this.priorityMap.set(token, index);
+                });
+            });
+        }
+    }
+
+    /**
      * @class Public
      * @description 一个静态工具类，提供全局所需的、与特定数学对象无关的通用辅助函数。
      * 它不应该被实例化，其所有方法都应静态访问。
@@ -448,156 +544,62 @@
          * // 返回: { token: 'sin', class: 'func', parameters: 1, funcPlace: 'front', associativity: 'right', needKh: true, isPrivate: false, priority: 0 }
          */
         static getTokenInfo(token) {
-            /**
-             * @private
-             * @function complement
-             * @description (内部辅助函数) 计算两个数组的差集 (A \ B)，返回所有在数组 A 中但不在数组 B 中的元素。
-             * @param {Array<*>} arrA - 源数组（集合 A）。
-             * @param {Array<*>} arrB - 要从中减去的元素的数组（集合 B）。
-             * @returns {Array<*>} 一个新的数组，包含差集中的所有元素。
-             */
-            function complement(arrA, arrB) {
-                const setB = new Set(arrB);
-                return arrA.filter(item => !setB.has(item));
-            }
-
-            /**
-             * @private
-             * @function getOrder
-             * @description (内部辅助函数) 确定一个运算符的优先级。
-             * 这是调度场算法（Shunting-yard algorithm）的核心部分，用于正确处理运算顺序。
-             * 数值越小，优先级越高。
-             * @param {string} token - 需要确定优先级的运算符词法单元。
-             * @returns {number} 一个代表优先级的数字（0 为最高），如果该词法单元不是带优先级的运算符，则返回 `Infinity`。
-             */
-            function getOrder(token) {
-                // 定义了从高到低的优先级层次。
-                // l0: 函数调用
-                // l1: 后缀运算符 (如阶乘)
-                // ...
-                // l7: 加法和减法
-                const levels = {
-                    l0: [...func_01_2, ...complement(func_01_1, ['N'])], // 除正号、负号外的一元、二元前缀函数，如 log, sin 等
-                    l1: func_10_1, // 一元后缀函数，如 !
-                    l2: ['^'], // 幂运算
-                    l3: ['N'], // （正号）、负号
-                    l4: ['&'], // 省略乘法符号的乘法
-                    l5: complement(func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']), // 除四则运算、取余运算外还未计算的二元中缀函数
-                    l6: ['*', '/', 'mod'], // 乘、除、模
-                    l7: ['+', '-'] // 加、减
-                };
-                // 获取枚举属性组成的数组
-                const keys = Object.keys(levels);
-                for (let i = 0; i < keys.length; i++) {
-                    if (levels[keys[i]].includes(token)) {
-                        return i;
-                    }
-                }
-                return Infinity; // 不是具有优先级的运算符（例如，数字或括号）。
-            }
-
             if (!token && token !== '') {
                 return;
             }
 
-            // --- 开始：常量定义 --- //
-            // 这些数组定义了解析器可以识别的各种函数、运算符和符号。
-
-            // 接受两个参数的函数（例如 log(base, number)）
-            const
-                func_01_2 = ['log', 'nroot'],
-                // 放置在两个操作数之间的二元运算符（例如 a + b）
-                // '&' 是内部表示的隐式乘法。
-                func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'],
-                // 接受一个参数的函数（例如 sin(x)）
-                // 'N' (一元负号) 和 'A' (绝对值) 是内部表示。
-                func_01_1 = ['sqrt', 'cbrt', 'ln', 'exp', 'lg', 'f', 'g', 're', 'im', 'conj', 'ceil', 'floor', 'arg', 'sgn', '[gamma]', 'sin', 'arcsin', 'cos', 'arccos', 'tan', 'arctan', 'sh', 'arsh', 'ch', 'arch', 'th', 'arth', 'abs', 'A', 'N'],
-                // 放置在操作数之后的一元运算符（例如 5!）
-                func_10_1 = ['!', '[degree]'],
-                // 内部使用的私有函数/运算符，不应直接由用户输入。
-                func_private = ['A', 'N', '&'],
-                // 在 HTML 只占用一个类名的函数。
-                func_htmlClass_len_one = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
-
-            // 将所有函数和运算符合并到一个列表中，以便于查找。
-            const allFunc = [...func_01_2, ...func_11_2, ...func_01_1, ...func_10_1];
-            // 右结合运算符
-            const rightAssociativeFunc = [...func_01_1, '^'];
-            // 需要特殊括号处理的函数和运算符
-            // 稍后用于添加临时标记以插入括号。
-            const signsNeedKh = ['^', ...complement(func_01_1, ['A', 'N'])];
-
-            // 定义数字常量和变量 'x'。
-            const
-                baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'],
-                codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
-            const allNumbers = [...baseNumbers, ...codeNumbers];
-
-            // 其他有效符号。
-            const other = ['|', ',', '(', ')'];
-
-            // 所有有效词法单元的完整列表
-            const allSigns = [...allFunc, ...allNumbers, ...other];
-
-            // --- 结束：常量定义 --- //
-
-            // --- 逻辑判断与属性分配 ---
             const result = {token: token};
 
-            // 标记是否为在 HTML 只占用一个类名的函数。
-            result.isHtmlClassLenOne = func_htmlClass_len_one.includes(token);
+            // 标记是否为在 HTML 中只占用一个类名的函数
+            result.isHtmlClassLenOne = TokenConfig.htmlClassLenOneFunc.has(token);
 
-            // 检查 token 是否合法
-            if (!allSigns.includes(token) && !baseNumbers.includes(token[0])) {
+            // 安全获取首字符（处理 token 为空字符串的情况，避免越界或报错）
+            const firstChar = token.length > 0 ? token[0] : null;
+
+            // 检查 token 是否合法 (不在全量符号表中，且首字母也不是基础数字)
+            if (!TokenConfig.allSigns.has(token) && !TokenConfig.baseNumbers.has(firstChar)) {
                 result.class = 'illegal';
                 return result;
             }
 
             // 检查 token 是否为函数或运算符
-            if (allFunc.includes(token)) {
+            if (TokenConfig.allFunc.has(token)) {
                 result.class = 'func';
-                // 根据 token 所在的列表确定其参数数量
-                if ([...func_01_1, ...func_10_1].includes(token)) {
+
+                // 确定参数数量
+                if (TokenConfig.params_1_set.has(token)) {
                     result.parameters = 1;
-                } else if ([...func_01_2, ...func_11_2].includes(token)) {
+                } else if (TokenConfig.params_2_set.has(token)) {
                     result.parameters = 2;
                 }
+
                 // 确定函数/运算符的位置
-                if ([...func_01_2, ...func_01_1].includes(token)) {
+                if (TokenConfig.PlaceFrontSet.has(token)) {
                     result.funcPlace = 'front';
-                } else if (func_11_2.includes(token)) {
+                } else if (TokenConfig.PlaceMiddleSet.has(token)) {
                     result.funcPlace = 'middle';
-                } else if (func_10_1.includes(token)) {
+                } else if (TokenConfig.PlaceBackSet.has(token)) {
                     result.funcPlace = 'back';
                 }
-                // 确定结合性
-                if (rightAssociativeFunc.includes(token)) {
-                    result.associativity = 'right';
-                } else {
-                    result.associativity = 'left';
-                }
-                // 标记是否需要特殊括号处理
-                result.needKh = signsNeedKh.includes(token);
-                // 标记是否为私有/内部 token
-                result.isPrivate = func_private.includes(token);
+
+                // 确定结合性、括号处理及是否为私有标记
+                result.associativity = TokenConfig.rightAssocFunc.has(token) ? 'right' : 'left';
+                result.needKh = TokenConfig.needParensFunc.has(token);
+                result.isPrivate = TokenConfig.privateFunc.has(token);
             }
-            // 检查 token 是否为数字或变量
-            else if (codeNumbers.includes(token) || baseNumbers.includes(token[0])) {
+            // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
+            else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
                 result.class = 'number';
-                // 进一步区分为基础数字或代码常量/变量
-                if (codeNumbers.includes(token)) {
-                    result.numClass = 'codeNumbers';
-                } else {
-                    result.numClass = 'baseNumber';
-                }
+                result.numClass = TokenConfig.codeNumbers.has(token) ? 'codeNumbers' : 'baseNumber';
             }
-            // 检查 token 是否为其他合法符号（如括号、逗号）
-            else if (other.includes(token)) {
+            // 检查 token 是否为其他合法符号（如括号、逗号等）
+            else if (TokenConfig.other.has(token)) {
                 result.class = 'other';
             }
 
-            // 获取并附加优先级信息
-            result.priority = getOrder(token);
+            // 获取并附加优先级信息（利用预计算的 Map 极速获取）
+            result.priority = TokenConfig.priorityMap.has(token) ? TokenConfig.priorityMap.get(token) : Infinity;
+
             return result;
         }
 
@@ -1404,6 +1406,7 @@
     }
 
     // 导出对象
+    window.TokenConfig = TokenConfig;
     window.Public = Public;
     window.CalcConfig = CalcConfig;
 })();
