@@ -11,6 +11,28 @@
 :root {
     /* 强制声明页面只支持浅色模式 */
     color-scheme: light;
+
+    /* 标准颜色 */
+    --white: 255 255 255;
+    --black: 0 0 0;
+
+    /* 自定义颜色 */
+    --line-blue: 95 158 160;
+
+    --shadow-grey-0: 105 105 105;
+    --shadow-grey-1: 135 135 135;
+    --shadow-grey-2: 188 188 188;
+    --shadow-grey-3: 211 211 211;
+    --print-odd-grey: 226 226 226;
+
+    --screen-green: 220 245 220;
+    --print-green: 105 145 105;
+    --export-green: 90 140 90;
+    --keyboard-green: 162 196 162;
+    --keyboard-green-shadow: 149 175 149;
+    --setting-green: 182 192 182;
+
+    --print-white: 250 250 250;
 }
 
 body {
@@ -21,7 +43,7 @@ body {
     overflow: hidden;
     width: 100dvw;
     height: 100dvh;
-    background-color: rgba(240, 248, 255, 0.95);
+    background-color: rgb(240 248 255 / 0.95);
 }
 
 p {
@@ -45,19 +67,19 @@ p {
 
 ::-webkit-scrollbar-track {
     border-radius: 100dvmax;
-    background-color: rgb(245, 245, 245);
-    box-shadow: inset 0 0 0.5dvmin 0.28dvmin rgb(210, 210, 210);
+    background-color: rgb(245 245 245);
+    box-shadow: inset 0 0 0.5dvmin 0.28dvmin rgb(210 210 210);
 }
 
 ::-webkit-scrollbar-thumb {
     border-radius: 100dvmax;
-    background-color: rgb(210, 210, 210);
-    box-shadow: inset 0 0 0.48dvmin 0.28dvmin rgb(128, 128, 128);
+    background-color: rgb(210 210 210);
+    box-shadow: inset 0 0 0.48dvmin 0.28dvmin rgb(128 128 128);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(148, 148, 148);
-    box-shadow: inset 0 0 0.4dvmin 0.2dvmin rgb(80, 80, 80);
+    background-color: rgb(148 148 148);
+    box-shadow: inset 0 0 0.4dvmin 0.2dvmin rgb(80 80 80);
 }
 
 ::-webkit-scrollbar-button,
@@ -74,7 +96,7 @@ p {
     z-index: 0;
     width: 0.5dvmin;
     height: 0.5dvmin;
-    background-color: rgb(95, 158, 160);
+    background-color: rgb(var(--line-blue));
 }
 
 .Paragraph,
@@ -170,13 +192,13 @@ p {
 }
 
 .HeadNotMain:hover {
-    background-color: rgba(230, 230, 230, 0.6);
-    box-shadow: inset 0 0 1.5dvmin 0.8dvmin rgba(105, 105, 105, 0.6);
+    background-color: rgb(230 230 230 / 0.6);
+    box-shadow: inset 0 0 1.5dvmin 0.8dvmin rgb(var(--shadow-grey-0) / 0.6);
 }
 
 .HeadNotMain:active {
-    background-color: rgba(230, 230, 230, 0.7);
-    box-shadow: inset 0 0 1.5dvmin 1dvmin rgba(105, 105, 105, 0.8);
+    background-color: rgb(230 230 230 / 0.7);
+    box-shadow: inset 0 0 1.5dvmin 1dvmin rgb(var(--shadow-grey-0) / 0.8);
 }
 
 #head {
@@ -185,7 +207,7 @@ p {
     width: 100dvw;
     height: 6.5dvh;
     border-radius: 0 0 2.5dvmin 2.5dvmin;
-    background-color: rgb(196, 196, 196);
+    background-color: rgb(196 196 196);
 }
 
 #head_setting > p:not(.Horizontal) {
@@ -234,7 +256,7 @@ p {
 #screen_title {
     width: 100dvw;
     height: 6.5dvh;
-    border-bottom: 0.5dvmin solid rgb(95, 158, 160);
+    border-bottom: 0.5dvmin solid rgb(var(--line-blue));
 }
 
 #screen_title > div:not(.Paragraph) {
@@ -302,7 +324,7 @@ p {
 }
 
 .ScreenInputsOn {
-    background-color: rgb(220, 245, 220);
+    background-color: rgb(var(--screen-green));
 }
 
 /* screen 部分-part 0 */
@@ -356,8 +378,8 @@ p {
 
 .GridOn {
     border-radius: 2.5dvmin;
-    background-color: rgb(220, 245, 220);
-    box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(135, 135, 135, 0.5);
+    background-color: rgb(var(--screen-green));
+    box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-1) / 0.5);
 }
 
 #grid_data {
@@ -402,14 +424,14 @@ p {
 
 #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):hover {
     border-radius: 2.5dvmin;
-    background-color: rgb(220, 225, 220);
-    box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(211, 211, 211, 0.8);
+    background-color: rgb(220 225 220);
+    box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-3) / 0.8);
 }
 
 #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):active {
     border-radius: 2.5dvmin;
-    background-color: rgb(220, 235, 220);
-    box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(211, 211, 211, 0.8);
+    background-color: rgb(220 235 220);
+    box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-3) / 0.8);
 }
 
 /* screen 部分-part 2 到 part 4 */
@@ -433,21 +455,21 @@ p {
     margin: auto;
     transition: all 0.18s ease;
     border-radius: 2.5dvmin;
-    box-shadow: inset 0 0 1dvmin 0.8dvmin rgba(135, 135, 135, 0.5);
+    box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-1) / 0.5);
 }
 
 .Screen234 > div:not(.ScreenInputsOn) {
-    background-color: rgba(211, 211, 211, 0.8);
+    background-color: rgb(var(--shadow-grey-3) / 0.8);
 }
 
 .Screen234 > div:not(.ScreenInputsOn):hover {
     transform: scale(1.022);
-    background-color: rgb(220, 225, 220);
+    background-color: rgb(220 225 220);
 }
 
 .Screen234 > div:not(.ScreenInputsOn):active {
     transform: scale(1);
-    background-color: rgb(220, 235, 220);
+    background-color: rgb(220 235 220);
 }
 
 .Screen234 > div > div:first-child {
@@ -516,10 +538,10 @@ p {
     left: 0;
     width: 100dvw;
     height: min(8dvh, 13.5dvmin);
-    border-top: 0.5dvmin solid rgb(95, 158, 160);
-    border-bottom: 0.5dvmin solid rgb(95, 158, 160);
-    background-color: rgba(237, 242, 250, 0.75);
-    box-shadow: inset 0 0 6dvmin 0.1dvmin rgb(255, 248, 220);
+    border-top: 0.5dvmin solid rgb(var(--line-blue));
+    border-bottom: 0.5dvmin solid rgb(var(--line-blue));
+    background-color: rgb(237 242 250 / 0.75);
+    box-shadow: inset 0 0 6dvmin 0.1dvmin rgb(255 248 220);
 }
 
 @keyframes flicker {
@@ -541,21 +563,26 @@ p {
     margin: auto 0.35dvmin auto;
     animation: flicker 1s linear infinite;
     border-radius: 100dvmax;
-    background-color: rgb(184, 91, 110);
+    background-color: rgb(184 91 110);
 }
 
 /* == keyboard 部分 == */
 
 .KeyboardStyle1 {
-    background-color: rgba(240, 248, 255, 0.95);
+    background-color: rgb(240 248 255 / 0.95);
 }
 
 .KeyboardStyle2 {
-    background-color: rgb(245, 255, 250);
+    background-color: rgb(245 255 250);
 }
 
 .KeyboardStyle3 {
-    background-color: rgb(255, 245, 240);
+    background-color: rgb(255 245 240);
+}
+
+.KeyboardStyleEXE {
+    background-color: rgb(var(--print-green) / 0.8);
+    box-shadow: inset 0 0 1dvmin 0.4dvmin rgb(13 48 2 / 0.5);
 }
 
 .KeyboardCover {
@@ -584,7 +611,7 @@ p {
     height: 6.75dvh;
     transition: all 0.12s;
     border-radius: 3dvmin;
-    box-shadow: inset 0 0 1dvmin 0.4dvmin rgba(13, 48, 2, 0.95);
+    box-shadow: inset 0 0 1dvmin 0.4dvmin rgb(13 48 2 / 0.87);
 }
 
 :where(
@@ -602,7 +629,8 @@ p {
     #sub_keyboard > div
 ) > div:active {
     transform: translateY(0.15dvmin) scale(0.98);
-    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(0, 0, 0);
+    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(30 40 30 / 0.88);
+    opacity: 0.75;
 }
 
 /* sub_keyboard 部分 */
@@ -618,8 +646,8 @@ p {
     display: grid;
     transition: all 0.25s ease;
     border-radius: 3dvmin;
-    background-color: rgba(242, 242, 242, 0.44);
-    box-shadow: 0 0 2.8dvmin 1.3dvmin rgb(105, 105, 105);
+    background-color: rgb(242 242 242 / 0.44);
+    box-shadow: 0 0 2.8dvmin 1.3dvmin rgb(var(--shadow-grey-0));
     grid-template-rows: repeat(3, 7.25dvh);
     place-items: center;
     backdrop-filter: blur(8px);
@@ -631,24 +659,24 @@ p {
     top: 56.25dvh;
     height: min(calc(17dvh + 1dvmin), 29dvmin);
     padding: 0.5dvmin 0 0 0.5dvmin;
-    background-color: rgba(255, 255, 255, 0.13);
+    background-color: rgb(var(--white) / 0.13);
     grid-template-rows: repeat(2, min(8.5dvh, 14dvmin));
 }
 
 #sub_keyboard_ForMode1 > div {
     height: min(7dvh, 12dvmin);
     transition: all 0.2s ease;
-    background-color: rgba(255, 255, 255, 0.6);
-    box-shadow: 0 0.4dvmin 1.5dvmin rgba(0, 0, 0, 0.2);
+    background-color: rgb(var(--white) / 0.6);
+    box-shadow: 0 0.4dvmin 1.5dvmin rgb(var(--black) / 0.2);
 }
 
 #sub_keyboard_ForMode1 > div:hover {
-    background-color: rgba(240, 252, 240, 0.9);
+    background-color: rgb(240 252 240 / 0.9);
 }
 
 #sub_keyboard_ForMode1 > div:active {
     transform: scale(0.975);
-    background-color: rgb(220, 245, 220);
+    background-color: rgb(var(--screen-green));
     box-shadow: none;
 }
 
@@ -668,8 +696,8 @@ p {
     align-items: center;
     height: 6.5dvh;
     border-radius: 3dvmin;
-    background-color: rgba(215, 215, 215, 0.7);
-    box-shadow: inset 0 0 1.4dvmin 0.4dvmin rgba(135, 135, 135, 0.4);
+    background-color: rgb(215 215 215 / 0.7);
+    box-shadow: inset 0 0 1.4dvmin 0.4dvmin rgb(var(--shadow-grey-1) / 0.4);
 }
 
 #keyboard_top > div {
@@ -683,24 +711,24 @@ p {
 }
 
 #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
-    background-color: rgba(162, 196, 162, 0.9);
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+    background-color: rgb(var(--keyboard-green) / 0.9);
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
 }
 
 #keyboard_top > div:hover {
-    box-shadow: inset 0 0 1dvmin 0.3dvmin rgba(105, 105, 105, 0.8);
+    box-shadow: inset 0 0 1dvmin 0.3dvmin rgb(var(--shadow-grey-0) / 0.8);
 }
 
 #keyboard_top > div:active {
-    box-shadow: inset 0 0 2dvmin 0.4dvmin rgba(105, 105, 105, 0.8);
+    box-shadow: inset 0 0 2dvmin 0.4dvmin rgb(var(--shadow-grey-0) / 0.8);
 }
 
 #keyboard_top > div.Ordinary:not(#keyboard_top_more):hover {
-    background-color: rgba(230, 237, 230, 0.7);
+    background-color: rgb(230 237 230 / 0.7);
 }
 
 #keyboard_top > div.Ordinary:not(#keyboard_top_more):active {
-    background-color: rgba(225, 235, 225, 0.9);
+    background-color: rgb(225 235 225 / 0.9);
 }
 
 #keyboard_top > div:nth-child(5) > p {
@@ -729,7 +757,7 @@ p {
     transform: scaleY(-1);
     transform-origin: center;
     fill: none;
-    stroke: rgb(102, 102, 102);
+    stroke: rgb(102 102 102);
 
     /* 核心动画设置 */
     stroke-width: 2;
@@ -759,7 +787,7 @@ p {
     bottom: 0;
     display: grid;
     height: 43.75dvh;
-    background-image: linear-gradient(to top, rgb(196, 196, 196), transparent);
+    background-image: linear-gradient(to top, rgb(196 196 196), transparent);
     grid-template-rows: repeat(6, calc(175dvh / 24));
     place-items: center;
 }
@@ -865,8 +893,8 @@ p {
         left: 0;
         width: 37.5dvw;
         height: 50.5dvh;
-        border-right: 0.5dvmin solid rgb(95, 158, 160);
-        background-color: rgb(232, 232, 232);
+        border-right: 0.5dvmin solid rgb(var(--line-blue));
+        background-color: rgb(232 232 232);
     }
 
     #sub_keyboard > div {
@@ -938,7 +966,7 @@ p {
 /* == print 窗口样式 == */
 
 #main_print {
-    background-color: rgb(250, 250, 250);
+    background-color: rgb(var(--print-white));
 }
 
 /* 加载动画部分 */
@@ -953,7 +981,7 @@ p {
     justify-content: center;
     width: 100dvw;
     height: 100dvh;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgb(var(--black) / 0.1);
     backdrop-filter: blur(5px);
 }
 
@@ -964,7 +992,7 @@ p {
     /* 启用背景色，使用定义的局部变量 */
     background-color: hsla(var(--hue), 10%, 90%, 0.8);
     /* 添加卡片阴影，增加层次感 */
-    box-shadow: 0 4dvmin 20dvmin rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4dvmin 20dvmin rgb(var(--black) / 0.2);
     /* 局部定义变量 */
     --hue: 223;
 }
@@ -983,7 +1011,7 @@ p {
 #load_cancel {
     width: 60% !important;
     margin-top: 1dvh !important;
-    background-color: rgb(240, 100, 100) !important;
+    background-color: rgb(240 100 100) !important;
 }
 
 #load_box {
@@ -1100,22 +1128,22 @@ p {
     margin: 0.5dvh auto auto;
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
-    background-color: rgba(105, 145, 105, 0.8);
-    box-shadow: inset 0 0 0.5dvmin 0.4dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--print-green) / 0.8);
+    box-shadow: inset 0 0 0.5dvmin 0.4dvmin rgb(var(--print-white));
 }
 
 #print_close:hover,
 #load_cancel:hover {
     opacity: 0.9;
-    background-color: rgb(90, 140, 90);
-    box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--export-green));
+    box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
-    background-color: rgb(90, 140, 90);
-    box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--export-green));
+    box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
 /* print_content 部分 */
@@ -1161,7 +1189,7 @@ p {
 #statistics_results_window > div > div:nth-child(4n + 1),
 #print_content_3 > div:nth-child(4n+2) {
     border-radius: 1.5dvmin 1.5dvmin 0 0;
-    background-color: rgba(226, 226, 226, 0.8);
+    background-color: rgb(var(--print-odd-grey) / 0.8);
     margin-top: 1dvmin;
 }
 
@@ -1169,7 +1197,7 @@ p {
 #statistics_results_window > div > div:nth-child(4n + 2),
 #print_content_3 > div:nth-child(4n+3) {
     border-radius: 0 0 1.5dvmin 1.5dvmin;
-    background-color: rgba(226, 226, 226, 0.8);
+    background-color: rgb(var(--print-odd-grey) / 0.8);
 }
 
 #print_content_1_cover {
@@ -1185,9 +1213,9 @@ p {
     width: max(99dvmin, 80dvw);
     height: calc(min(60dvh, 103dvmin) + min(8dvh, 12dvmin));
     padding-top: 2dvmin;
-    background-color: rgba(245, 245, 245, 0.75);
+    background-color: rgb(245 245 245 / 0.75);
     backdrop-filter: blur(7px);
-    box-shadow: inset 0 0 2dvmin 1dvmin rgb(188, 188, 188);
+    box-shadow: inset 0 0 2dvmin 1dvmin rgb(var(--shadow-grey-2));
     border-radius: 2.5dvmin 2.5dvmin 0 0;
     position: absolute;
     left: min(calc(50dvw - 49.5dvmin), 10dvw);
@@ -1218,8 +1246,8 @@ p {
 }
 
 .Print1ChooseOn {
-    background-color: rgb(162, 196, 162);
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+    background-color: rgb(var(--keyboard-green));
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
     transition: all 0.45s ease;
 }
 
@@ -1227,8 +1255,8 @@ p {
     :first-child,
     .Print1ChooseOn
 ) {
-    background-color: rgb(211, 211, 211);
-    box-shadow: inset 0 0 1dvmin 1dvmin rgb(188, 188, 188);
+    background-color: rgb(var(--shadow-grey-3));
+    box-shadow: inset 0 0 1dvmin 1dvmin rgb(var(--shadow-grey-2));
     transition: all 0.45s ease;
 }
 
@@ -1236,31 +1264,31 @@ p {
     :first-child,
     .Print1ChooseOn
 ):hover {
-    background-color: rgb(182, 192, 182);
+    background-color: rgb(var(--setting-green));
 }
 
 #print_content_1_choose > div:not(
     :first-child,
     .Print1ChooseOn
 ):active {
-    background-color: rgb(182, 192, 182);
+    background-color: rgb(var(--setting-green));
 }
 
 #print_1_0_choose {
     height: min(8dvh, 11dvmin) !important;
     border-radius: 2dvmin;
-    background-image: linear-gradient(to right, rgba(211, 211, 211, 0.8), transparent);
+    background-image: linear-gradient(to right, rgb(var(--shadow-grey-3) / 0.8), transparent);
     transition: all 0.23s ease;
 }
 
 #print_1_0_choose:hover {
-    background-color: rgba(211, 211, 211, 0.8);
-    box-shadow: inset 0 0 1dvmin 0.5dvmin rgba(211, 211, 211, 0.8);
+    background-color: rgb(var(--shadow-grey-3) / 0.8);
+    box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(var(--shadow-grey-3) / 0.8);
 }
 
 #print_1_0_choose:active {
-    background-color: rgba(211, 211, 211, 0.8);
-    box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--shadow-grey-3) / 0.8);
+    box-shadow: inset 0 0 1dvmin 0.5dvmin rgb(var(--print-white));
 }
 
 #print_1_0_choose > p:last-child {
@@ -1272,7 +1300,7 @@ p {
 #export {
     width: 98dvw;
     height: min(13dvmin, 10dvh);
-    border-bottom: 0.5dvmin solid rgb(188, 188, 188);
+    border-bottom: 0.5dvmin solid rgb(var(--shadow-grey-2));
     display: grid;
     grid-gap: 0;
     grid-template-columns: repeat(2, 49dvw);
@@ -1283,7 +1311,7 @@ p {
     width: 45dvw;
     height: min(9.1dvmin, 7dvh);
     margin: auto;
-    background-color: rgba(105, 145, 105, 0.8);
+    background-color: rgb(var(--print-green) / 0.8);
     border-radius: 3dvmin;
     display: flex;
     justify-content: center;
@@ -1293,14 +1321,14 @@ p {
 
 #export div:hover {
     opacity: 0.9;
-    background-color: rgb(90, 140, 90);
-    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--export-green));
+    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(var(--print-white));
 }
 
 #export div:active {
     transform: translateY(0.3dvmin);
-    background-color: rgb(90, 140, 90);
-    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(250, 250, 250);
+    background-color: rgb(var(--export-green));
+    box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(var(--print-white));
 }
 
 #statistics_results_top {
@@ -1317,7 +1345,7 @@ p {
     #statistics_results_top.ResultY > div:not(:nth-child(2)),
     #statistics_results_top.ResultXY > div:not(:nth-child(3))
 ):not(.Lines):hover {
-    background-color: rgb(242, 242, 242);
+    background-color: rgb(242 242 242);
 }
 
 #statistics_results_top > div:not(.Lines) {
@@ -1363,7 +1391,7 @@ p {
 span.Ripple {
     position: absolute;
     border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgb(var(--black) / 0.1);
     pointer-events: none; /* 核心：确保不阻挡交互 */
     transform: scale(0);
 
@@ -1518,7 +1546,7 @@ span.Ripple.IsFadingOut {
     :nth-child(3):nth-last-child(2)
 ) {
     border-radius: 1.5dvmin;
-    background: rgba(226, 226, 226, 0.8);
+    background: rgb(var(--print-odd-grey) / 0.8);
     margin-top: 1dvmin;
 }
 
@@ -1537,9 +1565,9 @@ span.Ripple.IsFadingOut {
 #number_table_error {
     width: 47dvw;
     height: min(10dvh, 16dvmin);
-    background-color: rgb(250, 250, 250);
+    background-color: rgb(var(--print-white));
     backdrop-filter: blur(5px);
-    border: 0.5dvmin solid rgb(95, 158, 160);
+    border: 0.5dvmin solid rgb(var(--line-blue));
     border-radius: 2dvmin;
     display: flex;
     justify-content: center;
@@ -1568,7 +1596,7 @@ span.Ripple.IsFadingOut {
     height: 93.5dvh;
     transition: all 0.3s ease;
     border-radius: 0 2.5dvmin 2.5dvmin 0;
-    background-color: rgba(255, 250, 250, 0.77);
+    background-color: rgb(255 250 250 / 0.77);
     backdrop-filter: blur(6px);
 }
 
@@ -1578,7 +1606,7 @@ span.Ripple.IsFadingOut {
 
 #setting:not(.SettingNotShow) {
     left: 0;
-    box-shadow: 0 0 2dvmin 1dvmin rgb(211, 211, 211);
+    box-shadow: 0 0 2dvmin 1dvmin rgb(var(--shadow-grey-3));
 }
 
 /* setting 开关部分 */
@@ -1600,9 +1628,9 @@ span.Ripple.IsFadingOut {
     /* 阴影大小基于高度计算 (系数约为 0.075) */
     border-radius: var(--h); /* 圆角为高度值，保持胶囊状 */
 
-    background-color: rgb(238, 242, 245);
-    box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(203, 209, 216),
-    inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(255, 255, 255);
+    background-color: rgb(238 242 245);
+    box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(203 209 216),
+    inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(var(--white));
 
     /* 防止点击时的高亮背景 */
     --h: min(6dvh, 7.5dvw);
@@ -1631,9 +1659,9 @@ span.Ripple.IsFadingOut {
     box-shadow 0.4s;
 
     border-radius: 50%;
-    background-color: rgb(255, 255, 255);
-    box-shadow: calc(var(--h) * 0.05) calc(var(--h) * 0.05) calc(var(--h) * 0.125) rgb(203, 209, 216),
-    calc(var(--h) * -0.05) calc(var(--h) * -0.05) calc(var(--h) * 0.125) rgb(255, 255, 255);
+    background-color: rgb(var(--white));
+    box-shadow: calc(var(--h) * 0.05) calc(var(--h) * 0.05) calc(var(--h) * 0.125) rgb(203 209 216),
+    calc(var(--h) * -0.05) calc(var(--h) * -0.05) calc(var(--h) * 0.125) rgb(var(--white));
 }
 
 .SwitchIcon {
@@ -1648,27 +1676,27 @@ span.Ripple.IsFadingOut {
 .IconOff {
     transform: scale(1) rotate(0deg);
     opacity: 1;
-    stroke: rgb(113, 128, 150);
+    stroke: rgb(113 128 150);
 }
 
 .IconOn {
     transform: scale(0.5) rotate(-45deg);
     opacity: 0;
-    stroke: rgb(255, 255, 255);
+    stroke: rgb(var(--white));
 }
 
 #switch_container.Active {
-    background-color: rgb(241, 248, 241);
-    box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(209, 218, 209),
-    inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(255, 255, 255);
+    background-color: rgb(241 248 241);
+    box-shadow: inset calc(var(--h) * 0.075) calc(var(--h) * 0.075) calc(var(--h) * 0.15) rgb(209 218 209),
+    inset calc(var(--h) * -0.075) calc(var(--h) * -0.075) calc(var(--h) * 0.15) rgb(var(--white));
 }
 
 #switch_container.Active #switch_knob {
     /* 移动距离正好等于 1倍高度 */
     transform: translateX(var(--h));
-    background-color: rgb(162, 196, 162);
+    background-color: rgb(var(--keyboard-green));
     /* 发光范围 */
-    box-shadow: 0 0 calc(var(--h) * 0.25) rgb(149, 175, 149);
+    box-shadow: 0 0 calc(var(--h) * 0.25) rgb(var(--keyboard-green-shadow));
 }
 
 #switch_container.Active .IconOff {
@@ -1693,15 +1721,15 @@ span.Ripple.IsFadingOut {
 
 .SelectionOn {
     width: min(59dvw, 83dvmin);
-    background-color: rgb(162, 196, 162);
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(149, 175, 149);
+    background-color: rgb(var(--keyboard-green));
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
 }
 
 .SettingSelection {
     display: grid;
     overflow: hidden;
     width: min(65dvw, 90dvmin);
-    border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
+    border-bottom: 0.5dvmin solid rgb(145 145 145 / 0.85);
     grid-gap: 0;
     grid-template-columns: min(65dvw, 90dvmin);
 }
@@ -1718,14 +1746,14 @@ span.Ripple.IsFadingOut {
 
 .SettingSelection > div:not(.SelectionOn) {
     width: min(46dvw, 64.7dvmin);
-    background-color: rgb(211, 211, 211);
-    box-shadow: inset 0 0 1dvmin 1dvmin rgb(188, 188, 188);
+    background-color: rgb(var(--shadow-grey-3));
+    box-shadow: inset 0 0 1dvmin 1dvmin rgb(var(--shadow-grey-2));
 }
 
 .SettingSelection > div:not(.SelectionOn):hover {
     width: min(49dvw, 68.5dvmin);
     height: 9dvh;
-    background-color: rgb(182, 192, 182);
+    background-color: rgb(var(--setting-green));
 }
 
 #setting_selection_mode {
@@ -1744,8 +1772,8 @@ span.Ripple.IsFadingOut {
     justify-content: center;
     width: min(65dvw, 90dvmin);
     height: calc(7.5dvh + 0.5dvmin);
-    border-bottom: 0.5dvmin solid rgba(145, 145, 145, 0.85);
-    background-color: rgba(255, 255, 255, 0.9);
+    border-bottom: 0.5dvmin solid rgb(145 145 145 / 0.85);
+    background-color: rgb(var(--white) / 0.9);
 }
 
 #setting_acc_control > div {
@@ -1795,8 +1823,8 @@ span.Ripple.IsFadingOut {
 #explain:not(.ExplainNotShow) {
     top: 10dvh;
     left: calc(50dvw - min(45dvw, 50dvmin));
-    background-color: rgba(253, 248, 239, 0.78);
-    box-shadow: 0 0 2dvmin 1dvmin rgb(211, 211, 211);
+    background-color: rgb(253 248 239 / 0.78);
+    box-shadow: 0 0 2dvmin 1dvmin rgb(var(--shadow-grey-3));
     backdrop-filter: blur(6px);
 }
 
@@ -1830,7 +1858,7 @@ span.Ripple.IsFadingOut {
 #explain_close:hover,
 #explain_close:active {
     transition-property: none;
-    background-color: rgba(195, 13, 35, 0.83);
+    background-color: rgb(195 13 35 / 0.83);
 }
 
 #explain_close:active {
@@ -1838,13 +1866,13 @@ span.Ripple.IsFadingOut {
 }
 
 #explain_close > p {
-    background-color: rgba(195, 13, 35, 0.83);
+    background-color: rgb(195 13 35 / 0.83);
 }
 
 #explain_close:hover > p,
 #explain_close:active > p {
     width: 4.3dvmin;
-    background-color: rgba(253, 248, 239, 0.96);
+    background-color: rgb(253 248 239 / 0.96);
 }
 
 /* explain_content 部分 */
@@ -1853,7 +1881,7 @@ span.Ripple.IsFadingOut {
     width: min(90dvw, 100dvmin);
     height: 73dvh;
     padding-top: 1dvmin;
-    border-top: 0.5dvmin dashed rgb(188, 188, 188);
+    border-top: 0.5dvmin dashed rgb(var(--shadow-grey-2));
 }
 
 #explain_content > p:not(.ExplainLeft) {
