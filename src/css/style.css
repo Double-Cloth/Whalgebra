@@ -582,7 +582,11 @@ p {
 
 .KeyboardStyleEXE {
     background-color: rgb(var(--print-green) / 0.8);
-    box-shadow: inset 0 0 1dvmin 0.4dvmin rgb(13 48 2 / 0.5);
+    box-shadow: inset 0 0 1.3dvmin 0.3dvmin rgb(23 58 12 / 0.33);
+}
+
+.KeyboardStyleEXE:active {
+    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(23 58 12 / 0.55) !important;
 }
 
 .KeyboardCover {
@@ -629,8 +633,8 @@ p {
     #sub_keyboard > div
 ) > div:active {
     transform: translateY(0.15dvmin) scale(0.98);
-    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(30 40 30 / 0.88);
-    opacity: 0.75;
+    box-shadow: inset 0 0 1.4dvmin 0.5dvmin rgb(30 40 30 / 0.88);
+    opacity: 0.77;
 }
 
 /* sub_keyboard 部分 */
