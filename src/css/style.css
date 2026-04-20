@@ -207,7 +207,7 @@ p {
     width: 100dvw;
     height: 6.5dvh;
     border-radius: 0 0 2.5dvmin 2.5dvmin;
-    background-color: rgb(196 196 196);
+    background-color: rgb(var(--shadow-grey-3));
 }
 
 #head_setting > p:not(.Horizontal) {
@@ -615,7 +615,7 @@ p {
     height: 6.75dvh;
     transition: all 0.12s;
     border-radius: 3dvmin;
-    box-shadow: inset 0 0 1.15dvmin 0.4dvmin rgb(13 48 2 / 0.8);
+    box-shadow: inset 0 0 1.15dvmin 0.4dvmin rgb(13 48 2 / 0.84);
 }
 
 :where(
