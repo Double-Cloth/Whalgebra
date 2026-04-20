@@ -43,11 +43,11 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 ## 2. 快速开始
 
-### 2.1 在线使用
+### 2.1. 在线使用
 
 [Whalgebra 在线地址](https://Double-Cloth.github.io/Whalgebra/)
 
-### 2.2 本地运行（Windows）
+### 2.2. 本地运行（Windows）
 
 环境要求：Git、Python 3.13+、Chrome 108+
 
@@ -78,13 +78,13 @@ cd ./tools
 python ./run_server.py
 ```
 
-### 2.3 安装发行版（Android）
+### 2.3. 安装发行版（Android）
 
 1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
 2. 下载最新 `.apk`
 3. 安装并启动应用
 
-### 2.4 安装发行版（Windows x64）
+### 2.4. 安装发行版（Windows x64）
 
 1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
 2. 下载最新 `win-x64` 发行包
@@ -137,7 +137,7 @@ console.log(res3.toString());
 - **渲染层**: 全部使用 svg 作为字体和图片，保证了在不同设备上显示效果相同。
 - **工具层**: Python (主要用于文件处理流程，不参与计算过程)。
 
-### 4.2 目录结构
+### 4.2. 目录结构
 
 ```
 Whalgebra/
