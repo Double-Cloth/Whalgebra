@@ -1,0 +1,4 @@
+# Requires Python == 3.13
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+scour>=0.38.2
