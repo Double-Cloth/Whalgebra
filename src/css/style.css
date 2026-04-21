@@ -26,11 +26,12 @@
     --print-odd-grey: 226 226 226;
 
     --screen-green: 220 245 220;
-    --print-green: 105 145 105;
-    --export-green: 90 140 90;
-    --keyboard-green: 162 196 162;
-    --keyboard-green-shadow: 149 175 149;
-    --setting-green: 182 192 182;
+    --print-green: 79 121 66;
+    --print-active-green: 64 106 51;
+    --print-green-shadow: 133 170 101;
+    --setting-green: 162 196 162;
+    --setting-active-green: 182 192 182;
+    --setting-green-shadow: 149 175 149;
 
     --print-white: 250 250 250;
 }
@@ -402,6 +403,7 @@ p {
     align-items: center;
     height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);;
     transition: all 0.16s ease;
+    overflow: auto;
 }
 
 #grid_data > div > div:first-child {
@@ -582,11 +584,11 @@ p {
 
 .KeyboardStyleEXE {
     background-color: rgb(var(--print-green) / 0.8);
-    box-shadow: inset 0 0 1.3dvmin 0.3dvmin rgb(23 58 12 / 0.33);
+    box-shadow: inset 0 0 1.3dvmin 0.3dvmin rgb(var(--print-green-shadow) / 0.33);
 }
 
 .KeyboardStyleEXE:active {
-    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(23 58 12 / 0.55) !important;
+    box-shadow: inset 0 0 1.5dvmin 0.5dvmin rgb(var(--print-green-shadow) / 0.55) !important;
 }
 
 .KeyboardCover {
@@ -624,7 +626,7 @@ p {
     #sub_keyboard > div
 ) > div:hover {
     transform: translateY(-0.1dvmin);
-    opacity: 0.75;
+    opacity: 0.85;
 }
 
 :where(
@@ -634,7 +636,7 @@ p {
 ) > div:active {
     transform: translateY(0.15dvmin) scale(0.98);
     box-shadow: inset 0 0 1.4dvmin 0.5dvmin rgb(30 40 30 / 0.84);
-    opacity: 0.77;
+    opacity: 0.9;
 }
 
 /* sub_keyboard 部分 */
@@ -715,23 +717,41 @@ p {
 }
 
 #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
-    background-color: rgb(var(--keyboard-green) / 0.9);
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
+    background-color: rgb(var(--print-green) / 0.8);
+    box-shadow: inset 0 0 1.6dvmin 0.4dvmin rgb(223 225 227 / 0.5);
+}
+
+#keyboard_top > div:not(.Ordinary):nth-child(-n+3) > p {
+    background-color: rgb(255 245 240);
+}
+
+#keyboard_top > div.Ordinary:nth-child(-n+3) > p {
+    background-color: rgb(var(--shadow-grey-0));
 }
 
 #keyboard_top > div:hover {
-    box-shadow: inset 0 0 1dvmin 0.3dvmin rgb(var(--shadow-grey-0) / 0.8);
+    box-shadow: inset 0 0 1dvmin 0.3dvmin rgb(var(--shadow-grey-1) / 0.8);
 }
 
-#keyboard_top > div:active {
-    box-shadow: inset 0 0 2dvmin 0.4dvmin rgb(var(--shadow-grey-0) / 0.8);
+#keyboard_top > div:not(#keyboard_top_more).Ordinary:active {
+    box-shadow: inset 0 0 1.7dvmin 0.4dvmin rgb(var(--shadow-grey-1) / 0.8);
 }
 
-#keyboard_top > div.Ordinary:not(#keyboard_top_more):hover {
+#keyboard_top > div:not(#keyboard_top_more):not(.Ordinary):active {
+    box-shadow: inset 0 0 2.1dvmin 0.4dvmin rgb(var(--shadow-grey-3) / 0.8);
+}
+
+#keyboard_top > div#keyboard_top_more:active {
+    box-shadow: inset 0 0 1.47dvmin 0.4dvmin rgb(var(--shadow-grey-0) / 0.8);
+}
+
+#keyboard_top > div.Ordinary:hover,
+#keyboard_top > div#keyboard_top_more:hover {
     background-color: rgb(230 237 230 / 0.7);
 }
 
-#keyboard_top > div.Ordinary:not(#keyboard_top_more):active {
+#keyboard_top > div.Ordinary:active,
+#keyboard_top > div#keyboard_top_more:active {
     background-color: rgb(225 235 225 / 0.9);
 }
 
@@ -1139,14 +1159,14 @@ p {
 #print_close:hover,
 #load_cancel:hover {
     opacity: 0.9;
-    background-color: rgb(var(--export-green));
+    background-color: rgb(var(--print-active-green));
     box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
-    background-color: rgb(var(--export-green));
+    background-color: rgb(var(--print-active-green));
     box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
@@ -1250,8 +1270,8 @@ p {
 }
 
 .Print1ChooseOn {
-    background-color: rgb(var(--keyboard-green));
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
+    background-color: rgb(var(--setting-green));
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--setting-green-shadow));
     transition: all 0.45s ease;
 }
 
@@ -1268,14 +1288,14 @@ p {
     :first-child,
     .Print1ChooseOn
 ):hover {
-    background-color: rgb(var(--setting-green));
+    background-color: rgb(var(--setting-active-green));
 }
 
 #print_content_1_choose > div:not(
     :first-child,
     .Print1ChooseOn
 ):active {
-    background-color: rgb(var(--setting-green));
+    background-color: rgb(var(--setting-active-green));
 }
 
 #print_1_0_choose {
@@ -1325,13 +1345,13 @@ p {
 
 #export div:hover {
     opacity: 0.9;
-    background-color: rgb(var(--export-green));
+    background-color: rgb(var(--print-active-green));
     box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(var(--print-white));
 }
 
 #export div:active {
     transform: translateY(0.3dvmin);
-    background-color: rgb(var(--export-green));
+    background-color: rgb(var(--print-active-green));
     box-shadow: inset 0 0 0.4dvmin 0.3dvmin rgb(var(--print-white));
 }
 
@@ -1698,9 +1718,9 @@ span.Ripple.IsFadingOut {
 #switch_container.Active #switch_knob {
     /* 移动距离正好等于 1倍高度 */
     transform: translateX(var(--h));
-    background-color: rgb(var(--keyboard-green));
+    background-color: rgb(var(--print-green) / 0.65);
     /* 发光范围 */
-    box-shadow: 0 0 calc(var(--h) * 0.25) rgb(var(--keyboard-green-shadow));
+    box-shadow: 0 0 calc(var(--h) * 0.25) rgb(var(--print-green));
 }
 
 #switch_container.Active .IconOff {
@@ -1725,8 +1745,8 @@ span.Ripple.IsFadingOut {
 
 .SelectionOn {
     width: min(59dvw, 83dvmin);
-    background-color: rgb(var(--keyboard-green));
-    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--keyboard-green-shadow));
+    background-color: rgb(var(--setting-green));
+    box-shadow: inset 0 0 1dvmin 1.5dvmin rgb(var(--setting-green-shadow));
 }
 
 .SettingSelection {
@@ -1757,7 +1777,7 @@ span.Ripple.IsFadingOut {
 .SettingSelection > div:not(.SelectionOn):hover {
     width: min(49dvw, 68.5dvmin);
     height: 9dvh;
-    background-color: rgb(var(--setting-green));
+    background-color: rgb(var(--setting-active-green));
 }
 
 #setting_selection_mode {

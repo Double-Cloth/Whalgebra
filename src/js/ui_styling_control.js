@@ -1376,7 +1376,7 @@
                         }
                     });
                 });
-            }, {root: bigContainer, rootMargin: `${this._rootMargin} 0px`, threshold: 0});
+            }, {root: bigContainer, rootMargin: `${this._rootMargin} 10000%`, threshold: 0});
         }
 
         /**
