@@ -1335,7 +1335,31 @@
 
             return new IntersectionObserver((entries) => {
                 entries.forEach(entry => {
-                    const isVisible = entry.isIntersecting;
+                    let isVisible = entry.isIntersecting;
+
+                    // 过滤水平方向的移出判定
+                    // 如果原生判定为不可见，且拿得到根节点边界信息，进行垂直维度的二次校验
+                    if (!isVisible && entry.rootBounds) {
+                        const rect = entry.boundingClientRect;
+                        const rootRect = entry.rootBounds;
+
+                        // 动态解析 rootMargin 的垂直安全距离（兼容百分比和像素）
+                        let marginY = 0;
+                        if (typeof this._rootMargin === 'string') {
+                            marginY = this._rootMargin.includes('%') ?
+                                      marginY = rootRect.height * (parseFloat(this._rootMargin) / 100) :
+                                      marginY = parseFloat(this._rootMargin) || 0;
+                        }
+
+                        // 只判断垂直方向是否仍在视口/缓冲区内
+                        const isVerticallyInView = (rect.bottom >= rootRect.top - marginY) &&
+                            (rect.top <= rootRect.bottom + marginY);
+
+                        // 如果垂直方向还在安全区，证明仅仅是水平方向移出去了，强制保持可见状态
+                        if (isVerticallyInView) {
+                            isVisible = true;
+                        }
+                    }
 
                     let targetElements;
 
@@ -1353,10 +1377,9 @@
                         }
 
                         // 3. 无论查到几个懒加载节点（哪怕是 0 个），都作为结果缓存进去
-                        // 这样下次再触发，.has() 就会返回 true，直接跳过这段逻辑。
                         this._lazyTargetsMap.set(entry.target, targetElements);
                     } else {
-                        // 4. 命中缓存，直接取值（即使取出来是 []，也不会报错）
+                        // 4. 命中缓存，直接取值
                         targetElements = this._lazyTargetsMap.get(entry.target);
                     }
 
@@ -1376,7 +1399,11 @@
                         }
                     });
                 });
-            }, {root: bigContainer, rootMargin: `${this._rootMargin} 10000%`, threshold: 0});
+            }, {
+                root: bigContainer,
+                rootMargin: `${this._rootMargin} 2000%`,
+                threshold: 0
+            });
         }
 
         /**

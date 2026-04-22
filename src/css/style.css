@@ -1159,14 +1159,14 @@ p {
 #print_close:hover,
 #load_cancel:hover {
     opacity: 0.9;
-    background-color: rgb(var(--print-active-green));
+    background-color: rgb(var(--print-active-green) / 0.85);
     box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
-    background-color: rgb(var(--print-active-green));
+    background-color: rgb(var(--print-active-green) / 0.95);
     box-shadow: inset 0 0 0.5dvmin 0.6dvmin rgb(var(--print-white));
 }
 
@@ -1583,7 +1583,7 @@ span.Ripple.IsFadingOut {
     position: absolute;
     top: 6.5dvh;
     left: 0;
-    z-index: 1;
+    z-index: 2;
 }
 
 #number_table_error {
@@ -1596,6 +1596,7 @@ span.Ripple.IsFadingOut {
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 2;
 }
 
 #print_omit {
