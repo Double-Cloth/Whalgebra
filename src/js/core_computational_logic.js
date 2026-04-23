@@ -359,6 +359,39 @@
         }
 
         /**
+         * @method isZero
+         * @description 判断当前 BigNumber 实例的值是否等于零。
+         * 该方法通过检查内部的尾数（mantissa）是否为 `0n` 来实现。
+         * 在高精度计算中，这是判断数值是否为绝对零的最快方式。
+         * @returns {boolean} 如果值为零返回 `true`，否则返回 `false`。
+         */
+        isZero() {
+            return this.mantissa === 0n;
+        }
+
+        /**
+         * @method isPositive
+         * @description 判断当前 BigNumber 实例的值是否大于零。
+         * 注意：此方法仅在值严格大于零时返回 `true`。
+         * 如果实例的值为零或负数，将返回 `false`。
+         * @returns {boolean} 如果值为正数返回 `true`，否则返回 `false`。
+         */
+        isPositive() {
+            return this.mantissa > 0n;
+        }
+
+        /**
+         * @method isNegative
+         * @description 判断当前 BigNumber 实例的值是否小于零。
+         * 该方法用于检测数值的符号位。
+         * 值得注意的是，对于某些科学记数法实现，零通常被视为既非正也非负。
+         * @returns {boolean} 如果值为负数返回 `true`，否则返回 `false`。
+         */
+        isNegative() {
+            return this.mantissa < 0n;
+        }
+
+        /**
          * @method valueOf
          * @description 返回 BigNumber 实例的内部数组表示。
          * 值得注意的是，由于它返回一个数组（一个对象）而非一个原始类型（如 number 或 string），
@@ -649,6 +682,17 @@
         }
 
         /**
+         * @method isZero
+         * @description 判断当前 ComplexNumber 实例的值是否等于零。
+         * 该方法要求此示例实部和虚部都必须为 0。
+         * 在高精度计算中，这是判断数值是否为绝对零的最快方式。
+         * @returns {boolean} 如果值为零返回 `true`，否则返回 `false`。
+         */
+        isZero() {
+            return this.re.mantissa === 0n && this.im.mantissa === 0n;
+        }
+
+        /**
          * @method valueOf
          * @description 返回 ComplexNumber 实例的内部嵌套数组表示。
          * 它通过递归调用其 `re` 和 `im` 组件（它们是 BigNumber 实例）的 `valueOf` 方法来工作。
@@ -693,7 +737,7 @@
                 }
 
                 // 完整复数
-                if (this.im.mantissa < 0n) { // 虚部为负
+                if (this.im.isNegative()) { // 虚部为负
                     if (['-1', '-1E+0'].includes(imStr)) {
                         return `${reStr}-[i]`;
                     }
@@ -823,7 +867,7 @@
             let changeSign = 1n; // -1 为变号，1 为不变号
 
             // 将 re 映射到 [0, 2π) 区间，并记录符号
-            if (angle.mantissa < 0n) {
+            if (angle.isNegative()) {
                 angle = MathPlus._oppositeNumber(angle);
 
                 // sin(-x) = -sin(x) -> 变号 (1 * -1)
@@ -833,8 +877,8 @@
 
             // 利用周期性，将 re 映射到 [0, 2π) 区间，并使用高精度防止精度损失。
             const highPrecisionAcc = -CalcConfig.constants.invTwoPi[0];
-            if (MathPlus.minus(angle, [highPrecisionAcc >> 1, 1n, acc]).re.mantissa >= 0n) {
-                if (MathPlus.minus(angle, [highPrecisionAcc, 1n, acc]).re.mantissa >= 0n) {
+            if (!MathPlus.minus(angle, [highPrecisionAcc >> 1, 1n, acc]).re.isNegative()) {
+                if (!MathPlus.minus(angle, [highPrecisionAcc, 1n, acc]).re.isNegative()) {
                     throw new Error(`[MathPlus] Input value (${angle.toString()}) is too large.`);
                 }
                 console.warn('[MathPlus] Unexpected loss of precision occurred in trigonometric calculations.');
@@ -844,7 +888,7 @@
             angle = MathPlus.minus(highPrecisionRe, MathPlus.divide(n, CalcConfig.constants.invTwoPi)).re;
 
             // 利用 cos(x) = cos(2π - x)，将 re 从 (π, 2π) 映射到 (0, π)
-            if (MathPlus.minus(angle, CalcConfig.constants.pi).re.mantissa > 0n) {
+            if (MathPlus.minus(angle, CalcConfig.constants.pi).re.isPositive()) {
                 angle = MathPlus.minus(
                     MathPlus.times([0, 2n, acc], CalcConfig.constants.pi),
                     angle
@@ -859,7 +903,7 @@
             }
 
             // 利用 cos(x) = -cos(π - x)，将 re 从 [π/2, π] 映射到 [0, π/2]
-            if (MathPlus.minus(MathPlus.times(angle, [0, 2n, acc]), CalcConfig.constants.pi).re.mantissa >= 0n) {
+            if (!MathPlus.minus(MathPlus.times(angle, [0, 2n, acc]), CalcConfig.constants.pi).re.isNegative()) {
                 angle = MathPlus.minus(CalcConfig.constants.pi, angle).re;
 
                 // sin(π - x) = sin(x)  -> 不变
@@ -951,7 +995,7 @@
 
             // --- 情况 1: 输入的实部为 0 ---
             // 这意味着数字位于虚轴上 (包括原点)。
-            if (input.re.mantissa === 0n) {
+            if (input.re.isZero()) {
                 // 如果它是一个纯实数 (即 0)，则辐角为 0。
                 if (input.onlyReal) {
                     throw new Error('[MathPlus] The argument of 0 is undefined.');
@@ -961,14 +1005,14 @@
                 // - 虚部为负 (例如, -2i), 辐角为 -π/2。
                 return MathPlus.divide(
                     CalcConfig.constants.pi,
-                    [0, input.im.mantissa < 0n ? -2n : 2n, acc]
+                    [0, input.im.isNegative() ? -2n : 2n, acc]
                 );
             }
             // --- 情况 2: 输入为纯实数 (且实部不为 0) ---
             if (input.onlyReal) {
                 // - 正实数 (例如, 3), 位于正实轴上，辐角为 0。
                 // - 负实数 (例如, -3), 位于负实轴上，辐角为 π。
-                return input.re.mantissa > 0n ? zero : new ComplexNumber(CalcConfig.constants.pi, {acc: acc});
+                return input.re.isPositive() ? zero : new ComplexNumber(CalcConfig.constants.pi, {acc: acc});
             }
             // --- 情况 3: 一般复数 (实部和虚部均不为 0) ---
             // 核心思想是使用 arctan(虚部/实部) 来计算，但需要根据象限进行调整。
@@ -976,10 +1020,10 @@
 
             // 如果实部为负，说明数字在第二或第三象限。
             // 标准的 arctan 结果范围是 (-π/2, π/2)，需要进行修正。
-            if (input.re.mantissa < 0n) {
+            if (input.re.isNegative()) {
                 // - 第二象限 (实部 < 0, 虚部 > 0): 辐角 = arctan(b/a) + π
                 // - 第三象限 (实部 < 0, 虚部 < 0): 辐角 = arctan(b/a) - π
-                return MathPlus[input.im.mantissa < 0n ? 'minus' : 'plus'](result, CalcConfig.constants.pi);
+                return MathPlus[input.im.isNegative() ? 'minus' : 'plus'](result, CalcConfig.constants.pi);
             }
 
             // 如果实部为正 (第一或第四象限)，arctan 的计算结果就是正确的辐角。
@@ -1218,7 +1262,7 @@
             const inputB = new ComplexNumber(b);
 
             // 检查除数是否为零。
-            if (inputB.re.mantissa === 0n && inputB.im.mantissa === 0n) {
+            if (inputB.isZero()) {
                 throw new Error('[MathPlus] mathematical error: Division by zero.');
             }
 
@@ -1234,8 +1278,8 @@
                 // --- 精度优化 ---
                 // 为了在 BigInt 的整数除法中得到足够精确的结果，我们需要放大被除数的尾数。
                 // 理想的放大位数不仅取决于目标精度(resultAcc)，还取决于两个尾数的相对大小。
-                const lenA = (reA.mantissa < 0n ? -reA.mantissa : reA.mantissa).toString().length;
-                const lenB = (reB.mantissa < 0n ? -reB.mantissa : reB.mantissa).toString().length;
+                const lenA = (reA.isNegative() ? -reA.mantissa : reA.mantissa).toString().length;
+                const lenB = (reB.isNegative() ? -reB.mantissa : reB.mantissa).toString().length;
 
                 // 计算需要放大的位数：
                 // - resultAcc: 保证结果的有效数字。
@@ -1461,8 +1505,8 @@
 
                 // --- 处理特殊情况 ---
                 // Case 1: 指数为 0 (b=0)
-                if (reB.mantissa === 0n) {
-                    if (reA.mantissa === 0n) {
+                if (reB.isZero()) {
+                    if (reA.isZero()) {
                         throw new Error('[MathPlus] mathematical error: 0^0 is undefined.');
                     }
                     // 任何非零数的 0 次方都等于 1
@@ -1470,8 +1514,8 @@
                 }
 
                 // Case 2: 底数为 0 (a=0)
-                if (reA.mantissa === 0n) {
-                    if (reB.mantissa < 0n) {
+                if (reA.isZero()) {
+                    if (reB.isNegative()) {
                         throw new Error('[MathPlus] mathematical error: 0 to a negative power is undefined.');
                     }
                     return new ComplexNumber([0, 0n, resultAcc]);
@@ -1487,7 +1531,7 @@
                     //将指数转换为正数
                     let isExponentNegative = false;
                     let absB = reB;
-                    if (reB.mantissa < 0n) {
+                    if (reB.isNegative()) {
                         isExponentNegative = true;
                         absB = MathPlus._oppositeNumber(reB);
                     }
@@ -1530,7 +1574,7 @@
                 }
 
                 // --- 路径 1.2: 底数 a > 0, 指数 b 是小数 ---
-                if (reA.mantissa > 0n) {
+                if (reA.isPositive()) {
                     // 优化: 如果 b=0.5, 直接调用 sqrt
                     if (reB.power === -1 && reB.mantissa === 5n) {
                         return MathPlus.sqrt(reA);
@@ -1545,7 +1589,7 @@
                 // (-a)^b = |a|^b * (cos(bπ) + i sin(bπ))
                 let isExponentNegative = false;
                 let absB = reB;
-                if (reB.mantissa < 0n) {
+                if (reB.isNegative()) {
                     isExponentNegative = true;
                     absB = MathPlus._oppositeNumber(reB);
                 }
@@ -1666,14 +1710,14 @@
                 let result;
 
                 // 基准情况: √0 = 0
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     return new ComplexNumber([0, 0n, acc]);
                 }
 
                 // --- 处理负实数: √-x = i√x ---
                 let isBaseNegative = false;
                 let absInput = re;
-                if (re.mantissa < 0n) { // 取绝对值以便使用牛顿法
+                if (re.isNegative()) { // 取绝对值以便使用牛顿法
                     isBaseNegative = true;
                     absInput = MathPlus._oppositeNumber(re);
                 }
@@ -1711,7 +1755,7 @@
                         // 计算新旧结果之差的绝对值，用于判断是否收敛
                         difference = MathPlus.minus(mid, result).re;
                         i++;
-                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+                    } while (difference.power > minPower && !difference.isZero() && i < max);
 
                     if (i === max) {
                         console.warn(`[MathPlus] Square root (${x.toString()}) calculation takes too long.`);
@@ -1774,7 +1818,7 @@
                 let result;
 
                 // 基准情况: ³√0 = 0
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     return new ComplexNumber([0, 0n, acc]);
                 }
 
@@ -1814,7 +1858,7 @@
                         // 计算新旧结果之差的绝对值，用于判断是否收敛
                         difference = MathPlus.minus(mid, result).re;
                         i++;
-                    } while (difference.power > minPower && difference.mantissa !== 0n && i < max);
+                    } while (difference.power > minPower && !difference.isZero() && i < max);
 
                     if (i === max) {
                         console.warn(`[MathPlus] Cube root (${x.toString()}) calculation takes too long.`);
@@ -1882,7 +1926,7 @@
 
                 // 基准情况: e^0 = 1。
                 // [0, 1n, acc] 是一种创建 BigNumber 1 的方式 (1 * 10^0)。
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     return new ComplexNumber([0, 1n, acc]);
                 }
 
@@ -1922,7 +1966,7 @@
                 let i = 1; // 迭代计数器，也用作阶乘的分母。
 
                 // 循环计算泰勒级数，直到项足够小或达到最大迭代次数。
-                for (; mid.re.power > minPower && mid.re.mantissa !== 0n && i < max; i++) {
+                for (; mid.re.power > minPower && !mid.isZero() && i < max; i++) {
                     // 将当前项加到总和中。
                     result = MathPlus.plus(result, mid);
                     // 计算下一项: mid = (mid * iteration) / i
@@ -1979,11 +2023,11 @@
             const acc = input.acc; // 存储精度
 
             // --- 路径 1: 输入正实数 ---
-            if (input.onlyReal && input.re.mantissa >= 0n) {
+            if (input.onlyReal && !input.re.isNegative()) {
                 const re = input.re;
 
                 // --- 处理边缘情况 ---
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     throw new Error('[MathPlus] mathematical error: ln(0) is undefined.');
                 }
                 // ln(1) = 0
@@ -2007,7 +2051,7 @@
                 let mantissaChangedBy1_2 = 0; // 1.2 的指数
                 let j = 0;
                 // 循环直到 normalized_x 落入 [0.9, 1.1) 区间
-                for (; !(MathPlus.minus(mid, const_1_1).re.mantissa < 0n && MathPlus.minus(mid, const_0_9).re.mantissa > 0n) && j < 14; j++) {
+                for (; !(MathPlus.minus(mid, const_1_1).re.isNegative() && MathPlus.minus(mid, const_0_9).re.isPositive()) && j < 14; j++) {
                     mid = MathPlus.times(mid, const_1_2);
                     mantissaChangedBy1_2 -= 1;
                 }
@@ -2036,7 +2080,7 @@
                 let result = new ComplexNumber([0, 0n, acc]); // 级数和，从第一项 z 开始
                 let i = 1;
 
-                for (; mid.re.power > minPower && mid.re.mantissa !== 0n && i < max; i += 2) {
+                for (; mid.re.power > minPower && !mid.isZero() && i < max; i += 2) {
                     // 计算下一项: term_new = term_old * z^2 * i/(i+2)
                     result = MathPlus.plus(result, mid);
                     mid = MathPlus.times(
@@ -2149,14 +2193,14 @@
                 let [re, sign] = MathPlus._toLessThanHalfPi(input.re, 'sin');
 
                 // 特殊情况，如果缩减后为 0，直接返回 0。
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     return new ComplexNumber([0, 0n, acc]);
                 }
 
                 // 利用三倍角公式进一步将 re 缩减到更小的范围，
                 // 以极大地加速泰勒级数收敛。这里我们将 re 反复除以 3，直到其足够小。
                 let divideBy3 = 0;
-                for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa >= 0n && divideBy3 < 4; divideBy3++) {
+                for (; !MathPlus.plus(re, [-1, -1n, acc]).re.isNegative() && divideBy3 < 4; divideBy3++) {
                     re = MathPlus.divide(re, [0, 3n, acc]).re;
                 }
                 if (divideBy3 === 4) {
@@ -2173,7 +2217,7 @@
                 let result = mid;
                 let i = 1;
 
-                for (; mid.re.power > minPower && mid.re.mantissa !== 0n && i < max; i++) {
+                for (; mid.re.power > minPower && !mid.isZero() && i < max; i++) {
                     // 计算下一项: term_new = term_old * (-x²) / (2i*(2i+1))
                     mid = MathPlus.divide(
                         MathPlus.times(mid, squareOfRe),
@@ -2252,7 +2296,7 @@
                 // Case 1.1: |x| <= 1
                 // 使用恒等式 arcsin(x) = arg(sqrt(1 - x²) + ix)
                 // 这在数值上比泰勒级数更稳定，尤其是在 x 接近 ±1 时。
-                if (MathPlus.minus(absInput, one).re.mantissa <= 0n) {
+                if (!MathPlus.minus(absInput, one).re.isPositive()) {
                     return MathPlus.arg([
                         MathPlus.sqrt(MathPlus.minus(one, MathPlus.times(re, re))).re,
                         re
@@ -2264,7 +2308,7 @@
                 const term = MathPlus.sqrt(MathPlus.minus(MathPlus.times(re, re), one));
                 const piOver2 = MathPlus.divide(CalcConfig.constants.pi, [0, 2n, acc]);
 
-                if (re.mantissa > 0n) { // 如果 x > 1
+                if (re.isPositive()) { // 如果 x > 1
                     // 使用公式: arcsin(x) = π/2 - i * ln(x + sqrt(x² - 1))
                     const lnTerm = MathPlus.ln(MathPlus.plus(re, term));
                     return new ComplexNumber([
@@ -2318,14 +2362,14 @@
                 let [re, sign] = MathPlus._toLessThanHalfPi(input.re, 'cos');
 
                 // 特殊情况，如果缩减后为 0，直接返回 1 或 -1。
-                if (re.mantissa === 0n) {
+                if (re.isZero()) {
                     return new ComplexNumber([0, sign, acc]);
                 }
 
                 // 利用四倍角公式进一步将 re 缩减到更小的范围，
                 // 以极大地加速泰勒级数收敛。这里我们将 re 反复除以 4，直到其足够小。
                 let divideBy4 = 0;
-                for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa >= 0n && divideBy4 < 3; divideBy4++) {
+                for (; !MathPlus.plus(re, [-1, -1n, acc]).re.isNegative() && divideBy4 < 3; divideBy4++) {
                     re = MathPlus.divide(re, [0, 4n, acc]).re;
                 }
                 if (divideBy4 === 3) {
@@ -2342,7 +2386,7 @@
                 let result = new ComplexNumber([0, 0n, acc]);
                 let i = 0;
 
-                for (; mid.re.power > minPower && mid.re.mantissa !== 0n && i < max; i++) {
+                for (; mid.re.power > minPower && !mid.isZero() && i < max; i++) {
                     // 根据项的索引，交替进行加减。
                     result = MathPlus[i % 2 === 0 ? 'plus' : 'minus'](result, mid);
                     // 计算下一项: term_new = term_old * (-x²) / ((2i+1)*(2i+2))
@@ -2468,14 +2512,14 @@
                 let isNegative = false;
 
                 // 步骤 1: 利用对称性 arctan(-x) = -arctan(x) 处理负数输入。
-                if (re.mantissa < 0n) {
+                if (re.isNegative()) {
                     re = MathPlus._oppositeNumber(re);
                     isNegative = true;
                 }
 
                 // 步骤 2: 范围缩减。如果 x > 1, 使用 arctan(x) = π/2 - arctan(1/x)。
                 let reciprocal = false;
-                if (MathPlus.plus(re, [0, -1n, acc]).re.mantissa > 0n) { // 检查 re 是否大于 1
+                if (MathPlus.plus(re, [0, -1n, acc]).re.isPositive()) { // 检查 re 是否大于 1
                     re = MathPlus.divide([0, 1n, acc], re).re;// 计算 1/re
                     reciprocal = true; // 标记以便最后重建结果
                 }
@@ -2483,7 +2527,7 @@
                 // 步骤 3: 进一步范围缩减。反复使用半角公式将参数减小到接近 0。
                 let j = 0;
                 // 当 re > 0.1 时，循环应用半角公式。0.1 是一个经验值，用于平衡缩减次数和泰勒级数计算量。
-                for (; MathPlus.plus(re, [-1, -1n, acc]).re.mantissa > 0n && j < 4; j++) {
+                for (; MathPlus.plus(re, [-1, -1n, acc]).re.isPositive() && j < 4; j++) {
                     re = MathPlus.divide(
                         re,
                         MathPlus.plus(
@@ -2505,7 +2549,7 @@
                 let result = new ComplexNumber([0, 0n, acc]);
                 let i = 0;
 
-                for (; mid.power > minPower && mid.mantissa !== 0n && i < max; i++) {
+                for (; mid.power > minPower && !mid.isZero() && i < max; i++) {
                     // 根据项的索引，交替进行加减。
                     result = MathPlus[i % 2 === 0 ? 'plus' : 'minus'](result, mid);
 
@@ -2554,10 +2598,7 @@
             // 如果 z = i 或 z = -i，对数的参数会是无穷大或零，导致计算失败。
             // mid === 0 表示 i - z = 0, 即 z = i.
             // mid_pow === 0 表示 i + z = 0, 即 z = -i.
-            if (
-                (mid.re.mantissa === 0n && mid.im.mantissa === 0n) ||
-                (mid_pow.re.mantissa === 0n && mid_pow.im.mantissa === 0n)
-            ) {
+            if (mid.isZero() || mid_pow.isZero()) {
                 throw new Error(`[MathPlus] mathematical error: Unable to calculate arctan, input cannot be ${input.toString()}.`);
             }
 
@@ -2836,7 +2877,7 @@
                 const re = input.re;
 
                 // 负整数的阶乘是未定义的。
-                if (re.mantissa < 0n) {
+                if (re.isNegative()) {
                     throw new Error('[MathPlus] mathematical error: Negative integer factorial undefined.');
                 }
 
@@ -2881,7 +2922,7 @@
             // Γ(z)Γ(1-z) = π/sin(πz)。
             // 这里先将输入取反，计算其正数部分的伽玛函数，最后再应用反射公式。
             let reflection = false;
-            if (calcNum.re.mantissa < 0n) {
+            if (calcNum.re.isNegative()) {
                 calcNum = MathPlus._oppositeNumber(calcNum);
                 reflection = true;
             }
@@ -2990,7 +3031,7 @@
                 // 根据 floor 函数的定义调整结果。
                 // - 对于正数，floor(x) 等于 trunc(x)。
                 // - 对于负数，如果存在小数部分，floor(x) = trunc(x) - 1。
-                if (result < 0n || (result === 0n && re.mantissa < 0n)) {
+                if (result < 0n || (result === 0n && re.isNegative())) {
                     result -= 1n;
                 }
                 return new ComplexNumber(result, {acc: acc});
@@ -3047,7 +3088,7 @@
                 // 这意味着对于所有正数，都会执行向上取整操作。
                 // 例如，对于 3.1，result 是 3n，满足 >= 0n，变为 4n。
                 // 对于 -3.7，result 是 -3n，不满足 >= 0n，保持 -3n，这恰好是 ceil(-3.7) 的结果。
-                if (result > 0n || (result === 0n && re.mantissa > 0n)) {
+                if (result > 0n || (result === 0n && re.isPositive())) {
                     result += 1n;
                 }
                 // 使用计算出的整数构造一个新的、纯实数的 ComplexNumber。
@@ -3090,15 +3131,15 @@
             if (input.onlyReal) {
                 // 如果实部为负，返回其相反数；否则返回其自身。
                 // _oppositeNumber(re) 会返回一个 BigNumber，需要用它构造一个新的 ComplexNumber。
-                return re.mantissa < 0n ? new ComplexNumber(MathPlus._oppositeNumber(re)) : input;
+                return re.isNegative() ? new ComplexNumber(MathPlus._oppositeNumber(re)) : input;
             }
 
             // --- 路径 2: 输入为纯虚数 ---
             // 优化：直接返回其虚部的绝对值，避免开方运算。
-            if (input.re.mantissa === 0n) {
+            if (input.re.isZero()) {
                 // 如果虚部为负，返回其相反数；否则返回其自身。
                 // 结果是一个纯实数。
-                return im.mantissa < 0n ? new ComplexNumber(MathPlus._oppositeNumber(im)) : new ComplexNumber(im);
+                return im.isNegative() ? new ComplexNumber(MathPlus._oppositeNumber(im)) : new ComplexNumber(im);
             }
 
             // --- 路径 3: 一般复数 ---
@@ -3133,20 +3174,20 @@
             const acc = input.acc;
 
             // 首先处理通用情况：sgn(0) = 0
-            if (input.re.mantissa === 0n && input.im.mantissa === 0n) {
+            if (input.isZero()) {
                 return new ComplexNumber([0, 0n, acc]);
             }
 
             // 优化路径：如果输入是纯实数
             if (input.onlyReal) {
                 // 根据实部符号返回 1 或 -1
-                const result = input.re.mantissa > 0n ? [0, 1n, acc] : [0, -1n, acc];
+                const result = input.re.isPositive() ? [0, 1n, acc] : [0, -1n, acc];
                 return new ComplexNumber(result);
             }
             // 优化路径：如果输入是纯虚数
-            if (input.re.mantissa === 0n) {
+            if (input.re.isZero()) {
                 // 根据虚部符号返回 i 或 -i
-                const result = input.im.mantissa > 0n ? [0, 1n, acc] : [0, -1n, acc];
+                const result = input.im.isPositive() ? [0, 1n, acc] : [0, -1n, acc];
                 return new ComplexNumber([[0, 0n, acc], result]);
             }
             // 对于非零复数，应用公式 sgn(z) = z / |z|
@@ -4101,12 +4142,12 @@
                 const currentI = new ComplexNumber(list[i]);
                 // 比较当前最大值与列表中的当前元素。
                 // 如果 `list[i] > result.max`，则 `result.max - list[i]` 的结果为负。
-                if (MathPlus.minus(result.max, currentI).re.mantissa < 0n) {
+                if (MathPlus.minus(result.max, currentI).re.isNegative()) {
                     // 如果当前元素更大，则更新最大值。
                     result.max = currentI;
                     // 否则，比较当前最小值与列表中的当前元素。
                     // 如果 `list[i] < result.min`，则 `list[i] - result.min` 的结果为负。
-                } else if (MathPlus.minus(currentI, result.min).re.mantissa < 0n) {
+                } else if (MathPlus.minus(currentI, result.min).re.isNegative()) {
                     // 如果当前元素更小，则更新最小值。
                     result.min = currentI;
                 }
@@ -4160,13 +4201,13 @@
                 // 确保每个被检查的元素都是一个 ComplexNumber 实例。
                 const currentCheck = new ComplexNumber(list[i]);
                 // 检查当前数值实部的符号。
-                if (currentCheck.re.mantissa > 0n) {
+                if (currentCheck.re.isPositive()) {
                     // 如果找到一个正数，则在结果对象中标记 'positive' 为 true。
                     result.positive = true;
-                } else if (currentCheck.re.mantissa === 0n) {
+                } else if (currentCheck.re.isZero()) {
                     // 如果找到一个零，则在结果对象中标记 'zero' 为 true。
                     result.zero = true;
-                } else { // currentCheck.re.mantissa < 0n
+                } else { // currentCheck.re.isNegative()
                     // 如果找到一个负数，则在结果对象中标记 'negative' 为 true。
                     result.negative = true;
                 }
@@ -4218,7 +4259,7 @@
                 // 我们在当前列 (i) 中找到从当前行 (i) 到最后一行中绝对值最大的元素。
                 let maxRow = i;
                 for (let k = i + 1; k < n; k++) {
-                    if (MathPlus.minus(MathPlus.abs(augmentedMatrix[k][i]), MathPlus.abs(augmentedMatrix[maxRow][i])).re.mantissa > 0n) {
+                    if (MathPlus.minus(MathPlus.abs(augmentedMatrix[k][i]), MathPlus.abs(augmentedMatrix[maxRow][i])).re.isPositive()) {
                         maxRow = k;
                     }
                 }
@@ -4234,7 +4275,7 @@
                 // 如果主元为 0，说明该矩阵的行列式为 0，即矩阵是奇异的。
                 // 奇异矩阵意味着方程组没有唯一解（可能无解或有无穷多解）。
                 // 在这种情况下，我们无法继续计算，因此抛出错误。
-                if (pivot.re.mantissa === 0n) {
+                if (pivot.re.isZero()) {
                     throw new Error('[StatisticsTools] The system of equations has no unique solution.');
                 }
 
@@ -4495,9 +4536,9 @@
                     return current;
                 }
                 // 如果两个模型都有有效的 R² 值，则进行比较。
-                // MathPlus.minus(a, b).re.mantissa < 0n 等价于 a < b。
+                // MathPlus.minus(a, b).re.isNegative() 等价于 a < b。
                 // 因此，如果之前最佳模型的 R² 小于当前模型的 R²，则更新最佳模型。
-                if (MathPlus.minus(result[bestBefore].R2, result[current].R2).re.mantissa < 0n) {
+                if (MathPlus.minus(result[bestBefore].R2, result[current].R2).re.isNegative()) {
                     return current;
                 }
             }
@@ -5059,7 +5100,7 @@
 
             // --- 特殊情况: A = B = 0 ---
             // 这意味着方程有三个相等的实数根 (三重根)。
-            if (A.mantissa === 0n && B.mantissa === 0n) {
+            if (A.isZero() && B.isZero()) {
                 // x1 = x2 = x3 = -b / 3a
                 return [MathPlus.divide(
                     b,
@@ -5069,7 +5110,7 @@
 
             // --- 情况 1: Δ > 0 ---
             // 方程有一个实数根和一对共轭复数根。
-            if (delta.mantissa > 0n) {
+            if (delta.isPositive()) {
                 // 根据盛金公式计算中间变量 Y1 和 Y2。
                 // Y1,2 = Ab + 3a(-B ± sqrt(B²-4AC))/2
                 const mid1 = MathPlus.times(a, '1.5');
@@ -5109,7 +5150,7 @@
 
             // --- 情况 2: Δ = 0 ---
             // 方程有三个实数根，其中至少有两个相等（重根）。
-            if (delta.mantissa === 0n) {
+            if (delta.isZero()) {
                 // K = B/A
                 const k = MathPlus.divide(B, A);
                 // x1 = -b/a + K
@@ -5146,10 +5187,10 @@
             // 计算 θ = arccos(T)
             let ct;
             // 修正 T 的值，确保其在 arccos 的定义域 [-1, 1] 内，防止浮点误差。
-            if (MathPlus.plus(MathPlus.abs(T), -1).re.mantissa <= 0n) {
+            if (!MathPlus.plus(MathPlus.abs(T), -1).re.isPositive()) {
                 ct = MathPlus.divide(MathPlus.arccos(T), 3);
             } else {
-                ct = MathPlus.divide(MathPlus.arccos(T.re.mantissa > 0n ? 1 : -1), 3);
+                ct = MathPlus.divide(MathPlus.arccos(T.re.isPositive() ? 1 : -1), 3);
             }
             // 根据三角形式的解公式计算三个实数根。
             // x_k = (-b + 2*sqrt(A)*cos(θ/3 + 2kπ/3)) / 3a, for k = 0, 1, 2
@@ -5264,14 +5305,14 @@
             )).re;
 
             // 当D=E=F=0时，方程有一个四重实根
-            if (D.mantissa === 0n && E.mantissa === 0n && F.mantissa === 0n) {
+            if (D.isZero() && E.isZero() && F.isZero()) {
                 return [MathPlus.divide(b, MathPlus.times(a, -4))];
             }
 
             // 当DEF≠0，A=B=C=0时，方程有四个实根，其中有一个三重根
             if (
-                D.mantissa !== 0n && E.mantissa !== 0n && F.mantissa !== 0n &&
-                A.mantissa === 0n && B.mantissa === 0n && C.mantissa === 0n
+                !D.isZero() && !E.isZero() && !F.isZero() &&
+                A.isZero() && B.isZero() && C.isZero()
             ) {
                 const mid0 = MathPlus.times(MathPlus.times(a, D), -4);
                 const mid1 = MathPlus.divide(
@@ -5291,7 +5332,7 @@
             }
 
             // 当E=F=0，D≠0时，方程有两对二重根；若D＞0，根为实数；若D＜0，根为虚数
-            if (D.mantissa !== 0n && E.mantissa === 0n && F.mantissa === 0n) {
+            if (!D.isZero() && E.isZero() && F.isZero()) {
                 const mid0 = MathPlus.times(a, -4);
                 const mid1 = MathPlus.divide(b, mid0);
                 const mid2 = MathPlus.divide(MathPlus.sqrt(D), mid0);
@@ -5303,8 +5344,8 @@
 
             // 当ABC≠0，Δ=0时，方程有一对二重实根；若AB＞0，则其余两根为不等实根；若AB＜0，则其余两根为共轭虚根
             if (
-                A.mantissa !== 0n && B.mantissa !== 0n && C.mantissa !== 0n &&
-                delta.mantissa === 0n
+                !A.isZero() && !B.isZero() && !C.isZero() &&
+                delta.isZero()
             ) {
                 const mid0 = MathPlus.divide(
                     b,
@@ -5327,7 +5368,7 @@
             }
 
             // 当Δ>0时，方程有两个不等实根和一对共轭虚根
-            if (delta.mantissa > 0n) {
+            if (delta.isPositive()) {
                 const mid1 = MathPlus.minus(
                     MathPlus.times(A, D),
                     MathPlus.times(B, '1.5')
@@ -5391,7 +5432,7 @@
 
             // 当Δ＜0时，若D与F均为正数，则方程有四个不等实根；否则方程有两对不等共轭虚根
             // E=0,D＞0,F＞0 和 E=0,D<0,F>0
-            if (E.mantissa === 0n && F.mantissa > 0n && D.mantissa !== 0n) {
+            if (E.isZero() && F.isPositive() && !D.isZero()) {
                 const mid0 = MathPlus.times(MathPlus.sqrt(F), 2);
                 const mid1 = MathPlus.sqrt(MathPlus.plus(D, mid0));
                 const mid2 = MathPlus.sqrt(MathPlus.minus(D, mid0));
@@ -5416,7 +5457,7 @@
             }
 
             // 若E=0,F＜0
-            if (E.mantissa === 0n && F.mantissa < 0n) {
+            if (E.isZero() && F.isNegative()) {
                 const mid0 = MathPlus.divide(
                     b,
                     MathPlus.times(a, -4)
@@ -5460,10 +5501,10 @@
                 MathPlus.times(MathPlus.times(A, mid0), 2)
             );
             let ct;
-            if (MathPlus.plus(MathPlus.abs(T), -1).re.mantissa <= 0n) {
+            if (!MathPlus.plus(MathPlus.abs(T), -1).re.isPositive()) {
                 ct = MathPlus.divide(MathPlus.arccos(T), 3);
             } else {
-                ct = MathPlus.divide(MathPlus.arccos(T.re.mantissa > 0n ? 1 : -1), 3);
+                ct = MathPlus.divide(MathPlus.arccos(T.re.isPositive() ? 1 : -1), 3);
             }
             const cosCT = MathPlus.cos(ct);
             const sinCT = MathPlus.times(MathPlus.sin(ct), MathPlus.sqrt(3));
@@ -5490,7 +5531,7 @@
             ));
 
             // 当D与F均为正时，有四个实数根
-            if (E.mantissa !== 0n && F.mantissa > 0n && D.mantissa > 0n) {
+            if (!E.isZero() && F.isPositive() && D.isPositive()) {
                 const mid1 = MathPlus.plus(y2, y3);
                 const mid2 = MathPlus.minus(y2, y3);
                 const mid3 = MathPlus.minus(
@@ -5581,7 +5622,7 @@
             result.equation = Public.funcToString([e, d, c, b, a], 'powerFunc');
 
             // --- 情况 1: 四次函数 (a ≠ 0) ---
-            if (a.mantissa !== 0n) {
+            if (!a.isZero()) {
                 list = [a, b, c, d, e];
                 // 计算一阶和二阶导数及其根。
                 const diff1 = PowerFunctionTools._differentiate(list);
@@ -5593,25 +5634,25 @@
                 if ([1, 2, 4].includes(diff1Roots.length)) {
                     const minMax = Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]));
                     const point = Public.idealizationToString(diff1Roots[0]);
-                    result.range = a.mantissa > 0n ? [minMax, '+inf'] : ['-inf', minMax];
-                    result[a.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [[point, '+inf']];
-                    result[a.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point]];
-                    result[a.mantissa > 0n ? 'maximumPoint' : 'minimumPoint'] = [['null', 'null']];
-                    result[a.mantissa > 0n ? 'minimumPoint' : 'maximumPoint'] = [[point, minMax]];
+                    result.range = a.isPositive() ? [minMax, '+inf'] : ['-inf', minMax];
+                    result[a.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [[point, '+inf']];
+                    result[a.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point]];
+                    result[a.isPositive() ? 'maximumPoint' : 'minimumPoint'] = [['null', 'null']];
+                    result[a.isPositive() ? 'minimumPoint' : 'maximumPoint'] = [[point, minMax]];
                 } else if (diff1Roots.length === 3) {
                     const minMax1 = PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]);
                     const minMax2 = PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]);
                     const minMax3 = PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[2]);
                     const minMaxList = PowerFunctionTools._sort([minMax1, minMax2, minMax3]);
-                    const realMinMax = Public.idealizationToString(a.mantissa > 0n ? minMaxList[0] : minMaxList[2]);
-                    result.range = a.mantissa > 0n ? [realMinMax, '+inf'] : ['-inf', realMinMax];
+                    const realMinMax = Public.idealizationToString(a.isPositive() ? minMaxList[0] : minMaxList[2]);
+                    result.range = a.isPositive() ? [realMinMax, '+inf'] : ['-inf', realMinMax];
                     const point1 = Public.idealizationToString(diff1Roots[0]),
                         point2 = Public.idealizationToString(diff1Roots[1]),
                         point3 = Public.idealizationToString(diff1Roots[2]);
-                    result[a.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [[point1, point2], [point3, '+inf']];
-                    result[a.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point1], [point2, point3]];
-                    result[a.mantissa > 0n ? 'maximumPoint' : 'minimumPoint'] = [[point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]))]];
-                    result[a.mantissa > 0n ? 'minimumPoint' : 'maximumPoint'] = [
+                    result[a.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [[point1, point2], [point3, '+inf']];
+                    result[a.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point1], [point2, point3]];
+                    result[a.isPositive() ? 'maximumPoint' : 'minimumPoint'] = [[point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]))]];
+                    result[a.isPositive() ? 'minimumPoint' : 'maximumPoint'] = [
                         [point1, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]))],
                         [point3, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[2]))]
                     ];
@@ -5619,14 +5660,14 @@
 
                 // --- 分析凹凸性和拐点 (基于二阶导数) ---
                 if ([1, 3].includes(diff2Roots.length)) {
-                    result[a.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
-                    result[a.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [['-inf', '+inf']];
+                    result[a.isPositive() ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
+                    result[a.isPositive() ? 'concaveInterval' : 'convexInterval'] = [['-inf', '+inf']];
                     result.inflectionPoint = [['null', 'null']];
                 } else if (diff2Roots.length === 2) {
                     const point1 = Public.idealizationToString(diff2Roots[0]),
                         point2 = Public.idealizationToString(diff2Roots[1]);
-                    result[a.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [[point1, point2]];
-                    result[a.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [['-inf', point1], [point2, '+inf']];
+                    result[a.isPositive() ? 'convexInterval' : 'concaveInterval'] = [[point1, point2]];
+                    result[a.isPositive() ? 'concaveInterval' : 'convexInterval'] = [['-inf', point1], [point2, '+inf']];
                     result.inflectionPoint = [
                         [point1, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff2Roots[0]))],
                         [point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff2Roots[1]))]
@@ -5643,7 +5684,7 @@
                 return result;
             }
 
-            if (b.mantissa !== 0n) {
+            if (!b.isZero()) {
                 // --- 情况 2: 三次函数 (a = 0, b ≠ 0) ---
                 list = [b, c, d, e];
                 // 计算一阶和二阶导数及其根。
@@ -5655,23 +5696,23 @@
 
                 // --- 分析单调性和极值 ---
                 if ([1, 3].includes(diff1Roots.length)) {
-                    result[b.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
-                    result[b.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['null', 'null']];
+                    result[b.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
+                    result[b.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [['null', 'null']];
                     result.maximumPoint = [['null', 'null']];
                     result.minimumPoint = [['null', 'null']];
                 } else {
                     const point1 = Public.idealizationToString(diff1Roots[0]),
                         point2 = Public.idealizationToString(diff1Roots[1]);
-                    result[b.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', point1], [point2, '+inf']];
-                    result[b.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [[point1, point2]];
-                    result[b.mantissa > 0n ? 'maximumPoint' : 'minimumPoint'] = [[point1, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]))]];
-                    result[b.mantissa > 0n ? 'minimumPoint' : 'maximumPoint'] = [[point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]))]];
+                    result[b.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', point1], [point2, '+inf']];
+                    result[b.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [[point1, point2]];
+                    result[b.isPositive() ? 'maximumPoint' : 'minimumPoint'] = [[point1, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]))]];
+                    result[b.isPositive() ? 'minimumPoint' : 'maximumPoint'] = [[point2, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[1]))]];
                 }
 
                 // --- 分析凹凸性和拐点 ---
                 const point = Public.idealizationToString(diff2Roots[0]);
-                result[b.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['-inf', point]];
-                result[b.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [[point, '+inf']];
+                result[b.isPositive() ? 'convexInterval' : 'concaveInterval'] = [['-inf', point]];
+                result[b.isPositive() ? 'concaveInterval' : 'convexInterval'] = [[point, '+inf']];
                 result.inflectionPoint = [[point, Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff2Roots[0]))]];
 
                 // --- 求解方程的根 ---
@@ -5684,20 +5725,20 @@
                 return result;
             }
 
-            if (c.mantissa !== 0n) {
+            if (!c.isZero()) {
                 list = [c, d, e];
                 // --- 情况 3: 二次函数 (a = b = 0, c ≠ 0) ---
                 const diff1 = PowerFunctionTools._differentiate(list);
                 const diff1Roots = PowerFunctionTools._solveX1(diff1);
                 const point = Public.idealizationToString(diff1Roots[0]);
                 const minMax = Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]));
-                result.range = c.mantissa > 0n ? [minMax, '+inf'] : ['-inf', minMax];
-                result[c.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [[point, '+inf']];
-                result[c.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point]];
-                result[c.mantissa > 0n ? 'maximumPoint' : 'minimumPoint'] = [['null', 'null']];
-                result[c.mantissa > 0n ? 'minimumPoint' : 'maximumPoint'] = [[point, minMax]];
-                result[c.mantissa > 0n ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
-                result[c.mantissa > 0n ? 'concaveInterval' : 'convexInterval'] = [['-inf', '+inf']];
+                result.range = c.isPositive() ? [minMax, '+inf'] : ['-inf', minMax];
+                result[c.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [[point, '+inf']];
+                result[c.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [['-inf', point]];
+                result[c.isPositive() ? 'maximumPoint' : 'minimumPoint'] = [['null', 'null']];
+                result[c.isPositive() ? 'minimumPoint' : 'maximumPoint'] = [[point, minMax]];
+                result[c.isPositive() ? 'convexInterval' : 'concaveInterval'] = [['null', 'null']];
+                result[c.isPositive() ? 'concaveInterval' : 'convexInterval'] = [['-inf', '+inf']];
                 result.inflectionPoint = [['null', 'null']];
 
                 // --- 求解方程的根 ---
@@ -5710,12 +5751,12 @@
                 return result;
             }
 
-            if (d.mantissa !== 0n) {
+            if (!d.isZero()) {
                 list = [d, e];
                 // --- 情况 4: 一次函数 (a = b = c = 0, d ≠ 0) ---
                 result.range = ['-inf', '+inf'];
-                result[d.mantissa > 0n ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
-                result[d.mantissa > 0n ? 'decreasingInterval' : 'increasingInterval'] = [['null', 'null']];
+                result[d.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
+                result[d.isPositive() ? 'decreasingInterval' : 'increasingInterval'] = [['null', 'null']];
                 result.maximumPoint = [['null', 'null']];
                 result.minimumPoint = [['null', 'null']];
                 result.convexInterval = [['null', 'null']];
@@ -5735,7 +5776,7 @@
             result.convexInterval = [['null', 'null']];
             result.concaveInterval = [['null', 'null']];
             result.inflectionPoint = [['null', 'null']];
-            result.roots = [e.mantissa === 0n ? 'anyRealNumber' : 'null'];
+            result.roots = [e.isZero() ? 'anyRealNumber' : 'null'];
             return result;
         }
     }
@@ -5839,7 +5880,7 @@
             z = Public.zeroCorrect(MathPlus.calc(z)[0]);
             n = Public.integerCorrect(Public.zeroCorrect(MathPlus.calc(n)[0]));
             // 验证 n 是否为正整数。
-            if (!n.onlyReal || n.re.power < 0 || n.re.mantissa <= 0n) {
+            if (!n.onlyReal || n.re.power < 0 || !n.re.isPositive()) {
                 throw new Error('[radicalFunctionTools] n can only be a positive integer.');
             }
 
@@ -5855,7 +5896,7 @@
             // 确定要显示的数值解的数量。
             let count;
             // 如果 n 大于预设的最大显示数量，则只显示 RADICAL_FUNCTION_MAX_SHOW_RESULTS 个。
-            if (MathPlus.minus(n, CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS).re.mantissa > 0n) {
+            if (MathPlus.minus(n, CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS).re.isPositive()) {
                 count = CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS;
                 result.overflow = true;
             } else {
@@ -5927,11 +5968,11 @@
                 throw new Error('[FuncValueListTools] Complex number appear in the input.');
             }
             // 确保区间的起始值不大于结束值。
-            if (MathPlus.minus(start, end).re.mantissa > 0n) {
+            if (MathPlus.minus(start, end).re.isPositive()) {
                 throw new Error('[FuncValueListTools] The initial value is greater than the termination value.');
             }
             // 确保步长为正数，以防止无限循环。
-            if (step.re.mantissa <= 0n) {
+            if (!step.re.isPositive()) {
                 throw new Error('[FuncValueListTools] Step size less than or equal to 0.');
             }
 
@@ -5939,11 +5980,11 @@
             // 这个列表将用于函数求值，并作为结果的一部分返回。
             const varList = [];
             let i = start;
-            for (; MathPlus.minus(i, end).re.mantissa <= 0n && varList.length < CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS; i = MathPlus.plus(i, step)) {
+            for (; !MathPlus.minus(i, end).re.isPositive() && varList.length < CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS; i = MathPlus.plus(i, step)) {
                 varList.push(Public.idealizationToString(i));
             }
 
-            if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && MathPlus.minus(i, end).re.mantissa <= 0n) {
+            if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && !MathPlus.minus(i, end).re.isPositive()) {
                 overflow = true;
                 end = MathPlus.minus(i, MathPlus.divide(step, 2n));
                 varList.push('[print_content_omit]');

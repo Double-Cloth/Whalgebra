@@ -192,7 +192,7 @@
                 // 阈值的选择是基于精度的，通常是精度的一个比例或略低于精度，以捕捉浮点误差。
                 const smallNum = new ComplexNumber([-Math.max(Math.floor(0.9 * acc), acc - 8), 1n, acc]);
                 // 比较 |input| 和 smallNum。如果 |input| < smallNum，则返回 0。
-                if (MathPlus.minus(smallNum, MathPlus.abs(input)).re.mantissa > 0n) {
+                if (MathPlus.minus(smallNum, MathPlus.abs(input)).re.isPositive()) {
                     return new BigNumber([0, 0n, acc]);
                 }
                 // 如果大于阈值，则返回原始输入。
@@ -221,7 +221,7 @@
         static integerCorrect(n) {
             const input = new ComplexNumber(n);
             // 如果输入数字的实部已经是整数（其 BigNumber 表示的 power >= 0），则无需修正。
-            if (input.re.power >= 0 && input.im.mantissa === 0n) {
+            if (input.re.power >= 0 && input.im.isZero()) {
                 return input;
             }
             const acc = input.acc;
@@ -229,7 +229,7 @@
             // 降低精度是修正浮点误差的常用技巧。
             const newInput = new ComplexNumber(input, {acc: Math.max(Math.floor(0.9 * acc), acc - 8)});
             // 检查降低精度后，该数是否变成了整数。
-            if (newInput.re.power >= 0 && newInput.im.mantissa === 0n) {
+            if (newInput.re.power >= 0 && newInput.im.isZero()) {
                 // 如果是，则返回这个被“修正”为整数的新实例。
                 return newInput;
             }
@@ -501,7 +501,7 @@
             // - 初始化: 循环变量 i 从 start 开始。
             // - 条件: 循环持续的条件是 i <= end。这里使用高精度减法 (MathPlus.minus) 来进行精确比较。
             // - 增量: 在每一步中，i 都会增加一个步长 (step)。
-            for (let i = start; MathPlus.minus(i, end).re.mantissa <= 0n; i = MathPlus.plus(i, step)) {
+            for (let i = start; !MathPlus.minus(i, end).re.isPositive(); i = MathPlus.plus(i, step)) {
                 try {
                     // 调用函数，并传入当前的循环变量 'i'。
                     result.push(func(i));
