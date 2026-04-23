@@ -473,7 +473,7 @@ p {
 }
 
 .Screen234 > div:not(.ScreenInputsOn):hover {
-    transform: scale(1.022);
+    transform: scale(1.01);
     background-color: rgb(220 225 220);
 }
 
@@ -1785,7 +1785,7 @@ span.Ripple.IsFadingOut {
 
 .SettingSelection > div:not(.SelectionOn):hover {
     width: min(49dvw, 68.5dvmin);
-    height: 9dvh;
+    height: 8.9dvh;
     background-color: rgb(var(--setting-active-green));
 }
 
