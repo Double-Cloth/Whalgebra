@@ -8,11 +8,19 @@ import argparse
 import threading
 from typing import Tuple
 
-# --- 配置文件 (可在下方修改默认参数) ---
+# ==========================================
+# 全局配置 (Global Configuration)
+# 在此处修改默认的输入路径和输出行为
+# ==========================================
 SERVER_CONFIG = {
-    "DEFAULT_PORT": 8000,  # 默认起始端口
-    "MAX_PORT_RETRIES": 100,  # 端口被占用时的最大重试次数
-    "DEFAULT_DIR": "..",  # 默认服务目录 (当前目录)
+    # 默认起始端口
+    "DEFAULT_PORT": 8000,
+
+    # 端口被占用时的最大重试次数
+    "MAX_PORT_RETRIES": 100,
+
+    # 默认服务目录 (当前目录)
+    "DEFAULT_DIR": "..",
 }
 
 
