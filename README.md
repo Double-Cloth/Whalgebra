@@ -146,13 +146,13 @@ Whalgebra/
 ├── .gitignore                   # Git 忽略文件配置
 ├── assets/                      # 静态资源目录
 │   ├── images/                  # 图片及字体资源
-│   │   ├── chinese-name-of-operators/   # 运算符中文名 SVG
-│   │   ├── instructions-of-operators/   # 运算符说明 SVG
+│   │   ├── chinese_name_of_operators/   # 运算符中文名 SVG
+│   │   ├── instructions_of_operators/   # 运算符说明 SVG
 │   │   ├── fonts/                       # 数学符号/字母 SVG 字体
 │   │   ├── icons/                       # 网站图标
 │   │   └── others/                      # 其他图片
 │   ├── lib/                    # Python 第三方库
-│   └── previous-versions.zip   # 旧版本归档
+│   └── previous_versions.zip   # 旧版本归档
 ├── index.html                  # 项目主入口页面
 ├── src/                        # 源码目录
 │   ├── .nojekyll               # 阻止 GitHub Pages 使用 Jekyll
