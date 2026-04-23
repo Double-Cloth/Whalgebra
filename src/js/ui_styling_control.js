@@ -6208,10 +6208,17 @@
          * @returns {void}
          */
         static _exportRaRecover() {
+            const
+                export0 = HtmlTools.getHtml('#export_0'),
+                export1 = HtmlTools.getHtml('#export_1');
             // 重置 #export_0 按钮的内容为默认的 f(x) 导出图标
             HtmlTools.appendDOMs(HtmlTools.getHtml('#export_0'), ['_export_fx_'], {mode: 'replace'});
             // 重置 #export_1 按钮的内容为默认的 g(x) 导出图标
             HtmlTools.appendDOMs(HtmlTools.getHtml('#export_1'), ['_export_gx_'], {mode: 'replace'});
+
+            // 清除导出失败背景色
+            export0.classList.remove('Failed');
+            export1.classList.remove('Failed');
         }
 
         /**
@@ -6517,6 +6524,7 @@
                 if (exportContent === 'error' || exportContent[this._currentRaModel].regressionEquation === 'error') {
                     // 如果结果为错误，将按钮图标更改为“失败”状态
                     HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
+                    clickArea.classList.add('Failed');
                     return;
                 }
                 const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
