@@ -5,7 +5,11 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    user-select: none;
+
+    --select: none;
+    -webkit-user-select: var(--select);
+    -moz-user-select: var(--select);
+    user-select: var(--select);
 }
 
 html, body {
@@ -59,13 +63,28 @@ p {
     flex-shrink: 0;
     width: auto;
     height: 6dvmin;
-    object-fit: contain;
-    object-position: center;
-    mask-size: contain;
-    mask-repeat: no-repeat;
-    mask-position: center;
     display: block;
     align-self: center;
+
+    --obj-fit: contain;
+    -o-object-fit: var(--obj-fit);
+    object-fit: var(--obj-fit);
+
+    --obj-pos: center;
+    -o-object-position: var(--obj-pos);
+    object-position: var(--obj-pos);
+
+    --size: contain;
+    -webkit-mask-size: var(--size);
+    mask-size: var(--size);
+
+    --repeat: no-repeat;
+    -webkit-mask-repeat: var(--repeat);
+    mask-repeat: var(--repeat);
+
+    --mask-pos: center;
+    -webkit-mask-position: var(--mask-pos);
+    mask-position: var(--mask-pos);
 }
 
 ::-webkit-scrollbar {
@@ -478,7 +497,6 @@ p {
 }
 
 .Screen234 > div:not(.ScreenInputsOn):active {
-    transform: scale(1);
     background-color: rgb(220 235 220);
 }
 
@@ -1212,8 +1230,10 @@ p {
 }
 
 .MultipleLines > div {
-    width: max-content;
     height: min(7.5dvh, 9dvmin);
+
+    width: -moz-max-content;
+    width: max-content;
 }
 
 #print_content_1 > div:nth-child(7),

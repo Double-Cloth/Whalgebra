@@ -213,8 +213,8 @@ document.addEventListener('click', (event) => {
 
     // 全屏模式切换
     if (/title_mode_([0134]|2_0)|screen_title|print_title/.test(targetID)) {
-        // 只有网页模式才能全屏显示
-        if (!Public.webMode) {
+        // 只有网页模式才能全屏显示，防止误触
+        if (!Public.webMode || (targetID !== 'print_title' && PageConfig.currentMode === '2_1')) {
             return;
         }
 
