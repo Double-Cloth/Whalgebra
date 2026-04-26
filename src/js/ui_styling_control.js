@@ -1965,7 +1965,7 @@
              * @method update
              * @description 根据最新数据重新计算虚拟 / 物理高度及滚动比率。
              *
-             * 修复点：
+             * 特点：
              * 1. 持久化 clientHeight，供后续转换方法共享，避免 resize 竞态。
              * 2. 统一计算并持久化 _effP / _effV，消除 update / physicalToVirtual /
              *    virtualToPhysical 三处分别计算时保护值不一致的问题。
@@ -2013,10 +2013,7 @@
             /**
              * @method physicalToVirtual
              * @description 将物理 scrollTop 换算为虚拟 scrollTop。
-             *
-             * 修复点：
-             * - 使用持久化的 _effV / _effP（与 update 和 virtualToPhysical 完全一致）。
-             * - 结果 clamp 到 [0, _effV]，防止因浮点误差或越界 scrollTop 产生非法值。
+             * 使用持久化的 _effV / _effP（与 update 和 virtualToPhysical 完全一致）。
              *
              * @param {number} physicalScroll - 物理 scrollTop（px），应 ≥ 0。
              * @returns {number} 对应的虚拟滚动偏移量（px）。
@@ -2042,7 +2039,7 @@
              * @method virtualToPhysical
              * @description 将虚拟 scrollTop 换算为物理 scrollTop。
              *
-             * 修复点：
+             * 特点：
              * - 使用持久化的 _effV / _effP，与 update 和 physicalToVirtual 完全对称。
              * - _effV 为 0 时（内容不足一屏）直接返回 0，避免除零。
              * - _effP 保证 ≥ 1（由 update 确保），此处无需再做保护。
@@ -2072,7 +2069,7 @@
              * @method calcSpacerHeights
              * @description 计算上下两个占位 spacer 的物理高度。
              *
-             * 修复点：
+             * 特点：
              * 1. 底部 spacer 改用 Math.ceil 取整，补偿顶部 floor 引入的向下偏差，
              *    使三段之和（top spacer + 渲染条目 + bottom spacer）尽可能等于
              *    physicalHeight，消除累积误差导致的底部留白或溢出。
@@ -4726,10 +4723,6 @@
          * @static
          * @method moveCursor
          * @description 在指定的 DOM 区域内移动光标元素。
-         * 优化点：
-         * 1. 移除高耗时的 indexOf 查找，改为 DOM 相对遍历。
-         * 2. 修复向左环绕时销毁 DOM 节点的行为，改为直接移动现有节点。
-         * 3. 增强代码的可读性和健壮性。
          * @param {'left'|'right'|'up'|'down'|'end'} direction - 指定光标移动的方向。
          * @param {boolean} [forcedMode=false] - (可选) 是否强制设置为移动屏幕输入区域。
          * @returns {void}
