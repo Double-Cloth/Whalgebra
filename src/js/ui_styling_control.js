@@ -510,7 +510,7 @@
 
         /**
          * @static
-         * @method setScreenData
+         * @method syncScreenData
          * @description 从 DOM 读取指定屏幕区域的当前输入内容，更新内部的 `_screenData` 状态，并将其持久化到 `localStorage`。
          * 此方法是连接用户界面输入和应用程序数据状态的关键环节。
          *
@@ -522,7 +522,7 @@
          *   如果为 `null`，则根据当前模式和子模式自动确定区域。
          * @returns {void}
          */
-        static setScreenData(area = null) {
+        static syncScreenData(area = null) {
             // 获取当前的主模式，以确定上下文。
             const currentMode = PageConfig.currentMode;
             // 确定要操作的屏幕区域的标识符 ('name')。
@@ -557,10 +557,10 @@
                     const targetX = targetFather.children[1];
                     const targetY = targetFather.children[2];
                     // 只有当行中至少有一个单元格有内容时，才处理该行。
-                    if (!(targetX.children.length === 0 && targetY.children.length === 0)) {
+                    if (targetX.dataset.dataX || targetY.dataset.dataY) {
                         // 将单元格内容从 DOM 类名转换回文本字符串。
-                        const dataX = HtmlTools.htmlClassToText(HtmlTools.getClassList(targetX));
-                        const dataY = HtmlTools.htmlClassToText(HtmlTools.getClassList(targetY));
+                        const dataX = HtmlTools.htmlClassToText(targetX.dataset.dataX.split(','));
+                        const dataY = HtmlTools.htmlClassToText(targetY.dataset.dataY.split(','));
                         // 将 [x, y] 对存储到 _screenData['1'] 数组中。
                         PageConfig._screenData[name][i] = [dataX, dataY];
                     }
@@ -694,8 +694,18 @@
             // 初始化一个空数组，用于存储最终的类名或标识符列表。
             const classLists = [];
 
+            // 找到第一个在 dataset 中存在的键名
+            const activeKey = HtmlTools.findActiveKey(area);
+            let children;
+            let isLazyBg = false;
             // 获取 children 集合引用和总长度
-            const children = area.children;
+            if (activeKey) {
+                isLazyBg = true;
+                const areaInner = area.dataset[activeKey];
+                children = areaInner.split(',').filter(Boolean);
+            } else {
+                children = area.children;
+            }
             const totalLen = children.length;
 
             // 计算安全的遍历范围
@@ -710,11 +720,7 @@
             for (let i = validStart; i < validEnd; i++) {
                 const child = children[i];
                 let className;
-                if (child.classList.contains('lazy-bg')) {
-                    className = child.dataset.lazyBgClass;
-                } else {
-                    className = child.className;
-                }
+                className = isLazyBg ? child : child.className;
 
                 // 根据 ignoreSpace 选项，决定是否跳过代表空格的元素。
                 if (ignoreSpace && className === '_space_') {
@@ -722,7 +728,7 @@
                 }
 
                 // 根据 onlyP 选项，决定是只处理 <p> 标签还是处理所有标签。
-                if (onlyP && child.tagName.toLowerCase() === 'p') {
+                if (isLazyBg || (onlyP && child?.tagName?.toLowerCase() === 'p')) {
                     // 如果只处理 <p> 标签，并且当前子元素是 <p>，则将其类名推入结果数组。
                     classLists.push(className);
                 } else if (!onlyP) {
@@ -824,74 +830,103 @@
          * - `'replace'`: 先清空父元素，再添加元素。
          * @param {string[]} [options.nameType=['class']] - 默认绑定的属性名数组，对应 nameList 中的子数组。
          * @param {string} [options.appendType='p'] - 要创建的 HTML 标签类型。
+         * @param {boolean} [options.toRealDOM=false] - 是否强制挂载到真实节点（用于 activeKey 存在的情况）。
          */
         static appendDOMs(parentElement, nameList, {
             referenceNode = null,
             index = -1,
             mode = 'add',
             appendType = 'p',
-            nameType = ['class']
+            nameType = ['class'],
+            toRealDOM = false
         } = {}) {
-            // 1. 获取并统一目标父元素
+            // 获取并统一目标父元素
             const targetParent = typeof parentElement === 'string'
                                  ? HtmlTools.getHtml(parentElement)
                                  : parentElement;
 
-            // 2. 健壮性检查
-            if (!targetParent || !Array.isArray(nameList) || nameList.length === 0) {
+            // 健壮性检查
+            if (!targetParent || !Array.isArray(nameList)) {
                 return;
             }
 
             // 清空父元素
             if (mode === 'replace') {
-                InputManager.ac(parentElement);
+                InputManager.ac({acArea: parentElement, toRealDOM});
             }
 
-            const fragment = document.createDocumentFragment();
-
-            // 4. 批量创建并组装 DOM
-            for (const name of nameList) {
-                // 过滤空值
-                if (!name) {
-                    continue;
-                }
-
-                const element = document.createElement(appendType);
-
-                // 使用原生 Array.isArray，性能更好
-                if (Array.isArray(name)) {
-                    if (nameType.length !== name.length) {
-                        throw new Error('[HtmlTools] The number of attribute names does not match the number of values.');
-                    }
-                    for (let i = 0; i < nameType.length; i++) {
-                        element.setAttribute(nameType[i], name[i]);
-                    }
-                } else if (typeof name === 'string') {
-                    // 业务逻辑：处理带有特殊前缀的字符串标识
-                    if (name.startsWith('[id]')) {
-                        element.id = name.slice(4);
-                    } else if (name.startsWith('[class]')) {
-                        element.className = name.slice(7);
-                    } else {
-                        element.setAttribute(nameType[0], name);
-                    }
-                }
-
-                fragment.appendChild(element);
-            }
-
-            // 直接使用原生 API 判断 fragment 是否有子节点，替代手动布尔值标记
-            if (!fragment.hasChildNodes()) {
+            // 提前退出
+            if (nameList.length === 0) {
                 return;
             }
 
-            // 5. 确定插入参照节点
-            if (!referenceNode && index !== -1) {
-                referenceNode = targetParent.children[index];
-            }
+            const activeKey = HtmlTools.findActiveKey(targetParent);
+            if (activeKey && !toRealDOM) {
+                if (nameType.length !== 1 || nameType[0] !== 'class') {
+                    throw new Error('[HtmlTools] Unsupported input, the `nameType` can only be `["class"]`.');
+                }
+                if (appendType !== 'p') {
+                    throw new Error('[HtmlTools] Unsupported input, the `appendType` can only be `"p"`.');
+                }
 
-            // 6. 统一插入逻辑（insertBefore 第二个参数为 null 时等同于 appendChild）
-            targetParent.insertBefore(fragment, referenceNode || null);
+                const appendList = nameList.map(name =>
+                    name.startsWith('[class]') ? name.slice(7) : name
+                );
+
+                // 拼接结果
+                const originalList = targetParent.dataset[activeKey].split(',').filter(Boolean);
+                const resultList =
+                    index === -1
+                    ? [...originalList, ...appendList]
+                    : originalList.splice(index, 0, ...appendList);
+                targetParent.dataset[activeKey] = resultList.join(',');
+            } else {
+                const fragment = document.createDocumentFragment();
+
+                // 批量创建并组装 DOM
+                for (const name of nameList) {
+                    // 过滤空值
+                    if (!name) {
+                        continue;
+                    }
+
+                    const element = document.createElement(appendType);
+
+                    // 使用原生 Array.isArray，性能更好
+                    if (Array.isArray(name)) {
+                        if (nameType.length !== name.length) {
+                            throw new Error('[HtmlTools] The number of attribute names does not match the number of values.');
+                        }
+                        for (let i = 0; i < nameType.length; i++) {
+                            element.setAttribute(nameType[i], name[i]);
+                        }
+                    } else if (typeof name === 'string') {
+                        // 业务逻辑：处理带有特殊前缀的字符串标识
+                        if (name.startsWith('[id]')) {
+                            element.id = name.slice(4);
+                        } else if (name.startsWith('[class]')) {
+                            element.className = name.slice(7);
+                        } else {
+                            element.setAttribute(nameType[0], name);
+                        }
+                    }
+
+                    fragment.appendChild(element);
+                }
+
+                // 直接使用原生 API 判断 fragment 是否有子节点，替代手动布尔值标记
+                if (!fragment.hasChildNodes()) {
+                    return;
+                }
+
+                // 确定插入参照节点
+                if (!referenceNode && index !== -1) {
+                    referenceNode = targetParent.children[index];
+                }
+
+                // 统一插入逻辑（insertBefore 第二个参数为 null 时等同于 appendChild）
+                targetParent.insertBefore(fragment, referenceNode || null);
+            }
         }
 
         /**
@@ -1226,6 +1261,27 @@
 
             return debounced;
         }
+
+        /**
+         * @static
+         * @method findActiveKey
+         * 从目标的 dataset 中提取第一个匹配的有效键名。
+         * * 该方法会依次检查 'index', 'dataX', 'dataY' 三个键，
+         * 返回第一个在 `target.dataset` 中定义的键名。
+         *
+         * @param {HTMLElement} target - 包含 dataset 属性的 DOM 元素对象。
+         * @returns {string|undefined} 返回匹配到的键名（'index'、'dataX' 或 'dataY'）；
+         * 若均未找到，则返回 `undefined`。
+         */
+        static findActiveKey(target) {
+            if (!(target && target.nodeType === 1)) {
+                return;
+            }
+
+            const keys = ['index', 'dataX', 'dataY'];
+            // 找到第一个在 dataset 中存在的键名
+            return keys.find(key => target.dataset[key] !== undefined);
+        }
     }
 
     /**
@@ -1245,87 +1301,370 @@
      */
     class AsyncListRenderer {
         /**
-         * 实例化异步渲染器
+         * 实例化异步渲染器 (支持 DOM 动态挂载与卸载)
          * @param {Object} options - 配置参数
-         * @param {string} options.scrollSelector - 滚动容器的 CSS 选择器（作为 IntersectionObserver 的 root 边界）。
-         * @param {string} options.containerSelector - 列表真实挂载容器的 CSS 选择器（如 <ul> 或 <tbody>）。
-         * @param {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)} options.rowRenderer - 行渲染函数，接收数据源和当前索引，需返回构建好的 DOM 节点。
-         * @param {string} [options.lazyBgSelector='.lazy-bg[data-lazy-bg-class]'] - 触发懒加载的内部元素选择器。
-         * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒），建议控制在 16.6ms 内以避免影响 60Hz 屏幕的刷新。
-         * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值（双重保险，防止极小节点死循环）。
+         * @param {string} options.scrollSelector - 滚动容器的 CSS 选择器。
+         * @param {string} options.containerSelector - 列表真实挂载容器的 CSS 选择器。
+         * @param {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)} options.rowRenderer - 行骨架渲染函数，需返回固定高度的占位父节点。
+         * @param {function(HTMLElement): (void|Promise<void>)} [options.lazyMount] - 节点进入可视区或发生变动时的回调，用于组装并挂载子节点。支持返回 Promise。
+         * @param {function(HTMLElement): void} [options.lazyUnmount] - 节点移出可视区时的回调，默认高效清空子节点。
+         * @param {function(HTMLElement[], HTMLElement): void} [options.bindVisibleNodeObserver] - 自定义的可见节点变动回调函数。
+         * @param {string} [options.lazySelector='[data-lazy-load="true"]'] - 触发懒加载监听的目标节点选择器。
+         * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒）。
+         * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值。
          * @param {string} [options.rootMargin='500px'] - 懒加载触发的缓冲区大小。
          */
         constructor(options) {
             // --- 基础配置 ---
-            /** @type {string} */
-            this._scrollSelector = options.scrollSelector;
-            /** @type {string} */
-            this._containerSelector = options.containerSelector;
-            /** @type {function(any[], number): (HTMLElement|null|DocumentFragment)} */
-            this._rowRenderer = options.rowRenderer;
-            /** @type {string} */
-            this._lazyBgSelector = options.lazyBgSelector || '.lazy-bg[data-lazy-bg-class]';
 
-            // --- 性能调优参数 ---
-            /** @type {number} */
+            /**
+             * 滚动容器的 CSS 选择器。
+             * @type {string}
+             * @private
+             */
+            this._scrollSelector = options.scrollSelector;
+
+            /**
+             * 列表真实挂载容器的 CSS 选择器。
+             * @type {string}
+             * @private
+             */
+            this._containerSelector = options.containerSelector;
+
+            /**
+             * 行骨架渲染函数。
+             * @type {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)}
+             * @private
+             */
+            this._rowRenderer = options.rowRenderer;
+
+            // --- 核心挂载与卸载钩子 ---
+
+            /**
+             * 节点进入可视区或发生变动时的装载回调。
+             * @type {function(HTMLElement): (void|Promise<void>)}
+             * @private
+             */
+            this._lazyMount = options.lazyMount;
+
+            /**
+             * 节点移出可视区时的卸载回调。默认使用 replaceChildren() 清空元素。
+             * @type {function(HTMLElement): void}
+             * @private
+             */
+            this._lazyUnmount = options.lazyUnmount || ((el) => {
+                el.replaceChildren();
+            });
+
+            /**
+             * 自定义的可见节点 DOM 变动监听回调。
+             * @type {function(HTMLElement[], HTMLElement): void|undefined}
+             * @private
+             */
+            this._customBindVisibleNodeObserver = options.bindVisibleNodeObserver;
+
+            /**
+             * 触发懒加载监听的目标节点选择器。
+             * @type {string}
+             * @private
+             */
+            this._lazySelector = options.lazySelector || '[data-lazy-load="true"]';
+
+            /**
+             * 每帧最大执行时间（毫秒），用于控制时间分片。
+             * @type {number}
+             * @private
+             */
             this._timeSliceMs = options.timeSliceMs || 14;
-            /** @type {number} */
+
+            /**
+             * 单帧最大允许渲染的节点数量阈值。
+             * @type {number}
+             * @private
+             */
             this._maxChunkSize = options.maxChunkSize || 100;
-            /** @type {string} */
+
+            /**
+             * 懒加载触发的缓冲区大小（对应 IntersectionObserver 的 rootMargin）。
+             * @type {string}
+             * @private
+             */
             this._rootMargin = options.rootMargin || '500px';
 
             // --- 核心状态与观察者实例 ---
+
             /**
+             * 负责懒加载监听的 IntersectionObserver 实例。
              * @type {IntersectionObserver|null}
-             * @description 交叉观察器，用于元素进入可视区时的懒加载
+             * @private
              */
             this._observerInstance = null;
+
             /**
+             * 负责监听挂载容器 DOM 树变动的 MutationObserver 实例。
              * @type {MutationObserver|null}
-             * @description DOM 变动观察器，用于监听容器内部的外部节点插入
+             * @private
              */
             this._mutationObserver = null;
+
             /**
+             * 当前记录被 _mutationObserver 监听的真实挂载容器，用于去重。
+             * @type {HTMLElement|null}
+             * @private
+             */
+            this._watchedContainer = null;
+
+            /**
+             * 用于中断渲染任务的控制器。
              * @type {AbortController|null}
-             * @description 中断控制器，用于 stopRender 时快速阻断后续 Promise 执行
+             * @private
              */
             this._abortController = null;
+
             /**
-             * @type {WeakMap<Element, Element[]>}
-             * @description 弱引用映射，建立 DOM 节点与其内部懒加载目标的映射，防止内存泄漏
+             * 映射父节点与需要懒加载的子节点集合，减少 querySelectorAll 查找频率。
+             * @type {WeakMap<HTMLElement, HTMLElement[]>}
+             * @private
              */
             this._lazyTargetsMap = new WeakMap();
-            /**
-             * @type {Promise<void>}
-             * @description 记录当前正在执行的渲染任务 Promise 链，用于 append 时的队列排期
-             */
-            this._renderTask = Promise.resolve();
 
-            // --- 暂停与恢复控制 ---
-            /** @type {boolean} 当前是否处于暂停状态 */
-            this._isPaused = false;
             /**
-             * @type {Function|null}
-             * @description 被挂起的渲染函数引用。当触发暂停时，保存下一帧本该执行的函数
+             * 当前处于活跃状态的渲染 Promise 任务队列。
+             * @type {Array<function(): Promise<void>>}
              */
-            this._resumeCallback = null;
+            this._taskQueue = [];
+
+            /**
+             * 队列是否正在消费。
+             * @type {boolean}
+             * @private
+             */
+            this._isProcessing = false;
+
+            /**
+             * 标记渲染器是否处于暂停状态。
+             * @type {boolean}
+             * @private
+             */
+            this._isPaused = false;
+
+            /**
+             * 用于在恢复渲染时执行的回调函数（保存渲染现场）。
+             * @type {Array<FrameRequestCallback>}
+             */
+            this._resumeCallbacks = [];
+
+            /**
+             * 维护当前活跃节点的专属 MutationObserver 实例。
+             * 使用 WeakMap 关联，节点被销毁时 Observer 也可被 GC 回收。
+             * @type {WeakMap<HTMLElement, MutationObserver>}
+             * @private
+             */
+            this._visibleNodeObservers = new WeakMap();
+
+            /**
+             * 使用 WeakSet 追踪框架内部插入的节点身份标记。
+             * 用于解决 node.cloneNode() 导致的数据属性继承问题，避免克隆节点被错误忽略。
+             * 节点移除后可被垃圾回收机制（GC）自动回收，防止内存泄漏。
+             * @type {WeakSet<HTMLElement>}
+             * @private
+             */
+            this._internalNodes = new WeakSet();
+
+            /**
+             * 每次 appendRender 创建独立的 controller，并注册到全局 Set，由 stopRender 统一中止
+             * @type {Set<AbortController>}
+             * @private
+             */
+            this._appendControllers = new Set();
         }
 
         /**
-         * 获取数据源的长度或键数量
-         * 作为内部辅助函数，兼容处理数组和对象类型的数据源，并对空值进行安全兜底。
-         * * @private
-         * @param {any[] | Object | null | undefined} data - 需要计算长度的数据源
-         * @returns {number} 如果是数组则返回 length，如果是对象则返回 keys 的数量，空值返回 0
+         * 内部任务调度器，负责按顺序消费队列中的任务。
+         *
+         * 该方法采用“单例执行”模式（由 `_isProcessing` 锁控制）：
+         * 1. 如果当前已有调度循环在运行，则直接退出。
+         * 2. 依次从队列头部取出任务并 `await` 执行。
+         * 3. 即使某个任务抛出异常，调度器也会捕获它并继续处理后续任务，确保队列不挂死。
+         *
+         * @returns {Promise<void>}
+         * @private
+         * @async
+         */
+        async _processQueue() {
+            if (this._isProcessing) {
+                return;
+            }
+            this._isProcessing = true;
+
+            while (this._taskQueue.length > 0) {
+                const task = this._taskQueue.shift();
+                try {
+                    await task();
+                } catch (err) {
+                    // 错误已经被 enqueue 里的包装器 catch 并 reject 给了外部调用者，
+                    // 队列这里只需要吃掉异常，保证队列继续消费下一个任务即可。
+                    if (err?.name !== 'AbortError') {
+                        console.error('[AsyncListRenderer] Task error:', err);
+                    }
+                } finally {
+                    // 无论队列因何种原因停止，都必须释放锁，以便下次任务进入时能重新触发执行
+                    this._isProcessing = false;
+                }
+            }
+        }
+
+        /**
+         * 将异步任务添加到队列中并触发执行。
+         *
+         * 该方法将传入的函数包装在一个 Promise 中，确保任务执行完毕或出错时，
+         * 调用方能够通过返回的 Promise 接收到相应的信号。
+         *
+         * @param {Function} taskFn - 待执行的异步任务函数。应返回一个 Promise 或为 async 函数。
+         * @returns {Promise<void>} 返回一个 Promise，在任务成功完成时 resolve，任务抛出异常时 reject。
+         * @private
+         */
+        _enqueueTask(taskFn) {
+            return new Promise((resolve, reject) => {
+                // 包装任务，接管成功和失败的状态
+                const wrappedTask = async () => {
+                    try {
+                        await taskFn();
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                // 将包装后的任务推入内部队列数组
+                this._taskQueue.push(wrappedTask);
+                // 尝试触发队列消费逻辑（通常涉及并发控制）
+                this._processQueue();
+            });
+        }
+
+        /**
+         * 获取数据源的长度或键数量。
+         * 支持数组和对象格式的数据源。
+         * @param {any[]|Object} data - 数据源
+         * @returns {number} 数据源包含的项数
+         * @private
          */
         _getLength(data) {
             return Array.isArray(data) ? data.length : Object.keys(data || {}).length;
         }
 
         /**
-         * 创建用于背景图、动态类名懒加载的 IntersectionObserver
+         * 为当前正在显示的节点绑定专属的 DOM 变动监听器。
+         * 采用“一节点一 Observer”模式，消除共享 Observer 带来的 O(N) 性能瓶颈。
+         * @param {HTMLElement} el - 需要监听变动的目标节点
          * @private
-         * @returns {IntersectionObserver|null} 观察器实例或 null（找不到滚动容器时）
+         */
+        _bindVisibleNodeObserver(el) {
+            // 防止重复绑定
+            if (this._visibleNodeObservers.has(el)) {
+                return;
+            }
+
+            // 定义监听配置，提取出来以便复用
+            const observerOptions = {
+                childList: true,
+                attributes: true,
+                characterData: true,
+                subtree: true,
+                attributeFilter: ['data-index', 'data-data-x', 'data-data-y']
+            };
+
+            const observer = new MutationObserver((mutations) => {
+                let needsUpdate = false;
+                const changedNodes = new Set();
+
+                for (const mutation of mutations) {
+                    const rawTarget = mutation.target.nodeType === 3
+                                      ? mutation.target.parentElement
+                                      : mutation.target;
+
+                    if (!rawTarget) {
+                        continue;
+                    }
+
+                    // 确认该节点当前处于已渲染且非更新锁定状态
+                    if (el.dataset.isRendered === 'true' && el.dataset.isUpdating !== 'true') {
+                        needsUpdate = true;
+                        if (rawTarget.nodeType === 1) {
+                            changedNodes.add(rawTarget);
+                        }
+                    }
+                }
+
+                if (needsUpdate) {
+                    el.dataset.isUpdating = 'true';
+                    // 执行挂载更新前，主动断开监听，防止挂载行为触发新的 mutation
+                    observer.disconnect();
+
+                    const releaseLock = () => {
+                        // 使用单次微任务或 RAF 释放即可，无需双重 RAF
+                        queueMicrotask(() => {
+                            el.dataset.isUpdating = 'false';
+                            // 更新完成后，如果节点仍在渲染状态，则重新开启监听
+                            if (el.dataset.isRendered === 'true') {
+                                observer.observe(el, observerOptions);
+                            }
+                        });
+                    };
+
+                    try {
+                        let taskResult;
+                        if (this._customBindVisibleNodeObserver) {
+                            const changedNodesArr = Array.from(changedNodes);
+                            if (changedNodesArr.length > 0) {
+                                taskResult = this._customBindVisibleNodeObserver(changedNodesArr, el);
+                            }
+                        } else if (this._lazyMount) {
+                            taskResult = this._lazyMount(el);
+                        }
+
+                        // 处理 Promise
+                        if (taskResult instanceof Promise) {
+                            taskResult.finally(releaseLock);
+                        } else {
+                            releaseLock();
+                        }
+                    } catch (error) {
+                        console.error('[AsyncListRenderer] View update listener execution error:', error);
+                        releaseLock();
+                    }
+                }
+            });
+
+            observer.observe(el, observerOptions);
+            // 存入 WeakMap 进行追踪
+            this._visibleNodeObservers.set(el, observer);
+        }
+
+        /**
+         * 解绑节点的专属变动监听。
+         * 直接精准断开对应 Observer，避免全局重绑引发性能灾难。
+         * @param {HTMLElement} el - 需要解绑监听的目标节点
+         * @private
+         */
+        _unbindVisibleNodeObserver(el) {
+            el.dataset.isUpdating = 'false';
+
+            // 查找属于该节点的专属 Observer
+            const observer = this._visibleNodeObservers.get(el);
+
+            if (observer) {
+                observer.disconnect(); // O(1) 操作，极速解绑
+                this._visibleNodeObservers.delete(el); // 从 Map 中移除引用
+            }
+        }
+
+        /**
+         * 创建用于检测元素是否进入可视区域（懒加载核心）的 IntersectionObserver。
+         * 内部处理了元素进入/离开视口的挂载和卸载逻辑，包括对异步挂载的 Promise 等待处理。
+         * @returns {IntersectionObserver|null} 实例化后的 IntersectionObserver 对象，若滚动容器不存在则返回 null。
+         * @private
          */
         _createLazyObserver() {
             const bigContainer = document.querySelector(this._scrollSelector);
@@ -1337,25 +1676,12 @@
                 entries.forEach(entry => {
                     let isVisible = entry.isIntersecting;
 
-                    // 过滤水平方向的移出判定
-                    // 如果原生判定为不可见，且拿得到根节点边界信息，进行垂直维度的二次校验
                     if (!isVisible && entry.rootBounds) {
                         const rect = entry.boundingClientRect;
                         const rootRect = entry.rootBounds;
 
-                        // 动态解析 rootMargin 的垂直安全距离（兼容百分比和像素）
-                        let marginY = 0;
-                        if (typeof this._rootMargin === 'string') {
-                            marginY = this._rootMargin.includes('%') ?
-                                      marginY = rootRect.height * (parseFloat(this._rootMargin) / 100) :
-                                      marginY = parseFloat(this._rootMargin) || 0;
-                        }
+                        const isVerticallyInView = (rect.bottom >= rootRect.top) && (rect.top <= rootRect.bottom);
 
-                        // 只判断垂直方向是否仍在视口/缓冲区内
-                        const isVerticallyInView = (rect.bottom >= rootRect.top - marginY) &&
-                            (rect.top <= rootRect.bottom + marginY);
-
-                        // 如果垂直方向还在安全区，证明仅仅是水平方向移出去了，强制保持可见状态
                         if (isVerticallyInView) {
                             isVisible = true;
                         }
@@ -1363,59 +1689,109 @@
 
                     let targetElements;
 
-                    // 1. 判断该节点是否已经被 WeakMap 记录过（用 .has 判断）
                     if (!this._lazyTargetsMap.has(entry.target)) {
                         targetElements = [];
 
-                        // 2. 如果没记录过，且是外部强插的节点，现场查一次 DOM
-                        if (entry.target.dataset?.asyncInternal !== 'true') {
-                            const lazyNodes = Array.from(entry.target.querySelectorAll(this._lazyBgSelector));
-                            if (entry.target.matches?.(this._lazyBgSelector)) {
+                        // 改用 WeakSet 判断是否为框架内部节点
+                        if (!this._internalNodes.has(entry.target)) {
+                            const lazyNodes = Array.from(entry.target.querySelectorAll(this._lazySelector));
+                            if (entry.target.matches?.(this._lazySelector)) {
                                 lazyNodes.push(entry.target);
                             }
                             targetElements.push(...lazyNodes);
                         }
-
-                        // 3. 无论查到几个懒加载节点（哪怕是 0 个），都作为结果缓存进去
                         this._lazyTargetsMap.set(entry.target, targetElements);
                     } else {
-                        // 4. 命中缓存，直接取值
                         targetElements = this._lazyTargetsMap.get(entry.target);
                     }
 
                     targetElements.forEach(el => {
-                        const bgClassAttr = el.getAttribute('data-lazy-bg-class');
-                        if (!bgClassAttr) {
-                            return;
-                        }
+                        if (el.matches(this._lazySelector)) {
+                            const isRendered = el.dataset.isRendered === 'true';
 
-                        const bgClasses = bgClassAttr.split(' ').filter(Boolean);
-                        if (bgClasses.length > 0) {
-                            if (isVisible) {
-                                el.classList.add(...bgClasses);
-                            } else {
-                                el.classList.remove(...bgClasses);
+                            // 实时更新节点的可见性状态，供异步任务读取
+                            el.dataset.isVisible = isVisible ? 'true' : 'false';
+
+                            if (isVisible && !isRendered && el.dataset.isUpdating !== 'true') {
+                                el.dataset.isUpdating = 'true';
+
+                                let mountResult;
+                                try {
+                                    mountResult = this._lazyMount ? this._lazyMount(el) : undefined;
+                                } catch (err) {
+                                    console.error('[AsyncListRenderer] lazyMount error during synchronous execution:', err);
+                                    el.dataset.isUpdating = 'false';
+                                    return;
+                                }
+
+                                if (mountResult instanceof Promise) {
+                                    // 异步路径：等待 Promise 落定
+                                    mountResult
+                                        .then(() => {
+                                            // Promise 落定时，必须校验节点是否仍在可视区
+                                            if (el.dataset.isVisible === 'true') {
+                                                el.dataset.isRendered = 'true';
+                                                this._bindVisibleNodeObserver(el);
+                                            } else {
+                                                // 已经滚出可视区：执行卸载逻辑，保持 DOM 干净
+                                                if (this._lazyUnmount) {
+                                                    this._lazyUnmount(el);
+                                                }
+                                                el.dataset.isRendered = 'false';
+                                            }
+                                        })
+                                        .catch(err => {
+                                            // 失败：打印错误，并重置状态，允许下次进入视口时重试挂载
+                                            console.error('[AsyncListRenderer] lazyMount error during asynchronous execution:', err);
+                                            el.dataset.isRendered = 'false';
+                                        })
+                                        .finally(() => {
+                                            el.dataset.isUpdating = 'false';
+                                        });
+                                } else {
+                                    // 同步路径：立即完成标记与绑定
+                                    el.dataset.isRendered = 'true';
+                                    el.dataset.isUpdating = 'false';
+                                    this._bindVisibleNodeObserver(el);
+                                }
+
+                            } else if (!isVisible && isRendered) {
+                                this._unbindVisibleNodeObserver(el);
+
+                                if (this._lazyUnmount) {
+                                    this._lazyUnmount(el);
+                                }
+                                el.dataset.isRendered = 'false';
                             }
                         }
                     });
                 });
             }, {
                 root: bigContainer,
-                rootMargin: `${this._rootMargin} 2000%`,
+                rootMargin: `${this._rootMargin} 0px`,
                 threshold: 0
             });
         }
 
         /**
+         * 开启对挂载容器内部 DOM 变更（增删节点）的监听。
+         * 当新节点插入时，将其加入 IntersectionObserver 的观测目标；
+         * 当节点被移除时，进行内存清理及解除监听。
+         * @param {HTMLElement} container - 需要被深度监听的列表真实挂载容器
          * @private
-         * @param {HTMLElement} container - 需要被深度监听的挂载容器
-         * @description 启动 MutationObserver 监听，接管任何非内部流程生成的 DOM 节点，
-         * 并负责清理被删除节点的监听以防止内存泄漏。
          */
         _startDOMWatcher(container) {
+            // 若已在监听同一个 container，直接跳过。
+            if (this._mutationObserver && this._watchedContainer === container) {
+                return;
+            }
+
             if (this._mutationObserver) {
                 this._mutationObserver.disconnect();
             }
+
+            // 记录当前正在监听的 container，用于上方去重判断
+            this._watchedContainer = container;
 
             this._mutationObserver = new MutationObserver((mutationsList) => {
                 if (!this._observerInstance) {
@@ -1424,59 +1800,75 @@
 
                 for (const mutation of mutationsList) {
                     if (mutation.type === 'childList') {
-
-                        // 1. 处理新增节点（接管外部强插节点）
                         if (mutation.addedNodes.length > 0) {
                             mutation.addedNodes.forEach(node => {
-                                if (node.nodeType === 1 && node.dataset.asyncInternal !== 'true') {
+                                // 改用 WeakSet 判断是否为框架内部插入的节点
+                                if (node.nodeType === 1 && !this._internalNodes.has(node)) {
                                     this._observerInstance?.observe(node);
                                 }
                             });
                         }
 
-                        // 2. 处理被删除的节点，切断强引用防止内存泄漏
                         if (mutation.removedNodes.length > 0) {
                             mutation.removedNodes.forEach(node => {
                                 if (node.nodeType === 1) {
-                                    // 解除节点本身的观察并清理 Map
                                     this._observerInstance?.unobserve(node);
                                     this._lazyTargetsMap.delete(node);
+
+                                    this._unbindVisibleNodeObserver(node);
+                                    const activeChildren = node.querySelectorAll?.('[data-is-rendered="true"]');
+                                    activeChildren?.forEach(child => this._unbindVisibleNodeObserver(child));
                                 }
                             });
                         }
                     }
                 }
+
+                // 在处理完所有的 DOM 变动后，检查容器最终状态
+                // 如果容器空了，且不是通过 class 内部 startRender 触发的重置操作
+                if (container.childNodes.length === 0) {
+                    console.warn('[AsyncListRenderer] Detected that the container has been forcibly emptied, automatically triggering stopRender().');
+                    this.stopRender();
+                }
             });
 
-            // 开启深层监听 (subtree: true)
-            this._mutationObserver.observe(container, {childList: true, subtree: true});
+            this._mutationObserver.observe(container, {childList: true, subtree: false});
         }
 
         /**
-         * 核心渲染引擎：利用 requestAnimationFrame 配合时间分片处理 DOM 挂载
+         * 核心渲染引擎，使用 requestAnimationFrame 结合时间分片技术逐批次生成与挂载 DOM，防止长列表引发的页面主线程卡顿。
+         * @param {HTMLElement} container - DOM 挂载的目标容器。
+         * @param {any[]|Object} dataSource - 数据源。
+         * @param {number} startIndex - 渲染起始索引。
+         * @param {number} endIndex - 渲染结束索引。
+         * @param {AbortSignal} signal - 用于中止渲染任务的信号量。
+         * @param {Object} [options={}] - 渲染控制参数。
+         * @param {boolean} [options.isReplace=false] - 是否在渲染第一批次时执行全量替换清屏（方案B核心）。
+         * @param {HTMLElement|string|null} [options.insertTarget=null] - 指定插入位置的参考节点或选择器。若为空则默认 appendChild 到容器末尾。
+         * @returns {Promise<void>} 批次渲染全部完成或中止后 resolve/reject 的 Promise 对象。
          * @private
-         * @param {HTMLElement} container - 目标挂载容器
-         * @param {any[]} dataSource - 完整数据源
-         * @param {number} startIndex - 批次渲染的起始索引
-         * @param {number} endIndex - 批次渲染的结束索引
-         * @param {AbortSignal} signal - 任务终止信号
-         * @param {string|HTMLElement|null} [insertTarget=null] - 插入基准节点（如有，则使用 insertBefore）
-         * @returns {Promise<void>} 渲染全部完成时 resolve
          */
-        _batchRender(container, dataSource, startIndex, endIndex, signal, insertTarget = null) {
+        _batchRender(container, dataSource, startIndex, endIndex, signal, options = {}) {
             return new Promise((resolve, reject) => {
                 let index = startIndex;
                 let rafId = null;
+                // 追踪当前任务是否已经完成过首批次的清屏替换
+                let hasReplaced = false;
 
                 if (signal?.aborted) {
-                    return reject(new DOMException('[AsyncListRenderer] Rendering aborted initially.', 'AbortError'));
+                    return reject(new DOMException('[AsyncListRenderer] Aborted', 'AbortError'));
                 }
+
+                // 解析插入锚点，解析一次后 renderNextBatch 直接闭包引用
+                const resolvedInsertTarget = typeof options.insertTarget === 'string'
+                                             ? container.querySelector(options.insertTarget)
+                                             : options.insertTarget;
 
                 const abortHandler = () => {
                     if (rafId !== null) {
                         cancelAnimationFrame(rafId);
                     }
-                    reject(new DOMException('[AsyncListRenderer] Rendering aborted during process.', 'AbortError'));
+                    reject(new DOMException('[AsyncListRenderer] Aborted', 'AbortError'));
                 };
                 signal.addEventListener('abort', abortHandler, {once: true});
 
@@ -1485,19 +1877,26 @@
                         return;
                     }
 
-                    if (this._isPaused) {
-                        this._resumeCallback = renderNextBatch;
+                    // 检测容器是否被移出 DOM 树
+                    if (!container.isConnected) {
+                        console.warn('[AsyncListRenderer] The container has been detached from the DOM tree, automatically triggering stopRender().');
+                        this.stopRender();
                         return;
                     }
 
-                    // 必须使用当前回调真实开始执行的时间，防止被同帧内的其他任务“偷拍”时间。
+                    // 处理外部暂停指令
+                    if (this._isPaused) {
+                        this._resumeCallbacks.push(renderNextBatch);
+                        return;
+                    }
+
                     const frameStartTime = performance.now();
                     let renderedInThisFrame = 0;
-
                     const fragment = document.createDocumentFragment();
                     const elementsToObserve = [];
 
                     try {
+                        // 时间分片循环：在单帧时间预算内尽可能多地渲染节点
                         while (
                             index < endIndex &&
                             renderedInThisFrame < this._maxChunkSize &&
@@ -1505,28 +1904,28 @@
                             !signal.aborted
                             ) {
                             const rowDOM = this._rowRenderer(dataSource, index);
-                            // 在 _batchRender 的 while 循环中处理 rowDOM 时：
                             if (rowDOM) {
                                 let topLevelElements = [];
 
-                                if (rowDOM.nodeType === 1) { // 普通元素
+                                if (rowDOM.nodeType === 1) { // Element 节点
                                     topLevelElements = [rowDOM];
-                                } else if (rowDOM.nodeType === 11) { // DocumentFragment
-                                    // 提取 Fragment 中所有的顶级 Element
+                                } else if (rowDOM.nodeType === 11) { // DocumentFragment 节点
                                     topLevelElements = Array.from(rowDOM.children);
                                 }
 
                                 topLevelElements.forEach(el => {
-                                    const lazyElements = Array.from(el.querySelectorAll(this._lazyBgSelector));
-                                    if (el.matches(this._lazyBgSelector)) {
+                                    const lazyElements = Array.from(el.querySelectorAll(this._lazySelector));
+                                    if (el.matches(this._lazySelector)) {
                                         lazyElements.push(el);
                                     }
 
                                     if (lazyElements.length > 0) {
                                         this._lazyTargetsMap.set(el, lazyElements);
-                                        elementsToObserve.push(el);
+                                        elementsToObserve.push(...lazyElements);
                                     }
-                                    // 标记为内部节点
+
+                                    // 标记框架内部生成的节点
+                                    this._internalNodes.add(el);
                                     el.dataset.asyncInternal = 'true';
                                 });
 
@@ -1542,24 +1941,30 @@
                         return;
                     }
 
-                    // 将本帧攒好的节点一次性挂载到真实 DOM 树
-                    if (insertTarget) {
-                        const refNode = typeof insertTarget === 'string'
-                                        ? container.querySelector(insertTarget)
-                                        : insertTarget;
-                        if (refNode && refNode.parentNode === container) {
-                            container.insertBefore(fragment, refNode);
+                    // =================================================================
+                    // 核心挂载策略：延迟清屏 / 追加
+                    // =================================================================
+                    if (options.isReplace && !hasReplaced) {
+                        // 首屏第一批数据：原子级替换，瞬间完成旧节点卸载与新节点挂载，消除白屏闪烁
+                        container.replaceChildren(fragment);
+                        hasReplaced = true;
+                    } else if (resolvedInsertTarget) {
+                        // 指定锚点的追加
+                        if (resolvedInsertTarget?.parentNode === container) {
+                            container.insertBefore(fragment, resolvedInsertTarget);
                         } else {
                             container.appendChild(fragment);
                         }
                     } else {
+                        // 常规的队尾追加
                         container.appendChild(fragment);
                     }
 
+                    // =================================================================
+                    // 绑定懒加载监听
+                    // =================================================================
                     if (this._observerInstance && elementsToObserve.length > 0) {
-                        // 使用 queueMicrotask 替代 requestAnimationFrame
-                        // 微任务会在当前宏任务（即本次 rAF 的渲染工作）和 UI 重绘之间执行。
-                        // 这样既能保证 Observer 绑定及时，又不会导致过多的 rAF 嵌套，减轻调度引擎负担。
+                        // 使用 queueMicrotask 确保在当前宏任务之后、下一次重绘之前绑定完毕
                         queueMicrotask(() => {
                             if (signal?.aborted) {
                                 return;
@@ -1571,11 +1976,6 @@
                             });
                         });
                     }
-
-                    // 测试稳定后移除 console，频繁的 I/O 也会影响极端情况下的性能
-                    // if (renderedInThisFrame > 0) {
-                    //     console.log(`[AsyncListRenderer] Frame took ${(performance.now() - frameStartTime).toFixed(2)}ms; rendered ${renderedInThisFrame} node(s) (${index}/${endIndex}).`);
-                    // }
 
                     // 调度下一帧
                     if (index < endIndex) {
@@ -1592,11 +1992,11 @@
         }
 
         /**
-         * 开始全量渲染（会清空容器现存内容）
+         * 从头开始全量渲染列表，调用此方法前会清空现有容器，重置状态。
+         * @param {any[]|Object} dataSource - 数据源。
+         * @param {number} [totalCount] - 数据总条数（可选，若不传则从 dataSource 计算）。
+         * @returns {Promise<void>} 整个渲染周期结束时落定的 Promise。
          * @async
-         * @param {any[]|{}} dataSource - 列表数据源
-         * @param {number} [totalCount] - 限制最大渲染数量，默认为 dataSource.length
-         * @returns {Promise<void>} 渲染完成的 Promise
          */
         async startRender(dataSource, totalCount) {
             // 先停掉上一轮可能还在执行的旧任务
@@ -1609,105 +2009,99 @@
             }
 
             this._observerInstance = this._createLazyObserver();
-            this._startDOMWatcher(container);
 
             this._abortController = new AbortController();
             const signal = this._abortController.signal;
 
-            // 原生高效清空容器
-            container.replaceChildren();
-
             const count = totalCount ?? this._getLength(dataSource);
             if (typeof count !== 'number' || count <= 0) {
+                container.replaceChildren();
                 return Promise.resolve();
             }
 
-            // 将渲染任务赋给 this._renderTask 形成队列
-            this._renderTask = this._batchRender(container, dataSource, 0, count, signal).catch(err => {
-                if (err?.name !== 'AbortError') {
-                    console.error(err);
+            return this._enqueueTask(async () => {
+                await this._batchRender(container, dataSource, 0, count, signal, {isReplace: true});
+
+                // 在首批替换完成（或者全量渲染完成）后，再开启 DOM 变动监听，避开清屏风暴
+                if (!signal.aborted) {
+                    this._startDOMWatcher(container);
                 }
             });
-
-            return this._renderTask;
         }
 
         /**
-         * 追加渲染：在不清理现有节点的情况下，向列表尾部或指定位置追加新内容
-         * 任务会自动链式调用排队，确保渲染顺序正确
+         * 追加渲染列表。在保留原有列表的基础上，挂载增量数据。
+         * @param {any[]|{}} dataSource - 数据源。
+         * @param {Object} [options={}] - 追加渲染的额外配置参数。
+         * @param {number} [options.startIndex=0] - 增量渲染起始索引。
+         * @param {number} [options.appendCount] - 需要追加渲染的数量（如果不传，则默认为 dataSource 长度减去 startIndex）。
+         * @param {Element|string|null} [options.insertTarget=null] - 指定增量插入的具体锚点节点或选择器。
+         * @returns {Promise<void>} 追加渲染任务完成的 Promise。
          * @async
-         * @param {any[]|{}} dataSource - 列表数据源
-         * @param {Object} [options={}] - 追加配置项
-         * @param {number} [options.startIndex=0] - 提取 dataSource 时的起始索引
-         * @param {number} [options.appendCount] - 需要追加的数据量
-         * @param {string|HTMLElement|Element|null} [options.insertTarget=null] - 指定插入位置的参考节点
-         * @returns {Promise<void>}
          */
         async appendRender(dataSource, options = {}) {
             const {startIndex = 0, appendCount, insertTarget = null} = options;
 
-            if (!this._abortController) {
-                this._abortController = new AbortController();
-            }
-            const signal = this._abortController.signal;
+            const localController = new AbortController();
+            const localSignal = localController.signal;
+            this._appendControllers.add(localController);
 
-            // 利用 Promise 链确保上一次渲染或追加结束后，才执行本次追加
-            this._renderTask = this._renderTask.then(async () => {
-                if (signal.aborted) {
+            // 入队而非链式
+            return this._enqueueTask(async () => {
+                if (localSignal.aborted) {
+                    this._appendControllers.delete(localController);
                     return;
                 }
 
                 const count = appendCount ?? (this._getLength(dataSource) - startIndex);
                 const endIndex = startIndex + count;
-
                 const freshContainer = document.querySelector(this._containerSelector);
+
                 if (!freshContainer) {
+                    this._appendControllers.delete(localController);
                     return;
                 }
 
-                // Observer 健康度检查：如果根容器丢失，则销毁重建
-                if (this._observerInstance && this._observerInstance.root && !this._observerInstance.root.isConnected) {
+                if (this._observerInstance?.root && !this._observerInstance.root.isConnected) {
                     this._observerInstance.disconnect();
                     this._observerInstance = null;
                 }
+
                 if (!this._observerInstance) {
                     this._observerInstance = this._createLazyObserver();
                     this._startDOMWatcher(freshContainer);
-
-                    // 1. 获取容器内所有已被标记为内部渲染的顶层节点
-                    const legacyNodes = freshContainer.querySelectorAll('[data-async-internal="true"]');
-
-                    legacyNodes.forEach(node => {
-                        // 2. 利用 WeakMap 过滤：只有存在懒加载目标的节点才重新 observe
-                        // 这样既恢复了监听，又避免了将没有懒加载需求的纯文本节点误加进去浪费性能
-                        if (this._lazyTargetsMap.has(node)) {
-                            this._observerInstance.observe(node);
-                        }
-                    });
+                    freshContainer.querySelectorAll('[data-async-internal="true"]')
+                        .forEach(node => this._observerInstance.observe(node));
                 }
 
-                await this._batchRender(freshContainer, dataSource, startIndex, endIndex, signal, insertTarget);
-            }).catch(err => {
-                if (err?.name !== 'AbortError') {
-                    console.error(err);
+                try {
+                    await this._batchRender(freshContainer, dataSource, startIndex, endIndex, localSignal, {
+                        insertTarget: insertTarget,
+                        isReplace: false // 追加渲染，绝不替换
+                    });
+                } finally {
+                    this._appendControllers.delete(localController);
                 }
             });
-
-            return this._renderTask;
         }
 
         /**
          * 暂停当前正在执行的时间分片渲染任务。
-         * 渲染会在当前帧结束后挂起，并且不会销毁容器节点和所有的监听器。
-         * 常用于为优先级更高的用户交互（如高频拖拽、动画）让出主线程。
+         * 暂停后列表将维持现有的已渲染骨架，直到调用 resumeRender()。
+         * @public
          */
         pauseRender() {
             this._isPaused = true;
         }
 
         /**
-         * 恢复之前被 pauseRender 暂停的渲染任务。
-         * 采用无缝唤醒机制，任务将紧接着暂停前的那个索引继续渲染。
+         * 恢复之前被 {@link pauseRender} 暂停的渲染任务。
+         *
+         * 该方法会将暂停标志位设为 false，并提取所有在暂停期间累积的恢复回调函数，
+         * 利用 `requestAnimationFrame` 异步执行这些任务，以继续后续的批次挂载和渲染。
+         *
+         * @public
+         * @returns {void}
          */
         resumeRender() {
             if (!this._isPaused) {
@@ -1715,40 +2109,57 @@
             }
 
             this._isPaused = false;
-
-            // 提取被封存的渲染函数上下文，并重新扔进 rAF 调度队列
-            if (this._resumeCallback) {
-                const callback = this._resumeCallback;
-                this._resumeCallback = null;
-                requestAnimationFrame(callback);
-            }
+            const callbacks = this._resumeCallbacks.splice(0);
+            callbacks.forEach(cb => requestAnimationFrame(cb));
         }
 
         /**
-         * 硬终止渲染。
-         * 彻底抛弃当前进行中的所有渲染任务、清理内存并注销所有 Observer 监听。
-         * 容器内的已有节点会保留，但不会再继续渲染新节点。
+         * 硬终止当前的渲染任务及各类 Observer 监听器，重置相关类状态机。
+         * 释放对当前容器和节点的内部引用，并确保垃圾回收机制(GC)及时介入。
+         * @public
          */
         stopRender() {
             if (this._abortController) {
                 this._abortController.abort();
                 this._abortController = null;
             }
+            // 统一中止所有已入队但尚未执行的 append 任务
+            this._appendControllers.forEach(c => c.abort());
+            this._appendControllers.clear();
+
             if (this._observerInstance) {
                 this._observerInstance.disconnect();
                 this._observerInstance = null;
             }
+
             if (this._mutationObserver) {
                 this._mutationObserver.disconnect();
                 this._mutationObserver = null;
             }
 
-            // 重置暂停状态机
-            this._isPaused = false;
-            this._resumeCallback = null;
+            const container = document.querySelector(this._containerSelector);
+            if (container) {
+                const activeNodes = container.querySelectorAll('[data-is-rendered="true"], [data-is-updating="true"]');
+                activeNodes.forEach(node => {
+                    node.dataset.isUpdating = 'false';
+                    node.dataset.isRendered = 'false';
+                    // 确保所有正在监听的节点都被安全解绑
+                    this._unbindVisibleNodeObserver(node);
+                });
+            }
 
-            // 将主任务队列置为空 Promise，防止旧任务阻塞未来的 startRender
-            this._renderTask = Promise.resolve();
+            // 重新初始化 WeakMap 清除悬空引用
+            this._visibleNodeObservers = new WeakMap();
+            this._internalNodes = new WeakSet();
+            this._lazyTargetsMap = new WeakMap();
+
+            this._watchedContainer = null;
+
+            this._isPaused = false;
+            this._resumeCallbacks = [];
+            // 清空队列，所有未执行任务瞬间释放
+            this._taskQueue = [];
+            this._isProcessing = false;
         }
     }
 
@@ -1915,13 +2326,6 @@
 
                 /**
                  * @type {number}
-                 * 由 update() 持久化的容器可视高度（px）。
-                 * physicalToVirtual / virtualToPhysical 使用此值保证跨调用一致性。
-                 */
-                this.clientHeight = 0;
-
-                /**
-                 * @type {number}
                  * 有效物理滚动范围 = max(1, physicalHeight - clientHeight)。
                  * 由 update() 统一计算，供 physicalToVirtual / virtualToPhysical 共享，
                  * 确保两个方向的转换使用完全相同的分母，互为精确逆运算。
@@ -1991,7 +2395,6 @@
                 this.virtualHeight = totalCount * itemHeight;
                 this.compressed = this.virtualHeight > MAX;
                 this.physicalHeight = this.compressed ? MAX : this.virtualHeight;
-                this.clientHeight = clientHeight;
 
                 const rawEffV = this.virtualHeight - clientHeight;
                 const rawEffP = this.physicalHeight - clientHeight;
@@ -2195,11 +2598,34 @@
                 }
 
                 // 字符串分支：从池中取包装 div 或新建
-                const wrapper = (measureOnly ? null : this._pool.pop()) ?? document.createElement('div');
-                wrapper.innerHTML = result;
-                if (!measureOnly) {
+                let wrapper;
+                if (measureOnly) {
+                    // 测量用，不走池，直接新建
+                    wrapper = document.createElement('div');
+                } else {
+                    wrapper = this._pool.pop() ?? document.createElement('div');
+
+                    // 防御性清洁检查
+                    // recycle() 应当已经清空 wrapper，但若池逻辑存在 bug 导致脏数据入池，
+                    // 此处提前发现并修正，避免把上一个条目的内容渲染到新位置。
+                    if (wrapper.childNodes.length > 0 || wrapper.hasAttributes()) {
+                        console.error(
+                            '[VirtualScroll] _NodePool: a dirty wrapper was found in the pool. ' +
+                            'This indicates a bug in recycle(). Cleaning it now.'
+                        );
+                        wrapper.replaceChildren();
+                        for (const {name} of Array.from(wrapper.attributes)) {
+                            wrapper.removeAttribute(name);
+                        }
+                    }
+
                     this._wrapperSet.add(wrapper);
                 }
+
+                // 使用 Range API 安全解析 HTML 字符串为文档片段
+                const frag = document.createRange().createContextualFragment(result);
+                // 将解析出的节点安全挂载到 wrapper 上
+                wrapper.appendChild(frag);
                 return wrapper;
             }
 
@@ -2675,7 +3101,9 @@
                 const {index, behavior} = this._pendingScrollQueue.at(-1);
                 this._pendingScrollQueue = [];
                 this.scrollToIndex(index, {behavior});
-                this._forceRender();
+                if (!this._isSmoothScrolling) {
+                    this._forceRender();
+                }
                 return;
             }
 
@@ -3158,7 +3586,7 @@
         _doMeasure() {
             this._unbindScroll();
             this._recycleRenderedNodes();
-            this.container.innerHTML = '';
+            this.container.replaceChildren();
             this._spacerTop = null;
             this._spacerBottom = null;
             this._nodePool.clear();
@@ -3187,7 +3615,7 @@
             const sum = heights.reduce((s, h) => s + h, 0);
             let measured = sum / sampleCount;
 
-            this.container.innerHTML = '';
+            this.container.replaceChildren();
             tempEls.length = 0;
 
             if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
@@ -3268,7 +3696,7 @@
                 this.container.removeChild(this._spacerBottom);
             }
 
-            this.container.innerHTML = '';
+            this.container.replaceChildren();
 
             const applySpacerStyle = el => Object.assign(el.style, {
                 display: 'block',
@@ -3296,10 +3724,9 @@
 
             // 立即用当前 heightMapper 状态撑开总高度
             // 此时 start=0, end=0，所有高度都在 bottom spacer
-            const clientHeight = this.container.clientHeight;
             const hm = this._heightMapper;
             const {top, bottom} = hm.calcSpacerHeights(
-                0, 0, this.totalCount, this.itemHeight, clientHeight
+                0, 0, this.totalCount, this.itemHeight
             );
             this._spacerTop.style.height = `${top}px`;
             this._spacerBottom.style.height = `${bottom}px`;
@@ -3408,6 +3835,13 @@
                         return;
                     }
 
+                    // 如果容器已经脱离 DOM 树，自动销毁释放内存
+                    if (!entry.target.isConnected) {
+                        console.warn('[VirtualScroll] Container detached, auto-destroying.');
+                        this.destroy();
+                        return;
+                    }
+
                     // 直接从 target 获取 clientWidth/Height，保持与系统其他地方统一（包含 padding）
                     const newW = entry.target.clientWidth;
                     const newH = entry.target.clientHeight;
@@ -3440,6 +3874,13 @@
                 }
                 this._handleWindowResize = () => {
                     if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                        return;
+                    }
+
+                    // 如果容器已经脱离 DOM 树，立刻解绑 window 监听并销毁
+                    if (!this.container || !this.container.isConnected) {
+                        console.warn('[VirtualScroll] Container detached, auto-destroying fallback listener.');
+                        this.destroy();
                         return;
                     }
 
@@ -3676,11 +4117,18 @@
                 const currentST = this.container.scrollTop;
 
                 if (currentST > maxPhysical) {
+                    // scrollTop 超出新的最大值，需要修正。
+                    //
+                    // 1. 先解绑 scroll 监听器，防止 scrollTop 赋值触发一次多余的 scroll 事件，
+                    //    进而引发另一次 _scheduleRender → _render 的递归链。
+                    // 2. 赋值修正后的 scrollTop。
+                    // 3. 重新绑定监听器。
+                    // 4. 当前 _render 调用继续向下执行，基于修正后的 scrollTop 完成本次渲染。
+                    //    不需要取消任何 RAF，也不需要重新调度——本次调用本身就是那次渲染。
                     this._unbindScroll();
                     this.container.scrollTop = maxPhysical;
                     if (this._sm.is(VirtualScroll.State.RUNNING)) {
                         this._bindScroll();
-                        this._cancelRenderRAF();
                     }
                 }
             }
@@ -3699,8 +4147,9 @@
                 return;
             }
 
-            const {top: spacerTopPx, bottom: spacerBottomPx} =
-                hm.calcSpacerHeights(start, end, this.totalCount, this.itemHeight, clientHeight);
+            const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
+                start, end, this.totalCount, this.itemHeight
+            );
             this._spacerTop.style.height = `${spacerTopPx}px`;
             this._spacerBottom.style.height = `${spacerBottomPx}px`;
 
@@ -3916,7 +4365,7 @@
             this._remeasurePending = false;
 
             if (this.container) {
-                this.container.innerHTML = '';
+                this.container.replaceChildren();
             }
 
             this._spacerTop = null;
@@ -4065,8 +4514,8 @@
          * 用于管理统计模式的列表显示。
          */
         static statisticsRenderer = new AsyncListRenderer({
-            scrollSelector: '#grid_data',   // 滚动区域的选择器
-            containerSelector: '#grid_data',// 真实 DOM 的挂载点选择器
+            scrollSelector: '#grid_data',    // 滚动区域的选择器
+            containerSelector: '#grid_data', // 真实 DOM 的挂载点选择器
 
             /**
              * @function rowRenderer
@@ -4083,10 +4532,73 @@
                  * @description 将输入的字符串转换为标准的 HTML 类名列表，非字符串类型则直接返回原数据
                  */
                 const toClassList = (input) => typeof input === 'string' ? HtmlTools.textToHtmlClass(input) : input;
+
                 return this._statisticsCreateLine({
                     index,
                     inputListX: toClassList(dataSource[index][0]),
                     inputListY: toClassList(dataSource[index][1])
+                });
+            },
+
+            /**
+             * @function lazyMount
+             * @param {HTMLElement} el - 移入可视区的节点
+             * @description 当 DOM 移入可视区后加载数据
+             */
+            lazyMount: (el) => {
+                // 提取之前绑定的数据
+                const children = el.children;
+                const
+                    index = children[0].children[0].dataset.index,
+                    dataX = children[1].dataset.dataX,
+                    dataY = children[2].dataset.dataY;
+
+                // 渲染真实内容
+                HtmlTools.appendDOMs(
+                    children[0].children[0],
+                    index.split(',').filter(Boolean),
+                    {mode: 'replace', toRealDOM: true}
+                );
+                HtmlTools.appendDOMs(
+                    children[1],
+                    dataX.split(',').filter(Boolean),
+                    {mode: 'replace', toRealDOM: true}
+                );
+                HtmlTools.appendDOMs(
+                    children[2],
+                    dataY.split(',').filter(Boolean),
+                    {mode: 'replace', toRealDOM: true}
+                );
+            },
+
+            /**
+             * @function lazyUnmount
+             * @param {HTMLElement} el - 移出可视区的节点
+             * @description 当 DOM 移出可视区后卸载数据
+             */
+            lazyUnmount: (el) => {
+                // 清除节点数据
+                const children = el.children;
+                children[0].children[0].replaceChildren();
+                children[1].replaceChildren();
+                children[2].replaceChildren();
+            },
+
+            /**
+             * @function bindVisibleNodeObserver
+             * @param {[HTMLElement]} changedNodes - 发生变化的节点组
+             * @description 当 DOM 节点的 dataset 发生变化时执行同步函数
+             */
+            bindVisibleNodeObserver: (changedNodes) => {
+                changedNodes.forEach((el) => {
+                    const activeKey = HtmlTools.findActiveKey(el);
+
+                    // 渲染真实内容
+                    HtmlTools.appendDOMs(
+                        el,
+                        el.dataset[activeKey].split(',').filter(Boolean),
+                        {mode: 'replace', toRealDOM: true}
+                    );
                 });
             }
         });
@@ -4352,6 +4864,8 @@
             // 删除空格范围
             let totalRangeStart = 0;
             let totalRangeEnd = children.length - 1;
+            let isLazyBg = false;
+            let activeKey; // 仅在 isLazyBg 时有用，标识目前正在处理的元素名称
 
             // 计算需要插入空格的索引位置 (addIndex)
             const addIndex = [];
@@ -4448,10 +4962,19 @@
                 }
             } else {
                 // --- 分支 B: 全局扫描模式 ---
-                const classList = HtmlTools.getClassList(target, {
-                    ignoreSpace: true,
-                    onlyP: false
-                });
+                let classList;
+
+                // 找到第一个在 dataset 中存在的键名
+                activeKey = HtmlTools.findActiveKey(target);
+                if (activeKey) {
+                    isLazyBg = true;
+                    const rawData = target.dataset[activeKey];
+                    classList = rawData.split(',').filter(Boolean);
+                } else {
+                    // 普通逻辑
+                    classList = HtmlTools.getClassList(target, {ignoreSpace: true, onlyP: false});
+                }
+
                 if (classList.length === 0) {
                     return;
                 }
@@ -4491,57 +5014,66 @@
                 }
             }
 
-            // 保存原始显示状态
-            const originalDisplay = target.style.display;
-            // 先隐藏以避免重排多次
-            target.style.display = 'none';
+            if (isLazyBg) {
+                // 删除空格
+                const originalStr = target.dataset[activeKey];
+                const strWithoutSpace = originalStr.replace(/(^|,)_space_(?=,|$)/g, '').replace(/^,/, '');
+                const resultList = strWithoutSpace.split(',').filter(Boolean);
 
-            // 删除空格
-            let isLazyBg = false;
-            for (let i = totalRangeStart; i < totalRangeEnd; i++) {
-                const curr = children[i];
-                if (curr.className === '_space_' || curr.dataset.lazyBgClass === '_space_') {
-                    curr.remove();
-                    totalRangeEnd -= 1;
+                // 批量插入空格
+                for (let i = addIndex.length - 1; i >= 0; i--) {
+                    resultList.splice(addIndex[i], 0, '_space_');
                 }
-                if (!isLazyBg && curr.classList.contains('lazy-bg')) {
-                    isLazyBg = true;
-                }
-            }
-            // 批量插入空格
-            for (let i = addIndex.length - 1; i >= 0; i--) {
-                HtmlTools.appendDOMs(
-                    target,
-                    isLazyBg ? [['lazy-bg', '_space_']] : ['_space_'],
-                    {
-                        index: addIndex[i],
-                        nameType: isLazyBg ? ['class', 'data-lazy-bg-class'] : ['class']
+
+                // 使其生效
+                target.dataset[activeKey] = resultList.join(',');
+            } else {
+                // 保存原始显示状态
+                const originalDisplay = target.style.display;
+                // 先隐藏以避免重排多次
+                target.style.display = 'none';
+
+                // 删除空格
+                for (let i = totalRangeStart; i < totalRangeEnd; i++) {
+                    const curr = children[i];
+                    if (curr.className === '_space_') {
+                        curr.remove();
+                        totalRangeEnd -= 1;
                     }
-                );
-            }
+                }
 
-            // 恢复显示
-            target.style.display = originalDisplay;
-            // 确保视图跟随
-            HtmlTools.scrollToView();
+                // 批量插入空格
+                for (let i = addIndex.length - 1; i >= 0; i--) {
+                    HtmlTools.appendDOMs(target, ['_space_'], {index: addIndex[i]});
+                }
+
+                // 恢复显示
+                target.style.display = originalDisplay;
+                // 确保视图跟随
+                HtmlTools.scrollToView();
+            }
         }
 
         /**
          * @static
          * @method ac
          * @description 清除指定 DOM 区域的内容，或在未指定区域时重置主输入区域。
-         * @param {HTMLElement | string} [acArea] - (可选) 目标 DOM 元素或其 ID 选择器。
-         * @param {boolean} [forcedMode=false] - (可选) 是否强制设置为清空屏幕输入区域。
+         * @param {object} [options] - (可选) 包含行数据的配置对象。
+         * @param {HTMLElement | string} [options.acArea] - (可选) 目标 DOM 元素或其 ID 选择器。
+         * @param {boolean} [options.forcedMode=false] - (可选) 是否强制设置为清空屏幕输入区域。
+         * @param {boolean} [options.toRealDOM=false] - (可选) 是否强清空真实节点。
          */
-        static ac(acArea, forcedMode = false) {
+        static ac({acArea = null, forcedMode = false, toRealDOM = false} = {}) {
             // 1. 模式一：指定区域清除
             // 只要传入了参数（且不为 null/undefined），就视为清除特定区域
             if (acArea) {
                 // 增强逻辑：允许传入字符串选择器（与 appendDOMs 保持一致）
                 const target = typeof acArea === 'string' ? HtmlTools.getHtml(acArea) : acArea;
 
-                // 健壮性检查：确保目标存在且是合法的 DOM 元素
-                if (target && typeof target.replaceChildren === 'function') {
+                const activeKey = HtmlTools.findActiveKey(target);
+                if (activeKey && !toRealDOM) {
+                    target.dataset[activeKey] = '';
+                } else if (target && typeof target.replaceChildren === 'function') { // 健壮性检查：确保目标存在且是合法的 DOM 元素
                     target.replaceChildren();
                 }
                 return; // 执行完毕直接返回
@@ -4561,13 +5093,13 @@
                     PageConfig.subModes = {'1': [0, 0]};
                     HtmlTools.getHtml('#grid_data').replaceChildren();
                     InputManager.statisticsAddLine();
-                    PageConfig.setScreenData('1');
+                    PageConfig.syncScreenData('1');
                 } else if (currentMode !== '0') {
                     const len = HtmlTools.getHtml(`#screen_${currentMode}`).children.length;
                     for (let i = 0; i < len; i++) {
                         const area = `${currentMode}${i}`;
-                        this.ac(HtmlTools.getHtml(`#screen_input_inner_${area}`));
-                        PageConfig.setScreenData(area);
+                        this.ac({acArea: HtmlTools.getHtml(`#screen_input_inner_${area}`)});
+                        PageConfig.syncScreenData(area);
                     }
                     PageConfig.subModes = {'default': '0'};
                 }
@@ -4662,12 +5194,12 @@
                     if (brotherTarget.children.length === 0) {
                         InputManager.statisticsDelLine();
                     } else {
-                        this.ac(target);
+                        this.ac({acArea: target});
                     }
                 } else {
-                    this.ac(HtmlTools.getCurrentSubscreenArea());
+                    this.ac({acArea: HtmlTools.getCurrentSubscreenArea()});
                 }
-                PageConfig.setScreenData();
+                PageConfig.syncScreenData();
                 return;
             }
 
@@ -4938,40 +5470,28 @@
             // 创建序号列的 DOM 结构
             const serialNumberGrandfather = document.createElement('div');
             const serialNumberFather = document.createElement('div');
-            const addNum = HtmlTools.textToHtmlClass((index + 1).toString());
-            HtmlTools.appendDOMs(
-                serialNumberFather,
-                addNum.map(item => ['lazy-bg', item]),
-                {nameType: ['class', 'data-lazy-bg-class']}
-            );
+
+            // 创建索引
+            serialNumberFather.dataset.index = HtmlTools.textToHtmlClass((index + 1).toString()).join(',');
             serialNumberGrandfather.appendChild(serialNumberFather);
 
             // 创建 X 数据列的 DOM 结构
             const gridX = document.createElement('div');
             gridX.classList.add('DataX');
-            // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
-            // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
-            HtmlTools.appendDOMs(
-                gridX,
-                inputListX.map(item => ['lazy-bg', item]),
-                {nameType: ['class', 'data-lazy-bg-class']}
-            );
+            gridX.dataset.dataX = inputListX.join(',');
 
             // 创建 Y 数据列的 DOM 结构
             const gridY = document.createElement('div');
             gridY.classList.add('DataY');
-            // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
-            // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
-            HtmlTools.appendDOMs(
-                gridY,
-                inputListY.map(item => ['lazy-bg', item]),
-                {nameType: ['class', 'data-lazy-bg-class']}
-            );
+            gridY.dataset.dataY = inputListY.join(',');
 
             // 将所有列添加到新行中
             insert.appendChild(serialNumberGrandfather);
             insert.appendChild(gridX);
             insert.appendChild(gridY);
+
+            // 设置懒加载标志
+            insert.setAttribute('data-lazy-load', 'true');
 
             return insert;
         }
@@ -5038,19 +5558,11 @@
             for (let i = position; i < gridDataChildren.length; i++) {
                 const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
                 const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                // HtmlTools.appendDOMs: 将处理后的节点批量追加到 subContent 容器中，
-                // 并通过配置参数将 'lazy-bg' 映射为标签的 class/data 属性
-                HtmlTools.appendDOMs(
-                    positionContainer,
-                    newNum.map(item => ['lazy-bg', item]),
-                    {
-                        nameType: ['class', 'data-lazy-bg-class'],
-                        mode: 'replace'
-                    }
-                );
+                // 将处理后的节点批量追加到 subContent 容器中
+                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
             }
 
-            PageConfig.setScreenData();
+            PageConfig.syncScreenData();
             const currentSubMode = PageConfig.subModes['1'];
             HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
             gridDataChildren[currentSubMode[0]].children[currentSubMode[1] + 1].classList.add('GridOn');
@@ -5116,18 +5628,11 @@
             for (let i = position; i < gridDataChildren.length; i++) {
                 const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
                 const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                HtmlTools.appendDOMs(
-                    positionContainer,
-                    newNum.map(item => ['lazy-bg', item]),
-                    {
-                        nameType: ['class', 'data-lazy-bg-class'],
-                        mode: 'replace'
-                    }
-                );
+                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
             }
             gridData.style.display = display;
             HtmlTools.scrollToView();
-            PageConfig.setScreenData();
+            PageConfig.syncScreenData();
         }
     }
 
@@ -5551,8 +6056,8 @@
             const currentInput = HtmlTools.htmlClassToText(currentInputArray);
 
             // 3. 重置显示
-            InputManager.ac(textDisplay);
-            InputManager.ac(resultDisplay);
+            InputManager.ac({acArea: textDisplay});
+            InputManager.ac({acArea: resultDisplay});
             const needReshow = this.mode0ScreenInCalc || this.mode0ShowOnScreen.pending();
             if (needReshow) {
                 this.mode0ShowOnScreen.cancel();
@@ -5660,25 +6165,17 @@
                 if (currentPushA.startsWith('[syntax_error]') || currentPushB.startsWith('[syntax_error]')) {
                     this._setMode1Results('error');
                     this.mode1Results = 'error';
-                    PageConfig.setScreenData();
+                    PageConfig.syncScreenData();
                     return;
                 }
 
                 // 如果单元格为空，自动填充为 0，并更新 DOM 显示
                 if (currentPushA.length === 0) {
-                    HtmlTools.appendDOMs(
-                        currentA,
-                        [['lazy-bg', '_0_']],
-                        {nameType: ['class', 'data-lazy-bg-class']}
-                    );
+                    HtmlTools.appendDOMs(currentA, ['_0_']);
                     currentPushA = '0';
                 }
                 if (currentPushB.length === 0) {
-                    HtmlTools.appendDOMs(
-                        currentB,
-                        [['lazy-bg', '_0_']],
-                        {nameType: ['class', 'data-lazy-bg-class']}
-                    );
+                    HtmlTools.appendDOMs(currentB, ['_0_']);
                     currentPushB = '0';
                 }
 
@@ -5688,7 +6185,7 @@
             }
 
             // 保存当前屏幕数据到 LocalStorage
-            PageConfig.setScreenData();
+            PageConfig.syncScreenData();
 
             try {
                 // 调用 Worker 进行异步统计计算
@@ -6732,8 +7229,8 @@
                     if (PrintManager.mode0ScreenInCalc) {
                         WorkerTools.restart();
                     }
-                    InputManager.ac(HtmlTools.getHtml('#print_content_0_content_0'));
-                    InputManager.ac(HtmlTools.getHtml('#print_content_0_content_1'));
+                    InputManager.ac({acArea: HtmlTools.getHtml('#print_content_0_content_0')});
+                    InputManager.ac({acArea: HtmlTools.getHtml('#print_content_0_content_1')});
                     return;
                 case '1':
                     InputManager.statisticsRenderer.resumeRender();
@@ -7063,11 +7560,7 @@
             // 获取当前活动的子屏幕输入区域。
             const target = HtmlTools.getCurrentSubscreenArea();
             // 使用格式化后的表达式内容替换目标区域的现有内容。
-            const exprList = currentMode === '1' ? expr.map(item => ['lazy-bg', item]) : expr;
-            const nameType = currentMode === '1' ? ['class', 'data-lazy-bg-class'] : ['class'];
-            HtmlTools.appendDOMs(target, exprList,
-                {nameType, mode: 'replace'}
-            );
+            HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
             // 为新渲染的表达式添加适当的空格以提高可读性。
             InputManager.addSpace({area: target});
             // 清空主输入区域，并恢复其输入提示。
@@ -7080,11 +7573,11 @@
                 const gridDataLast = gridData.lastElementChild.children;
                 let addSucceed = true;
                 // 检查最后一行是否已有数据。如果是，则自动添加一个新行。
-                if (gridDataLast[1].children.length !== 0 || gridDataLast[2].children.length !== 0) {
+                if (gridDataLast[1].dataset.dataX || gridDataLast[2].dataset.dataY) {
                     addSucceed = await InputManager.statisticsAddLine();
                 }
                 // 更新并持久化屏幕数据。
-                PageConfig.setScreenData();
+                PageConfig.syncScreenData();
                 // 如果成功添加了新行，则将高亮光标移动到新行。
                 if (moveCursor && addSucceed) {
                     InputManager.moveCursor('down');
@@ -7095,7 +7588,7 @@
             } else {
                 // 对于其他模式...
                 // 更新并持久化屏幕数据。
-                PageConfig.setScreenData();
+                PageConfig.syncScreenData();
                 // 如果当前子屏幕不是该模式下的最后一个，则自动将焦点移动到下一个子屏幕。
                 if (moveCursor && HtmlTools.getHtml(`#screen_${currentMode}`).children.length !== Number(PageConfig.subModes[currentMode]) + 1) {
                     InputManager.moveCursor('right');
