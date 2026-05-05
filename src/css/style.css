@@ -257,7 +257,7 @@ p {
 }
 
 #head_inputs {
-    width: 85.4dvw;
+    width: calc(99.4dvw - max(14dvw, 20dvmin));
     height: 6.5dvh;
     margin-left: 0.6dvw;
 }
@@ -461,6 +461,10 @@ p {
     border-radius: 2.5dvmin;
     background-color: rgb(220 235 220);
     box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-3) / 0.8);
+}
+
+#grid_data > div > div > div {
+    overflow: auto;
 }
 
 /* screen 部分-part 2 到 part 4 */
