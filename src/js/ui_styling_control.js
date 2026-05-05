@@ -875,10 +875,13 @@
 
                 // 拼接结果
                 const originalList = targetParent.dataset[activeKey].split(',').filter(Boolean);
-                const resultList =
-                    index === -1
-                    ? [...originalList, ...appendList]
-                    : originalList.splice(index, 0, ...appendList);
+                let resultList;
+                if (index === -1) {
+                    resultList = [...originalList, ...appendList];
+                } else {
+                    originalList.splice(index, 0, ...appendList);
+                    resultList = originalList;
+                }
                 targetParent.dataset[activeKey] = resultList.join(',');
             } else {
                 const fragment = document.createDocumentFragment();
@@ -1497,20 +1500,22 @@
             }
             this._isProcessing = true;
 
-            while (this._taskQueue.length > 0) {
-                const task = this._taskQueue.shift();
-                try {
-                    await task();
-                } catch (err) {
-                    // 错误已经被 enqueue 里的包装器 catch 并 reject 给了外部调用者，
-                    // 队列这里只需要吃掉异常，保证队列继续消费下一个任务即可。
-                    if (err?.name !== 'AbortError') {
-                        console.error('[AsyncListRenderer] Task error:', err);
+            try {
+                while (this._taskQueue.length > 0) {
+                    // 取出的是 wrappedTask 函数本身，所以可以直接 await 执行
+                    const task = this._taskQueue.shift();
+                    try {
+                        await task();
+                    } catch (err) {
+                        // 内部静默吃掉 AbortError，其他真正异常则抛出
+                        if (err?.name !== 'AbortError') {
+                            console.error('[AsyncListRenderer] Task error:', err);
+                        }
                     }
-                } finally {
-                    // 无论队列因何种原因停止，都必须释放锁，以便下次任务进入时能重新触发执行
-                    this._isProcessing = false;
                 }
+            } finally {
+                // 锁的释放移到 while 循环体外部，确保队列清空后才释放
+                this._isProcessing = false;
             }
         }
 
@@ -1536,9 +1541,11 @@
                     }
                 };
 
-                // 将包装后的任务推入内部队列数组
+                // 把 reject 方法作为属性挂载到函数对象上，以便 stopRender 可以获取并终止它
+                wrappedTask.reject = reject;
+
                 this._taskQueue.push(wrappedTask);
-                // 尝试触发队列消费逻辑（通常涉及并发控制）
+                // 尝试触发队列消费逻辑
                 this._processQueue();
             });
         }
@@ -1812,9 +1819,27 @@
                         if (mutation.removedNodes.length > 0) {
                             mutation.removedNodes.forEach(node => {
                                 if (node.nodeType === 1) {
+                                    // 1. 兜底解绑顶层 node 本身
                                     this._observerInstance?.unobserve(node);
                                     this._lazyTargetsMap.delete(node);
 
+                                    // 2. 收集所有懒加载节点（使用 this._lazySelector 而不是硬编码）
+                                    const lazyTargets = [];
+                                    if (node.matches?.(this._lazySelector)) {
+                                        lazyTargets.push(node);
+                                    }
+
+                                    const nestedLazyTargets = node.querySelectorAll?.(this._lazySelector);
+                                    nestedLazyTargets?.forEach(target => lazyTargets.push(target));
+
+                                    // 3. 逐一解绑子节点
+                                    lazyTargets.forEach(target => {
+                                        this._observerInstance?.unobserve(target);
+                                        // 防御性清理 Map 中的记录（如果该子节点也是 Map 的 key 的话）
+                                        this._lazyTargetsMap.delete(target);
+                                    });
+
+                                    // 4. 清理专属的 DOM 变动监听器
                                     this._unbindVisibleNodeObserver(node);
                                     const activeChildren = node.querySelectorAll?.('[data-is-rendered="true"]');
                                     activeChildren?.forEach(child => this._unbindVisibleNodeObserver(child));
@@ -2154,9 +2179,29 @@
             this._lazyTargetsMap = new WeakMap();
 
             this._watchedContainer = null;
-
             this._isPaused = false;
             this._resumeCallbacks = [];
+
+            // 主动 Reject 还在排队的任务，防止外部 await 永远挂死
+            const stopError = new DOMException('[AsyncListRenderer] Render stopped', 'AbortError');
+            const pendingTasks = Array.isArray(this._taskQueue) ? this._taskQueue : [];
+
+            pendingTasks.forEach(task => {
+                if (!task) {
+                    return;
+                }
+                // 安全地从任务对象/函数身上寻找挂载的 reject 方法
+                const rejectFn =
+                    typeof task.reject === 'function' ? task.reject :
+                    typeof task._reject === 'function' ? task._reject :
+                    typeof task.deferredReject === 'function' ? task.deferredReject :
+                    null;
+
+                if (rejectFn) {
+                    rejectFn(stopError);
+                }
+            });
+
             // 清空队列，所有未执行任务瞬间释放
             this._taskQueue = [];
             this._isProcessing = false;
@@ -5089,7 +5134,13 @@
                 const currentMode = PageConfig.currentMode;
                 if (currentMode === '1') {
                     PageConfig.subModes = {'1': [0, 0]};
+
+                    // 清空容器
+                    if (InputManager.statisticsRenderer) {
+                        InputManager.statisticsRenderer.stopRender();
+                    }
                     HtmlTools.getHtml('#grid_data').replaceChildren();
+
                     InputManager.statisticsAddLine();
                     PageConfig.syncScreenData('1');
                 } else if (currentMode !== '0') {
