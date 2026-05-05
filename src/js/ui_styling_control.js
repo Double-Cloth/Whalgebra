@@ -1312,7 +1312,7 @@
          * @param {string} [options.lazySelector='[data-lazy-load="true"]'] - 触发懒加载监听的目标节点选择器。
          * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒）。
          * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值。
-         * @param {string} [options.rootMargin='500px'] - 懒加载触发的缓冲区大小。
+         * @param {string} [options.rootMargin='60%'] - 懒加载触发的缓冲区大小。
          */
         constructor(options) {
             // --- 基础配置 ---
@@ -1389,7 +1389,7 @@
              * @type {string}
              * @private
              */
-            this._rootMargin = options.rootMargin || '500px';
+            this._rootMargin = options.rootMargin || '60%';
 
             // --- 核心状态与观察者实例 ---
 
@@ -1768,7 +1768,7 @@
                 });
             }, {
                 root: bigContainer,
-                rootMargin: `${this._rootMargin} 0px`,
+                rootMargin: `${this._rootMargin} 0%`,
                 threshold: 0
             });
         }
@@ -2930,8 +2930,6 @@
             this._pendingScrollQueue = [];
         }
 
-        /* ── 状态代理 ── */
-
         /**
          * @description 当前实例状态名称，与 {@link VirtualScroll.State} 中的值对应（只读）。
          * @type {string}
@@ -2939,415 +2937,6 @@
          */
         get state() {
             return this._sm.state;
-        }
-
-        /* ══════════════════════════════════════════════════════════════════════
-           公共 API
-        ══════════════════════════════════════════════════════════════════════ */
-
-        /**
-         * @method load
-         * @description 加载数据并（重新）启动虚拟滚动。
-         * * 可在 `IDLE`、`RUNNING`、`PAUSED` 三种状态下调用。
-         * * 内部流程：解析容器 → 测量行高（按需）→ 构建 DOM → 绑定事件 → 首次渲染。
-         * * 若 `remeasure` 为 `false` 且已测量过，则仅对行高做一致性校验（偏差 > 20% 时警告）。
-         * * `resetScroll` 为 `false` 时，将尽量保持当前滚动位置，但不超过新的最大滚动值。
-         *
-         * @param {any[]|{}}   data                   - 数据源数组（任意结构，由 `renderItem` 自行解析）。
-         * @param {number}  length                    - 要渲染的条数（取整；非法值退化为 0）。
-         * @param {Object}  [options={}]              - 可选参数。
-         * @param {boolean} [options.remeasure=false] - 是否强制重新测量行高。
-         * @param {boolean} [options.resetScroll=true] - 是否将滚动位置重置到顶部。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @throws {Error} 容器元素不存在或已从 DOM 中移除时抛出。
-         *
-         * @example
-         * // 首次加载
-         * vs.load(items, items.length);
-         *
-         * // 替换数据，保留滚动位置，强制重测行高
-         * vs.load(newItems, newItems.length, { remeasure: true, resetScroll: false });
-         */
-        load(data, length, {remeasure = false, resetScroll = true} = {}) {
-            this._assertNotDestroyed('load');
-
-            if (!this._sm.is(
-                VirtualScroll.State.IDLE,
-                VirtualScroll.State.RUNNING,
-                VirtualScroll.State.PAUSED
-            )) {
-                throw new Error(`[VirtualScroll] load() cannot be called in state "${this.state}"`);
-            }
-
-            const normalizedLength = this._normalizeLength(length, 'load');
-
-            this._unbindScroll();
-            this._unbindResize();
-            this._cancelAllRAF();
-            this._cancelSmoothScrollSilent();
-            this._pendingScrollQueue = [];
-
-            this._resolveContainer();
-
-            const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
-            const oldRowIndex = this.itemHeight > 0
-                                ? Math.floor(oldVirtScroll / this.itemHeight)
-                                : 0;
-
-            this.data = data;
-            this.totalCount = normalizedLength;
-
-            if (!this._measured || remeasure) {
-                this._setupContainer();
-                this._doMeasure();
-                this._measured = true;
-            } else {
-                this._verifyItemHeight();
-                this._heightMapper.update(
-                    this.totalCount, this.itemHeight, this.container.clientHeight
-                );
-            }
-
-            this._calcBufferSize(true);
-
-            if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
-                this._buildDOM();
-            }
-
-            this._syncContainerSize();
-
-            // ── 滚动位置处理 ────────────────────────────────────────────────────
-            if (resetScroll) {
-                this.container.scrollTop = 0;
-            } else {
-                // 记录目标值，延迟到 _forceRender 之后赋值
-                const clientHeight = this.container.clientHeight;
-                const hm = this._heightMapper;
-                const newVirtScroll = Math.min(
-                    oldRowIndex * this.itemHeight,
-                    Math.max(0, hm.virtualHeight - clientHeight)
-                );
-                // 在 scroll 监听器绑定之前赋值，避免触发多余的 scroll 事件
-                // _forceRender 会在 _bindEvents 之后统一执行，此处 scrollTop 改变不会产生副作用
-                this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
-            }
-
-            // scroll 监听器在 scrollTop 设置完毕后再绑定，彻底消除路径
-            this._bindEvents();
-
-            // 唯一一次强制渲染，基于最终 scrollTop 计算正确窗口
-            this._forceRender();
-
-            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
-                this._sm.transition(VirtualScroll.State.RUNNING);
-            }
-        }
-
-        /**
-         * @method pause
-         * @description 暂停虚拟滚动，解绑 scroll 事件监听器。
-         * * 仅在 `RUNNING` 状态下有效，其他状态下只打印警告。
-         * * 暂停期间调用 {@link VirtualScroll#scrollToIndex} 会将请求排队，
-         *   待 {@link VirtualScroll#resume} 后按序执行（仅最后一条生效）。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @returns {void}
-         * @example
-         * vs.pause();
-         * console.log(vs.state); // 'paused'
-         */
-        pause() {
-            this._assertNotDestroyed('pause');
-            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
-                console.warn(`[VirtualScroll] pause() requires RUNNING state, current: ${this.state}`);
-                return;
-            }
-
-            this._unbindScroll();
-            this._cancelAllRAF();
-            this._sm.transition(VirtualScroll.State.PAUSED);
-        }
-
-        /**
-         * @method resume
-         * @description 从暂停状态恢复虚拟滚动。
-         * * 仅在 `PAUSED` 状态下有效，其他状态下只打印警告。
-         * * 若暂停期间有排队的 `scrollToIndex()` 请求，恢复后将执行最后一条，
-         *   其余请求被丢弃（打印警告）。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @returns {void}
-         * @example
-         * vs.resume();
-         * console.log(vs.state); // 'running'
-         */
-        resume() {
-            this._assertNotDestroyed('resume');
-            if (!this._sm.is(VirtualScroll.State.PAUSED)) {
-                console.warn(`[VirtualScroll] resume() requires PAUSED state, current: ${this.state}`);
-                return;
-            }
-            this._sm.transition(VirtualScroll.State.RUNNING);
-            this._bindScroll();
-
-            if (this._pendingScrollQueue.length > 0) {
-                if (this._pendingScrollQueue.length > 1) {
-                    console.warn(
-                        `[VirtualScroll] ${this._pendingScrollQueue.length - 1} scrollToIndex() ` +
-                        'call(s) were dropped while PAUSED (only the last one is applied).'
-                    );
-                }
-                const {index, behavior} = this._pendingScrollQueue.at(-1);
-                this._pendingScrollQueue = [];
-                this.scrollToIndex(index, {behavior});
-                if (!this._isSmoothScrolling) {
-                    this._forceRender();
-                }
-                return;
-            }
-
-            this._forceRender();
-        }
-
-        /**
-         * @method clear
-         * @description 清空列表并将实例重置为 `IDLE` 状态。
-         * * 解绑所有事件、取消所有 rAF、清空 DOM 和节点池。
-         * * 清空后可再次调用 {@link VirtualScroll#load} 重新启动。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @returns {void}
-         * @example
-         * vs.clear();
-         * console.log(vs.state); // 'idle'
-         */
-        clear() {
-            this._assertNotDestroyed('clear');
-
-            if (!this._sm.is(VirtualScroll.State.IDLE)) {
-                this._sm.transition(VirtualScroll.State.IDLE);
-            }
-            this._teardown(false);
-        }
-
-        /**
-         * @method destroy
-         * @description 永久销毁实例，释放所有资源。
-         * * 销毁后不可再调用任何方法（会抛出异常），也无法通过 `load()` 重启。
-         * * 若已处于 `DESTROYED` 状态则直接返回，不重复执行。
-         *
-         * @returns {void}
-         * @example
-         * vs.destroy();
-         * console.log(vs.state); // 'destroyed'
-         */
-        destroy() {
-            if (this._sm.is(VirtualScroll.State.DESTROYED)) {
-                return;
-            }
-
-            // IDLE / RUNNING / PAUSED 都可以合法跳到 DESTROYED
-            this._sm.transition(VirtualScroll.State.DESTROYED);
-            this._teardown(false);
-        }
-
-        /**
-         * @method scrollToIndex
-         * @description 将滚动位置跳转到指定索引对应的条目。
-         * * `IDLE` 状态或容器不存在时静默返回。
-         * * `PAUSED` 状态时请求入队，`resume()` 后执行最后一条。
-         * * 压缩模式下 `'smooth'` 行为由内部 rAF 动画实现，而非浏览器原生滚动。
-         * * 索引会被夹紧到 `[0, totalCount - 1]`。
-         *
-         * @param {number} index                   - 目标条目索引（自动取整并夹紧）。
-         * @param {Object} [options={}]            - 可选参数。
-         * @param {'auto'|'smooth'} [options.behavior='auto'] - 滚动行为；`'smooth'` 为平滑滚动。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @returns {void}
-         * @example
-         * vs.scrollToIndex(999);                        // 即时跳转到第 999 条
-         * vs.scrollToIndex(999, { behavior: 'smooth' }); // 平滑滚动到第 999 条
-         */
-        scrollToIndex(index, {behavior = 'auto'} = {}) {
-            this._assertNotDestroyed('scrollToIndex');
-
-            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
-                return;
-            }
-            if (this.itemHeight <= 0) {
-                console.warn('[VirtualScroll] scrollToIndex() called before item height was measured');
-                return;
-            }
-
-            const numericIndex = Number(index);
-            const normalizedIndex = Number.isFinite(numericIndex) ? Math.trunc(numericIndex) : 0;
-            const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
-
-            if (this._sm.is(VirtualScroll.State.PAUSED)) {
-                this._pendingScrollQueue.push({index: i, behavior});
-                console.info(
-                    `[VirtualScroll] scrollToIndex(${i}) queued while PAUSED ` +
-                    `(queue length: ${this._pendingScrollQueue.length}). ` +
-                    'Only the last entry will be applied on resume().'
-                );
-                return;
-            }
-
-            const virtualTop = i * this.itemHeight;
-            const physicalTop = this._heightMapper.virtualToPhysical(virtualTop);
-
-            if (behavior === 'smooth') {
-                if (this._heightMapper.compressed) {
-                    this._smoothScrollTo(physicalTop);
-                } else {
-                    this.container.scrollTo({top: physicalTop, behavior: 'smooth'});
-                }
-            } else {
-                this._cancelSmoothScroll();
-                this.container.scrollTop = physicalTop;
-            }
-        }
-
-        /**
-         * @method scrollToTop
-         * @description 滚动到列表顶部（等同于 `scrollToIndex(0, options)`）。
-         *
-         * @param {Object}          [options]           - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
-         * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
-         * @returns {void}
-         * @example
-         * vs.scrollToTop({ behavior: 'smooth' });
-         */
-        scrollToTop(options) {
-            this.scrollToIndex(0, options);
-        }
-
-        /**
-         * @method scrollToBottom
-         * @description 滚动到列表底部。
-         * * 内部计算虚拟底部偏移量后转换为物理坐标进行滚动。
-         * * 压缩模式下 `'smooth'` 使用内部动画实现。
-         *
-         * @param {Object}          [options={}]               - 可选参数。
-         * @param {'auto'|'smooth'} [options.behavior='auto']  - 滚动行为。
-         *
-         * @throws {Error} 实例已销毁时抛出。
-         * @returns {void}
-         * @example
-         * vs.scrollToBottom({ behavior: 'smooth' });
-         */
-        scrollToBottom({behavior = 'auto'} = {}) {
-            this._assertNotDestroyed('scrollToBottom');
-            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
-                return;
-            }
-            if (this.itemHeight <= 0) {
-                console.warn('[VirtualScroll] scrollToBottom() called before item height was measured');
-                return;
-            }
-
-            const clientHeight = this.container.clientHeight;
-            const hm = this._heightMapper;
-            const virtualBottom = Math.max(0, hm.virtualHeight - clientHeight);
-            const physicalBottom = hm.virtualToPhysical(virtualBottom);
-
-            if (behavior === 'smooth') {
-                if (hm.compressed) {
-                    this._smoothScrollTo(physicalBottom);
-                } else {
-                    this.container.scrollTo({top: physicalBottom, behavior: 'smooth'});
-                }
-            } else {
-                this._cancelSmoothScroll();
-                this.container.scrollTop = physicalBottom;
-            }
-        }
-
-        /**
-         * @method getMetrics
-         * @description 返回当前实例的性能与状态快照（深度冻结，只读）。
-         * * 包含渲染窗口、节点池、高度映射、滚动状态等全部关键指标。
-         * * 用于调试、监控或单元测试断言。
-         *
-         * @returns {Readonly<{
-         *   state: string,
-         *   ready: boolean,
-         *   itemHeight: number,
-         *   bufferSize: number,
-         *   visibleCount: number,
-         *   renderedCount: number,
-         *   totalCount: number,
-         *   startIndex: number,
-         *   endIndex: number,
-         *   scrollTop: number,
-         *   poolSize: number,
-         *   wrapperCount: number,
-         *   userElemCount: number,
-         *   compressed: boolean,
-         *   virtualHeight: number,
-         *   physicalHeight: number,
-         *   scrollRatio: number,
-         *   pendingScrollQueue: ReadonlyArray<Readonly<{index: number, behavior: string}>>
-         * }>} 当前指标快照。
-         *
-         * @example
-         * const m = vs.getMetrics();
-         * console.log(m.renderedCount, m.totalCount, m.compressed);
-         */
-        getMetrics() {
-            const visibleCount = (this.itemHeight && this.container)
-                                 ? Math.ceil(this.container.clientHeight / this.itemHeight)
-                                 : 0;
-            const hm = this._heightMapper;
-
-            return Object.freeze({
-                state: this.state,
-                ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
-                itemHeight: this.itemHeight,
-                bufferSize: this.bufferSize,
-                visibleCount,
-                renderedCount: this._renderedNodes.size,
-                totalCount: this.totalCount,
-                startIndex: this._startIndex,
-                endIndex: this._endIndex,
-                scrollTop: this.container?.scrollTop ?? 0,
-                poolSize: this._nodePool.poolSize,
-                wrapperCount: this._nodePool.wrapperCount,
-                userElemCount: this._nodePool.userElemCount,
-                compressed: hm.compressed,
-                virtualHeight: hm.virtualHeight,
-                physicalHeight: hm.physicalHeight,
-                scrollRatio: hm.scrollRatio,
-                pendingScrollQueue: Object.freeze(
-                    this._pendingScrollQueue.map(e => Object.freeze({...e}))
-                )
-            });
-        }
-
-        /**
-         * @method isPaused
-         * @description 判断实例是否处于 `PAUSED` 状态。
-         * @returns {boolean}
-         * @example
-         * if (vs.isPaused()){
-         *   vs.resume();
-         * }
-         */
-        isPaused() {
-            return this._sm.is(VirtualScroll.State.PAUSED);
-        }
-
-        /**
-         * @method isRunning
-         * @description 判断实例是否处于 `RUNNING` 状态。
-         * @returns {boolean}
-         * @example
-         * if (!vs.isRunning()) vs.load(data, data.length);
-         */
-        isRunning() {
-            return this._sm.is(VirtualScroll.State.RUNNING);
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -4482,6 +4071,415 @@
                 this._smoothRAF = null;
             }
             this._isSmoothScrolling = false;
+        }
+
+        /* ══════════════════════════════════════════════════════════════════════
+           公共 API
+        ══════════════════════════════════════════════════════════════════════ */
+
+        /**
+         * @method load
+         * @description 加载数据并（重新）启动虚拟滚动。
+         * * 可在 `IDLE`、`RUNNING`、`PAUSED` 三种状态下调用。
+         * * 内部流程：解析容器 → 测量行高（按需）→ 构建 DOM → 绑定事件 → 首次渲染。
+         * * 若 `remeasure` 为 `false` 且已测量过，则仅对行高做一致性校验（偏差 > 20% 时警告）。
+         * * `resetScroll` 为 `false` 时，将尽量保持当前滚动位置，但不超过新的最大滚动值。
+         *
+         * @param {any[]|{}}   data                   - 数据源数组（任意结构，由 `renderItem` 自行解析）。
+         * @param {number}  length                    - 要渲染的条数（取整；非法值退化为 0）。
+         * @param {Object}  [options={}]              - 可选参数。
+         * @param {boolean} [options.remeasure=false] - 是否强制重新测量行高。
+         * @param {boolean} [options.resetScroll=true] - 是否将滚动位置重置到顶部。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @throws {Error} 容器元素不存在或已从 DOM 中移除时抛出。
+         *
+         * @example
+         * // 首次加载
+         * vs.load(items, items.length);
+         *
+         * // 替换数据，保留滚动位置，强制重测行高
+         * vs.load(newItems, newItems.length, { remeasure: true, resetScroll: false });
+         */
+        load(data, length, {remeasure = false, resetScroll = true} = {}) {
+            this._assertNotDestroyed('load');
+
+            if (!this._sm.is(
+                VirtualScroll.State.IDLE,
+                VirtualScroll.State.RUNNING,
+                VirtualScroll.State.PAUSED
+            )) {
+                throw new Error(`[VirtualScroll] load() cannot be called in state "${this.state}"`);
+            }
+
+            const normalizedLength = this._normalizeLength(length, 'load');
+
+            this._unbindScroll();
+            this._unbindResize();
+            this._cancelAllRAF();
+            this._cancelSmoothScrollSilent();
+            this._pendingScrollQueue = [];
+
+            this._resolveContainer();
+
+            const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+            const oldRowIndex = this.itemHeight > 0
+                                ? Math.floor(oldVirtScroll / this.itemHeight)
+                                : 0;
+
+            this.data = data;
+            this.totalCount = normalizedLength;
+
+            if (!this._measured || remeasure) {
+                this._setupContainer();
+                this._doMeasure();
+                this._measured = true;
+            } else {
+                this._verifyItemHeight();
+                this._heightMapper.update(
+                    this.totalCount, this.itemHeight, this.container.clientHeight
+                );
+            }
+
+            this._calcBufferSize(true);
+
+            if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
+                this._buildDOM();
+            }
+
+            this._syncContainerSize();
+
+            // ── 滚动位置处理 ────────────────────────────────────────────────────
+            if (resetScroll) {
+                this.container.scrollTop = 0;
+            } else {
+                // 记录目标值，延迟到 _forceRender 之后赋值
+                const clientHeight = this.container.clientHeight;
+                const hm = this._heightMapper;
+                const newVirtScroll = Math.min(
+                    oldRowIndex * this.itemHeight,
+                    Math.max(0, hm.virtualHeight - clientHeight)
+                );
+                // 在 scroll 监听器绑定之前赋值，避免触发多余的 scroll 事件
+                // _forceRender 会在 _bindEvents 之后统一执行，此处 scrollTop 改变不会产生副作用
+                this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
+            }
+
+            // scroll 监听器在 scrollTop 设置完毕后再绑定，彻底消除路径
+            this._bindEvents();
+
+            // 唯一一次强制渲染，基于最终 scrollTop 计算正确窗口
+            this._forceRender();
+
+            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                this._sm.transition(VirtualScroll.State.RUNNING);
+            }
+        }
+
+        /**
+         * @method pause
+         * @description 暂停虚拟滚动，解绑 scroll 事件监听器。
+         * * 仅在 `RUNNING` 状态下有效，其他状态下只打印警告。
+         * * 暂停期间调用 {@link VirtualScroll#scrollToIndex} 会将请求排队，
+         *   待 {@link VirtualScroll#resume} 后按序执行（仅最后一条生效）。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.pause();
+         * console.log(vs.state); // 'paused'
+         */
+        pause() {
+            this._assertNotDestroyed('pause');
+            if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                console.warn(`[VirtualScroll] pause() requires RUNNING state, current: ${this.state}`);
+                return;
+            }
+
+            this._unbindScroll();
+            this._cancelAllRAF();
+            this._sm.transition(VirtualScroll.State.PAUSED);
+        }
+
+        /**
+         * @method resume
+         * @description 从暂停状态恢复虚拟滚动。
+         * * 仅在 `PAUSED` 状态下有效，其他状态下只打印警告。
+         * * 若暂停期间有排队的 `scrollToIndex()` 请求，恢复后将执行最后一条，
+         *   其余请求被丢弃（打印警告）。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.resume();
+         * console.log(vs.state); // 'running'
+         */
+        resume() {
+            this._assertNotDestroyed('resume');
+            if (!this._sm.is(VirtualScroll.State.PAUSED)) {
+                console.warn(`[VirtualScroll] resume() requires PAUSED state, current: ${this.state}`);
+                return;
+            }
+            this._sm.transition(VirtualScroll.State.RUNNING);
+            this._bindScroll();
+
+            if (this._pendingScrollQueue.length > 0) {
+                if (this._pendingScrollQueue.length > 1) {
+                    console.warn(
+                        `[VirtualScroll] ${this._pendingScrollQueue.length - 1} scrollToIndex() ` +
+                        'call(s) were dropped while PAUSED (only the last one is applied).'
+                    );
+                }
+                const {index, behavior} = this._pendingScrollQueue.at(-1);
+                this._pendingScrollQueue = [];
+                this.scrollToIndex(index, {behavior});
+                if (!this._isSmoothScrolling) {
+                    this._forceRender();
+                }
+                return;
+            }
+
+            this._forceRender();
+        }
+
+        /**
+         * @method clear
+         * @description 清空列表并将实例重置为 `IDLE` 状态。
+         * * 解绑所有事件、取消所有 rAF、清空 DOM 和节点池。
+         * * 清空后可再次调用 {@link VirtualScroll#load} 重新启动。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.clear();
+         * console.log(vs.state); // 'idle'
+         */
+        clear() {
+            this._assertNotDestroyed('clear');
+
+            if (!this._sm.is(VirtualScroll.State.IDLE)) {
+                this._sm.transition(VirtualScroll.State.IDLE);
+            }
+            this._teardown(false);
+        }
+
+        /**
+         * @method destroy
+         * @description 永久销毁实例，释放所有资源。
+         * * 销毁后不可再调用任何方法（会抛出异常），也无法通过 `load()` 重启。
+         * * 若已处于 `DESTROYED` 状态则直接返回，不重复执行。
+         *
+         * @returns {void}
+         * @example
+         * vs.destroy();
+         * console.log(vs.state); // 'destroyed'
+         */
+        destroy() {
+            if (this._sm.is(VirtualScroll.State.DESTROYED)) {
+                return;
+            }
+
+            // IDLE / RUNNING / PAUSED 都可以合法跳到 DESTROYED
+            this._sm.transition(VirtualScroll.State.DESTROYED);
+            this._teardown(false);
+        }
+
+        /**
+         * @method scrollToIndex
+         * @description 将滚动位置跳转到指定索引对应的条目。
+         * * `IDLE` 状态或容器不存在时静默返回。
+         * * `PAUSED` 状态时请求入队，`resume()` 后执行最后一条。
+         * * 压缩模式下 `'smooth'` 行为由内部 rAF 动画实现，而非浏览器原生滚动。
+         * * 索引会被夹紧到 `[0, totalCount - 1]`。
+         *
+         * @param {number} index                   - 目标条目索引（自动取整并夹紧）。
+         * @param {Object} [options={}]            - 可选参数。
+         * @param {'auto'|'smooth'} [options.behavior='auto'] - 滚动行为；`'smooth'` 为平滑滚动。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.scrollToIndex(999);                        // 即时跳转到第 999 条
+         * vs.scrollToIndex(999, { behavior: 'smooth' }); // 平滑滚动到第 999 条
+         */
+        scrollToIndex(index, {behavior = 'auto'} = {}) {
+            this._assertNotDestroyed('scrollToIndex');
+
+            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
+                return;
+            }
+            if (this.itemHeight <= 0) {
+                console.warn('[VirtualScroll] scrollToIndex() called before item height was measured');
+                return;
+            }
+
+            const numericIndex = Number(index);
+            const normalizedIndex = Number.isFinite(numericIndex) ? Math.trunc(numericIndex) : 0;
+            const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
+
+            if (this._sm.is(VirtualScroll.State.PAUSED)) {
+                this._pendingScrollQueue.push({index: i, behavior});
+                console.info(
+                    `[VirtualScroll] scrollToIndex(${i}) queued while PAUSED ` +
+                    `(queue length: ${this._pendingScrollQueue.length}). ` +
+                    'Only the last entry will be applied on resume().'
+                );
+                return;
+            }
+
+            const virtualTop = i * this.itemHeight;
+            const physicalTop = this._heightMapper.virtualToPhysical(virtualTop);
+
+            if (behavior === 'smooth') {
+                if (this._heightMapper.compressed) {
+                    this._smoothScrollTo(physicalTop);
+                } else {
+                    this.container.scrollTo({top: physicalTop, behavior: 'smooth'});
+                }
+            } else {
+                this._cancelSmoothScroll();
+                this.container.scrollTop = physicalTop;
+            }
+        }
+
+        /**
+         * @method scrollToTop
+         * @description 滚动到列表顶部（等同于 `scrollToIndex(0, options)`）。
+         *
+         * @param {Object}          [options]           - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
+         * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
+         * @returns {void}
+         * @example
+         * vs.scrollToTop({ behavior: 'smooth' });
+         */
+        scrollToTop(options) {
+            this.scrollToIndex(0, options);
+        }
+
+        /**
+         * @method scrollToBottom
+         * @description 滚动到列表底部。
+         * * 内部计算虚拟底部偏移量后转换为物理坐标进行滚动。
+         * * 压缩模式下 `'smooth'` 使用内部动画实现。
+         *
+         * @param {Object}          [options={}]               - 可选参数。
+         * @param {'auto'|'smooth'} [options.behavior='auto']  - 滚动行为。
+         *
+         * @throws {Error} 实例已销毁时抛出。
+         * @returns {void}
+         * @example
+         * vs.scrollToBottom({ behavior: 'smooth' });
+         */
+        scrollToBottom({behavior = 'auto'} = {}) {
+            this._assertNotDestroyed('scrollToBottom');
+            if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
+                return;
+            }
+            if (this.itemHeight <= 0) {
+                console.warn('[VirtualScroll] scrollToBottom() called before item height was measured');
+                return;
+            }
+
+            const clientHeight = this.container.clientHeight;
+            const hm = this._heightMapper;
+            const virtualBottom = Math.max(0, hm.virtualHeight - clientHeight);
+            const physicalBottom = hm.virtualToPhysical(virtualBottom);
+
+            if (behavior === 'smooth') {
+                if (hm.compressed) {
+                    this._smoothScrollTo(physicalBottom);
+                } else {
+                    this.container.scrollTo({top: physicalBottom, behavior: 'smooth'});
+                }
+            } else {
+                this._cancelSmoothScroll();
+                this.container.scrollTop = physicalBottom;
+            }
+        }
+
+        /**
+         * @method getMetrics
+         * @description 返回当前实例的性能与状态快照（深度冻结，只读）。
+         * * 包含渲染窗口、节点池、高度映射、滚动状态等全部关键指标。
+         * * 用于调试、监控或单元测试断言。
+         *
+         * @returns {Readonly<{
+         *   state: string,
+         *   ready: boolean,
+         *   itemHeight: number,
+         *   bufferSize: number,
+         *   visibleCount: number,
+         *   renderedCount: number,
+         *   totalCount: number,
+         *   startIndex: number,
+         *   endIndex: number,
+         *   scrollTop: number,
+         *   poolSize: number,
+         *   wrapperCount: number,
+         *   userElemCount: number,
+         *   compressed: boolean,
+         *   virtualHeight: number,
+         *   physicalHeight: number,
+         *   scrollRatio: number,
+         *   pendingScrollQueue: ReadonlyArray<Readonly<{index: number, behavior: string}>>
+         * }>} 当前指标快照。
+         *
+         * @example
+         * const m = vs.getMetrics();
+         * console.log(m.renderedCount, m.totalCount, m.compressed);
+         */
+        getMetrics() {
+            const visibleCount = (this.itemHeight && this.container)
+                                 ? Math.ceil(this.container.clientHeight / this.itemHeight)
+                                 : 0;
+            const hm = this._heightMapper;
+
+            return Object.freeze({
+                state: this.state,
+                ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
+                itemHeight: this.itemHeight,
+                bufferSize: this.bufferSize,
+                visibleCount,
+                renderedCount: this._renderedNodes.size,
+                totalCount: this.totalCount,
+                startIndex: this._startIndex,
+                endIndex: this._endIndex,
+                scrollTop: this.container?.scrollTop ?? 0,
+                poolSize: this._nodePool.poolSize,
+                wrapperCount: this._nodePool.wrapperCount,
+                userElemCount: this._nodePool.userElemCount,
+                compressed: hm.compressed,
+                virtualHeight: hm.virtualHeight,
+                physicalHeight: hm.physicalHeight,
+                scrollRatio: hm.scrollRatio,
+                pendingScrollQueue: Object.freeze(
+                    this._pendingScrollQueue.map(e => Object.freeze({...e}))
+                )
+            });
+        }
+
+        /**
+         * @method isPaused
+         * @description 判断实例是否处于 `PAUSED` 状态。
+         * @returns {boolean}
+         * @example
+         * if (vs.isPaused()){
+         *   vs.resume();
+         * }
+         */
+        isPaused() {
+            return this._sm.is(VirtualScroll.State.PAUSED);
+        }
+
+        /**
+         * @method isRunning
+         * @description 判断实例是否处于 `RUNNING` 状态。
+         * @returns {boolean}
+         * @example
+         * if (!vs.isRunning()) vs.load(data, data.length);
+         */
+        isRunning() {
+            return this._sm.is(VirtualScroll.State.RUNNING);
         }
     }
 
@@ -7559,6 +7557,10 @@
 
             // 获取当前活动的子屏幕输入区域。
             const target = HtmlTools.getCurrentSubscreenArea();
+            if (!target) {
+                throw new Error('[PageControlTools] There is no active area on the current screen.');
+            }
+
             // 使用格式化后的表达式内容替换目标区域的现有内容。
             HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
             // 为新渲染的表达式添加适当的空格以提高可读性。
