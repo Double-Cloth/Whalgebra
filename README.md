@@ -49,7 +49,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 ### 2.2. 本地运行（Windows）
 
-环境要求：Git、Python 3.13+、Chrome 108+
+环境要求：Git、Python 3.13+、Chrome 109+
 
 1. 克隆仓库并进入项目目录
 
