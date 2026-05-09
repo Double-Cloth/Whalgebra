@@ -156,22 +156,61 @@ function addLogToUI(tag, args, level = "info") {
     contentDiv.className = 'log-content';
 
     const argList = Array.isArray(args) ? args : [args];
-    argList.forEach((arg, index) => {
-        if (index > 0) {
+    let argIndex = 0;
+
+    // --- 解析 %c 样式占位符 ---
+    if (typeof argList[0] === 'string' && argList[0].includes('%c')) {
+        const template = argList[0];
+        const parts = template.split('%c');
+
+        // 处理第一个 %c 之前的文本
+        if (parts[0]) {
+            const span = document.createElement('span');
+            span.textContent = parts[0];
+            contentDiv.appendChild(span);
+        }
+
+        // 遍历后续部分，每部分对应一个样式参数
+        for (let i = 1; i < parts.length; i++) {
+            argIndex++; // 消耗下一个参数作为样式
+            const style = argList[argIndex];
+            const text = parts[i];
+
+            const span = document.createElement('span');
+            span.textContent = text;
+            if (typeof style === 'string') {
+                // 将样式字符串直接应用到 inline style
+                span.style.cssText = style;
+            }
+            contentDiv.appendChild(span);
+        }
+        argIndex++; // 指向模板和样式参数之后的剩余参数
+    }
+
+    // --- 处理剩余参数 (如对象、数字或其他未被 %c 消耗的字符串) ---
+    for (let i = argIndex; i < argList.length; i++) {
+        const arg = argList[i];
+
+        // 参数间添加空格
+        if (contentDiv.childNodes.length > 0) {
             contentDiv.appendChild(createSpan(' ', ''));
         }
+
         if (typeof arg === 'object' && arg !== null) {
+            // 如果是对象，调用原有的 JSON 树渲染逻辑
             contentDiv.appendChild(createJsonTree(arg));
         } else {
+            // 普通文本渲染
             const span = document.createElement('span');
             span.style.verticalAlign = 'top';
             span.textContent = String(arg);
             contentDiv.appendChild(span);
         }
-    });
+    }
 
     div.appendChild(contentDiv);
     output.appendChild(div);
+
     if (isAutoScroll) {
         output.scrollTop = output.scrollHeight;
     }
@@ -186,7 +225,7 @@ function toggleAutoScroll() {
     isAutoScroll = !isAutoScroll;
     const btn = document.getElementById('btnAutoScroll');
     btn.innerText = isAutoScroll ? "自动滚动: ON" : "自动滚动: OFF";
-    btn.style.color = isAutoScroll ? "#FFF" : "#777";
+    btn.style.color = isAutoScroll ? "#FFFFFF" : "#777777";
 }
 
 // --- 劫持 ---

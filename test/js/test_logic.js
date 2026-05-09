@@ -59,9 +59,9 @@ async function test(mode = 0) {
     const logResult = (title, pass, input, expected, actual, extra = {}) => {
         const logData = {Input: input, Expected: expected, Actual: actual, ...extra};
         if (pass) {
-            console.log(`✅ ${title}`, logData);
+            console.log(`%c[Passed]%c ${title}`, 'color: #34D399; font-weight: bold', '', logData);
         } else {
-            console.error(`❌ ${title}`, logData);
+            console.log(`%c[Failed]%c ${title}`, 'color: #F87171; font-weight: bold', '', logData);
         }
     };
 

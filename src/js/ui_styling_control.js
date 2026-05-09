@@ -605,7 +605,7 @@
          *
          * `g` 标志确保正则表达式在全局范围内进行匹配，即找到所有匹配项，而不是在第一个匹配后停止。
          */
-        static _tokenizerRegex = (() => { // IIFE 开始
+        static _tokenizerRegex = (() => {
             // 内部辅助函数：转义正则表达式中的特殊字符，以防止它们被解释为元字符。
             const escape = s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
@@ -615,7 +615,7 @@
                 .join('|');
             // 创建并返回最终的正则表达式对象。
             return new RegExp(`(${symbolPattern})|(\\[[^\\]]*\])|([\\s\\S])`, 'g');
-        })(); // IIFE 结束
+        })();
 
         /**
          * @constructor
@@ -1483,6 +1483,16 @@
         }
 
         /**
+         * @readonly
+         * @type {string}
+         * @description 自定义 `Object.prototype.toString.call()` 的返回值。
+         * 这使得 `Public.typeOf(new AsyncListRenderer())` 能够返回 'AsyncListRenderer'。
+         */
+        get [Symbol.toStringTag]() {
+            return 'AsyncListRenderer';
+        }
+
+        /**
          * 内部任务调度器，负责按顺序消费队列中的任务。
          *
          * 该方法采用“单例执行”模式（由 `_isProcessing` 锁控制）：
@@ -2148,6 +2158,7 @@
                 this._abortController.abort();
                 this._abortController = null;
             }
+
             // 统一中止所有已入队但尚未执行的 append 任务
             this._appendControllers.forEach(c => c.abort());
             this._appendControllers.clear();
@@ -2190,6 +2201,7 @@
                 if (!task) {
                     return;
                 }
+
                 // 安全地从任务对象/函数身上寻找挂载的 reject 方法
                 const rejectFn =
                     typeof task.reject === 'function' ? task.reject :
@@ -2652,7 +2664,6 @@
 
                     // 防御性清洁检查
                     // recycle() 应当已经清空 wrapper，但若池逻辑存在 bug 导致脏数据入池，
-                    // 此处提前发现并修正，避免把上一个条目的内容渲染到新位置。
                     if (wrapper.childNodes.length > 0 || wrapper.hasAttributes()) {
                         console.error(
                             '[VirtualScroll] _NodePool: a dirty wrapper was found in the pool. ' +
@@ -2973,6 +2984,16 @@
              * PAUSED 状态下排队等待的 scrollToIndex 调用记录。
              */
             this._pendingScrollQueue = [];
+        }
+
+        /**
+         * @readonly
+         * @type {string}
+         * @description 自定义 `Object.prototype.toString.call()` 的返回值。
+         * 这使得 `Public.typeOf(new VirtualScroll())` 能够返回 'VirtualScroll'。
+         */
+        get [Symbol.toStringTag]() {
+            return 'VirtualScroll';
         }
 
         /**
