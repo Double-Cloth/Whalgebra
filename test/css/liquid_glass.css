@@ -304,7 +304,7 @@ button:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.8);
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    border-color: #FFF;
+    border-color: #FFFFFF;
 }
 
 button:active:not(:disabled) {
@@ -381,7 +381,7 @@ button.primary:hover:not(:disabled) {
 
 .btn-small:hover {
     background: rgba(255, 255, 255, 0.2);
-    color: #FFF;
+    color: #FFFFFF;
     transform: none;
 }
 
@@ -535,7 +535,7 @@ button.primary:hover:not(:disabled) {
 }
 
 .jv-toggle:hover {
-    color: #FFF;
+    color: #FFFFFF;
 }
 
 .jv-node.collapsed > .jv-children {

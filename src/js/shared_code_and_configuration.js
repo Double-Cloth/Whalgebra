@@ -567,7 +567,7 @@
             // 标记是否为在 HTML 中只占用一个类名的函数
             result.isHtmlClassLenOne = TokenConfig.htmlClassLenOneFunc.has(token);
 
-            // 安全获取首字符（处理 token 为空字符串的情况，避免越界或报错）
+            // 安全获取首字符 (处理 token 为空字符串的情况，避免越界或报错)
             const firstChar = token.length > 0 ? token[0] : null;
 
             // 检查 token 是否合法 (不在全量符号表中，且首字母也不是基础数字)
