@@ -2664,6 +2664,7 @@
 
                     // 防御性清洁检查
                     // recycle() 应当已经清空 wrapper，但若池逻辑存在 bug 导致脏数据入池，
+                    // 此处提前发现并修正，避免把上一个条目的内容渲染到新位置。
                     if (wrapper.childNodes.length > 0 || wrapper.hasAttributes()) {
                         console.error(
                             '[VirtualScroll] _NodePool: a dirty wrapper was found in the pool. ' +
