@@ -159,20 +159,22 @@
                 if (dealMode === '1') {
                     let index;
                     let children = HtmlTools.getHtml('#grid_data').children;
-                    if (!Array.isArray(name)) {
-                        name = name.split(',');
+                    if (children.length !== 0) {
+                        if (!Array.isArray(name)) {
+                            name = name.split(',');
+                        }
+                        [name[0], name[1]] = [Number(name[0]), Number(name[1])];
+                        // 验证数组格式和索引范围。
+                        if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
+                            throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
+                        }
+                        // `children[name[0]]` 是行 `<div>`，其子元素中数据单元格从索引 1 开始。
+                        index = children[name[0]].children[name[1] + 1];
+                        // 移除当前已激活单元格的高亮。
+                        HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
+                        // 为新选中的单元格添加 'GridOn' 类，使其高亮。
+                        index.classList.add('GridOn');
                     }
-                    [name[0], name[1]] = [Number(name[0]), Number(name[1])];
-                    // 验证数组格式和索引范围。
-                    if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
-                        throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
-                    }
-                    // `children[name[0]]` 是行 `<div>`，其子元素中数据单元格从索引 1 开始。
-                    index = children[name[0]].children[name[1] + 1];
-                    // 移除当前已激活单元格的高亮。
-                    HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
-                    // 为新选中的单元格添加 'GridOn' 类，使其高亮。
-                    index.classList.add('GridOn');
                 } else {
                     // --- 其他模式 ('2_0', '2_1', '3', '4') 的通用处理逻辑 ---
                     // 这些模式的子模式切换表现为在多个输入区域之间切换激活状态。
@@ -452,7 +454,7 @@
         /**
          * @private
          * @static
-         * @type {Object<string, string|Array<Array<string>>>}
+         * @type {Object<string, string|Array[]>}
          * @description 存储屏幕上各个输入区域的数据。
          * 键是区域的标识符（例如 '1' 代表统计模式的网格数据，'2_00' 代表函数定义模式的 f(x) 表达式），
          * 值是该区域的输入内容。对于统计模式，值是一个二维数组 `[[x1, y1], [x2, y2], ...]`。
@@ -494,15 +496,38 @@
          * 此 setter 允许批量更新 `_screenData` 中的部分或全部字段。
          * 它会将传入对象 `data` 中的键值对合并到当前的 `_screenData` 中，但仅限于 `_screenData` 中已存在的键。
          * 更新后，新的状态会被立即持久化到 `localStorage`。
-         * @param {Object<string, string|Array<Array<string>>>} data - 包含要更新的屏幕数据的对象。
+         * 注意，可以使用参数 {'1': [x, y, val]} 来修改统计模式中指定位置上的值（x,y 为修改位置的坐标，val 为修改后的值）
+         * @param {Object.<string, (string|Array<*>)>} data - 包含要更新的屏幕数据的对象。
          */
         static set screenData(data) {
-            // 遍历传入数据的每个键值对
+            // 1. 增加前置防御，确保传入的是有效对象
+            if (!data || typeof data !== 'object') {
+                return;
+            }
+
             Object.entries(data).forEach(([key, value]) => {
-                // 仅当键在当前 _screenData 中存在时才更新，防止注入非法键
-                if (key in PageConfig._screenData) {
-                    PageConfig._screenData[key] = value;
+                // 2. 使用 Object.hasOwn 仅检查自身属性，防止原型链注入
+                if (!Object.hasOwn(PageConfig._screenData, key)) {
+                    return;
                 }
+
+                // 3. 专门处理 key 为 '1' 且要求单点更新（即 value 是个坐标元组）的情况
+                if (key === '1' && !Array.isArray(value[0])) {
+                    const [row, col, newVal] = value; // 使用解构赋值，语义更清晰
+                    const targetMatrix = PageConfig._screenData['1'];
+
+                    // 提取边界检查逻辑
+                    const isValidRow = row >= 0 && row < targetMatrix.length;
+                    const isValidCol = col >= 0 && col < 2;
+
+                    if (isValidRow && isValidCol) {
+                        targetMatrix[row][col] = newVal;
+                    }
+                    return; // 命中单点更新后，直接跳出当前循环（相当于 continue）
+                }
+
+                // 4. 其他常规情况（包含 key 为 '1' 但传入的是全量二维数组的情况）
+                PageConfig._screenData[key] = Array.isArray(value) ? structuredClone(value) : value;
             });
             // 将更新后的 _screenData 序列化并保存到 localStorage
             localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
@@ -2012,6 +2037,11 @@
                         });
                     }
 
+                    // 日志打印
+                    // if (renderedInThisFrame > 0) {
+                    //     console.log(`[AsyncListRenderer] Batch finished. Rendered: ${renderedInThisFrame} | Progress: ${index} / ${endIndex}`);
+                    // }
+
                     // 调度下一帧
                     if (index < endIndex) {
                         rafId = requestAnimationFrame(renderNextBatch);
@@ -3142,17 +3172,14 @@
                 this.container.style.position = 'relative';
             }
 
-            // 将 auto 强制转换为 scroll，使滚动条轨道常驻。
-            // 这样在 _doMeasure 清空 DOM 时，clientWidth 不会因为滚动条的消失而突变，
-            // 从而彻底斩断 ResizeObserver 的死循环，也能保证测量时文本折行计算的准确性。
             if (
                 cs.overflow === 'visible' ||
                 cs.overflow === '' ||
                 cs.overflow === 'auto' ||
-                cs.overflowY === 'auto'
+                cs.overflowY === 'auto' ||
+                cs.overflowY === 'scroll'
             ) {
-                // 水平方向保持原样，仅垂直方向设为 scroll
-                this.container.style.overflowY = 'scroll';
+                this.container.style.overflowY = 'auto';
                 this.container.style.overflowX = cs.overflowX !== 'visible' ? cs.overflowX : 'hidden';
             }
         }
@@ -3240,6 +3267,20 @@
          * @returns {void}
          */
         _doMeasure() {
+            // 1. 记录初始状态
+            const originalOverflowY = this.container.style.overflowY;
+            const clientHeight = this.container.clientHeight;
+
+            // 预判是否需要维持滚动条
+            // 若曾测量过则用虚拟高度判断，否则用 Fallback 高度预判，或看当前物理高度是否已超标
+            const expectedHeight = this._measured
+                                   ? this._heightMapper.virtualHeight
+                                   : this.totalCount * VirtualScroll._FALLBACK_HEIGHT;
+            const willHaveScrollbar = expectedHeight > clientHeight || this.container.scrollHeight > clientHeight;
+
+            // 在测量前临时冻结 overflowY 状态，避免 DOM 清空瞬间 clientWidth 变大导致文本折行不准
+            this.container.style.overflowY = willHaveScrollbar ? 'scroll' : 'hidden';
+
             this._unbindScroll();
             this._recycleRenderedNodes();
             this.container.replaceChildren();
@@ -3249,8 +3290,10 @@
 
             if (this.totalCount === 0) {
                 this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
-                this._heightMapper.update(0, this.itemHeight, this.container.clientHeight);
+                this._heightMapper.update(0, this.itemHeight, clientHeight);
                 console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
+                // 恢复原始的 overflowY 样式
+                this.container.style.overflowY = originalOverflowY;
                 return;
             }
 
@@ -3274,6 +3317,9 @@
             this.container.replaceChildren();
             tempEls.length = 0;
 
+            // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
+            this.container.style.overflowY = originalOverflowY;
+
             if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
                 console.warn(
                     `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
@@ -3289,8 +3335,9 @@
 
             this.itemHeight = measured;
 
-            const clientHeight = this.container.clientHeight;
-            this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
+            // 使用最新的 clientHeight 更新，因为恢复 overflowY 后容器可视高度可能有极小微调
+            const finalClientHeight = this.container.clientHeight;
+            this._heightMapper.update(this.totalCount, this.itemHeight, finalClientHeight);
         }
 
         /* ══════════════════════════════════════════════════════════════════════
