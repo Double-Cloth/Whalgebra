@@ -190,10 +190,11 @@ document.addEventListener('click', (event) => {
             if (succeed && !HtmlTools.getHtml('.InputTip')) {
                 InputManager.ac();
             }
-            return;
+            return HtmlTools.scrollToView();
         }
         if (firstChildClass === '_del_line_') {
-            return InputManager.statisticsDelLine();
+            InputManager.statisticsDelLine();
+            return HtmlTools.scrollToView();
         }
         const input = HtmlTools.getClassList(target);
         InputManager.input(input);

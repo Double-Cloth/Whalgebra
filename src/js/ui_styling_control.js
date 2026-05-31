@@ -4503,8 +4503,6 @@
                         }
                         nextNum = Number(PageConfig.subModes[currentMode]) + addNum;
                         makeValue = nextNum => nextNum.toString();
-                        // 确保视图跟随
-                        HtmlTools.scrollToView();
                         break;
                     }
                 }
