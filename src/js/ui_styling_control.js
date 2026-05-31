@@ -1,15 +1,4 @@
 (function () {
-    /**
-     * @todo 性能优化：使用 VirtualScroll 替换 AsyncListRenderer
-     * @description
-     * 1. 核心目标：提升主列表与统计模式输入框的渲染性能。
-     * 2. 技术约束：VirtualScroll 模式下无法直接访问 `.GridOn` 实例。
-     * @step
-     * - 抽象数据层：创建独立类管理 `#grid_data`，解耦对 `.GridOn` 的直接依赖。
-     * - 逻辑映射：重构所有 `#grid_data` 读取操作，通过管理类进行代理。
-     * - 组件迁移：完成上述重构后，将全量业务场景切换至 VirtualScroll。
-     */
-
     "use strict";
 
     /**
@@ -157,23 +146,36 @@
                 }
                 // --- 模式 '1' (统计回归) 的特殊处理逻辑 ---
                 if (dealMode === '1') {
-                    let index;
-                    let children = HtmlTools.getHtml('#grid_data').children;
-                    if (children.length !== 0) {
-                        if (!Array.isArray(name)) {
-                            name = name.split(',');
+                    if (!Array.isArray(name)) {
+                        name = name.split(',');
+                    }
+                    [name[0], name[1]] = [Number(name[0]), Number(name[1])];
+
+                    // 验证数组格式和索引范围。
+                    const children = PageConfig.screenData['1'];
+                    if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
+                        throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
+                    }
+
+                    /**
+                     * 双重 requestAnimationFrame 封装，用于确保 DOM 初始状态已完全上屏（渲染），
+                     * 避免浏览器由于批量渲染合并样式，从而完美触发 CSS 过渡动画。
+                     * * @param {Function} callback - 在第二帧重绘前执行的回调函数
+                     */
+                    const safeRaf = (callback) => {
+                        requestAnimationFrame(() => requestAnimationFrame(callback));
+                    };
+
+                    if (PageConfig.currentMode === '1') {
+                        const gridOn = HtmlTools.getHtml('.GridOn');
+                        if (gridOn) {
+                            safeRaf(() => gridOn.classList.remove('GridOn'));
                         }
-                        [name[0], name[1]] = [Number(name[0]), Number(name[1])];
-                        // 验证数组格式和索引范围。
-                        if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
-                            throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
-                        }
-                        // `children[name[0]]` 是行 `<div>`，其子元素中数据单元格从索引 1 开始。
-                        index = children[name[0]].children[name[1] + 1];
-                        // 移除当前已激活单元格的高亮。
-                        HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
-                        // 为新选中的单元格添加 'GridOn' 类，使其高亮。
-                        index.classList.add('GridOn');
+
+                        InputManager.statisticsRenderer.applyToItem(name[0], (el) => {
+                            const targetEl = el.children[name[1] + 1];
+                            safeRaf(() => targetEl.classList.add('GridOn'));
+                        });
                     }
                 } else {
                     // --- 其他模式 ('2_0', '2_1', '3', '4') 的通用处理逻辑 ---
@@ -258,8 +260,18 @@
             HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.add('NoDisplay');
             PageConfig._currentMode = mode;
             if (mode === '1') {
+                if (InputManager.statisticsRenderer.isPaused()) {
+                    InputManager.statisticsRenderer.resume();
+                }
                 HtmlTools.getHtml('#keyboard_top').classList.add('ForMode1');
+                const data = PageConfig.screenData['1'];
+                InputManager.statisticsRenderer.load(data, data.length, {resetScroll: false});
+                // 移动屏幕至焦点处
+                HtmlTools.scrollToView();
             } else {
+                if (InputManager.statisticsRenderer.isRunning()) {
+                    InputManager.statisticsRenderer.pause();
+                }
                 HtmlTools.getHtml('#keyboard_top').classList.remove('ForMode1');
             }
             // 更新设置
@@ -461,7 +473,7 @@
          * 对于其他模式，值是表达式字符串。
          */
         static _screenData = {
-            '1': [],
+            '1': [['', '']],
             '2_00': '',
             '2_01': '',
             // '2_1' 模式下的子模式 '0', '1', '2' 对应的值
@@ -497,7 +509,7 @@
          * 它会将传入对象 `data` 中的键值对合并到当前的 `_screenData` 中，但仅限于 `_screenData` 中已存在的键。
          * 更新后，新的状态会被立即持久化到 `localStorage`。
          * 注意，可以使用参数 {'1': [x, y, val]} 来修改统计模式中指定位置上的值（x,y 为修改位置的坐标，val 为修改后的值）
-         * @param {Object.<string, (string|Array<*>)>} data - 包含要更新的屏幕数据的对象。
+         * @param {Object<string, (string|Array<*>)>} data - 包含要更新的屏幕数据的对象。
          */
         static set screenData(data) {
             // 1. 增加前置防御，确保传入的是有效对象
@@ -523,11 +535,22 @@
                     if (isValidRow && isValidCol) {
                         targetMatrix[row][col] = newVal;
                     }
+
+                    // 更新屏幕
+                    if (PageConfig.currentMode === '1') {
+                        InputManager.statisticsRenderer.load(targetMatrix, targetMatrix.length, {resetScroll: false});
+                    }
                     return; // 命中单点更新后，直接跳出当前循环（相当于 continue）
                 }
 
                 // 4. 其他常规情况（包含 key 为 '1' 但传入的是全量二维数组的情况）
-                PageConfig._screenData[key] = Array.isArray(value) ? structuredClone(value) : value;
+                const val = Array.isArray(value) ? structuredClone(value) : value;
+                PageConfig._screenData[key] = val;
+
+                // 更新屏幕
+                if (key === '1' && PageConfig.currentMode === '1') {
+                    InputManager.statisticsRenderer.load(val, val.length, {resetScroll: false});
+                }
             });
             // 将更新后的 _screenData 序列化并保存到 localStorage
             localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
@@ -540,7 +563,7 @@
          * 此方法是连接用户界面输入和应用程序数据状态的关键环节。
          *
          * 它根据 `area` 参数或当前的计算器模式来确定要读取哪个屏幕区域：
-         * - **统计模式 (area '1')**: 它会遍历数据网格 (`#grid_data`) 的每一行，提取 X 和 Y 值，并将它们作为一个二维数组存储在 `_screenData['1']` 中。
+         * - **统计模式 (area '1')**: 无需操作。
          * - **其他模式**: 它会找到对应的输入 `div` (例如 `#screen_input_inner_2_00`)，并将其内容（由代表字符的 `<p>` 元素组成）转换回文本字符串，然后存储在 `_screenData` 的相应键下。
          *
          * @param {string|null} [area=null] - 要更新的屏幕区域的标识符（例如 '1', '2_00'）。
@@ -568,29 +591,8 @@
                 const target = HtmlTools.getHtml(`#screen_input_inner_${name}`);
                 // 将该区域内的 DOM 元素（通常是 <p> 标签）的类名转换回文本字符串，并更新 _screenData。
                 PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
-            } else {
-                // --- 路径 2: 统计模式 (数据网格) ---
-                // 在更新之前，先清空旧的数组数据，以确保完全重写。
-                PageConfig._screenData[name].length = 0;
-                // 获取数据网格中的所有行元素。
-                const gridData = HtmlTools.getHtml('#grid_data').children;
-                const len = gridData.length;
-                // 遍历每一行。
-                for (let i = 0; i < len; i++) {
-                    const targetFather = gridData[i];
-                    // 获取 X 和 Y 值的单元格。
-                    const targetX = targetFather.children[1];
-                    const targetY = targetFather.children[2];
-                    // 只有当行中至少有一个单元格有内容时，才处理该行。
-                    if (targetX.dataset.dataX || targetY.dataset.dataY) {
-                        // 将单元格内容从 DOM 类名转换回文本字符串。
-                        const dataX = HtmlTools.htmlClassToText(targetX.dataset.dataX.split(','));
-                        const dataY = HtmlTools.htmlClassToText(targetY.dataset.dataY.split(','));
-                        // 将 [x, y] 对存储到 _screenData['1'] 数组中。
-                        PageConfig._screenData[name][i] = [dataX, dataY];
-                    }
-                }
-            }
+            } // --- 统计模式无需同步 ---
+
             // 将更新后的 _screenData 对象序列化为 JSON 字符串，并保存到 localStorage。
             localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
         }
@@ -719,18 +721,8 @@
             // 初始化一个空数组，用于存储最终的类名或标识符列表。
             const classLists = [];
 
-            // 找到第一个在 dataset 中存在的键名
-            const activeKey = HtmlTools.findActiveKey(area);
-            let children;
-            let isLazyBg = false;
             // 获取 children 集合引用和总长度
-            if (activeKey) {
-                isLazyBg = true;
-                const areaInner = area.dataset[activeKey];
-                children = areaInner.split(',').filter(Boolean);
-            } else {
-                children = area.children;
-            }
+            const children = area.children;
             const totalLen = children.length;
 
             // 计算安全的遍历范围
@@ -745,7 +737,7 @@
             for (let i = validStart; i < validEnd; i++) {
                 const child = children[i];
                 let className;
-                className = isLazyBg ? child : child.className;
+                className = child.className;
 
                 // 根据 ignoreSpace 选项，决定是否跳过代表空格的元素。
                 if (ignoreSpace && className === '_space_') {
@@ -753,7 +745,7 @@
                 }
 
                 // 根据 onlyP 选项，决定是只处理 <p> 标签还是处理所有标签。
-                if (isLazyBg || (onlyP && child?.tagName?.toLowerCase() === 'p')) {
+                if (onlyP && child?.tagName?.toLowerCase() === 'p') {
                     // 如果只处理 <p> 标签，并且当前子元素是 <p>，则将其类名推入结果数组。
                     classLists.push(className);
                 } else if (!onlyP) {
@@ -855,15 +847,13 @@
          * - `'replace'`: 先清空父元素，再添加元素。
          * @param {string[]} [options.nameType=['class']] - 默认绑定的属性名数组，对应 nameList 中的子数组。
          * @param {string} [options.appendType='p'] - 要创建的 HTML 标签类型。
-         * @param {boolean} [options.toRealDOM=false] - 是否强制挂载到真实节点（用于 activeKey 存在的情况）。
          */
         static appendDOMs(parentElement, nameList, {
             referenceNode = null,
             index = -1,
             mode = 'add',
             appendType = 'p',
-            nameType = ['class'],
-            toRealDOM = false
+            nameType = ['class']
         } = {}) {
             // 获取并统一目标父元素
             const targetParent = typeof parentElement === 'string'
@@ -877,7 +867,7 @@
 
             // 清空父元素
             if (mode === 'replace') {
-                InputManager.ac({acArea: parentElement, toRealDOM});
+                InputManager.ac({acArea: parentElement});
             }
 
             // 提前退出
@@ -885,76 +875,53 @@
                 return;
             }
 
-            const activeKey = HtmlTools.findActiveKey(targetParent);
-            if (activeKey && !toRealDOM) {
-                if (nameType.length !== 1 || nameType[0] !== 'class') {
-                    throw new Error('[HtmlTools] Unsupported input, the `nameType` can only be `["class"]`.');
-                }
-                if (appendType !== 'p') {
-                    throw new Error('[HtmlTools] Unsupported input, the `appendType` can only be `"p"`.');
+            const fragment = document.createDocumentFragment();
+
+            // 批量创建并组装 DOM
+            for (const name of nameList) {
+                // 过滤空值
+                if (!name) {
+                    continue;
                 }
 
-                const appendList = nameList.map(name =>
-                    name.startsWith('[class]') ? name.slice(7) : name
-                );
+                const element = document.createElement(appendType);
 
-                // 拼接结果
-                const originalList = targetParent.dataset[activeKey].split(',').filter(Boolean);
-                let resultList;
-                if (index === -1) {
-                    resultList = [...originalList, ...appendList];
+                // 使用原生 Array.isArray，性能更好
+                if (Array.isArray(name)) {
+                    if (nameType.length !== name.length) {
+                        throw new Error('[HtmlTools] The number of attribute names does not match the number of values.');
+                    }
+                    for (let i = 0; i < nameType.length; i++) {
+                        element.setAttribute(nameType[i], name[i]);
+                    }
+                } else if (typeof name === 'string') {
+                    // 业务逻辑：处理带有特殊前缀的字符串标识
+                    if (name.startsWith('[id]')) {
+                        element.id = name.slice(4);
+                    } else if (name.startsWith('[class]')) {
+                        element.className = name.slice(7);
+                    } else {
+                        element.setAttribute(nameType[0], name);
+                    }
                 } else {
-                    originalList.splice(index, 0, ...appendList);
-                    resultList = originalList;
-                }
-                targetParent.dataset[activeKey] = resultList.join(',');
-            } else {
-                const fragment = document.createDocumentFragment();
-
-                // 批量创建并组装 DOM
-                for (const name of nameList) {
-                    // 过滤空值
-                    if (!name) {
-                        continue;
-                    }
-
-                    const element = document.createElement(appendType);
-
-                    // 使用原生 Array.isArray，性能更好
-                    if (Array.isArray(name)) {
-                        if (nameType.length !== name.length) {
-                            throw new Error('[HtmlTools] The number of attribute names does not match the number of values.');
-                        }
-                        for (let i = 0; i < nameType.length; i++) {
-                            element.setAttribute(nameType[i], name[i]);
-                        }
-                    } else if (typeof name === 'string') {
-                        // 业务逻辑：处理带有特殊前缀的字符串标识
-                        if (name.startsWith('[id]')) {
-                            element.id = name.slice(4);
-                        } else if (name.startsWith('[class]')) {
-                            element.className = name.slice(7);
-                        } else {
-                            element.setAttribute(nameType[0], name);
-                        }
-                    }
-
-                    fragment.appendChild(element);
+                    throw new Error('[HtmlTools] The element type in `nameList` is not supported.');
                 }
 
-                // 直接使用原生 API 判断 fragment 是否有子节点，替代手动布尔值标记
-                if (!fragment.hasChildNodes()) {
-                    return;
-                }
-
-                // 确定插入参照节点
-                if (!referenceNode && index !== -1) {
-                    referenceNode = targetParent.children[index];
-                }
-
-                // 统一插入逻辑（insertBefore 第二个参数为 null 时等同于 appendChild）
-                targetParent.insertBefore(fragment, referenceNode || null);
+                fragment.appendChild(element);
             }
+
+            // 直接使用原生 API 判断 fragment 是否有子节点，替代手动布尔值标记
+            if (!fragment.hasChildNodes()) {
+                return;
+            }
+
+            // 确定插入参照节点
+            if (!referenceNode && index !== -1) {
+                referenceNode = targetParent.children[index];
+            }
+
+            // 统一插入逻辑（insertBefore 第二个参数为 null 时等同于 appendChild）
+            targetParent.insertBefore(fragment, referenceNode || null);
         }
 
         /**
@@ -1019,9 +986,10 @@
          */
         static getCurrentSubscreenArea() {
             const currentMode = PageConfig.currentMode;
-            // 特殊处理统计模式 ('1')，其活动区域由 '.GridOn' 类标识。
+            // 特殊处理统计模式 ('1')，不一定存在
             if (PageConfig.currentMode === '1') {
-                return HtmlTools.getHtml('.GridOn');
+                const res = HtmlTools.getHtml('.GridOn');
+                return typeof res !== 'undefined' ? res : null;
             }
 
             // 对于所有其他模式，根据当前主模式和子模式构造目标元素的 ID。
@@ -1091,9 +1059,8 @@
 
             // 4. 统计回归模式下的网格滚动
             if (PageConfig.currentMode === '1') {
-                const activeCell = HtmlTools.getHtml('.GridOn');
-                // 仅当元素存在时滚动
-                activeCell?.scrollIntoView({block: 'nearest'});
+                const current = PageConfig.subModes['1'];
+                InputManager.statisticsRenderer.scrollToIndex(current[0]);
             }
         }
 
@@ -1288,965 +1255,6 @@
             debounced.pending = pending;
 
             return debounced;
-        }
-
-        /**
-         * @static
-         * @method findActiveKey
-         * 从目标的 dataset 中提取第一个匹配的有效键名。
-         * * 该方法会依次检查 'index', 'dataX', 'dataY' 三个键，
-         * 返回第一个在 `target.dataset` 中定义的键名。
-         *
-         * @param {HTMLElement} target - 包含 dataset 属性的 DOM 元素对象。
-         * @returns {string|undefined} 返回匹配到的键名（'index'、'dataX' 或 'dataY'）；
-         * 若均未找到，则返回 `undefined`。
-         */
-        static findActiveKey(target) {
-            if (!(target && target.nodeType === 1)) {
-                return;
-            }
-
-            const keys = ['index', 'dataX', 'dataY'];
-            // 找到第一个在 dataset 中存在的键名
-            return keys.find(key => target.dataset[key] !== undefined);
-        }
-    }
-
-    /**
-     * @class AsyncListRenderer
-     * @description 异步长列表渲染核心类。
-     * 解决大数据量场景下单次渲染造成的主线程卡顿（掉帧）问题。
-     *
-     * 核心特性：
-     * 1. 时间分片 (Time Slicing)：将巨量 DOM 挂载任务拆分到多个浏览器的渲染帧中。
-     * 2. 懒加载 (Lazy Load)：内置 IntersectionObserver，支持图片/背景/动画的按需触发。
-     * 3. 强行插入接管：内置 MutationObserver，自动监听并接管第三方组件库或业务代码强行插入容器的 DOM 节点。
-     * 4. 任务控制：支持随时暂停 (pause)、恢复 (resume)、追加 (append) 和彻底终止 (stop)。
-     *
-     * 局限性说明：
-     * 当前的时间分片 (Time Slicing) 机制虽解决了“单次挂载卡顿”问题，但当 DOM 节点总数突破 5000+ 时，
-     * 驻留的庞大 DOM 树依然会导致严重的内存占用和滚动时的 Reflow (回流) 掉帧。
-     */
-    class AsyncListRenderer {
-        /**
-         * 实例化异步渲染器 (支持 DOM 动态挂载与卸载)
-         * @param {Object} options - 配置参数
-         * @param {string} options.scrollSelector - 滚动容器的 CSS 选择器。
-         * @param {string} options.containerSelector - 列表真实挂载容器的 CSS 选择器。
-         * @param {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)} options.rowRenderer - 行骨架渲染函数，需返回固定高度的占位父节点。
-         * @param {function(HTMLElement): (void|Promise<void>)} [options.lazyMount] - 节点进入可视区或发生变动时的回调，用于组装并挂载子节点。支持返回 Promise。
-         * @param {function(HTMLElement): void} [options.lazyUnmount] - 节点移出可视区时的回调，默认高效清空子节点。
-         * @param {function(HTMLElement[], HTMLElement): void} [options.bindVisibleNodeObserver] - 自定义的可见节点变动回调函数。
-         * @param {string} [options.lazySelector='[data-lazy-load="true"]'] - 触发懒加载监听的目标节点选择器。
-         * @param {number} [options.timeSliceMs=14] - 每帧最大执行时间（毫秒）。
-         * @param {number} [options.maxChunkSize=100] - 单帧最大允许渲染的节点数量阈值。
-         * @param {string} [options.rootMargin='60%'] - 懒加载触发的缓冲区大小。
-         */
-        constructor(options) {
-            // --- 基础配置 ---
-
-            /**
-             * 滚动容器的 CSS 选择器。
-             * @type {string}
-             * @private
-             */
-            this._scrollSelector = options.scrollSelector;
-
-            /**
-             * 列表真实挂载容器的 CSS 选择器。
-             * @type {string}
-             * @private
-             */
-            this._containerSelector = options.containerSelector;
-
-            /**
-             * 行骨架渲染函数。
-             * @type {function(any[]|{}, number): (HTMLElement|null|DocumentFragment)}
-             * @private
-             */
-            this._rowRenderer = options.rowRenderer;
-
-            // --- 核心挂载与卸载钩子 ---
-
-            /**
-             * 节点进入可视区或发生变动时的装载回调。
-             * @type {function(HTMLElement): (void|Promise<void>)}
-             * @private
-             */
-            this._lazyMount = options.lazyMount;
-
-            /**
-             * 节点移出可视区时的卸载回调。默认使用 replaceChildren() 清空元素。
-             * @type {function(HTMLElement): void}
-             * @private
-             */
-            this._lazyUnmount = options.lazyUnmount || ((el) => {
-                el.replaceChildren();
-            });
-
-            /**
-             * 自定义的可见节点 DOM 变动监听回调。
-             * @type {function(HTMLElement[], HTMLElement): void|undefined}
-             * @private
-             */
-            this._customBindVisibleNodeObserver = options.bindVisibleNodeObserver;
-
-            /**
-             * 触发懒加载监听的目标节点选择器。
-             * @type {string}
-             * @private
-             */
-            this._lazySelector = options.lazySelector || '[data-lazy-load="true"]';
-
-            /**
-             * 每帧最大执行时间（毫秒），用于控制时间分片。
-             * @type {number}
-             * @private
-             */
-            this._timeSliceMs = options.timeSliceMs || 14;
-
-            /**
-             * 单帧最大允许渲染的节点数量阈值。
-             * @type {number}
-             * @private
-             */
-            this._maxChunkSize = options.maxChunkSize || 100;
-
-            /**
-             * 懒加载触发的缓冲区大小（对应 IntersectionObserver 的 rootMargin）。
-             * @type {string}
-             * @private
-             */
-            this._rootMargin = options.rootMargin || '60%';
-
-            // --- 核心状态与观察者实例 ---
-
-            /**
-             * 负责懒加载监听的 IntersectionObserver 实例。
-             * @type {IntersectionObserver|null}
-             * @private
-             */
-            this._observerInstance = null;
-
-            /**
-             * 负责监听挂载容器 DOM 树变动的 MutationObserver 实例。
-             * @type {MutationObserver|null}
-             * @private
-             */
-            this._mutationObserver = null;
-
-            /**
-             * 当前记录被 _mutationObserver 监听的真实挂载容器，用于去重。
-             * @type {HTMLElement|null}
-             * @private
-             */
-            this._watchedContainer = null;
-
-            /**
-             * 用于中断渲染任务的控制器。
-             * @type {AbortController|null}
-             * @private
-             */
-            this._abortController = null;
-
-            /**
-             * 映射父节点与需要懒加载的子节点集合，减少 querySelectorAll 查找频率。
-             * @type {WeakMap<HTMLElement, HTMLElement[]>}
-             * @private
-             */
-            this._lazyTargetsMap = new WeakMap();
-
-            /**
-             * 当前处于活跃状态的渲染 Promise 任务队列。
-             * @type {Array<function(): Promise<void>>}
-             */
-            this._taskQueue = [];
-
-            /**
-             * 队列是否正在消费。
-             * @type {boolean}
-             * @private
-             */
-            this._isProcessing = false;
-
-            /**
-             * 标记渲染器是否处于暂停状态。
-             * @type {boolean}
-             * @private
-             */
-            this._isPaused = false;
-
-            /**
-             * 用于在恢复渲染时执行的回调函数（保存渲染现场）。
-             * @type {Array<FrameRequestCallback>}
-             */
-            this._resumeCallbacks = [];
-
-            /**
-             * 维护当前活跃节点的专属 MutationObserver 实例。
-             * 使用 WeakMap 关联，节点被销毁时 Observer 也可被 GC 回收。
-             * @type {WeakMap<HTMLElement, MutationObserver>}
-             * @private
-             */
-            this._visibleNodeObservers = new WeakMap();
-
-            /**
-             * 使用 WeakSet 追踪框架内部插入的节点身份标记。
-             * 用于解决 node.cloneNode() 导致的数据属性继承问题，避免克隆节点被错误忽略。
-             * 节点移除后可被垃圾回收机制（GC）自动回收，防止内存泄漏。
-             * @type {WeakSet<HTMLElement>}
-             * @private
-             */
-            this._internalNodes = new WeakSet();
-
-            /**
-             * 每次 appendRender 创建独立的 controller，并注册到全局 Set，由 stopRender 统一中止
-             * @type {Set<AbortController>}
-             * @private
-             */
-            this._appendControllers = new Set();
-        }
-
-        /**
-         * @readonly
-         * @type {string}
-         * @description 自定义 `Object.prototype.toString.call()` 的返回值。
-         * 这使得 `Public.typeOf(new AsyncListRenderer())` 能够返回 'AsyncListRenderer'。
-         */
-        get [Symbol.toStringTag]() {
-            return 'AsyncListRenderer';
-        }
-
-        /**
-         * 内部任务调度器，负责按顺序消费队列中的任务。
-         *
-         * 该方法采用“单例执行”模式（由 `_isProcessing` 锁控制）：
-         * 1. 如果当前已有调度循环在运行，则直接退出。
-         * 2. 依次从队列头部取出任务并 `await` 执行。
-         * 3. 即使某个任务抛出异常，调度器也会捕获它并继续处理后续任务，确保队列不挂死。
-         *
-         * @returns {Promise<void>}
-         * @private
-         * @async
-         */
-        async _processQueue() {
-            if (this._isProcessing) {
-                return;
-            }
-            this._isProcessing = true;
-
-            try {
-                while (this._taskQueue.length > 0) {
-                    // 取出的是 wrappedTask 函数本身，所以可以直接 await 执行
-                    const task = this._taskQueue.shift();
-                    try {
-                        await task();
-                    } catch (err) {
-                        // 内部静默吃掉 AbortError，其他真正异常则抛出
-                        if (err?.name !== 'AbortError') {
-                            console.error('[AsyncListRenderer] Task error:', err);
-                        }
-                    }
-                }
-            } finally {
-                // 锁的释放移到 while 循环体外部，确保队列清空后才释放
-                this._isProcessing = false;
-            }
-        }
-
-        /**
-         * 将异步任务添加到队列中并触发执行。
-         *
-         * 该方法将传入的函数包装在一个 Promise 中，确保任务执行完毕或出错时，
-         * 调用方能够通过返回的 Promise 接收到相应的信号。
-         *
-         * @param {Function} taskFn - 待执行的异步任务函数。应返回一个 Promise 或为 async 函数。
-         * @returns {Promise<void>} 返回一个 Promise，在任务成功完成时 resolve，任务抛出异常时 reject。
-         * @private
-         */
-        _enqueueTask(taskFn) {
-            return new Promise((resolve, reject) => {
-                // 包装任务，接管成功和失败的状态
-                const wrappedTask = async () => {
-                    try {
-                        await taskFn();
-                        resolve();
-                    } catch (error) {
-                        reject(error);
-                    }
-                };
-
-                // 把 reject 方法作为属性挂载到函数对象上，以便 stopRender 可以获取并终止它
-                wrappedTask.reject = reject;
-
-                this._taskQueue.push(wrappedTask);
-                // 尝试触发队列消费逻辑
-                this._processQueue();
-            });
-        }
-
-        /**
-         * 获取数据源的长度或键数量。
-         * 支持数组和对象格式的数据源。
-         * @param {any[]|Object} data - 数据源
-         * @returns {number} 数据源包含的项数
-         * @private
-         */
-        _getLength(data) {
-            return Array.isArray(data) ? data.length : Object.keys(data || {}).length;
-        }
-
-        /**
-         * 为当前正在显示的节点绑定专属的 DOM 变动监听器。
-         * 采用“一节点一 Observer”模式，消除共享 Observer 带来的 O(N) 性能瓶颈。
-         * @param {HTMLElement} el - 需要监听变动的目标节点
-         * @private
-         */
-        _bindVisibleNodeObserver(el) {
-            // 防止重复绑定
-            if (this._visibleNodeObservers.has(el)) {
-                return;
-            }
-
-            // 定义监听配置，提取出来以便复用
-            const observerOptions = {
-                childList: true,
-                attributes: true,
-                characterData: true,
-                subtree: true,
-                attributeFilter: ['data-index', 'data-data-x', 'data-data-y']
-            };
-
-            const observer = new MutationObserver((mutations) => {
-                let needsUpdate = false;
-                const changedNodes = new Set();
-
-                for (const mutation of mutations) {
-                    const rawTarget = mutation.target.nodeType === 3
-                                      ? mutation.target.parentElement
-                                      : mutation.target;
-
-                    if (!rawTarget) {
-                        continue;
-                    }
-
-                    // 确认该节点当前处于已渲染且非更新锁定状态
-                    if (el.dataset.isRendered === 'true' && el.dataset.isUpdating !== 'true') {
-                        needsUpdate = true;
-                        if (rawTarget.nodeType === 1) {
-                            changedNodes.add(rawTarget);
-                        }
-                    }
-                }
-
-                if (needsUpdate) {
-                    el.dataset.isUpdating = 'true';
-                    // 执行挂载更新前，主动断开监听，防止挂载行为触发新的 mutation
-                    observer.disconnect();
-
-                    const releaseLock = () => {
-                        // 使用单次微任务或 RAF 释放即可，无需双重 RAF
-                        queueMicrotask(() => {
-                            el.dataset.isUpdating = 'false';
-                            // 更新完成后，如果节点仍在渲染状态，则重新开启监听
-                            if (el.dataset.isRendered === 'true') {
-                                observer.observe(el, observerOptions);
-                            }
-                        });
-                    };
-
-                    try {
-                        let taskResult;
-                        if (this._customBindVisibleNodeObserver) {
-                            const changedNodesArr = Array.from(changedNodes);
-                            if (changedNodesArr.length > 0) {
-                                taskResult = this._customBindVisibleNodeObserver(changedNodesArr, el);
-                            }
-                        } else if (this._lazyMount) {
-                            taskResult = this._lazyMount(el);
-                        }
-
-                        // 处理 Promise
-                        if (taskResult instanceof Promise) {
-                            taskResult.finally(releaseLock);
-                        } else {
-                            releaseLock();
-                        }
-                    } catch (error) {
-                        console.error('[AsyncListRenderer] View update listener execution error:', error);
-                        releaseLock();
-                    }
-                }
-            });
-
-            observer.observe(el, observerOptions);
-            // 存入 WeakMap 进行追踪
-            this._visibleNodeObservers.set(el, observer);
-        }
-
-        /**
-         * 解绑节点的专属变动监听。
-         * 直接精准断开对应 Observer，避免全局重绑引发性能灾难。
-         * @param {HTMLElement} el - 需要解绑监听的目标节点
-         * @private
-         */
-        _unbindVisibleNodeObserver(el) {
-            el.dataset.isUpdating = 'false';
-
-            // 查找属于该节点的专属 Observer
-            const observer = this._visibleNodeObservers.get(el);
-
-            if (observer) {
-                observer.disconnect(); // O(1) 操作，极速解绑
-                this._visibleNodeObservers.delete(el); // 从 Map 中移除引用
-            }
-        }
-
-        /**
-         * 创建用于检测元素是否进入可视区域（懒加载核心）的 IntersectionObserver。
-         * 内部处理了元素进入/离开视口的挂载和卸载逻辑，包括对异步挂载的 Promise 等待处理。
-         * @returns {IntersectionObserver|null} 实例化后的 IntersectionObserver 对象，若滚动容器不存在则返回 null。
-         * @private
-         */
-        _createLazyObserver() {
-            const bigContainer = document.querySelector(this._scrollSelector);
-            if (!bigContainer) {
-                return null;
-            }
-
-            return new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    let isVisible = entry.isIntersecting;
-
-                    if (!isVisible && entry.rootBounds) {
-                        const rect = entry.boundingClientRect;
-                        const rootRect = entry.rootBounds;
-
-                        const isVerticallyInView = (rect.bottom >= rootRect.top) && (rect.top <= rootRect.bottom);
-
-                        if (isVerticallyInView) {
-                            isVisible = true;
-                        }
-                    }
-
-                    let targetElements;
-
-                    if (!this._lazyTargetsMap.has(entry.target)) {
-                        targetElements = [];
-
-                        // 改用 WeakSet 判断是否为框架内部节点
-                        if (!this._internalNodes.has(entry.target)) {
-                            const lazyNodes = Array.from(entry.target.querySelectorAll(this._lazySelector));
-                            if (entry.target.matches?.(this._lazySelector)) {
-                                lazyNodes.push(entry.target);
-                            }
-                            targetElements.push(...lazyNodes);
-                        }
-                        this._lazyTargetsMap.set(entry.target, targetElements);
-                    } else {
-                        targetElements = this._lazyTargetsMap.get(entry.target);
-                    }
-
-                    targetElements.forEach(el => {
-                        if (el.matches(this._lazySelector)) {
-                            const isRendered = el.dataset.isRendered === 'true';
-
-                            // 实时更新节点的可见性状态，供异步任务读取
-                            el.dataset.isVisible = isVisible ? 'true' : 'false';
-
-                            if (isVisible && !isRendered && el.dataset.isUpdating !== 'true') {
-                                el.dataset.isUpdating = 'true';
-
-                                let mountResult;
-                                try {
-                                    mountResult = this._lazyMount ? this._lazyMount(el) : undefined;
-                                } catch (err) {
-                                    console.error('[AsyncListRenderer] lazyMount error during synchronous execution:', err);
-                                    el.dataset.isUpdating = 'false';
-                                    return;
-                                }
-
-                                if (mountResult instanceof Promise) {
-                                    // 异步路径：等待 Promise 落定
-                                    mountResult
-                                        .then(() => {
-                                            // Promise 落定时，必须校验节点是否仍在可视区
-                                            if (el.dataset.isVisible === 'true') {
-                                                el.dataset.isRendered = 'true';
-                                                this._bindVisibleNodeObserver(el);
-                                            } else {
-                                                // 已经滚出可视区：执行卸载逻辑，保持 DOM 干净
-                                                if (this._lazyUnmount) {
-                                                    this._lazyUnmount(el);
-                                                }
-                                                el.dataset.isRendered = 'false';
-                                            }
-                                        })
-                                        .catch(err => {
-                                            // 失败：打印错误，并重置状态，允许下次进入视口时重试挂载
-                                            console.error('[AsyncListRenderer] lazyMount error during asynchronous execution:', err);
-                                            el.dataset.isRendered = 'false';
-                                        })
-                                        .finally(() => {
-                                            el.dataset.isUpdating = 'false';
-                                        });
-                                } else {
-                                    // 同步路径：立即完成标记与绑定
-                                    el.dataset.isRendered = 'true';
-                                    el.dataset.isUpdating = 'false';
-                                    this._bindVisibleNodeObserver(el);
-                                }
-
-                            } else if (!isVisible && isRendered) {
-                                this._unbindVisibleNodeObserver(el);
-
-                                if (this._lazyUnmount) {
-                                    this._lazyUnmount(el);
-                                }
-                                el.dataset.isRendered = 'false';
-                            }
-                        }
-                    });
-                });
-            }, {
-                root: bigContainer,
-                rootMargin: `${this._rootMargin} 0%`,
-                threshold: 0
-            });
-        }
-
-        /**
-         * 开启对挂载容器内部 DOM 变更（增删节点）的监听。
-         * 当新节点插入时，将其加入 IntersectionObserver 的观测目标；
-         * 当节点被移除时，进行内存清理及解除监听。
-         * @param {HTMLElement} container - 需要被深度监听的列表真实挂载容器
-         * @private
-         */
-        _startDOMWatcher(container) {
-            // 若已在监听同一个 container，直接跳过。
-            if (this._mutationObserver && this._watchedContainer === container) {
-                return;
-            }
-
-            if (this._mutationObserver) {
-                this._mutationObserver.disconnect();
-            }
-
-            // 记录当前正在监听的 container，用于上方去重判断
-            this._watchedContainer = container;
-
-            this._mutationObserver = new MutationObserver((mutationsList) => {
-                if (!this._observerInstance) {
-                    return;
-                }
-
-                for (const mutation of mutationsList) {
-                    if (mutation.type === 'childList') {
-                        if (mutation.addedNodes.length > 0) {
-                            mutation.addedNodes.forEach(node => {
-                                // 改用 WeakSet 判断是否为框架内部插入的节点
-                                if (node.nodeType === 1 && !this._internalNodes.has(node)) {
-                                    this._observerInstance?.observe(node);
-                                }
-                            });
-                        }
-
-                        if (mutation.removedNodes.length > 0) {
-                            mutation.removedNodes.forEach(node => {
-                                if (node.nodeType === 1) {
-                                    // 1. 兜底解绑顶层 node 本身
-                                    this._observerInstance?.unobserve(node);
-                                    this._lazyTargetsMap.delete(node);
-
-                                    // 2. 收集所有懒加载节点（使用 this._lazySelector 而不是硬编码）
-                                    const lazyTargets = [];
-                                    if (node.matches?.(this._lazySelector)) {
-                                        lazyTargets.push(node);
-                                    }
-
-                                    const nestedLazyTargets = node.querySelectorAll?.(this._lazySelector);
-                                    nestedLazyTargets?.forEach(target => lazyTargets.push(target));
-
-                                    // 3. 逐一解绑子节点
-                                    lazyTargets.forEach(target => {
-                                        this._observerInstance?.unobserve(target);
-                                        // 防御性清理 Map 中的记录（如果该子节点也是 Map 的 key 的话）
-                                        this._lazyTargetsMap.delete(target);
-                                    });
-
-                                    // 4. 清理专属的 DOM 变动监听器
-                                    this._unbindVisibleNodeObserver(node);
-                                    const activeChildren = node.querySelectorAll?.('[data-is-rendered="true"]');
-                                    activeChildren?.forEach(child => this._unbindVisibleNodeObserver(child));
-                                }
-                            });
-                        }
-                    }
-                }
-
-                // 在处理完所有的 DOM 变动后，检查容器最终状态
-                // 如果容器空了，且不是通过 class 内部 startRender 触发的重置操作
-                if (container.childNodes.length === 0) {
-                    console.warn('[AsyncListRenderer] Detected that the container has been forcibly emptied, automatically triggering stopRender().');
-                    this.stopRender();
-                }
-            });
-
-            this._mutationObserver.observe(container, {childList: true, subtree: false});
-        }
-
-        /**
-         * 核心渲染引擎，使用 requestAnimationFrame 结合时间分片技术逐批次生成与挂载 DOM，防止长列表引发的页面主线程卡顿。
-         * @param {HTMLElement} container - DOM 挂载的目标容器。
-         * @param {any[]|Object} dataSource - 数据源。
-         * @param {number} startIndex - 渲染起始索引。
-         * @param {number} endIndex - 渲染结束索引。
-         * @param {AbortSignal} signal - 用于中止渲染任务的信号量。
-         * @param {Object} [options={}] - 渲染控制参数。
-         * @param {boolean} [options.isReplace=false] - 是否在渲染第一批次时执行全量替换清屏（方案B核心）。
-         * @param {HTMLElement|string|null} [options.insertTarget=null] - 指定插入位置的参考节点或选择器。若为空则默认 appendChild 到容器末尾。
-         * @returns {Promise<void>} 批次渲染全部完成或中止后 resolve/reject 的 Promise 对象。
-         * @private
-         */
-        _batchRender(container, dataSource, startIndex, endIndex, signal, options = {}) {
-            return new Promise((resolve, reject) => {
-                let index = startIndex;
-                let rafId = null;
-                // 追踪当前任务是否已经完成过首批次的清屏替换
-                let hasReplaced = false;
-
-                if (signal?.aborted) {
-                    return reject(new DOMException('[AsyncListRenderer] Aborted', 'AbortError'));
-                }
-
-                // 解析插入锚点，解析一次后 renderNextBatch 直接闭包引用
-                const resolvedInsertTarget = typeof options.insertTarget === 'string'
-                                             ? container.querySelector(options.insertTarget)
-                                             : options.insertTarget;
-
-                const abortHandler = () => {
-                    if (rafId !== null) {
-                        cancelAnimationFrame(rafId);
-                    }
-                    reject(new DOMException('[AsyncListRenderer] Aborted', 'AbortError'));
-                };
-                signal.addEventListener('abort', abortHandler, {once: true});
-
-                const renderNextBatch = () => {
-                    if (signal?.aborted) {
-                        return;
-                    }
-
-                    // 检测容器是否被移出 DOM 树
-                    if (!container.isConnected) {
-                        console.warn('[AsyncListRenderer] The container has been detached from the DOM tree, automatically triggering stopRender().');
-                        this.stopRender();
-                        return;
-                    }
-
-                    // 处理外部暂停指令
-                    if (this._isPaused) {
-                        this._resumeCallbacks.push(renderNextBatch);
-                        return;
-                    }
-
-                    const frameStartTime = performance.now();
-                    let renderedInThisFrame = 0;
-                    const fragment = document.createDocumentFragment();
-                    const elementsToObserve = [];
-
-                    try {
-                        // 时间分片循环：在单帧时间预算内尽可能多地渲染节点
-                        while (
-                            index < endIndex &&
-                            renderedInThisFrame < this._maxChunkSize &&
-                            performance.now() - frameStartTime < this._timeSliceMs &&
-                            !signal.aborted
-                            ) {
-                            const rowDOM = this._rowRenderer(dataSource, index);
-                            if (rowDOM) {
-                                let topLevelElements = [];
-
-                                if (rowDOM.nodeType === 1) { // Element 节点
-                                    topLevelElements = [rowDOM];
-                                } else if (rowDOM.nodeType === 11) { // DocumentFragment 节点
-                                    topLevelElements = Array.from(rowDOM.children);
-                                }
-
-                                topLevelElements.forEach(el => {
-                                    const lazyElements = Array.from(el.querySelectorAll(this._lazySelector));
-                                    if (el.matches(this._lazySelector)) {
-                                        lazyElements.push(el);
-                                    }
-
-                                    if (lazyElements.length > 0) {
-                                        this._lazyTargetsMap.set(el, lazyElements);
-                                        elementsToObserve.push(...lazyElements);
-                                    }
-
-                                    // 标记框架内部生成的节点
-                                    this._internalNodes.add(el);
-                                    el.dataset.asyncInternal = 'true';
-                                });
-
-                                fragment.appendChild(rowDOM);
-                            }
-                            index++;
-                            renderedInThisFrame++;
-                        }
-                    } catch (error) {
-                        // 捕获 rAF 内部错误，释放 Promise 并清理监听
-                        signal.removeEventListener('abort', abortHandler);
-                        reject(error);
-                        return;
-                    }
-
-                    // =================================================================
-                    // 核心挂载策略：延迟清屏 / 追加
-                    // =================================================================
-                    if (options.isReplace && !hasReplaced) {
-                        // 首屏第一批数据：原子级替换，瞬间完成旧节点卸载与新节点挂载，消除白屏闪烁
-                        container.replaceChildren(fragment);
-                        hasReplaced = true;
-                    } else if (resolvedInsertTarget) {
-                        // 指定锚点的追加
-                        if (resolvedInsertTarget?.parentNode === container) {
-                            container.insertBefore(fragment, resolvedInsertTarget);
-                        } else {
-                            container.appendChild(fragment);
-                        }
-                    } else {
-                        // 常规的队尾追加
-                        container.appendChild(fragment);
-                    }
-
-                    // =================================================================
-                    // 绑定懒加载监听
-                    // =================================================================
-                    if (this._observerInstance && elementsToObserve.length > 0) {
-                        // 使用 queueMicrotask 确保在当前宏任务之后、下一次重绘之前绑定完毕
-                        queueMicrotask(() => {
-                            if (signal?.aborted) {
-                                return;
-                            }
-                            elementsToObserve.forEach(el => {
-                                if (this._observerInstance && el.isConnected) {
-                                    this._observerInstance.observe(el);
-                                }
-                            });
-                        });
-                    }
-
-                    // 日志打印
-                    // if (renderedInThisFrame > 0) {
-                    //     console.log(`[AsyncListRenderer] Batch finished. Rendered: ${renderedInThisFrame} | Progress: ${index} / ${endIndex}`);
-                    // }
-
-                    // 调度下一帧
-                    if (index < endIndex) {
-                        rafId = requestAnimationFrame(renderNextBatch);
-                    } else {
-                        signal.removeEventListener('abort', abortHandler);
-                        resolve();
-                    }
-                };
-
-                // 立即同步启动第一批渲染
-                renderNextBatch();
-            });
-        }
-
-        /**
-         * 从头开始全量渲染列表，调用此方法前会清空现有容器，重置状态。
-         * @param {any[]|Object} dataSource - 数据源。
-         * @param {number} [totalCount] - 数据总条数（可选，若不传则从 dataSource 计算）。
-         * @returns {Promise<void>} 整个渲染周期结束时落定的 Promise。
-         * @async
-         */
-        async startRender(dataSource, totalCount) {
-            // 先停掉上一轮可能还在执行的旧任务
-            this.stopRender();
-
-            const container = document.querySelector(this._containerSelector);
-            if (!container) {
-                console.warn(`[AsyncListRenderer] The specified container cannot be found: ${this._containerSelector}`);
-                return Promise.resolve();
-            }
-
-            this._observerInstance = this._createLazyObserver();
-
-            this._abortController = new AbortController();
-            const signal = this._abortController.signal;
-
-            const count = totalCount ?? this._getLength(dataSource);
-            if (typeof count !== 'number' || count <= 0) {
-                container.replaceChildren();
-                return Promise.resolve();
-            }
-
-            return this._enqueueTask(async () => {
-                await this._batchRender(container, dataSource, 0, count, signal, {isReplace: true});
-
-                // 在首批替换完成（或者全量渲染完成）后，再开启 DOM 变动监听，避开清屏风暴
-                if (!signal.aborted) {
-                    this._startDOMWatcher(container);
-                }
-            });
-        }
-
-        /**
-         * 追加渲染列表。在保留原有列表的基础上，挂载增量数据。
-         * @param {any[]|{}} dataSource - 数据源。
-         * @param {Object} [options={}] - 追加渲染的额外配置参数。
-         * @param {number} [options.startIndex=0] - 增量渲染起始索引。
-         * @param {number} [options.appendCount] - 需要追加渲染的数量（如果不传，则默认为 dataSource 长度减去 startIndex）。
-         * @param {Element|string|null} [options.insertTarget=null] - 指定增量插入的具体锚点节点或选择器。
-         * @returns {Promise<void>} 追加渲染任务完成的 Promise。
-         * @async
-         */
-        async appendRender(dataSource, options = {}) {
-            const {startIndex = 0, appendCount, insertTarget = null} = options;
-
-            const localController = new AbortController();
-            const localSignal = localController.signal;
-            this._appendControllers.add(localController);
-
-            // 入队而非链式
-            return this._enqueueTask(async () => {
-                if (localSignal.aborted) {
-                    this._appendControllers.delete(localController);
-                    return;
-                }
-
-                const count = appendCount ?? (this._getLength(dataSource) - startIndex);
-                const endIndex = startIndex + count;
-                const freshContainer = document.querySelector(this._containerSelector);
-
-                if (!freshContainer) {
-                    this._appendControllers.delete(localController);
-                    return;
-                }
-
-                if (this._observerInstance?.root && !this._observerInstance.root.isConnected) {
-                    this._observerInstance.disconnect();
-                    this._observerInstance = null;
-                }
-
-                if (!this._observerInstance) {
-                    this._observerInstance = this._createLazyObserver();
-                    this._startDOMWatcher(freshContainer);
-                    freshContainer.querySelectorAll('[data-async-internal="true"]')
-                        .forEach(node => this._observerInstance.observe(node));
-                }
-
-                try {
-                    await this._batchRender(freshContainer, dataSource, startIndex, endIndex, localSignal, {
-                        insertTarget: insertTarget,
-                        isReplace: false // 追加渲染，绝不替换
-                    });
-                } finally {
-                    this._appendControllers.delete(localController);
-                }
-            });
-        }
-
-        /**
-         * 暂停当前正在执行的时间分片渲染任务。
-         * 暂停后列表将维持现有的已渲染骨架，直到调用 resumeRender()。
-         * @public
-         */
-        pauseRender() {
-            this._isPaused = true;
-        }
-
-        /**
-         * 恢复之前被 {@link pauseRender} 暂停的渲染任务。
-         *
-         * 该方法会将暂停标志位设为 false，并提取所有在暂停期间累积的恢复回调函数，
-         * 利用 `requestAnimationFrame` 异步执行这些任务，以继续后续的批次挂载和渲染。
-         *
-         * @public
-         * @returns {void}
-         */
-        resumeRender() {
-            if (!this._isPaused) {
-                return;
-            }
-
-            this._isPaused = false;
-            const callbacks = this._resumeCallbacks.splice(0);
-            callbacks.forEach(cb => requestAnimationFrame(cb));
-        }
-
-        /**
-         * 硬终止当前的渲染任务及各类 Observer 监听器，重置相关类状态机。
-         * 释放对当前容器和节点的内部引用，并确保垃圾回收机制(GC)及时介入。
-         * @public
-         */
-        stopRender() {
-            if (this._abortController) {
-                this._abortController.abort();
-                this._abortController = null;
-            }
-
-            // 统一中止所有已入队但尚未执行的 append 任务
-            this._appendControllers.forEach(c => c.abort());
-            this._appendControllers.clear();
-
-            if (this._observerInstance) {
-                this._observerInstance.disconnect();
-                this._observerInstance = null;
-            }
-
-            if (this._mutationObserver) {
-                this._mutationObserver.disconnect();
-                this._mutationObserver = null;
-            }
-
-            const container = document.querySelector(this._containerSelector);
-            if (container) {
-                const activeNodes = container.querySelectorAll('[data-is-rendered="true"], [data-is-updating="true"]');
-                activeNodes.forEach(node => {
-                    node.dataset.isUpdating = 'false';
-                    node.dataset.isRendered = 'false';
-                    // 确保所有正在监听的节点都被安全解绑
-                    this._unbindVisibleNodeObserver(node);
-                });
-            }
-
-            // 重新初始化 WeakMap 清除悬空引用
-            this._visibleNodeObservers = new WeakMap();
-            this._internalNodes = new WeakSet();
-            this._lazyTargetsMap = new WeakMap();
-
-            this._watchedContainer = null;
-            this._isPaused = false;
-            this._resumeCallbacks = [];
-
-            // 主动 Reject 还在排队的任务，防止外部 await 永远挂死
-            const stopError = new DOMException('[AsyncListRenderer] Render stopped', 'AbortError');
-            const pendingTasks = Array.isArray(this._taskQueue) ? this._taskQueue : [];
-
-            pendingTasks.forEach(task => {
-                if (!task) {
-                    return;
-                }
-
-                // 安全地从任务对象/函数身上寻找挂载的 reject 方法
-                const rejectFn =
-                    typeof task.reject === 'function' ? task.reject :
-                    typeof task._reject === 'function' ? task._reject :
-                    typeof task.deferredReject === 'function' ? task.deferredReject :
-                    null;
-
-                if (rejectFn) {
-                    rejectFn(stopError);
-                }
-            });
-
-            // 清空队列，所有未执行任务瞬间释放
-            this._taskQueue = [];
-            this._isProcessing = false;
         }
     }
 
@@ -3009,6 +2017,8 @@
             this._remeasurePending = false;
             /** @type {boolean} 是否正处于自定义平滑滚动动画过程中。 */
             this._isSmoothScrolling = false;
+            /** @type {boolean} 是否正在执行 _render，防止 renderItem 副作用造成重入 */
+            this._rendering = false;
 
             /**
              * @type {Array<{index: number, behavior: string}>}
@@ -3268,7 +2278,8 @@
          */
         _doMeasure() {
             // 1. 记录初始状态
-            const originalOverflowY = this.container.style.overflowY;
+            const inlineOverflowY = this.container.style.overflowY;
+            const computedOverflowY = getComputedStyle(this.container).overflowY;
             const clientHeight = this.container.clientHeight;
 
             // 预判是否需要维持滚动条
@@ -3293,7 +2304,7 @@
                 this._heightMapper.update(0, this.itemHeight, clientHeight);
                 console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
                 // 恢复原始的 overflowY 样式
-                this.container.style.overflowY = originalOverflowY;
+                this.container.style.overflowY = inlineOverflowY || computedOverflowY;
                 return;
             }
 
@@ -3318,7 +2329,7 @@
             tempEls.length = 0;
 
             // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
-            this.container.style.overflowY = originalOverflowY;
+            this.container.style.overflowY = inlineOverflowY || computedOverflowY;
 
             if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
                 console.warn(
@@ -3383,7 +2394,7 @@
          * @method _buildDOM
          * @description 重建容器内的基础 DOM 骨架（清空 + 创建上下 spacer）。
          * * 回收所有已渲染节点并清空容器 `innerHTML`。
-         * * 创建两个自定义标签 `<vs-spacer>` 作为上下占位符，初始高度均为 0。
+         * * 创建两个自定义标签作为上下占位符，初始高度均为 0。
          * * spacer 样式设置为不可见、不占位但仍参与文档流高度计算。
          * * 调用后 `_startIndex` / `_endIndex` 被重置为 -1。
          *
@@ -3414,8 +2425,13 @@
                 fontSize: '0'
             });
 
-            this._spacerTop = document.createElement('vs-spacer');
-            this._spacerBottom = document.createElement('vs-spacer');
+            this._spacerTop = document.createElement('div');
+            this._spacerTop.setAttribute('data-vs-spacer', 'top');
+            this._spacerTop.setAttribute('aria-hidden', 'true');
+
+            this._spacerBottom = document.createElement('div');
+            this._spacerBottom.setAttribute('data-vs-spacer', 'bottom');
+            this._spacerBottom.setAttribute('aria-hidden', 'true');
             applySpacerStyle(this._spacerTop);
             applySpacerStyle(this._spacerBottom);
 
@@ -3552,23 +2568,24 @@
                     const widthChanged = Math.round(newW) !== Math.round(this._lastContainerWidth);
                     const heightChanged = Math.round(newH) !== Math.round(this._lastContainerHeight);
 
-                    if (widthChanged) {
-                        this._lastContainerWidth = newW;
-                        if (this._remeasureOnResize) {
-                            if (heightChanged) {
-                                this._lastContainerHeight = newH;
-                            }
-                            this._scheduleRemeasure();
-                            return;
+                    // 尺寸无实质变化，直接跳过
+                    if (!widthChanged && !heightChanged) {
+                        return;
+                    }
+
+                    // 统一更新最新尺寸记录
+                    this._lastContainerWidth = newW;
+                    this._lastContainerHeight = newH;
+
+                    if (this._remeasureOnResize) {
+                        // 只要开启配置，宽高变化均触发重测（兼容 dvh/vh）
+                        this._scheduleRemeasure();
+                    } else {
+                        if (heightChanged) {
+                            this._calcBufferSize();
                         }
+                        this._scheduleRender();
                     }
-
-                    if (heightChanged) {
-                        this._lastContainerHeight = newH;
-                        this._calcBufferSize();
-                    }
-
-                    this._scheduleRender();
                 });
                 this._ro.observe(this.container);
             } else {
@@ -3592,23 +2609,21 @@
                     const widthChanged = Math.round(newW) !== Math.round(this._lastContainerWidth);
                     const heightChanged = Math.round(newH) !== Math.round(this._lastContainerHeight);
 
-                    if (widthChanged) {
-                        this._lastContainerWidth = newW;
-                        if (this._remeasureOnResize) {
-                            if (heightChanged) {
-                                this._lastContainerHeight = newH;
-                            }
-                            this._scheduleRemeasure();
-                            return;
+                    if (!widthChanged && !heightChanged) {
+                        return;
+                    }
+
+                    this._lastContainerWidth = newW;
+                    this._lastContainerHeight = newH;
+
+                    if (this._remeasureOnResize) {
+                        this._scheduleRemeasure();
+                    } else {
+                        if (heightChanged) {
+                            this._calcBufferSize();
                         }
+                        this._scheduleRender();
                     }
-
-                    if (heightChanged) {
-                        this._lastContainerHeight = newH;
-                        this._calcBufferSize();
-                    }
-
-                    this._scheduleRender();
                 };
                 window.addEventListener('resize', this._handleWindowResize, {passive: true});
             }
@@ -3661,15 +2676,20 @@
                 }
 
                 try {
-                    // 1. 在 DOM 被清空前，抓取旧的虚拟滚动位置
+                    // 1. 抓取旧的虚拟滚动位置、行高、行索引
                     const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
-                    // 算出当前停留在第几行
-                    const oldRowIndex = this.itemHeight > 0
-                                        ? Math.floor(oldVirtScroll / this.itemHeight)
+                    const oldItemHeight = this.itemHeight;
+                    const oldRowIndex = oldItemHeight > 0
+                                        ? Math.floor(oldVirtScroll / oldItemHeight)
                                         : 0;
 
+                    // 计算当前滚动位置在这一行内部偏移了百分之几（0.0 ~ 0.999...）
+                    const oldOffsetRatio = oldItemHeight > 0
+                                           ? (oldVirtScroll % oldItemHeight) / oldItemHeight
+                                           : 0;
+
                     this._heightMapper.reset();
-                    this._doMeasure(); // 内部会清空 DOM，但此时不再操作 scrollTop
+                    this._doMeasure(); // 这里执行完后，this.itemHeight 变成了全新的值！
                     this._syncContainerSize();
                     this._calcBufferSize(true);
 
@@ -3677,12 +2697,17 @@
                     this._buildDOM();
                     this._syncContainerSize();
 
-                    // 3. 既然 DOM 已经撑开，现在赋值 scrollTop 浏览器才会认账
+                    // 3. 根据新行高，恢复到相同的逻辑行，并补上相同的相对偏移比例
                     const clientHeight = this.container.clientHeight;
+
+                    // 用 (行索引 + 偏移比例) * 新行高，算出极其精准的新位置
+                    const exactNewVirtScroll = (oldRowIndex + oldOffsetRatio) * this.itemHeight;
+
                     const newVirtScroll = Math.min(
-                        oldRowIndex * this.itemHeight,
+                        exactNewVirtScroll,
                         Math.max(0, this._heightMapper.virtualHeight - clientHeight)
                     );
+
                     this.container.scrollTop = this._heightMapper.virtualToPhysical(newVirtScroll);
 
                     this._bindScroll();
@@ -3794,80 +2819,78 @@
          * @returns {void}
          */
         _render(force = false) {
-            if (!this.container) {
+            // 防止 renderItem 的副作用（scrollToIndex 等）在渲染期间触发重入
+            if (this._rendering) {
                 return;
             }
-            if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
-                return;
-            }
-            if (this.totalCount <= 0 || this.itemHeight <= 0) {
-                return;
-            }
+            this._rendering = true;
 
-            const clientHeight = this.container.clientHeight;
-            if (clientHeight <= 0) {
-                return;
-            }
+            try {
+                if (!this.container) {
+                    return;
+                }
+                if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
+                    return;
+                }
+                if (this.totalCount <= 0 || this.itemHeight <= 0) {
+                    return;
+                }
 
-            const heightChanged = clientHeight !== this._lastContainerHeight;
-            if (heightChanged) {
-                this._lastContainerHeight = clientHeight;
-                this._calcBufferSize();
-                this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
+                const clientHeight = this.container.clientHeight;
+                if (clientHeight <= 0) {
+                    return;
+                }
 
-                const hm = this._heightMapper;
-                const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
-                const currentST = this.container.scrollTop;
+                const heightChanged = clientHeight !== this._lastContainerHeight;
+                if (heightChanged) {
+                    this._lastContainerHeight = clientHeight;
+                    this._calcBufferSize();
+                    this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
 
-                if (currentST > maxPhysical) {
-                    // scrollTop 超出新的最大值，需要修正。
-                    //
-                    // 1. 先解绑 scroll 监听器，防止 scrollTop 赋值触发一次多余的 scroll 事件，
-                    //    进而引发另一次 _scheduleRender → _render 的递归链。
-                    // 2. 赋值修正后的 scrollTop。
-                    // 3. 重新绑定监听器。
-                    // 4. 当前 _render 调用继续向下执行，基于修正后的 scrollTop 完成本次渲染。
-                    //    不需要取消任何 RAF，也不需要重新调度——本次调用本身就是那次渲染。
-                    this._unbindScroll();
-                    this.container.scrollTop = maxPhysical;
-                    if (this._sm.is(VirtualScroll.State.RUNNING)) {
-                        this._bindScroll();
+                    const hm = this._heightMapper;
+                    const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
+                    const currentST = this.container.scrollTop;
+
+                    if (currentST > maxPhysical) {
+                        this.container.scrollTop = maxPhysical;
                     }
                 }
+
+                const hm = this._heightMapper;
+                const physScrollTop = this.container.scrollTop;
+                const virtScrollTop = hm.physicalToVirtual(physScrollTop);
+
+                const visibleStart = Math.floor(virtScrollTop / this.itemHeight);
+                const visibleEnd = Math.ceil((virtScrollTop + clientHeight) / this.itemHeight);
+                const start = Math.max(0, visibleStart - this.bufferSize);
+                const end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
+
+                const rangeUnchanged = start === this._startIndex && end === this._endIndex;
+                if (!force && rangeUnchanged && !heightChanged) {
+                    return;
+                }
+
+                const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
+                    start, end, this.totalCount, this.itemHeight
+                );
+                this._spacerTop.style.height = `${spacerTopPx}px`;
+                this._spacerBottom.style.height = `${spacerBottomPx}px`;
+
+                const prevStart = this._startIndex;
+                const prevEnd = this._endIndex;
+                const noOverlap = prevStart < 0 || end <= prevStart || start >= prevEnd;
+
+                if (noOverlap || force) {
+                    this._recycleAllAndRender(start, end);
+                } else {
+                    this._incrementalUpdate(prevStart, prevEnd, start, end);
+                }
+
+                this._startIndex = start;
+                this._endIndex = end;
+            } finally {
+                this._rendering = false;
             }
-
-            const hm = this._heightMapper;
-            const physScrollTop = this.container.scrollTop;
-            const virtScrollTop = hm.physicalToVirtual(physScrollTop);
-
-            const visibleStart = Math.floor(virtScrollTop / this.itemHeight);
-            const visibleEnd = Math.ceil((virtScrollTop + clientHeight) / this.itemHeight);
-            const start = Math.max(0, visibleStart - this.bufferSize);
-            const end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
-
-            const rangeUnchanged = start === this._startIndex && end === this._endIndex;
-            if (!force && rangeUnchanged && !heightChanged) {
-                return;
-            }
-
-            const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
-                start, end, this.totalCount, this.itemHeight
-            );
-            this._spacerTop.style.height = `${spacerTopPx}px`;
-            this._spacerBottom.style.height = `${spacerBottomPx}px`;
-
-            const prevStart = this._startIndex;
-            const prevEnd = this._endIndex;
-            const noOverlap = prevStart < 0 || end <= prevStart || start >= prevEnd;
-
-            if (noOverlap) {
-                this._recycleAllAndRender(start, end);
-            } else {
-                this._incrementalUpdate(prevStart, prevEnd, start, end);
-            }
-
-            this._startIndex = start;
-            this._endIndex = end;
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -3899,6 +2922,9 @@
                     toRecycle.push(i);
                 }
             }
+            // 提取新窗口左侧扩展的索引
+            // 注意：由于外层 _render 的 noOverlap 逻辑已拦截了完全无交集的场景，
+            // 这里必定存在 prevStart < newEnd 的情况，因此循环不会出现全量替换的错觉。
             for (let i = newStart; i < Math.min(prevStart, newEnd); i++) {
                 prependIndices.push(i);
             }
@@ -4082,6 +3108,7 @@
             this.totalCount = 0;
             this.container = null;
             this._heightMapper.reset();
+            this._rendering = false;
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -4147,8 +3174,6 @@
                 } else {
                     this._smoothRAF = null;
                     this._isSmoothScrolling = false;
-                    // 确保最后一帧对齐
-                    this._render();
                 }
             };
 
@@ -4236,17 +3261,15 @@
 
             this._resolveContainer();
 
+            // ── 在 heightMapper 更新前，用旧 ratio 采集当前虚拟滚动位置 ──
             const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
-            const oldRowIndex = this.itemHeight > 0
-                                ? Math.floor(oldVirtScroll / this.itemHeight)
-                                : 0;
 
             this.data = data;
             this.totalCount = normalizedLength;
 
             if (!this._measured || remeasure) {
                 this._setupContainer();
-                this._doMeasure();
+                this._doMeasure();   // 内部已调用 heightMapper.update()
                 this._measured = true;
             } else {
                 this._verifyItemHeight();
@@ -4257,13 +3280,32 @@
 
             this._calcBufferSize(true);
 
+            // ── 确保 spacer 存在 ──────────────────────────────────────────────
             if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
-                this._buildDOM();
+                this._buildDOM();  // 内部已用 start=0,end=0 初始化 spacer 高度
             }
 
             this._syncContainerSize();
 
-            // ── 滚动位置处理 ────────────────────────────────────────────────────
+            // ── 在写 scrollTop 之前，先把 spacer 撑到正确高度 ──────
+            // 浏览器的 scrollTop 上限 = scrollHeight - clientHeight。
+            // 若 spacer 还是旧高度，scrollHeight 偏小，scrollTop 会被静默截断，
+            // 导致 _forceRender 基于错误的 scrollTop 计算出 start > 0，
+            // spacerTop 变非零，进而引发反复抖动。
+            //
+            // 此时渲染窗口还未更新（_startIndex/_endIndex 是旧值或 -1），
+            // 用 0,0 作为占位确保 spacerBottom 撑满整个 physicalHeight，
+            // 让 scrollHeight 在 scrollTop 赋值前就达到最终值。
+            {
+                const hm = this._heightMapper;
+                const {top, bottom} = hm.calcSpacerHeights(
+                    0, 0, this.totalCount, this.itemHeight
+                );
+                this._spacerTop.style.height = `${top}px`;    // 0px（start=0）
+                this._spacerBottom.style.height = `${bottom}px`; // physicalHeight 全部归底部
+            }
+
+            // ── 滚动位置处理（此时 scrollHeight 已正确，scrollTop 不会被截断）──
             if (resetScroll) {
                 this.container.scrollTop = 0;
             } else {
@@ -4271,23 +3313,56 @@
                 const clientHeight = this.container.clientHeight;
                 const hm = this._heightMapper;
                 const newVirtScroll = Math.min(
-                    oldRowIndex * this.itemHeight,
+                    oldVirtScroll,
                     Math.max(0, hm.virtualHeight - clientHeight)
                 );
-                // 在 scroll 监听器绑定之前赋值，避免触发多余的 scroll 事件
-                // _forceRender 会在 _bindEvents 之后统一执行，此处 scrollTop 改变不会产生副作用
+                // scrollHeight 已撑开，此赋值不会被浏览器截断
                 this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
             }
 
-            // scroll 监听器在 scrollTop 设置完毕后再绑定，彻底消除路径
+            // scroll 监听器在 scrollTop 设置完毕后再绑定
             this._bindEvents();
 
-            // 唯一一次强制渲染，基于最终 scrollTop 计算正确窗口
+            // _forceRender 将基于正确的 scrollTop 计算窗口，并最终修正 spacer 高度
             this._forceRender();
 
             if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                 this._sm.transition(VirtualScroll.State.RUNNING);
             }
+        }
+
+        /**
+         * @method applyToItem
+         * @description 对指定索引的已渲染 DOM 节点执行自定义操作。
+         * * 如果该索引当前不在渲染窗口内（未被挂载到 DOM），则跳过执行并返回 `false`。
+         * * @param {number} index - 目标条目索引。
+         * @param index - 要执行的节点索引
+         * @param {(el: HTMLElement) => void} callback - 要执行的回调函数，接收该索引对应的 DOM 节点作为参数。
+         * @returns {boolean} 若节点存在并执行了回调返回 `true`，否则返回 `false`。
+         * @example
+         * // 让第 10 行的节点闪烁一下
+         * vs.applyToItem(10, el => {
+         * el.classList.add('flash-animation');
+         * setTimeout(() => el.classList.remove('flash-animation'), 500);
+         * });
+         */
+        applyToItem(index, callback) {
+            this._assertNotDestroyed('applyToItem');
+
+            if (typeof callback !== 'function') {
+                throw new TypeError('[VirtualScroll] applyToItem() requires a callback function.');
+            }
+
+            // 强制转换为数字
+            const i = Number(index);
+            const el = this._renderedNodes.get(i);
+
+            if (!el) {
+                return false;
+            }
+
+            callback(el);
+            return true;
         }
 
         /**
@@ -4409,14 +3484,12 @@
          * @param {number} index                   - 目标条目索引（自动取整并夹紧）。
          * @param {Object} [options={}]            - 可选参数。
          * @param {'auto'|'smooth'} [options.behavior='auto'] - 滚动行为；`'smooth'` 为平滑滚动。
+         * @param {'start'|'end'|'center'|'nearest'} [options.block='nearest'] - 垂直对齐方式。
          *
          * @throws {Error} 实例已销毁时抛出。
          * @returns {void}
-         * @example
-         * vs.scrollToIndex(999);                        // 即时跳转到第 999 条
-         * vs.scrollToIndex(999, { behavior: 'smooth' }); // 平滑滚动到第 999 条
          */
-        scrollToIndex(index, {behavior = 'auto'} = {}) {
+        scrollToIndex(index, {behavior = 'auto', block = 'nearest'} = {}) {
             this._assertNotDestroyed('scrollToIndex');
 
             if (this._sm.is(VirtualScroll.State.IDLE) || !this.container || this.totalCount === 0) {
@@ -4432,7 +3505,7 @@
             const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
 
             if (this._sm.is(VirtualScroll.State.PAUSED)) {
-                this._pendingScrollQueue.push({index: i, behavior});
+                this._pendingScrollQueue.push({index: i, behavior, block}); // 将 block 也存入队列
                 console.info(
                     `[VirtualScroll] scrollToIndex(${i}) queued while PAUSED ` +
                     `(queue length: ${this._pendingScrollQueue.length}). ` +
@@ -4441,8 +3514,46 @@
                 return;
             }
 
-            const virtualTop = i * this.itemHeight;
-            const physicalTop = this._heightMapper.virtualToPhysical(virtualTop);
+            const clientHeight = this.container.clientHeight;
+            const itemVirtualTop = i * this.itemHeight;
+            const itemVirtualBottom = itemVirtualTop + this.itemHeight;
+
+            let targetVirtualScroll = itemVirtualTop; // 默认 fallback 为 'start'
+
+            // 根据 block 计算目标虚拟滚动位置
+            switch (block) {
+                case 'end':
+                    targetVirtualScroll = itemVirtualBottom - clientHeight;
+                    break;
+                case 'center':
+                    targetVirtualScroll = itemVirtualTop - (clientHeight / 2) + (this.itemHeight / 2);
+                    break;
+                case 'nearest': {
+                    const currentVirtualTop = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+                    const currentVirtualBottom = currentVirtualTop + clientHeight;
+
+                    if (itemVirtualTop >= currentVirtualTop && itemVirtualBottom <= currentVirtualBottom) {
+                        // 条目完全在视口内，放弃滚动，直接返回
+                        return;
+                    } else if (itemVirtualTop < currentVirtualTop) {
+                        // 条目在视口上方，顶部对齐
+                        targetVirtualScroll = itemVirtualTop;
+                    } else {
+                        // 条目在视口下方，底部对齐
+                        targetVirtualScroll = itemVirtualBottom - clientHeight;
+                    }
+                    break;
+                }
+                case 'start':
+                default:
+                    targetVirtualScroll = itemVirtualTop;
+                    break;
+            }
+
+            // 边界保护：防止出现负数的 scrollTop
+            targetVirtualScroll = Math.max(0, targetVirtualScroll);
+
+            const physicalTop = this._heightMapper.virtualToPhysical(targetVirtualScroll);
 
             if (behavior === 'smooth') {
                 if (this._heightMapper.compressed) {
@@ -4621,22 +3732,21 @@
 
         /**
          * @static
-         * @type {AsyncListRenderer}
+         * @type {VirtualScroll}
          * @description statisticsRenderer 实例。
          * 用于管理统计模式的列表显示。
          */
-        static statisticsRenderer = new AsyncListRenderer({
-            scrollSelector: '#grid_data',    // 滚动区域的选择器
-            containerSelector: '#grid_data', // 真实 DOM 的挂载点选择器
+        static statisticsRenderer = new VirtualScroll({
+            container: '#grid_data',    // 滚动区域的选择器
 
             /**
-             * @function rowRenderer
+             * @function renderItem
              * @param {Object} dataSource - 外部传入的完整数据包装对象
              * @param {number} index - 当前渲染的行索引
              * @returns {HTMLElement} 返回拼装好的一行 DOM
              * @description 负责单行 DOM 的组装
              */
-            rowRenderer: (dataSource, index) => {
+            renderItem: (index, dataSource) => {
                 /**
                  * @function toClassList
                  * @param {string|Array} input - 待转换的输入值，可以是原始类名字符串或其他格式
@@ -4649,68 +3759,6 @@
                     index,
                     inputListX: toClassList(dataSource[index][0]),
                     inputListY: toClassList(dataSource[index][1])
-                });
-            },
-
-            /**
-             * @function lazyMount
-             * @param {HTMLElement} el - 移入可视区的节点
-             * @description 当 DOM 移入可视区后加载数据
-             */
-            lazyMount: (el) => {
-                // 提取之前绑定的数据
-                const children = el.children;
-                const
-                    index = children[0].children[0].dataset.index,
-                    dataX = children[1].dataset.dataX,
-                    dataY = children[2].dataset.dataY;
-
-                // 渲染真实内容
-                HtmlTools.appendDOMs(
-                    children[0].children[0],
-                    index.split(',').filter(Boolean),
-                    {mode: 'replace', toRealDOM: true}
-                );
-                HtmlTools.appendDOMs(
-                    children[1],
-                    dataX.split(',').filter(Boolean),
-                    {mode: 'replace', toRealDOM: true}
-                );
-                HtmlTools.appendDOMs(
-                    children[2],
-                    dataY.split(',').filter(Boolean),
-                    {mode: 'replace', toRealDOM: true}
-                );
-            },
-
-            /**
-             * @function lazyUnmount
-             * @param {HTMLElement} el - 移出可视区的节点
-             * @description 当 DOM 移出可视区后卸载数据
-             */
-            lazyUnmount: (el) => {
-                // 清除节点数据
-                const children = el.children;
-                children[0].children[0].replaceChildren();
-                children[1].replaceChildren();
-                children[2].replaceChildren();
-            },
-
-            /**
-             * @function bindVisibleNodeObserver
-             * @param {[HTMLElement]} changedNodes - 发生变化的节点组
-             * @description 当 DOM 节点的 dataset 发生变化时执行同步函数
-             */
-            bindVisibleNodeObserver: (changedNodes) => {
-                changedNodes.forEach((el) => {
-                    const activeKey = HtmlTools.findActiveKey(el);
-
-                    // 渲染真实内容
-                    HtmlTools.appendDOMs(
-                        el,
-                        el.dataset[activeKey].split(',').filter(Boolean),
-                        {mode: 'replace', toRealDOM: true}
-                    );
                 });
             }
         });
@@ -4917,28 +3965,20 @@
         /**
          * @static
          * @method addSpace
-         * @description 自动在数学表达式的 DOM 表示中添加或移除空格，以提高可读性。
-         * 核心逻辑：当字母函数名（如 "sin"）紧接另一个字母 token 时，插入空格（如 `sincos` -> `sin cos`）。
+         * @description 自动在数学表达式的 DOM 表示或 ClassList 数组中添加或移除空格，以提高可读性。
          *
          * @param {object} [options={}] - 配置选项。
          * @param {HTMLElement|null} [options.area=null] - (可选) 容器。默认为 #input。
-         * @param {boolean} [options.rangeLimit=false] - (可选) 优化标志，限制处理范围在光标周围。
-         * @returns {void}
+         * @param {Array<string>|null} [options.classList=null] - (可选) 纯数组模式。如果提供，将处理并返回新的 classList 数组，不操作 DOM。
+         * @param {boolean} [options.rangeLimit=false] - (可选) 优化标志，限制处理范围在光标周围（仅在 DOM 模式下有效）。
+         * @returns {void|Array<string>} 如果传入 classList，则返回处理后的数组；否则无返回值（直接修改 DOM）。
          */
-        static addSpace({area = null, rangeLimit = false} = {}) {
-            // 1. 初始化与卫语句
+        static addSpace({area = null, classList = null, rangeLimit = false} = {}) {
+            // 初始化与卫语句
             const REGEX_ALPHA = /[a-zA-Z]/;
             // 特殊字符类
             const specialCharacters = '_syntax_error_';
-
-            // 如果是默认区域且当前仅显示 InputTip，直接返回
-            if (!area && HtmlTools.getHtml('.InputTip')) {
-                return;
-            }
-
-            const target = area || HtmlTools.getHtml('#input');
-            const cursor = HtmlTools.getHtml('#cursor');
-            const children = target.children;
+            const space = '_space_';
 
             /**
              * @private
@@ -4973,14 +4013,113 @@
                 return isBoundaryIllegal && !isIgnoredChar;
             };
 
+            /**
+             * @private
+             * @function getUnlimitedAddIndex
+             * @param {string[]} classList - HTML 类名数组，每个元素是一个 CSS 类名字符串
+             * @returns {number[]} 空格插入位置的索引数组，每个数字表示在文本中的插入位置（0-based 索引）
+             *                     例如返回 [3, 7] 表示在索引 3 和 7 的位置需要插入空格
+             *
+             * @description 获取无范围模式下的空格插入索引列表
+             *
+             * 该函数处理 HTML 类名列表，分析 token 序列，确定在哪些位置需要插入空格以优化文本显示。
+             * 特别处理了包含特殊错误字符（specialCharacters）的情况，会自动在特殊字符后添加默认空格。
+             *
+             * 主要步骤：
+             * 1. 克隆输入数组避免副作用
+             * 2. 检测并处理开头的特殊错误字符
+             * 3. 将 HTML 类名转换为文本并进行 token 化
+             * 4. 分析 token 序列，根据相邻 token 关系计算空格插入位置
+             * 5. 如果有特殊字符，调整所有索引并添加特殊字符后的默认空格位置
+             *
+             * @example
+             * // 基本用法
+             * const classList = ['btn', 'btn-primary', 'active'];
+             * const indices = getUnlimitedAddIndex(classList);
+             * // 可能返回 [3, 7] 表示在这些位置需要插入空格
+             *
+             */
+            const getUnlimitedAddIndex = classList => {
+                // 克隆数组，避免修改参数
+                const clonedList = [...classList];
+
+                let haveSpecialCharacters = false;
+                if (clonedList[0] === specialCharacters) {
+                    haveSpecialCharacters = true;
+                    clonedList.shift();
+                }
+
+                // 转换为文本并进行 Tokenize
+                const textList = HtmlTools.htmlClassToText(clonedList);
+                const tokens = Public.tokenizer(textList, {strictMode: false});
+                const addIndex = [];
+
+                // 计算需要插入空格的索引
+                if (tokens && tokens.length > 0) {
+                    // 增加第一个token的长度作为初始偏移
+                    let pointer = this._getTokenLen(tokens[0]);
+
+                    for (let i = 1; i < tokens.length; i++) {
+                        const currToken = tokens[i];
+                        const prevToken = tokens[i - 1];
+
+                        if (shouldAddSpace(prevToken, currToken)) {
+                            addIndex.push(pointer);
+                        }
+
+                        pointer += this._getTokenLen(currToken);
+                    }
+                }
+
+                // 处理特殊错误字符的偏移
+                if (haveSpecialCharacters) {
+                    for (let i = 0; i < addIndex.length; i++) {
+                        addIndex[i] = addIndex[i] + 1;
+                    }
+                    addIndex.unshift(1); // 语法错误标记后默认加一个空格
+                }
+
+                // 返回添加空格的索引
+                return addIndex;
+            };
+
+            // ==========================================
+            // 分支 A: 纯 ClassList 数组处理模式 (无 DOM 操作)
+            // ==========================================
+            if (classList) {
+                // 预处理
+                const pureClassList = classList.filter(c => c !== space);
+                if (pureClassList.length === 0) {
+                    return pureClassList;
+                }
+
+                const addIndex = getUnlimitedAddIndex(pureClassList);
+                // 倒序插入空格（避免索引偏移问题）
+                for (let i = addIndex.length - 1; i >= 0; i--) {
+                    pureClassList.splice(addIndex[i], 0, space);
+                }
+
+                return pureClassList; // 返回处理后的新数组
+            }
+
+            // ==========================================
+            // 分支 B: 直接在 DOM 结构上添加空格
+            // ==========================================
+            if (!area && HtmlTools.getHtml('.InputTip')) {
+                // 如果是默认区域且当前仅显示 InputTip，直接返回
+                return;
+            }
+
+            const target = area || HtmlTools.getHtml('#input');
+            const cursor = HtmlTools.getHtml('#cursor');
+            const children = target.children;
+
             // 删除空格范围
             let totalRangeStart = 0;
-            let totalRangeEnd = children.length - 1;
-            let isLazyBg = false;
-            let activeKey; // 仅在 isLazyBg 时有用，标识目前正在处理的元素名称
+            let totalRangeEnd = children.length;
 
             // 计算需要插入空格的索引位置 (addIndex)
-            const addIndex = [];
+            let addIndex = [];
             if (rangeLimit) {
                 // --- 分支 A: 局部范围优化模式 ---
                 const childrenArray = Array.from(children);
@@ -5063,107 +4202,48 @@
                 }
                 if (tokenStack.length !== 2) {
                     const len0 = this._getTokenLen(tokenStack[0]);
-                    totalRangeEnd = centerIndex + len0 + rightSpaceCount + 1; // 1 for cursor itself
+                    totalRangeEnd = centerIndex + len0 + rightSpaceCount;
                 } else {
                     if (shouldAddSpace(tokenStack[0], tokenStack[1])) {
                         addIndex.push(addPos);
                     }
                     const len0 = this._getTokenLen(tokenStack[0]);
                     const len1 = this._getTokenLen(tokenStack[1]);
-                    totalRangeEnd = centerIndex + len0 + len1 + rightSpaceCount + 1; // 1 for cursor itself
+                    totalRangeEnd = centerIndex + len0 + len1 + rightSpaceCount;
                 }
             } else {
                 // --- 分支 B: 全局扫描模式 ---
-                let classList;
-
-                // 找到第一个在 dataset 中存在的键名
-                activeKey = HtmlTools.findActiveKey(target);
-                if (activeKey) {
-                    isLazyBg = true;
-                    const rawData = target.dataset[activeKey];
-                    classList = rawData.split(',').filter(Boolean);
-                } else {
-                    // 普通逻辑
-                    classList = HtmlTools.getClassList(target, {ignoreSpace: true, onlyP: false});
-                }
-
+                const classList = HtmlTools.getClassList(target, {ignoreSpace: true, onlyP: false});
                 if (classList.length === 0) {
                     return;
                 }
 
-                let haveSpecialCharacters = false;
-                if (classList[0] === specialCharacters) {
-                    haveSpecialCharacters = true;
-                    classList.shift();
-                }
+                addIndex = getUnlimitedAddIndex(classList);
+            }
 
-                const textList = HtmlTools.htmlClassToText(classList);
-                const tokens = Public.tokenizer(textList, {strictMode: false});
+            // 保存原始显示状态
+            const originalDisplay = target.style.display;
+            // 先隐藏以避免重排多次
+            target.style.display = 'none';
 
-                if (tokens && tokens.length > 0) {
-                    let domPointer = 0; // 起始位置 (startIndex 默认为 0)
-
-                    // 增加第一个 token 的长度作为初始偏移
-                    domPointer += this._getTokenLen(tokens[0]);
-
-                    for (let i = 1; i < tokens.length; i++) {
-                        const currToken = tokens[i];
-                        const prevToken = tokens[i - 1];
-
-                        if (shouldAddSpace(prevToken, currToken)) {
-                            addIndex.push(domPointer);
-                        }
-
-                        domPointer += this._getTokenLen(currToken);
-                    }
-                }
-
-                if (haveSpecialCharacters) {
-                    for (let i = 0; i < addIndex.length; i++) {
-                        addIndex[i] = addIndex[i] + 1;
-                    }
-                    addIndex.unshift(1);
+            // 删除空格
+            for (let i = totalRangeStart; i < totalRangeEnd; i++) {
+                const curr = children[i];
+                if (curr.className === space) {
+                    curr.remove();
+                    totalRangeEnd -= 1;
                 }
             }
 
-            if (isLazyBg) {
-                // 删除空格
-                const originalStr = target.dataset[activeKey];
-                const strWithoutSpace = originalStr.replace(/(^|,)_space_(?=,|$)/g, '').replace(/^,/, '');
-                const resultList = strWithoutSpace.split(',').filter(Boolean);
-
-                // 批量插入空格
-                for (let i = addIndex.length - 1; i >= 0; i--) {
-                    resultList.splice(addIndex[i], 0, '_space_');
-                }
-
-                // 使其生效
-                target.dataset[activeKey] = resultList.join(',');
-            } else {
-                // 保存原始显示状态
-                const originalDisplay = target.style.display;
-                // 先隐藏以避免重排多次
-                target.style.display = 'none';
-
-                // 删除空格
-                for (let i = totalRangeStart; i < totalRangeEnd; i++) {
-                    const curr = children[i];
-                    if (curr.className === '_space_') {
-                        curr.remove();
-                        totalRangeEnd -= 1;
-                    }
-                }
-
-                // 批量插入空格
-                for (let i = addIndex.length - 1; i >= 0; i--) {
-                    HtmlTools.appendDOMs(target, ['_space_'], {index: addIndex[i]});
-                }
-
-                // 恢复显示
-                target.style.display = originalDisplay;
-                // 确保视图跟随
-                HtmlTools.scrollToView();
+            // 批量插入空格
+            for (let i = addIndex.length - 1; i >= 0; i--) {
+                HtmlTools.appendDOMs(target, [space], {index: addIndex[i]});
             }
+
+            // 恢复显示
+            target.style.display = originalDisplay;
+            // 确保视图跟随
+            HtmlTools.scrollToView();
         }
 
         /**
@@ -5173,19 +4253,15 @@
          * @param {object} [options] - (可选) 包含行数据的配置对象。
          * @param {HTMLElement | string} [options.acArea] - (可选) 目标 DOM 元素或其 ID 选择器。
          * @param {boolean} [options.forcedMode=false] - (可选) 是否强制设置为清空屏幕输入区域。
-         * @param {boolean} [options.toRealDOM=false] - (可选) 是否强清空真实节点。
          */
-        static ac({acArea = null, forcedMode = false, toRealDOM = false} = {}) {
+        static ac({acArea = null, forcedMode = false} = {}) {
             // 1. 模式一：指定区域清除
             // 只要传入了参数（且不为 null/undefined），就视为清除特定区域
             if (acArea) {
                 // 增强逻辑：允许传入字符串选择器（与 appendDOMs 保持一致）
                 const target = typeof acArea === 'string' ? HtmlTools.getHtml(acArea) : acArea;
 
-                const activeKey = HtmlTools.findActiveKey(target);
-                if (activeKey && !toRealDOM) {
-                    target.dataset[activeKey] = '';
-                } else if (target && typeof target.replaceChildren === 'function') { // 健壮性检查：确保目标存在且是合法的 DOM 元素
+                if (target) { // 健壮性检查：确保目标存在且是合法的 DOM 元素
                     target.replaceChildren();
                 }
                 return; // 执行完毕直接返回
@@ -5203,15 +4279,7 @@
                 const currentMode = PageConfig.currentMode;
                 if (currentMode === '1') {
                     PageConfig.subModes = {'1': [0, 0]};
-
-                    // 清空容器
-                    if (InputManager.statisticsRenderer) {
-                        InputManager.statisticsRenderer.stopRender();
-                    }
-                    HtmlTools.getHtml('#grid_data').replaceChildren();
-
-                    InputManager.statisticsAddLine();
-                    PageConfig.syncScreenData('1');
+                    PageConfig.screenData = {'1': [['', '']]};
                 } else if (currentMode !== '0') {
                     const len = HtmlTools.getHtml(`#screen_${currentMode}`).children.length;
                     for (let i = 0; i < len; i++) {
@@ -5304,15 +4372,14 @@
                     return;
                 }
                 if (currentMode === '1') {
-                    const target = HtmlTools.getHtml('.GridOn');
-                    let brotherTarget = target.nextElementSibling;
-                    if (!brotherTarget) {
-                        brotherTarget = target.previousElementSibling;
-                    }
-                    if (brotherTarget.children.length === 0) {
+                    const current = PageConfig.subModes['1'];
+                    const brotherTarget = PageConfig.screenData['1'][current[0]][1 - current[1]];
+                    if (brotherTarget.length === 0) {
+                        // 如果删除后是空行，则直接删除一整行
                         InputManager.statisticsDelLine();
                     } else {
-                        this.ac({acArea: target});
+                        // 注意这里传入的是三元组，格式为 [y坐标, x坐标, 数值]
+                        PageConfig.screenData = {'1': [...current, '']};
                     }
                 } else {
                     this.ac({acArea: HtmlTools.getCurrentSubscreenArea()});
@@ -5390,7 +4457,6 @@
 
                     case '1': {
                         const currentSubModes = PageConfig.subModes['1'];
-                        len = HtmlTools.getHtml('#grid_data').children.length - 1;
                         switch (direction) {
                             case 'left':
                             case 'right':
@@ -5401,6 +4467,7 @@
                                 return;
                             case 'up':
                             case 'down':
+                                len = PageConfig.screenData['1'].length - 1;
                                 nextNum = currentSubModes[0] + (direction === 'up' ? -1 : 1);
                                 makeValue = nextNum => [nextNum, currentSubModes[1]];
                                 break;
@@ -5584,32 +4651,42 @@
         ) {
             // 创建新行的 DOM 元素
             const insert = document.createElement('div');
+            const currentMode = PageConfig.subModes['1'];
+            // 决定是否添加 .GridOn
+            const isCurrent = index === currentMode[0];
 
             // 创建序号列的 DOM 结构
             const serialNumberGrandfather = document.createElement('div');
             const serialNumberFather = document.createElement('div');
 
             // 创建索引
-            serialNumberFather.dataset.index = HtmlTools.textToHtmlClass((index + 1).toString()).join(',');
+            HtmlTools.appendDOMs(serialNumberFather, HtmlTools.textToHtmlClass((index + 1).toString()));
             serialNumberGrandfather.appendChild(serialNumberFather);
 
             // 创建 X 数据列的 DOM 结构
             const gridX = document.createElement('div');
             gridX.classList.add('DataX');
-            gridX.dataset.dataX = inputListX.join(',');
+            if (isCurrent && currentMode[1] === 0) {
+                gridX.classList.add('GridOn');
+            }
+            HtmlTools.appendDOMs(gridX, InputManager.addSpace({
+                classList: inputListX
+            }));
 
             // 创建 Y 数据列的 DOM 结构
             const gridY = document.createElement('div');
             gridY.classList.add('DataY');
-            gridY.dataset.dataY = inputListY.join(',');
+            if (isCurrent && currentMode[1] === 1) {
+                gridY.classList.add('GridOn');
+            }
+            HtmlTools.appendDOMs(gridY, InputManager.addSpace({
+                classList: inputListY
+            }));
 
             // 将所有列添加到新行中
             insert.appendChild(serialNumberGrandfather);
             insert.appendChild(gridX);
             insert.appendChild(gridY);
-
-            // 设置懒加载标志
-            insert.setAttribute('data-lazy-load', 'true');
 
             return insert;
         }
@@ -5624,68 +4701,46 @@
          * @param {Array<number|string>|null} [options.location=null] - (可选) 插入新行的位置。
          *   - 如果为 `null`，则在网格末尾添加。
          *   - 如果为数组 `[rowIndex, colIndex]`，则在指定行之前插入。
-         * @param {string[]} [options.inputListX=[]] - (可选) 新行中 x 值的初始类名数组。
-         * @param {string[]} [options.inputListY=[]] - (可选) 新行中 y 值的初始类名数组。
-         * @returns {Promise<boolean>} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
+         * @param {string} [options.inputX=''] - (可选) 新行中 x 值的初始数字。
+         * @param {string} [options.inputY=''] - (可选) 新行中 y 值的初始数字。
+         * @returns {boolean} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
          */
-        static async statisticsAddLine(
+        static statisticsAddLine(
             {
                 location = null,
-                inputListX = [],
-                inputListY = []
+                inputX = '',
+                inputY = ''
             } = {}
         ) {
             // 获取数据网格的父元素和其所有子行
-            const gridData = HtmlTools.getHtml('#grid_data');
-            const display = gridData.style.display;
-            const gridDataChildren = gridData.children;
-            const len = gridDataChildren.length;
-            let target, position;
+            const gridData = PageConfig.screenData['1'];
+            const len = gridData.length;
+            let position;
             // 确定新行的插入位置和参照目标
             if (location === null) {
                 const pos = len - 1;
                 position = pos < 0 ? 0 : pos;
-                target = null;
-            } else if (Array.isArray(location)) {
-                position = location[0];
-                target = gridDataChildren[position];
             } else {
-                target = location;
-                position = -1;
-                for (let i = 0; i < len; i++) {
-                    if (gridDataChildren[i] === target) {
-                        position = i;
-                        break;
-                    }
-                }
-                if (position === -1) {
-                    position = len;
-                }
+                position = Array.isArray(location) ? location[0] : location;
             }
 
             // 检查是否达到最大行数限制
-            if (position + 2 > InputManager.MAX_STATISTICS_ROW) {
+            if (len + 1 > InputManager.MAX_STATISTICS_ROW) {
                 return false;
             }
 
-            // 提升性能
-            gridData.style.display = 'none';
-            // 创建数据行
-            await this.statisticsRenderer.appendRender([[inputListX, inputListY]], {insertTarget: target});
-            // 更新后续行的序号
-            for (let i = position; i < gridDataChildren.length; i++) {
-                const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
-                const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                // 将处理后的节点批量追加到 subContent 容器中
-                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
-            }
+            // 准备要插入的新数据集
+            const newItems = [
+                [inputX, inputY]
+            ];
 
-            PageConfig.syncScreenData();
-            const currentSubMode = PageConfig.subModes['1'];
-            HtmlTools.getHtml('.GridOn')?.classList?.remove('GridOn');
-            gridDataChildren[currentSubMode[0]].children[currentSubMode[1] + 1].classList.add('GridOn');
-            gridData.style.display = display;
-            HtmlTools.scrollToView();
+            // 修改原生数组：从 targetIndex 开始，删除 0 个元素，插入 newItems 的所有元素
+            gridData.splice(position + 1, 0, ...newItems);
+            PageConfig.screenData = {'1': gridData};
+
+            // 通知 VirtualScroll 重新加载，并保持当前的滚动状态
+            InputManager.statisticsRenderer.load(gridData, gridData.length, {resetScroll: false});
+
             return true;
         }
 
@@ -5695,62 +4750,52 @@
          * @description 在统计模式的数据网格中删除一行数据。
          * 此方法根据指定的位置删除行。如果未指定位置，则默认删除当前高亮行。
          * 删除行后，会更新后续行的序号，并确保如果删除的是高亮行，则重新设置高亮。
-         * @param {Array<number|string>|null} [location=null] - (可选) 要删除的行的位置。
+         * @param {Array<number>|number|null} [location=null] - (可选) 要删除的行的位置。
          *   - 如果为 `null`，则删除当前高亮行。
          *   - 如果为数组 `[rowIndex, colIndex]`，则删除指定行。
+         *   - 如果为数字，则删除指定行。
          * @returns {void}
          */
         static statisticsDelLine(location = null) {
             // 获取数据网格的所有子行
             let target, position;
-            const gridData = HtmlTools.getHtml('#grid_data');
-            const display = gridData.style.display;
-            const gridDataChildren = gridData.children;
-            const len = gridDataChildren.length;
+            const gridData = PageConfig.screenData['1'];
+            const len = gridData.length;
+
             if (location === null) {
-                target = HtmlTools.getHtml('.GridOn').parentNode;
-                position = -1;
-                for (let i = 0; i < len; i++) {
-                    if (gridDataChildren[i] === target) {
-                        position = i;
-                        break;
-                    }
-                }
-                if (position === -1) {
-                    position = len;
-                }
+                position = PageConfig.subModes['1'][0];
             } else {
-                const typeNum = typeof location === 'number';
-                position = typeNum ? location : location[0];
-                target = typeNum ? gridDataChildren[location] : gridDataChildren[location[0]];
+                position = Array.isArray(location) ? location[0] : location;
             }
-            // 如果目标行没有内容，则不执行删除操作
-            const noInner = target.children[1].children.length === 0 && target.children[2].children.length === 0;
-            const num = Number(HtmlTools.htmlClassToText(HtmlTools.getClassList(target.children[0].children[0])));
-            if (noInner && num === len) {
+
+            target = gridData[position];
+            if (!target) {
                 return;
             }
-            // 从 DOM 中移除目标行
-            target.remove();
+            // 如果目标行没有内容，则不执行删除操作
+            const noInner = target[0].length === 0 && target[1].length === 0;
+            if (noInner && position + 1 === len) {
+                return;
+            }
+            // 从数组中移除目标行
+            gridData.splice(position, 1);
+            PageConfig.screenData = {'1': gridData};
+
+            // 如果删除的是最后一行
+            if (gridData.length === position) {
+                InputManager.statisticsAddLine();
+            }
+
             // 如果删除的是高亮行，则重新设置高亮
-            if (!HtmlTools.getHtml('.GridOn')) {
-                const currentSubMode = PageConfig.subModes['1'];
-                PageConfig.subModes = {'1': currentSubMode};
+            if (position === PageConfig.subModes['1'][0]) {
                 // 同步输入区域的内容，确保 UI 状态一致
                 PageControlTools.syncScreenToInput(false);
             }
-            // 提升性能
-            gridData.offsetHeight;
-            gridData.style.display = 'none';
-            // 更新后续行的序号
-            for (let i = position; i < gridDataChildren.length; i++) {
-                const positionContainer = gridDataChildren[i].firstElementChild.firstElementChild;
-                const newNum = HtmlTools.textToHtmlClass((i + 1).toString());
-                HtmlTools.appendDOMs(positionContainer, newNum, {mode: 'replace'});
-            }
-            gridData.style.display = display;
-            HtmlTools.scrollToView();
-            PageConfig.syncScreenData();
+
+            // 通知 VirtualScroll 重新加载，并保持当前的滚动状态
+            // 注意此处要重新获取 gridData，因为可能加入了新行
+            const newData = PageConfig.screenData['1'];
+            InputManager.statisticsRenderer.load(newData, newData.length, {resetScroll: false});
         }
     }
 
@@ -6261,7 +5306,6 @@
          */
         static async _exeMode1() {
             // 获取数据网格的所有行元素
-            const data = HtmlTools.getHtml('#grid_data').children;
             const screenData = PageConfig.screenData['1'];
             const listA = [], listB = [];
 
@@ -6271,10 +5315,6 @@
 
             // 遍历每一行数据（排除最后一行，通常最后一行是空的或用于添加新行）
             for (let i = 0; i < screenData.length; i++) {
-                // 获取当前行的 X 和 Y 数据单元格
-                const currentA = data[i].children[1];
-                const currentB = data[i].children[2];
-
                 // 获取单元格内容的类名列表（即输入的 Token）
                 let currentPushA = screenData[i][0];
                 let currentPushB = screenData[i][1];
@@ -6288,12 +5328,15 @@
                 }
 
                 // 如果单元格为空，自动填充为 0，并更新 DOM 显示
-                if (currentPushA.length === 0) {
-                    HtmlTools.appendDOMs(currentA, ['_0_']);
+                if (currentPushA.length === 0 && currentPushB.length === 0) {
+                    continue;
+                } else if (currentPushA.length === 0) {
+                    // 使用 screenData 提供的精确修改数据方法
+                    PageConfig.screenData = {'1': [i, 0, '0']};
                     currentPushA = '0';
-                }
-                if (currentPushB.length === 0) {
-                    HtmlTools.appendDOMs(currentB, ['_0_']);
+                } else if (currentPushB.length === 0) {
+                    // 使用 screenData 提供的精确修改数据方法
+                    PageConfig.screenData = {'1': [i, 1, '0']};
                     currentPushB = '0';
                 }
 
@@ -6737,9 +5780,11 @@
                     await this._exeMode0();
                     break;
                 case '1':
-                    // 暂停渲染屏幕
-                    InputManager.statisticsRenderer.pauseRender();
                     await this._exeMode1();
+                    // 暂停渲染屏幕，提升性能
+                    if (InputManager.statisticsRenderer.isRunning()) {
+                        InputManager.statisticsRenderer.pause();
+                    }
                     break;
                 case '2_1':
                     await this._exeMode2();
@@ -7351,7 +6396,9 @@
                     InputManager.ac({acArea: HtmlTools.getHtml('#print_content_0_content_1')});
                     return;
                 case '1':
-                    InputManager.statisticsRenderer.resumeRender();
+                    if (InputManager.statisticsRenderer.isPaused()) {
+                        InputManager.statisticsRenderer.resume();
+                    }
                     return PageControlTools._exportRaRecover();
                 case '2_1':
                     PrintManager.printListRenderer.clear();
@@ -7613,18 +6660,26 @@
          * @returns {void}
          */
         static syncScreenToInput(skipEmpty = true) {
-            // 获取当前活动子屏幕区域的 DOM 元素。
-            const target = HtmlTools.getCurrentSubscreenArea();
-            if (skipEmpty && target.children.length === 0) {
+            let classList;
+            if (PageConfig.currentMode === '1') {
+                const current = PageConfig.subModes['1'];
+                classList = HtmlTools.textToHtmlClass(PageConfig.screenData['1'][current[0]][current[1]]);
+            } else {
+                // 获取当前活动子屏幕区域的 DOM 元素。
+                const target = HtmlTools.getCurrentSubscreenArea();
+                // 从子屏幕区域的 DOM 元素中获取其内容的 CSS 类名列表，并过滤掉空格。
+                classList = HtmlTools.getClassList(target, {ignoreSpace: true});
+            }
+            if (skipEmpty && classList.length === 0) {
                 return;
             }
+
             // 如果主输入区域没有输入提示，则清除主输入区域。
             // 这通常发生在用户从一个子屏幕切换到另一个子屏幕时，需要清空旧内容。
             if (!HtmlTools.getHtml('.InputTip')) {
                 InputManager.ac();
             }
-            // 从子屏幕区域的 DOM 元素中获取其内容的 CSS 类名列表，并过滤掉空格。
-            let classList = HtmlTools.getClassList(target, {ignoreSpace: true});
+
             // 如果获取到的内容不为空，则将其插入到主输入区域。
             if (classList.length > 0) {
                 InputManager.input(HtmlTools.deleteIllegal(classList));
@@ -7675,49 +6730,50 @@
                 expr = ['_syntax_error_', ...currentInputArray];
             }
 
-            // 获取当前活动的子屏幕输入区域。
-            const target = HtmlTools.getCurrentSubscreenArea();
-            if (!target) {
-                throw new Error('[PageControlTools] There is no active area on the current screen.');
-            }
-
-            // 使用格式化后的表达式内容替换目标区域的现有内容。
-            HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
-            // 为新渲染的表达式添加适当的空格以提高可读性。
-            InputManager.addSpace({area: target});
-            // 清空主输入区域，并恢复其输入提示。
-            InputManager.ac();
-
             // --- 根据当前模式执行后续操作 ---
             if (currentMode === '1') {
                 // 如果是统计模式...
-                const gridData = HtmlTools.getHtml('#grid_data');
-                const gridDataLast = gridData.lastElementChild.children;
+                const current = PageConfig.subModes['1'];
+                PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
+
+                // 后续处理
+                const gridData = PageConfig.screenData['1'];
+                const gridDataLast = gridData.at(-1);
                 let addSucceed = true;
                 // 检查最后一行是否已有数据。如果是，则自动添加一个新行。
-                if (gridDataLast[1].dataset.dataX || gridDataLast[2].dataset.dataY) {
-                    addSucceed = await InputManager.statisticsAddLine();
+                if (gridDataLast[0].length !== 0 || gridDataLast[1].length !== 0) {
+                    addSucceed = InputManager.statisticsAddLine();
                 }
-                // 更新并持久化屏幕数据。
-                PageConfig.syncScreenData();
                 // 如果成功添加了新行，则将高亮光标移动到新行。
                 if (moveCursor && addSucceed) {
-                    InputManager.moveCursor('down');
-                    if (HtmlTools.getHtml('.InputTip') === undefined) {
-                        InputManager.ac();
-                    }
+                    InputManager.moveCursor('down', true);
                 }
+
+                // 清空主输入区域，并恢复其输入提示。
+                InputManager.ac();
             } else {
                 // 对于其他模式...
+                // 获取当前活动的子屏幕输入区域。
+                const target = HtmlTools.getCurrentSubscreenArea();
+                if (!target) {
+                    throw new Error('[PageControlTools] There is no active area on the current screen.');
+                }
+
+                // 使用格式化后的表达式内容替换目标区域的现有内容。
+                HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
+                // 为新渲染的表达式添加适当的空格以提高可读性。
+                InputManager.addSpace({area: target});
                 // 更新并持久化屏幕数据。
                 PageConfig.syncScreenData();
+
+                // 后续处理
                 // 如果当前子屏幕不是该模式下的最后一个，则自动将焦点移动到下一个子屏幕。
                 if (moveCursor && HtmlTools.getHtml(`#screen_${currentMode}`).children.length !== Number(PageConfig.subModes[currentMode]) + 1) {
-                    InputManager.moveCursor('right');
-                    if (HtmlTools.getHtml('.InputTip') === undefined) {
-                        InputManager.ac();
-                    }
+                    InputManager.moveCursor('right', true);
                 }
+
+                // 清空主输入区域，并恢复其输入提示。
+                InputManager.ac();
             }
             // 确保新激活的区域在视图中可见。
             HtmlTools.scrollToView();
@@ -7727,7 +6783,6 @@
     // 导出对象
     window.PageConfig = PageConfig;
     window.HtmlTools = HtmlTools;
-    window.AsyncListRenderer = AsyncListRenderer;
     window.VirtualScroll = VirtualScroll;
     window.InputManager = InputManager;
     window.PrintManager = PrintManager;

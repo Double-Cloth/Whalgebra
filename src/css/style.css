@@ -405,7 +405,6 @@ p {
 }
 
 .GridOn {
-    border-radius: 2.5dvmin;
     background-color: rgb(var(--screen-green));
     box-shadow: inset 0 0 1dvmin 0.8dvmin rgb(var(--shadow-grey-1) / 0.5);
 }
@@ -426,10 +425,11 @@ p {
 }
 
 #grid_data > div > div {
+    height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);
     display: flex;
     align-items: center;
-    height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);;
-    transition: all 0.16s ease;
+    border-radius: 2.5dvmin;
+    transition: all 0.18s ease;
     overflow: auto;
 }
 
