@@ -137,7 +137,7 @@ document.addEventListener('click', (event) => {
         return InputManager.clickMoveCursor(target);
     }
 
-    // --- 策略 3: 基于正则或特定类名的模式匹配 (Pattern Matches) ---
+    // --- 策略 3: 基于正则或特定类名的模式匹配 ---
 
     // 键盘遮罩层
     if (targetID.includes('keyboard_cover')) {
@@ -148,11 +148,6 @@ document.addEventListener('click', (event) => {
     if (/^mode_[0-4]$/.test(targetID)) {
         const mode = targetID.slice(-1);
         PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
-
-        PageConfig.currentMode === '1' ?
-        InputManager.statisticsRenderer.resumeRender() : // 开启渲染屏幕
-        InputManager.statisticsRenderer.pauseRender();   // 暂停渲染屏幕
-
         // 收起说明页面
         setTimeout(() => PageControlTools.clickMainCover(), 340);
         return;
@@ -163,11 +158,12 @@ document.addEventListener('click', (event) => {
         // 隐藏说明
         PageControlTools.hideExplain();
         // 获取点击元素在表格中的位置
-        const children = HtmlTools.getHtml('#grid_data').children;
+        const children = target.parentElement.children;
         const name = [];
         // 从被点击的单元格逆向推导出其在网格中的行和列索引。
-        name[0] = [...children].indexOf(target.parentNode);
-        name[1] = target.classList.contains('DataX') ? 0 : 1;
+        const classList = HtmlTools.getClassList(children[0].children[0]);
+        name.push(classList ? Number(classList.join('').replace(/_/g, '')) - 1 : 0);
+        name.push(target.classList.contains('DataX') ? 0 : 1);
         // 更改子模式
         PageConfig.subModes = {'default': name};
         PageControlTools.syncScreenToInput();
@@ -187,9 +183,9 @@ document.addEventListener('click', (event) => {
         if (firstChildClass === '_add_line_') {
             const currentSubModes = PageConfig.subModes['1'];
             const succeed = InputManager.statisticsAddLine({
-                location: currentSubModes,
-                inputListX: currentSubModes[1] === 0 ? ['_0_'] : [],
-                inputListY: currentSubModes[1] === 0 ? [] : ['_0_']
+                location: currentSubModes[0] - 1,
+                inputX: currentSubModes[1] === 0 ? '0' : '',
+                inputY: currentSubModes[1] === 0 ? '' : '0'
             });
             if (succeed && !HtmlTools.getHtml('.InputTip')) {
                 InputManager.ac();
@@ -394,35 +390,43 @@ window.addEventListener('load', () => {
         }
     };
 
-    // --- 开始恢复 (恢复顺序：数据层 -> UI层) ---
+    // --- 开始恢复，注意顺序！ ---
+
+    // 当前模式
+    recoverData('currentMode', (data) => {
+        PageConfig.currentMode = data;
+    });
 
     // 屏幕数据
-    recoverData(
-        'screenData',
-        (data) => {
-            data = JSON.parse(data);
-            for (const key in data) {
-                const inner = data[key];
-                if (key === '1') {
-                    InputManager.statisticsRenderer.startRender([...inner, [[], []]]);
-                } else {
-                    const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
-                    HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
+    recoverData('screenData', (data) => {
+        data = JSON.parse(data);
+        for (const key in data) {
+            const inner = data[key];
+            if (key !== '1') {
+                const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
+                HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
+            } else {
+                // 确保最后一行是空行
+                const lastItem = inner.at(-1);
+                if (lastItem[0].length !== 0 || lastItem[1].length !== 0) {
+                    inner.push(['', '']);
                 }
-                PageConfig.screenData = {[key]: inner};
+                // 防止行数超出限制
+                if (inner.length > InputManager.MAX_STATISTICS_ROW) {
+                    inner.length = InputManager.MAX_STATISTICS_ROW;
+                }
             }
-        },
-        async () => {
-            await InputManager.statisticsAddLine();
-            PageConfig.subModes = {'1': [0, 0]};
+            PageConfig.screenData = {[key]: inner};
         }
-    );
+    });
 
     // 子模式 (需要 JSON.parse)
     recoverData('subModes', (data) => {
         data = JSON.parse(data);
-        // 将当前选中模式设置到顶层，防止未加载完成而产生错误。
-        data['1'][0] = 0;
+        const dataLen = PageConfig.screenData['1'].length;
+        if (data['1'][0] + 1 > dataLen) {
+            data['1'][0] = dataLen - 1;
+        }
         PageConfig.subModes = data;
     });
 
@@ -443,11 +447,6 @@ window.addEventListener('load', () => {
         (data) => PageConfig.calcAccMode = Number(data),
         () => PageConfig.calcAccMode = 0
     );
-
-    // 当前模式
-    recoverData('currentMode', (data) => {
-        PageConfig.currentMode = data;
-    });
 
     HtmlTools.scrollToView();
 });
