@@ -683,7 +683,7 @@ p {
     transition: all 0.25s ease;
     border-radius: 3dvmin;
     background-color: rgb(242 242 242 / 0.44);
-    box-shadow: 0 0 2.8dvmin 1.3dvmin rgb(var(--shadow-grey-0));
+    box-shadow: 0 0 2.8dvmin 1.3dvmin rgb(var(--shadow-grey-1));
     grid-template-rows: repeat(3, 7.25dvh);
     place-items: center;
     backdrop-filter: blur(8px);
