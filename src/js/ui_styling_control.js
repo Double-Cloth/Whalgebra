@@ -5780,7 +5780,7 @@
                 case '1':
                     await this._exeMode1();
                     // 暂停渲染屏幕，提升性能
-                    if (InputManager.statisticsRenderer.isRunning()) {
+                    if (!HtmlTools.getHtml('#main').classList.contains('Input') && InputManager.statisticsRenderer.isRunning()) {
                         InputManager.statisticsRenderer.pause();
                     }
                     break;
@@ -6397,7 +6397,8 @@
                     if (InputManager.statisticsRenderer.isPaused()) {
                         InputManager.statisticsRenderer.resume();
                     }
-                    return PageControlTools._exportRaRecover();
+                    PageControlTools._exportRaRecover();
+                    return HtmlTools.scrollToView();
                 case '2_1':
                     PrintManager.printListRenderer.clear();
                     return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
