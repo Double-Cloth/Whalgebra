@@ -205,8 +205,13 @@
                 PageControlTools.keyboardFuncBecomeX();
                 // 更新输入框的视觉提示。
                 PageControlTools.changeInputTip();
-                // 将更新后的状态持久化到 localStorage。
-                localStorage.setItem('subModes', JSON.stringify(PageConfig._subModes));
+                try {
+                    // 将更新后的状态持久化到 localStorage。
+                    localStorage.setItem('subModes', JSON.stringify(PageConfig._subModes));
+                } catch {
+                    throw new Error('[PageConfig] "subModes" storage failed');
+                }
+
             }
 
             if (!obj) {
@@ -287,7 +292,12 @@
             if (!HtmlTools.getHtml('.InputTip')) {
                 InputManager.ac();
             }
-            localStorage.setItem('currentMode', mode);
+            try {
+                // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
+                localStorage.setItem('currentMode', mode);
+            } catch {
+                throw new Error('[PageConfig] "currentMode" storage failed');
+            }
         }
 
         /**
@@ -332,8 +342,12 @@
             // 线程同步更新主线程，保持一致性
             CalcConfig.globalPrintMode = mode === '0' ? 'algebra' : 'polar';
 
-            // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
-            localStorage.setItem('printMode', mode);
+            try {
+                // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
+                localStorage.setItem('printMode', mode);
+            } catch {
+                throw new Error('[PageConfig] "printMode" storage failed');
+            }
         }
 
         /**
@@ -409,7 +423,12 @@
             PageConfig._keyboardType = type;
             // 更新键盘
             PageControlTools.keyboardFuncBecomeX();
-            localStorage.setItem('keyboardType', type.toString());
+            try {
+                // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
+                localStorage.setItem('keyboardType', type.toString());
+            } catch {
+                throw new Error('[PageConfig] "keyboardType" storage failed');
+            }
         }
 
         /**
@@ -459,8 +478,12 @@
             }
             // 更新内部状态。
             PageConfig._calcAccMode = mode;
-            // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
-            localStorage.setItem('calcAccMode', mode.toString());
+            try {
+                // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
+                localStorage.setItem('calcAccMode', mode.toString());
+            } catch {
+                throw new Error('[PageConfig] "calcAccMode" storage failed');
+            }
         }
 
         /**
@@ -552,8 +575,12 @@
                     InputManager.statisticsRenderer.load(val, val.length, {resetScroll: false});
                 }
             });
-            // 将更新后的 _screenData 序列化并保存到 localStorage
-            localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
+            try {
+                // 将更新后的 _screenData 序列化并保存到 localStorage
+                localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
+            } catch {
+                throw new Error('[PageConfig] "screenData" storage failed');
+            }
         }
 
         /**
@@ -593,8 +620,12 @@
                 PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
             } // --- 统计模式无需同步 ---
 
-            // 将更新后的 _screenData 对象序列化为 JSON 字符串，并保存到 localStorage。
-            localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
+            try {
+                // 将更新后的 _screenData 序列化并保存到 localStorage
+                localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
+            } catch {
+                throw new Error('[PageConfig] "screenData" storage failed');
+            }
         }
     }
 
@@ -1278,7 +1309,7 @@
     class VirtualScroll {
 
         /* ══════════════════════════════════════════════════════════════════════
-           内部辅助类
+            内部辅助类
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -1436,27 +1467,6 @@
             }
 
             // ─────────────────────────────────────────────────────────────────────────
-            // 内部工具
-            // ─────────────────────────────────────────────────────────────────────────
-
-            /**
-             * @private
-             * @method _positionToPhysical
-             * @description 将虚拟文档流坐标（非 scrollTop）线性映射到物理文档流坐标。
-             * 与 virtualToPhysical 的区别：不 clamp 到 scrollTop 上限，
-             * 因为 spacer 位置可以合法地落在 (physicalHeight - clientHeight, physicalHeight] 区间。
-             *
-             * @param {number} virtualOffset - 虚拟文档中的绝对坐标（px）。
-             * @returns {number} 物理文档中的绝对坐标（px）。
-             */
-            _positionToPhysical(virtualOffset) {
-                if (!this.compressed || this.virtualHeight <= 0) {
-                    return virtualOffset;
-                }
-                return virtualOffset * (this.physicalHeight / this.virtualHeight);
-            }
-
-            // ─────────────────────────────────────────────────────────────────────────
             // 公开 API
             // ─────────────────────────────────────────────────────────────────────────
 
@@ -1527,9 +1537,9 @@
                     // 物理上无滚动空间，恒返回 0
                     return 0;
                 }
-
-                // scrollRatio = _effV / _effP，与 virtualToPhysical 互为逆运算
-                const raw = Math.max(0, physicalScroll) * this.scrollRatio;
+                const clamped = Math.max(0, Math.min(physicalScroll, this._effP));
+                // 先 clamp 物理值到合法范围，再做线性映射，避免浮点超界
+                const raw = clamped * this.scrollRatio;
                 return Math.min(this._effV, raw);
             }
 
@@ -1573,10 +1583,11 @@
              *    physicalHeight，消除累积误差导致的底部留白或溢出。
              * 2. 非压缩模式逻辑不变，保持原始精度（整数 itemHeight 无误差）。
              *
-             * @param {number} start        - 当前渲染窗口起始索引（含）。
-             * @param {number} end          - 当前渲染窗口结束索引（不含）。
-             * @param {number} totalCount   - 列表总条数。
-             * @param {number} itemHeight   - 单条目高度（px）。
+             * @param {number} start           - 当前渲染窗口起始索引（含）。
+             * @param {number} end             - 当前渲染窗口结束索引（不含）。
+             * @param {number} totalCount      - 列表总条数。
+             * @param {number} itemHeight      - 单条目高度（px）。
+             * @param {number} physScrollTop   - 利用当前物理滚动量和虚拟映射坐标，计算出严格对齐视口的物理起始位置，消除滑动跳闪。
              * @returns {{ top: number, bottom: number }} 上下 spacer 应设置的像素高度。
              *
              * @example
@@ -1584,7 +1595,7 @@
              * spacerTop.style.height    = `${top}px`;
              * spacerBottom.style.height = `${bottom}px`;
              */
-            calcSpacerHeights(start, end, totalCount, itemHeight) {
+            calcSpacerHeights(start, end, totalCount, itemHeight, physScrollTop = 0) {
                 if (totalCount <= 0 || itemHeight <= 0) {
                     return {top: 0, bottom: 0};
                 }
@@ -1596,18 +1607,24 @@
                     };
                 }
 
-                // ── 压缩模式 ──────────────────────────────────────────────────────────
-                // _positionToPhysical：全程线性映射，不 clamp，
-                // 因为 spacer 是文档流坐标，不是 scrollTop。
-                const physTop = this._positionToPhysical(start * itemHeight);
-                const physEnd = this._positionToPhysical(end * itemHeight);
+                const virtScrollTop = this.physicalToVirtual(physScrollTop);
+                const vStart = start * itemHeight;
 
-                // 底部用 ceil 补偿顶部 floor 的向下偏差，减少累积误差
-                const physBottom = Math.max(0, this.physicalHeight - physEnd);
+                let physTop = physScrollTop + vStart - virtScrollTop;
+                const itemsH = (end - start) * itemHeight;
+                let physBottom = this.physicalHeight - physTop - itemsH;
+
+                // 【防抖动核心】吸附容差。浮点计算可能导致 physBottom 出现极小的负数（例如 -0.0001）。
+                // 这种细微溢出会撑大 scrollHeight，从而触发原生滚动条闪烁和回弹抖动。
+                // 我们将其吸收，转移给 physTop（也就是把整体 DOM 再往上提一点点），彻底抹平误差。
+                if (physBottom < 0 && physBottom > -5) {
+                    physTop += physBottom;
+                    physBottom = 0;
+                }
 
                 return {
-                    top: Math.floor(physTop),
-                    bottom: Math.ceil(physBottom)
+                    top: physTop,
+                    bottom: Math.max(0, physBottom)
                 };
             }
         };
@@ -1806,7 +1823,7 @@
         };
 
         /* ══════════════════════════════════════════════════════════════════════
-           公开常量
+            公开常量
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -1827,7 +1844,7 @@
         });
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有调参常量
+            私有调参常量
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -1895,7 +1912,7 @@
         static _MIN_ITEM_HEIGHT = 1;
 
         /* ══════════════════════════════════════════════════════════════════════
-           构造
+            构造
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -1945,6 +1962,10 @@
 
             /** @type {number} 当前视口外预渲染的缓冲行数。 */
             this.bufferSize = 0;
+
+            // 逻辑锚点记录
+            this._anchorIndex = 0;
+            this._anchorRatio = 0;
 
             /** @type {string} 容器 CSS 选择器字符串。 */
             this._selector = config.container;
@@ -2047,7 +2068,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 参数校验
+            私有 —— 参数校验
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2127,7 +2148,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 容器初始化
+            私有 —— 容器初始化
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2192,6 +2213,9 @@
                 this.container.style.overflowY = 'auto';
                 this.container.style.overflowX = cs.overflowX !== 'visible' ? cs.overflowX : 'hidden';
             }
+
+            // 禁用浏览器原生滚动锚定，防止其与虚拟滚动 spacer 高度变化产生冲突
+            this.container.style.overflowAnchor = 'none';
         }
 
         /**
@@ -2208,7 +2232,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 行高校验
+            私有 —— 行高校验
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2258,7 +2282,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 行高测量
+            私有 —— 行高测量
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2352,7 +2376,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 缓冲区大小
+            私有 —— 缓冲区大小
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2386,7 +2410,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— DOM 结构
+            私有 —— DOM 结构
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2452,7 +2476,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 事件绑定
+            私有 —— 事件绑定
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2582,7 +2606,7 @@
                         this._scheduleRemeasure();
                     } else {
                         if (heightChanged) {
-                            this._calcBufferSize();
+                            this._handleHeightChange(newH);
                         }
                         this._scheduleRender();
                     }
@@ -2620,7 +2644,7 @@
                         this._scheduleRemeasure();
                     } else {
                         if (heightChanged) {
-                            this._calcBufferSize();
+                            this._handleHeightChange(newH);
                         }
                         this._scheduleRender();
                     }
@@ -2646,8 +2670,51 @@
             }
         }
 
+        /**
+         * @private
+         * @method _handleHeightChange
+         * @description 处理容器高度变化：更新高度映射、调整 spacer 并修正 scrollTop。
+         * * 被 ResizeObserver 回调和 window.resize 降级共同调用。
+         * * spacer 高度修正必须在 scrollTop 赋值之前完成，
+         *   避免 scrollHeight 还未撑开时 scrollTop 被静默截断。
+         *
+         * @param {number} newH - 新的容器 clientHeight（px）。
+         * @returns {void}
+         */
+        _handleHeightChange(newH) {
+            this._calcBufferSize();
+            this._heightMapper.update(this.totalCount, this.itemHeight, newH);
+
+            const exactVirtScroll = (this._anchorIndex + this._anchorRatio) * this.itemHeight;
+            const maxVirt = this._heightMapper._effV;
+            const clampedVirt = Math.min(exactVirtScroll, Math.max(0, maxVirt));
+            const nextPhysScrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
+
+            if (this._spacerTop && this._spacerBottom) {
+                const {top, bottom} = this._heightMapper.calcSpacerHeights(
+                    this._startIndex < 0 ? 0 : this._startIndex,
+                    this._endIndex < 0 ? 0 : this._endIndex,
+                    this.totalCount,
+                    this.itemHeight,
+                    nextPhysScrollTop
+                );
+
+                // 同步加上 marginTop 处理
+                if (top < 0) {
+                    this._spacerTop.style.height = '0px';
+                    this._spacerTop.style.marginTop = `${top}px`;
+                } else {
+                    this._spacerTop.style.height = `${top}px`;
+                    this._spacerTop.style.marginTop = '0px';
+                }
+                this._spacerBottom.style.height = `${bottom}px`;
+            }
+
+            this.container.scrollTop = nextPhysScrollTop;
+        }
+
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 重测调度
+            私有 —— 重测调度
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2677,38 +2744,30 @@
 
                 try {
                     // 1. 抓取旧的虚拟滚动位置、行高、行索引
-                    const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
-                    const oldItemHeight = this.itemHeight;
-                    const oldRowIndex = oldItemHeight > 0
-                                        ? Math.floor(oldVirtScroll / oldItemHeight)
-                                        : 0;
-
-                    // 计算当前滚动位置在这一行内部偏移了百分之几（0.0 ~ 0.999...）
-                    const oldOffsetRatio = oldItemHeight > 0
-                                           ? (oldVirtScroll % oldItemHeight) / oldItemHeight
-                                           : 0;
+                    const savedAnchorIndex = this._anchorIndex;
+                    const savedAnchorRatio = this._anchorRatio;
 
                     this._heightMapper.reset();
-                    this._doMeasure(); // 这里执行完后，this.itemHeight 变成了全新的值！
+                    this._doMeasure();
                     this._syncContainerSize();
                     this._calcBufferSize(true);
 
                     // 2. 重新挂载 Spacer，这一步至关重要！此时 scrollHeight 终于被撑开了
                     this._buildDOM();
-                    this._syncContainerSize();
 
                     // 3. 根据新行高，恢复到相同的逻辑行，并补上相同的相对偏移比例
                     const clientHeight = this.container.clientHeight;
+                    this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
+                    this._syncContainerSize();
 
-                    // 用 (行索引 + 偏移比例) * 新行高，算出极其精准的新位置
-                    const exactNewVirtScroll = (oldRowIndex + oldOffsetRatio) * this.itemHeight;
+                    // 自然行高恢复滚动位置：anchor 已基于自然高度存储
+                    const rs_ratio = this._heightMapper._effV > 0 ? this._heightMapper._effP / this._heightMapper._effV : 0;
+                    const rs_start = Math.max(0, savedAnchorIndex - this.bufferSize);
+                    const rs_physTop = Math.floor(rs_start * this.itemHeight * rs_ratio);
+                    const exactPhysical = rs_physTop + (savedAnchorIndex - rs_start + savedAnchorRatio) * this.itemHeight;
+                    const maxPhysical = Math.max(0, this._heightMapper.physicalHeight - clientHeight);
 
-                    const newVirtScroll = Math.min(
-                        exactNewVirtScroll,
-                        Math.max(0, this._heightMapper.virtualHeight - clientHeight)
-                    );
-
-                    this.container.scrollTop = this._heightMapper.virtualToPhysical(newVirtScroll);
+                    this.container.scrollTop = Math.min(maxPhysical, Math.max(0, exactPhysical));
 
                     this._bindScroll();
                     this._forceRender();
@@ -2719,7 +2778,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 渲染调度
+            私有 —— 渲染调度
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2795,7 +2854,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 核心渲染
+            私有 —— 核心渲染
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -2841,12 +2900,29 @@
                     return;
                 }
 
+                // ── 使用局部变量记录本次的 clientHeight，
+                //    与 _lastContainerHeight 比较后立即更新，
+                //    避免重入或外部更新导致的误判 ──────────────────────
                 const heightChanged = clientHeight !== this._lastContainerHeight;
                 if (heightChanged) {
                     this._lastContainerHeight = clientHeight;
                     this._calcBufferSize();
                     this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
 
+                    // 先撑开 spacer，保证 scrollHeight 正确
+                    if (this._spacerTop && this._spacerBottom) {
+                        const hm = this._heightMapper;
+                        const s = this._startIndex < 0 ? 0 : this._startIndex;
+                        const e = this._endIndex < 0 ? 0 : this._endIndex;
+                        const {top, bottom} = hm.calcSpacerHeights(
+                            s, e, this.totalCount, this.itemHeight
+                        );
+                        this._spacerTop.style.height = `${top}px`;
+                        this._spacerBottom.style.height = `${bottom}px`;
+                    }
+
+                    // ── 压缩模式下物理上限是 physicalHeight - clientHeight，
+                    //    非压缩模式是 virtualHeight - clientHeight（两者相等）──
                     const hm = this._heightMapper;
                     const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
                     const currentST = this.container.scrollTop;
@@ -2858,23 +2934,46 @@
 
                 const hm = this._heightMapper;
                 const physScrollTop = this.container.scrollTop;
-                const virtScrollTop = hm.physicalToVirtual(physScrollTop);
 
-                const visibleStart = Math.floor(virtScrollTop / this.itemHeight);
-                const visibleEnd = Math.ceil((virtScrollTop + clientHeight) / this.itemHeight);
-                const start = Math.max(0, visibleStart - this.bufferSize);
-                const end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
+                // 钳制物理滚动量，专门对付 Mac / iOS 的边缘弹性溢出（Overscroll）
+                const maxPhysScroll = Math.max(0, hm.physicalHeight - clientHeight);
+                const clampedPhysScrollTop = Math.max(0, Math.min(physScrollTop, maxPhysScroll));
+
+                const virtScrollTop = hm.physicalToVirtual(clampedPhysScrollTop);
+
+                // 顺其自然地计算 visibleStart，去掉 minStart 限制
+                let visibleStart = Math.floor(virtScrollTop / this.itemHeight);
+                let start = Math.max(0, visibleStart - this.bufferSize);
+
+                // 在 scrollTop 确定后再更新锚点
+                this._updateAnchor();
+
+                // 顺其自然地计算 visibleEnd，去掉 maxEnd 限制
+                let visibleEnd = visibleStart + Math.ceil(clientHeight / this.itemHeight);
+                let end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
 
                 const rangeUnchanged = start === this._startIndex && end === this._endIndex;
+
+                // 必须将 spacer 的更新移到 early return 之前！
+                // 因为在压缩模式下，即使渲染的数据范围 (start/end) 没变，
+                // 用户滑动时产生的视差偏移 (physTop) 也在时刻变化，必须实时同步到 DOM 上。
+                const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
+                    start, end, this.totalCount, this.itemHeight, clampedPhysScrollTop
+                );
+
+                if (spacerTopPx < 0) {
+                    this._spacerTop.style.height = '0px';
+                    this._spacerTop.style.marginTop = `${spacerTopPx}px`;
+                } else {
+                    this._spacerTop.style.height = `${spacerTopPx}px`;
+                    this._spacerTop.style.marginTop = '0px';
+                }
+                this._spacerBottom.style.height = `${spacerBottomPx}px`;
+
+                // 如果范围没变，更新完 spacer 占位后就可以安全退出了，无需重绘画布
                 if (!force && rangeUnchanged && !heightChanged) {
                     return;
                 }
-
-                const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
-                    start, end, this.totalCount, this.itemHeight
-                );
-                this._spacerTop.style.height = `${spacerTopPx}px`;
-                this._spacerBottom.style.height = `${spacerBottomPx}px`;
 
                 const prevStart = this._startIndex;
                 const prevEnd = this._endIndex;
@@ -2894,7 +2993,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 增量更新
+            私有 —— 增量更新
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -3012,8 +3111,44 @@
             this.container.insertBefore(frag, this._spacerBottom);
         }
 
+        /**
+         * @private
+         * @method _updateAnchor
+         * @description 更新虚拟滚动的锚点信息，根据容器当前滚动位置计算视口顶部对应的项索引和偏移比例。
+         * * 用于确定虚拟列表中哪些项应该被渲染以及它们在视口中的位置。
+         * * 计算结果会存储在 `_anchorIndex` 和 `_anchorRatio` 属性中。
+         *
+         * @returns {void}
+         *
+         * @example
+         * // 通常在滚动事件处理中调用：
+         * onContainerScroll() {
+         *   this._updateAnchor();
+         *   this._updateVisibleItems();
+         * }
+         *
+         * @throws {Error} 当 `itemHeight` 小于等于 0 或 `container` 未定义时，函数会静默返回
+         */
+        _updateAnchor() {
+            if (this.itemHeight <= 0 || !this.container) {
+                return;
+            }
+
+            const hm = this._heightMapper;
+            const physScrollTop = this.container.scrollTop;
+
+            // 防御 Overscroll 导致锚点飞出真实数据范围
+            const maxPhysScroll = Math.max(0, hm.physicalHeight - this.container.clientHeight);
+            const clampedPhysScrollTop = Math.max(0, Math.min(physScrollTop, maxPhysScroll));
+
+            const virtScrollTop = hm.physicalToVirtual(clampedPhysScrollTop);
+            const exactIdx = virtScrollTop / this.itemHeight;
+            this._anchorIndex = Math.floor(exactIdx);
+            this._anchorRatio = (exactIdx % 1);
+        }
+
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 节点回收
+            私有 —— 节点回收
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -3053,7 +3188,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— teardown
+            私有 —— teardown
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -3103,6 +3238,8 @@
             this._endIndex = -1;
             this._lastContainerHeight = 0;
             this._lastContainerWidth = 0;
+            this._anchorIndex = 0;
+            this._anchorRatio = 0;
             this._measured = false;
             this.data = [];
             this.totalCount = 0;
@@ -3112,7 +3249,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           私有 —— 平滑滚动（压缩模式专用）
+            私有 —— 平滑滚动（压缩模式专用）
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -3134,7 +3271,7 @@
             const start = this.container.scrollTop;
             const delta = targetPhysical - start;
 
-            if (delta === 0) {
+            if (Math.abs(delta) < 1) {  // 使用 < 1 而非 === 0，避免浮点问题
                 return;
             }
 
@@ -3163,17 +3300,18 @@
                 const elapsed = Math.min(ts - t0, dur);
                 const progress = easeInOut(elapsed / dur);
 
-                // 1. 修改物理滚动值
                 this.container.scrollTop = start + delta * progress;
-
-                // 2. 同步强制渲染当前帧的 DOM，彻底避免白屏
-                this._render();
+                this._render();  // 每帧同步渲染
 
                 if (elapsed < dur) {
                     this._smoothRAF = requestAnimationFrame(step);
                 } else {
+                    // ── 动画结束时确保精确到达目标位置并更新锚点 ──
+                    this.container.scrollTop = targetPhysical;
                     this._smoothRAF = null;
                     this._isSmoothScrolling = false;
+                    this._updateAnchor();   // 补充一次锚点更新
+                    this._scheduleRender(); // 确保最终位置渲染正确
                 }
             };
 
@@ -3213,7 +3351,7 @@
         }
 
         /* ══════════════════════════════════════════════════════════════════════
-           公共 API
+            公共 API
         ══════════════════════════════════════════════════════════════════════ */
 
         /**
@@ -3335,15 +3473,14 @@
          * @method applyToItem
          * @description 对指定索引的已渲染 DOM 节点执行自定义操作。
          * * 如果该索引当前不在渲染窗口内（未被挂载到 DOM），则跳过执行并返回 `false`。
-         * * @param {number} index - 目标条目索引。
-         * @param index - 要执行的节点索引
+         * @param {number} index - 目标条目索引。
          * @param {(el: HTMLElement) => void} callback - 要执行的回调函数，接收该索引对应的 DOM 节点作为参数。
          * @returns {boolean} 若节点存在并执行了回调返回 `true`，否则返回 `false`。
          * @example
          * // 让第 10 行的节点闪烁一下
          * vs.applyToItem(10, el => {
-         * el.classList.add('flash-animation');
-         * setTimeout(() => el.classList.remove('flash-animation'), 500);
+         *   el.classList.add('flash-animation');
+         *   setTimeout(() => el.classList.remove('flash-animation'), 500);
          * });
          */
         applyToItem(index, callback) {
@@ -3419,9 +3556,9 @@
                         'call(s) were dropped while PAUSED (only the last one is applied).'
                     );
                 }
-                const {index, behavior} = this._pendingScrollQueue.at(-1);
+                const {index, behavior, block} = this._pendingScrollQueue.at(-1);
                 this._pendingScrollQueue = [];
-                this.scrollToIndex(index, {behavior});
+                this.scrollToIndex(index, {behavior, block});
                 if (!this._isSmoothScrolling) {
                     this._forceRender();
                 }
@@ -3505,12 +3642,7 @@
             const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
 
             if (this._sm.is(VirtualScroll.State.PAUSED)) {
-                this._pendingScrollQueue.push({index: i, behavior, block}); // 将 block 也存入队列
-                console.info(
-                    `[VirtualScroll] scrollToIndex(${i}) queued while PAUSED ` +
-                    `(queue length: ${this._pendingScrollQueue.length}). ` +
-                    'Only the last entry will be applied on resume().'
-                );
+                this._pendingScrollQueue.push({index: i, behavior, block});
                 return;
             }
 
@@ -3518,42 +3650,39 @@
             const itemVirtualTop = i * this.itemHeight;
             const itemVirtualBottom = itemVirtualTop + this.itemHeight;
 
-            let targetVirtualScroll = itemVirtualTop; // 默认 fallback 为 'start'
-
-            // 根据 block 计算目标虚拟滚动位置
+            let virtualTop;
             switch (block) {
                 case 'end':
-                    targetVirtualScroll = itemVirtualBottom - clientHeight;
+                    virtualTop = itemVirtualBottom - clientHeight;
                     break;
                 case 'center':
-                    targetVirtualScroll = itemVirtualTop - (clientHeight / 2) + (this.itemHeight / 2);
+                    virtualTop = (itemVirtualTop + itemVirtualBottom) / 2 - clientHeight / 2;
                     break;
                 case 'nearest': {
-                    const currentVirtualTop = this._heightMapper.physicalToVirtual(this.container.scrollTop);
-                    const currentVirtualBottom = currentVirtualTop + clientHeight;
+                    const visStartVirtual = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+                    const visEndVirtual = visStartVirtual + clientHeight;
 
-                    if (itemVirtualTop >= currentVirtualTop && itemVirtualBottom <= currentVirtualBottom) {
-                        // 条目完全在视口内，放弃滚动，直接返回
-                        return;
-                    } else if (itemVirtualTop < currentVirtualTop) {
-                        // 条目在视口上方，顶部对齐
-                        targetVirtualScroll = itemVirtualTop;
+                    if (itemVirtualTop >= visStartVirtual && itemVirtualBottom <= visEndVirtual) {
+                        return; // 已经完全可见
+                    } else if (itemVirtualTop < visStartVirtual) {
+                        virtualTop = itemVirtualTop;
                     } else {
-                        // 条目在视口下方，底部对齐
-                        targetVirtualScroll = itemVirtualBottom - clientHeight;
+                        virtualTop = itemVirtualBottom - clientHeight;
                     }
                     break;
                 }
                 case 'start':
                 default:
-                    targetVirtualScroll = itemVirtualTop;
+                    virtualTop = itemVirtualTop;
                     break;
             }
 
-            // 边界保护：防止出现负数的 scrollTop
-            targetVirtualScroll = Math.max(0, targetVirtualScroll);
+            // 计算目标在虚拟世界的正确 Y 坐标，限制上下界
+            const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
+            virtualTop = Math.min(Math.max(0, virtualTop), maxVirt);
 
-            const physicalTop = this._heightMapper.virtualToPhysical(targetVirtualScroll);
+            // 利用高度映射器，一次性安全转化为物理坐标
+            const physicalTop = this._heightMapper.virtualToPhysical(virtualTop);
 
             if (behavior === 'smooth') {
                 if (this._heightMapper.compressed) {
@@ -3568,10 +3697,8 @@
         }
 
         /**
-         * @method scrollToTop
-         * @description 滚动到列表顶部（等同于 `scrollToIndex(0, options)`）。
          *
-         * @param {Object}          [options]           - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
+         * @param {Object} [options]  - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
          * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
          * @returns {void}
          * @example
@@ -3601,17 +3728,16 @@
                 return;
             }
             if (this.itemHeight <= 0) {
-                console.warn('[VirtualScroll] scrollToBottom() called before item height was measured');
                 return;
             }
 
             const clientHeight = this.container.clientHeight;
-            const hm = this._heightMapper;
-            const virtualBottom = Math.max(0, hm.virtualHeight - clientHeight);
-            const physicalBottom = hm.virtualToPhysical(virtualBottom);
+
+            // 到底部就是滚到物理高度能达到的最大值
+            const physicalBottom = Math.max(0, this._heightMapper.physicalHeight - clientHeight);
 
             if (behavior === 'smooth') {
-                if (hm.compressed) {
+                if (this._heightMapper.compressed) {
                     this._smoothScrollTo(physicalBottom);
                 } else {
                     this.container.scrollTo({top: physicalBottom, behavior: 'smooth'});
@@ -4378,8 +4504,13 @@
                         // 如果删除后是空行，则直接删除一整行
                         InputManager.statisticsDelLine();
                     } else {
-                        // 注意这里传入的是三元组，格式为 [y坐标, x坐标, 数值]
-                        PageConfig.screenData = {'1': [...current, '']};
+                        try {
+                            // 注意这里传入的是三元组，格式为 [y坐标, x坐标, 数值]
+                            PageConfig.screenData = {'1': [...current, '']};
+                        } catch {
+                            console.error('[InputManager] Deletion failed, unable to write "screenData".');
+                            return;
+                        }
                     }
                 } else {
                     this.ac({acArea: HtmlTools.getCurrentSubscreenArea()});
@@ -4732,12 +4863,16 @@
                 [inputX, inputY]
             ];
 
-            // 修改原生数组：从 targetIndex 开始，删除 0 个元素，插入 newItems 的所有元素
-            gridData.splice(position + 1, 0, ...newItems);
-            PageConfig.screenData = {'1': gridData};
+            try {
+                // 修改原生数组：从 targetIndex 开始，删除 0 个元素，插入 newItems 的所有元素
+                gridData.splice(position + 1, 0, ...newItems);
+                PageConfig.screenData = {'1': gridData};
 
-            // 通知 VirtualScroll 重新加载，并保持当前的滚动状态
-            InputManager.statisticsRenderer.load(gridData, gridData.length, {resetScroll: false});
+                // 通知 VirtualScroll 重新加载，并保持当前的滚动状态
+                InputManager.statisticsRenderer.load(gridData, gridData.length, {resetScroll: false});
+            } catch {
+                return false;
+            }
 
             return true;
         }
@@ -4775,9 +4910,15 @@
             if (noInner && position + 1 === len) {
                 return;
             }
-            // 从数组中移除目标行
-            gridData.splice(position, 1);
-            PageConfig.screenData = {'1': gridData};
+
+            try {
+                // 从数组中移除目标行
+                gridData.splice(position, 1);
+                PageConfig.screenData = {'1': gridData};
+            } catch {
+                console.error('[InputManager] Deletion failed, unable to write "screenData".');
+                return;
+            }
 
             // 如果删除的是最后一行
             if (gridData.length === position) {
@@ -5325,17 +5466,24 @@
                     return;
                 }
 
-                // 如果单元格为空，自动填充为 0，并更新 DOM 显示
-                if (currentPushA.length === 0 && currentPushB.length === 0) {
-                    continue;
-                } else if (currentPushA.length === 0) {
-                    // 使用 screenData 提供的精确修改数据方法
-                    PageConfig.screenData = {'1': [i, 0, '0']};
-                    currentPushA = '0';
-                } else if (currentPushB.length === 0) {
-                    // 使用 screenData 提供的精确修改数据方法
-                    PageConfig.screenData = {'1': [i, 1, '0']};
-                    currentPushB = '0';
+                try {
+                    // 如果单元格为空，自动填充为 0，并更新 DOM 显示
+                    if (currentPushA.length === 0 && currentPushB.length === 0) {
+                        continue;
+                    } else if (currentPushA.length === 0) {
+                        // 使用 screenData 提供的精确修改数据方法
+                        PageConfig.screenData = {'1': [i, 0, '0']};
+                        currentPushA = '0';
+                    } else if (currentPushB.length === 0) {
+                        // 使用 screenData 提供的精确修改数据方法
+                        PageConfig.screenData = {'1': [i, 1, '0']};
+                        currentPushB = '0';
+                    }
+                } catch {
+                    // 捕获计算过程中的错误（计算溢出）
+                    this._setMode1Results('error');
+                    this.mode1Results = 'error';
+                    return;
                 }
 
                 // 将为文本表达式添加到列表中
@@ -6179,7 +6327,14 @@
                     return;
                 }
                 const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
-                PageConfig.screenData = {[exportTarget]: equation};
+                try {
+                    PageConfig.screenData = {[exportTarget]: equation};
+                } catch {
+                    // 如果结果为错误，将按钮图标更改为“失败”状态
+                    HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
+                    clickArea.classList.add('Failed');
+                    return;
+                }
                 // 获取当前选中的回归模型 (this._currentRaModel) 的方程字符串
                 // 将其转换为 HTML 类名数组，并替换目标输入区域的内容
                 HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`), HtmlTools.textToHtmlClass(equation), {mode: 'replace'});
@@ -6733,7 +6888,12 @@
             if (currentMode === '1') {
                 // 如果是统计模式...
                 const current = PageConfig.subModes['1'];
-                PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
+                try {
+                    PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
+                } catch {
+                    console.error('[PageControlTools] Synchronization failed, unable to write "screenData".');
+                    return;
+                }
 
                 // 后续处理
                 const gridData = PageConfig.screenData['1'];

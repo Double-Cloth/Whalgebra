@@ -428,8 +428,7 @@ p {
     height: max(calc(7.13dvh - 1.5dvmin), 7.5dvmin);
     display: flex;
     align-items: center;
-    border-radius: 2.5dvmin;
-    transition: all 0.18s ease;
+    transition: all 0.16s ease;
     overflow: auto;
 }
 
@@ -449,6 +448,7 @@ p {
     justify-content: left;
     width: calc(45dvw - 1dvmin);
     margin-left: 0.5dvmin;
+    border-radius: 2.5dvmin;
 }
 
 #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):hover {
@@ -645,7 +645,7 @@ p {
     align-items: center;
     justify-content: center;
     height: 6.75dvh;
-    transition: all 0.1s;
+    transition: all 0.09s;
     border-radius: 3dvmin;
     box-shadow: inset 0 0 1.15dvmin 0.4dvmin rgb(13 48 2 / 0.84);
 }
