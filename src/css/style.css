@@ -645,7 +645,7 @@ p {
     align-items: center;
     justify-content: center;
     height: 6.75dvh;
-    transition: all 0.09s;
+    transition: all 0.08s;
     border-radius: 3dvmin;
     box-shadow: inset 0 0 1.15dvmin 0.4dvmin rgb(13 48 2 / 0.84);
 }

@@ -51,7 +51,7 @@
                     if (finalPow > Number.MAX_SAFE_INTEGER || finalPow < Number.MIN_SAFE_INTEGER) {
                         throw new Error('[BigNumber] Input error: Power too large or too small');
                     }
-                    this.power = finalPow;
+                    this.power = mantissa === 0n ? 0 : finalPow;
                     this.mantissa = mantissa;
                     this.acc = finalAcc;
                     return;
@@ -80,7 +80,7 @@
                     if (finalPow > Number.MAX_SAFE_INTEGER || finalPow < Number.MIN_SAFE_INTEGER) {
                         throw new Error('[BigNumber] Input error: Power too large or too small');
                     }
-                    this.power = finalPow;
+                    this.power = realNum.mantissa === 0n ? 0 : finalPow;
                     this.mantissa = realNum.mantissa;
                     this.acc = finalAcc;
                     return;
@@ -93,7 +93,7 @@
                         power: powerFromBigInt
                     } = BigNumber._roundAndNormalize(x, 0, acc);
 
-                    this.power = powerFromBigInt + pow;
+                    this.power = mantissaFromBigInt === 0n ? 0 : powerFromBigInt + pow;
                     this.mantissa = mantissaFromBigInt;
                     this.acc = acc;
                     return;
@@ -110,7 +110,7 @@
                             power: powerFromBigInt
                         } = BigNumber._roundAndNormalize(x, 0, acc);
 
-                        this.power = powerFromBigInt + pow;
+                        this.power = mantissaFromBigInt === 0n ? 0 : powerFromBigInt + pow;
                         this.mantissa = mantissaFromBigInt;
                         this.acc = acc;
                         return;
@@ -171,7 +171,7 @@
 
             // 为零提供一个清晰、规范的表示，单独处理。
             // 检查下溢：如果数字小到一定程度，则视为零。
-            if (rawMantissa === 0n || finalPower + CalcConfig.globalCalcAccuracy < CalcConfig.MIN_INPUT_EXPONENT) {
+            if (finalMantissa === 0n || finalPower + CalcConfig.globalCalcAccuracy < CalcConfig.MIN_INPUT_EXPONENT) {
                 this.power = 0;
                 this.mantissa = 0n;
                 this.acc = acc;
@@ -240,34 +240,77 @@
 
             // 如果当前位数超过目标精度，则需进行舍入。
             if (absMantissa > threshold) {
-                // 计算需要舍弃的位数，并确定用于截断尾数的除数。
-                const mantissaLength = absMantissa.toString().length;
+                const mantissaStr = absMantissa.toString();
+                const mantissaLength = mantissaStr.length;
                 const digitsToShift = mantissaLength - acc;
-                const divisor = 10n ** BigInt(digitsToShift);
 
-                // 截断得到基础部分
-                let roundedMantissa = absMantissa / divisor;
+                // 设定一个性能阈值
+                if (digitsToShift < CalcConfig.MAX_INPUT_EXPONENT) {
+                    // ==========================================
+                    // 策略 A: 小位移，走原生 BigInt 数学运算
+                    // ==========================================
+                    const divisor = 10n ** BigInt(digitsToShift);
+                    // 截断得到基础部分
+                    let roundedMantissa = absMantissa / divisor;
+                    // 获取被舍弃的余数部分
+                    const remainder = absMantissa % divisor;
+                    // 计算阈值（除数的一半）
+                    const halfDivisor = divisor / 2n;
 
-                // 获取被舍弃的余数部分
-                const remainder = absMantissa % divisor;
+                    if (remainder > halfDivisor) {
+                        // 情况 A: 余数 > 0.5，绝对进位
+                        roundedMantissa++;
+                    } else if (remainder === halfDivisor) {
+                        // 情况 B: 余数 = 0.5，银行家舍入（向偶数舍入）
+                        // 如果当前最后一位是奇数，则进位变成偶数；如果是偶数则不变
+                        if ((roundedMantissa & 1n) === 1n) {
+                            roundedMantissa++;
+                        }
+                    }
+                    // 情况 C: remainder < halfDivisor，直接舍弃（不做操作）
 
-                // 计算阈值（除数的一半）
-                const halfDivisor = divisor / 2n;
+                    // 更新尾数
+                    absMantissa = roundedMantissa;
+                } else {
+                    // ==========================================
+                    // 策略 B: 大位移，走字符串截断与 charCodeAt 对比
+                    // ==========================================
+                    const CHAR_CODE_0 = 48;
+                    const CHAR_CODE_5 = 53;
 
-                if (remainder > halfDivisor) {
-                    // 情况 A: 余数 > 0.5，绝对进位
-                    roundedMantissa++;
-                } else if (remainder === halfDivisor) {
-                    // 情况 B: 余数 = 0.5，银行家舍入（向偶数舍入）
-                    // 如果当前最后一位是奇数，则进位变成偶数；如果是偶数则不变
-                    if ((roundedMantissa & 1n) === 1n) {
+                    const keptStr = mantissaStr.slice(0, acc);
+                    let roundedMantissa = BigInt(keptStr);
+                    const discardedStr = mantissaStr.slice(acc);
+                    const firstDigitCode = discardedStr.charCodeAt(0);
+
+                    let shouldCarry = false;
+
+                    if (firstDigitCode > CHAR_CODE_5) {
+                        shouldCarry = true;
+                    } else if (firstDigitCode === CHAR_CODE_5) {
+                        let isExactlyHalf = true;
+                        // 使用 for 循环扫描剩余字符
+                        for (let i = 1; i < discardedStr.length; i++) {
+                            if (discardedStr.charCodeAt(i) !== CHAR_CODE_0) {
+                                isExactlyHalf = false;
+                                break;
+                            }
+                        }
+
+                        if (!isExactlyHalf) {
+                            shouldCarry = true;
+                        } else if ((roundedMantissa & 1n) === 1n) {
+                            shouldCarry = true;
+                        }
+                    }
+
+                    if (shouldCarry) {
                         roundedMantissa++;
                     }
+                    absMantissa = roundedMantissa;
                 }
-                // 情况 C: remainder < halfDivisor，直接舍弃（不做操作）
 
-                // 更新尾数和指数
-                absMantissa = roundedMantissa;
+                // 更新指数
                 finalPower += digitsToShift;
             }
 
@@ -1327,8 +1370,12 @@
          * @method mod
          * @description 计算 a 对 b 取模 (a mod b) 的结果。
          * - 算法基于统一定义：a mod b = a - b * floor(a/b)。
-         * - 对于实数，结果 r 与除数 b 具有相同的符号（或为零）。
          * - 对于复数，使用高精度算法精确计算高斯整数商的 floor。
+         * - 对于实数分支，为了防止大数溢出以及规避浮点数精度丢失，采用了指数提取法。
+         *   其核心数学逻辑基于以下推导：
+         *   $$ (A \cdot 10^a) \pmod{B \cdot 10^b} = \left[ (A \cdot 10^{a-m}) \pmod{B \cdot 10^{b-m}} \right] \cdot 10^m $$
+         *   其中 m = min(a, b)。通过该转化，括号内的指数 a-m 和 b-m 恒大于 0，
+         *   从而确保了取模运算完全在整数域（BigInt）内安全进行。
          * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被除数。
          * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 除数（模数）。
          * @returns {ComplexNumber} 代表 a mod b 结果的 ComplexNumber 实例。
@@ -1347,6 +1394,80 @@
             // 将输入统一转换为 ComplexNumber 实例以便处理。
             const inputA = new ComplexNumber(a);
             const inputB = new ComplexNumber(b);
+
+            if (inputB.isZero()) {
+                throw new Error("[MathPlus] Modulo by zero error.");
+            }
+
+            // 对于实数取余更快、更精确的计算
+            if (inputA.onlyReal && inputB.onlyReal) {
+                const reA = inputA.re;
+                const reB = inputB.re;
+
+                const resultAcc = Math.min(reA.acc, reB.acc);
+                const m = Math.min(reA.power, reB.power);
+
+                const isNegativeA = reA.mantissa < 0;
+                const isNegativeB = reB.mantissa < 0;
+                let calcA = isNegativeA ? -reA.mantissa : reA.mantissa;
+                let calcB = isNegativeB ? -reB.mantissa : reB.mantissa;
+
+                let modResult;
+                const powOfA = reA.power - m;
+                const powOfB = reB.power - m;
+                if (powOfA > CalcConfig.MAX_INPUT_EXPONENT) {
+                    const modAB = calcA % calcB;
+
+                    // 快速幂算法
+                    let modOfPow = 1n;
+                    let base = 10n % calcB;
+                    let exp = powOfA;
+                    while (exp > 0) {
+                        if (exp % 2 !== 0) {
+                            modOfPow = (modOfPow * base) % calcB;
+                        }
+                        base = (base ** 2n) % calcB;
+                        exp = Math.floor(exp / 2);
+                    }
+
+                    const leftMod = modAB * modOfPow;
+                    modResult = leftMod % calcB;
+                } else if (powOfB > CalcConfig.MAX_INPUT_EXPONENT) {
+                    if (reA.acc < CalcConfig.MAX_INPUT_EXPONENT) {
+                        modResult = calcA;
+                        // 判断是否会在后续触发 calcB 参与修正计算
+                        if (isNegativeA !== isNegativeB) {
+                            // 此处可能存在性能问题
+                            // 如果符号不一致，后续必须用到真实的 calcB 来做加减法，这里只能老老实实算出来
+                            calcB = calcB * (10n ** BigInt(powOfB));
+                        }
+                    } else {
+                        // 兜底策略，计算速度可能较慢
+                        calcB = calcB * (10n ** BigInt(powOfB));
+                        modResult = calcA % calcB;
+                    }
+                } else {
+                    calcA = powOfA === 0 ? calcA : calcA * (10n ** BigInt(powOfA));
+                    calcB = powOfB === 0 ? calcB : calcB * (10n ** BigInt(powOfB));
+                    modResult = calcA % calcB;
+                }
+
+                // 只有当余数不为 0 时，才进行符号调整补齐
+                if (modResult !== 0n) {
+                    if (isNegativeA && isNegativeB) {
+                        modResult = -modResult;
+                    } else if (isNegativeA && !isNegativeB) {
+                        modResult = calcB - modResult;
+                    } else if (!isNegativeA && isNegativeB) {
+                        modResult = modResult - calcB;
+                    }
+                }
+
+                return new ComplexNumber(modResult, {
+                    acc: resultAcc,
+                    pow: m
+                });
+            }
 
             return MathPlus.minus(
                 inputA,
@@ -1939,14 +2060,21 @@
                 // 这样 e^x = e^i * e^f。e^i 通过 pow 计算，e^f 通过泰勒级数计算。
 
                 // 计算除数，用于从尾数中分离整数和小数部分。
-                const realPower = 10n ** BigInt(-re.power);
-                // 计算整数部分的值。
-                const intPart = re.mantissa / realPower;
-                // 计算 e 的整数部分次方 (e^i)。
-                const resultMid = MathPlus.pow(new BigNumber(CalcConfig.constants.e), intPart);
+                let resultMid, iterationMantissa;
+                const pow = -re.power;
+                if (re.acc < pow) {
+                    resultMid = new ComplexNumber([0, 1n, acc]);
+                    iterationMantissa = re.mantissa;
+                } else {
+                    const realPower = 10n ** BigInt(-re.power);
+                    // 计算整数部分的值。
+                    const intPart = re.mantissa / realPower;
+                    // 计算 e 的整数部分次方 (e^i)。
+                    resultMid = MathPlus.pow(new BigNumber(CalcConfig.constants.e), intPart);
+                    // 计算小数部分的尾数。
+                    iterationMantissa = re.mantissa - intPart * realPower;
+                }
 
-                // 计算小数部分的尾数。
-                const iterationMantissa = re.mantissa - intPart * realPower;
                 // 创建代表小数部分 (f) 的 ComplexNumber。
                 // 注意: 这里将数字缩小 10 倍以更快收敛。
                 const iteration = new ComplexNumber([re.power - 1, iterationMantissa, acc]);
@@ -3026,7 +3154,8 @@
                 }
 
                 // --- 核心逻辑: 处理带小数的实数 ---
-                let result = re.mantissa / (10n ** BigInt(-re.power));
+                const pow = -re.power;
+                let result = re.acc < pow ? 0n : re.mantissa / (10n ** BigInt(pow));
 
                 // 根据 floor 函数的定义调整结果。
                 // - 对于正数，floor(x) 等于 trunc(x)。
@@ -3082,7 +3211,8 @@
                 // 通过整数除法计算截断后（向零取整）的整数部分。
                 // 例如，对于 3.1 (mantissa=31, power=-1), result = 31n / 10n = 3n。
                 // 对于 -3.7 (mantissa=-37, power=-1), result = -37n / 10n = -3n。
-                let result = re.mantissa / (10n ** BigInt(-re.power));
+                const pow = -re.power;
+                let result = re.acc < pow ? 0n : re.mantissa / (10n ** BigInt(pow));
 
                 // 根据当前逻辑，如果截断后的结果大于等于 0，则加 1。
                 // 这意味着对于所有正数，都会执行向上取整操作。

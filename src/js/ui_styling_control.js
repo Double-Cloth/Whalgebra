@@ -209,7 +209,7 @@
                     // 将更新后的状态持久化到 localStorage。
                     localStorage.setItem('subModes', JSON.stringify(PageConfig._subModes));
                 } catch {
-                    throw new Error('[PageConfig] "subModes" storage failed');
+                    console.warn('[PageConfig] "subModes" storage failed');
                 }
 
             }
@@ -296,7 +296,7 @@
                 // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
                 localStorage.setItem('currentMode', mode);
             } catch {
-                throw new Error('[PageConfig] "currentMode" storage failed');
+                console.warn('[PageConfig] "currentMode" storage failed');
             }
         }
 
@@ -346,7 +346,7 @@
                 // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
                 localStorage.setItem('printMode', mode);
             } catch {
-                throw new Error('[PageConfig] "printMode" storage failed');
+                console.warn('[PageConfig] "printMode" storage failed');
             }
         }
 
@@ -427,7 +427,7 @@
                 // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
                 localStorage.setItem('keyboardType', type.toString());
             } catch {
-                throw new Error('[PageConfig] "keyboardType" storage failed');
+                console.warn('[PageConfig] "keyboardType" storage failed');
             }
         }
 
@@ -482,7 +482,7 @@
                 // 将新模式保存到 localStorage，以便在下次加载时恢复状态。
                 localStorage.setItem('calcAccMode', mode.toString());
             } catch {
-                throw new Error('[PageConfig] "calcAccMode" storage failed');
+                console.warn('[PageConfig] "calcAccMode" storage failed');
             }
         }
 
@@ -579,7 +579,7 @@
                 // 将更新后的 _screenData 序列化并保存到 localStorage
                 localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
             } catch {
-                throw new Error('[PageConfig] "screenData" storage failed');
+                console.warn('[PageConfig] "screenData" storage failed');
             }
         }
 
@@ -624,7 +624,7 @@
                 // 将更新后的 _screenData 序列化并保存到 localStorage
                 localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
             } catch {
-                throw new Error('[PageConfig] "screenData" storage failed');
+                console.warn('[PageConfig] "screenData" storage failed');
             }
         }
     }
@@ -1578,9 +1578,7 @@
              * @description 计算上下两个占位 spacer 的物理高度。
              *
              * 特点：
-             * 1. 底部 spacer 改用 Math.ceil 取整，补偿顶部 floor 引入的向下偏差，
-             *    使三段之和（top spacer + 渲染条目 + bottom spacer）尽可能等于
-             *    physicalHeight，消除累积误差导致的底部留白或溢出。
+             * 1. 利用浮点运算配合 physBottom < 0 && physBottom > -5 误差吸收的防抖动机制。
              * 2. 非压缩模式逻辑不变，保持原始精度（整数 itemHeight 无误差）。
              *
              * @param {number} start           - 当前渲染窗口起始索引（含）。
@@ -1667,7 +1665,7 @@
              * @method toElement
              * @description 将 `renderItem()` 的返回值规范化为一个 `HTMLElement`。
              * * 若返回值是字符串，则从池中取出（或新建）包装 `<div>`，
-             *   将字符串赋给 `innerHTML`。
+             *   将字符串赋给 `innerHTML`（使用 createContextualFragment 方法）。
              * * 若返回值是 `HTMLElement`，直接使用，同时检查重复挂载。
              * * `measureOnly = true` 时仅用于临时测量，不更新池状态和引用计数。
              *
@@ -1923,7 +1921,7 @@
          *
          * @param {Object}   config                         - 配置对象。
          * @param {string}   config.container               - 滚动容器的 CSS 选择器（非空字符串）。
-         * @param {function | HTMLElement} config.renderItem
+         * @param {(index: number, data: any) => string | HTMLElement} config.renderItem
          *   条目渲染函数，接收索引和数据数组，返回 HTML 字符串或 `HTMLElement`。
          * @param {boolean}  [config.remeasureOnResize=true]
          *   宽度变化时是否重新测量行高（适合响应式布局；若行高固定可设为 `false`）。
@@ -2417,7 +2415,7 @@
          * @private
          * @method _buildDOM
          * @description 重建容器内的基础 DOM 骨架（清空 + 创建上下 spacer）。
-         * * 回收所有已渲染节点并清空容器 `innerHTML`。
+         * * 回收所有已渲染节点并清空容器。
          * * 创建两个自定义标签作为上下占位符，初始高度均为 0。
          * * spacer 样式设置为不可见、不占位但仍参与文档流高度计算。
          * * 调用后 `_startIndex` / `_endIndex` 被重置为 -1。
@@ -3697,15 +3695,15 @@
         }
 
         /**
-         *
+         * @method scrollToTop
          * @param {Object} [options]  - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
          * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
          * @returns {void}
          * @example
          * vs.scrollToTop({ behavior: 'smooth' });
          */
-        scrollToTop(options) {
-            this.scrollToIndex(0, options);
+        scrollToTop({behavior = 'auto', block = 'start'} = {}) {
+            this.scrollToIndex(0, {behavior, block});
         }
 
         /**
@@ -3751,58 +3749,93 @@
         /**
          * @method getMetrics
          * @description 返回当前实例的性能与状态快照（深度冻结，只读）。
-         * * 包含渲染窗口、节点池、高度映射、滚动状态等全部关键指标。
-         * * 用于调试、监控或单元测试断言。
+         * * 包含渲染窗口、节点池、高度映射、滚动状态以及所有的异步锁和真实的 DOM 占位高度。
+         * * 极其适合用于极限场景下的性能调试、线上监控报警或作为 Jest 单元测试的断言输入。
          *
          * @returns {Readonly<{
-         *   state: string,
-         *   ready: boolean,
-         *   itemHeight: number,
-         *   bufferSize: number,
-         *   visibleCount: number,
-         *   renderedCount: number,
-         *   totalCount: number,
-         *   startIndex: number,
-         *   endIndex: number,
-         *   scrollTop: number,
-         *   poolSize: number,
-         *   wrapperCount: number,
-         *   userElemCount: number,
-         *   compressed: boolean,
-         *   virtualHeight: number,
-         *   physicalHeight: number,
-         *   scrollRatio: number,
-         *   pendingScrollQueue: ReadonlyArray<Readonly<{index: number, behavior: string}>>
-         * }>} 当前指标快照。
+         * state: string,
+         * ready: boolean,
+         * isRendering: boolean,
+         * isSmoothScrolling: boolean,
+         * isRemeasurePending: boolean,
+         * itemHeight: number,
+         * containerHeight: number,
+         * bufferSize: number,
+         * visibleCount: number,
+         * totalCount: number,
+         * startIndex: number,
+         * endIndex: number,
+         * renderedCount: number,
+         * anchorIndex: number,
+         * anchorRatio: number,
+         * scrollTop: number,
+         * compressed: boolean,
+         * virtualHeight: number,
+         * physicalHeight: number,
+         * scrollRatio: number,
+         * poolSize: number,
+         * wrapperCount: number,
+         * userElemCount: number,
+         * spacerTop: number,
+         * spacerBottom: number,
+         * pendingScrollQueue: ReadonlyArray<Readonly<{index: number, behavior: string, block?: string}>>
+         * }>} 当前核心指标与状态的只读快照。
          *
          * @example
-         * const m = vs.getMetrics();
-         * console.log(m.renderedCount, m.totalCount, m.compressed);
+         * const metrics = vs.getMetrics();
+         * console.log(`状态: ${metrics.state}, 渲染节点数: ${metrics.renderedCount}`);
+         * if (metrics.spacerTop < 0) {
+         * console.warn('检测到顶部 Spacer 负值补偿');
+         * }
          */
         getMetrics() {
-            const visibleCount = (this.itemHeight && this.container)
-                                 ? Math.ceil(this.container.clientHeight / this.itemHeight)
+            const clientHeight = this.container ? this.container.clientHeight : 0;
+            const visibleCount = (this.itemHeight && clientHeight)
+                                 ? Math.ceil(clientHeight / this.itemHeight)
                                  : 0;
             const hm = this._heightMapper;
 
             return Object.freeze({
+                // 1. 基础与状态
                 state: this.state,
                 ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
+
+                // 2. 异步与锁状态
+                isRendering: this._rendering,
+                isSmoothScrolling: this._isSmoothScrolling,
+                isRemeasurePending: this._remeasurePending,
+
+                // 3. 尺寸与排版
                 itemHeight: this.itemHeight,
+                containerHeight: this._lastContainerHeight, // 缓存的容器高度
                 bufferSize: this.bufferSize,
                 visibleCount,
-                renderedCount: this._renderedNodes.size,
                 totalCount: this.totalCount,
+
+                // 4. 渲染窗口与锚点
                 startIndex: this._startIndex,
                 endIndex: this._endIndex,
+                renderedCount: this._renderedNodes.size,
+                anchorIndex: this._anchorIndex,
+                anchorRatio: Number(this._anchorRatio.toFixed(4)), // 保留精度便于阅读
+
+                // 5. 滚动与压缩映射
                 scrollTop: this.container?.scrollTop ?? 0,
-                poolSize: this._nodePool.poolSize,
-                wrapperCount: this._nodePool.wrapperCount,
-                userElemCount: this._nodePool.userElemCount,
                 compressed: hm.compressed,
                 virtualHeight: hm.virtualHeight,
                 physicalHeight: hm.physicalHeight,
                 scrollRatio: hm.scrollRatio,
+
+                // 6. DOM 节点池
+                poolSize: this._nodePool.poolSize,
+                wrapperCount: this._nodePool.wrapperCount,
+                userElemCount: this._nodePool.userElemCount,
+
+                // 7. Spacer 占位状态
+                spacerTop: this._spacerTop ? parseFloat(this._spacerTop.style.height) : 0,
+                spacerBottom: this._spacerBottom ? parseFloat(this._spacerBottom.style.height) : 0,
+
+                // 8. 队列
                 pendingScrollQueue: Object.freeze(
                     this._pendingScrollQueue.map(e => Object.freeze({...e}))
                 )
@@ -4504,13 +4537,8 @@
                         // 如果删除后是空行，则直接删除一整行
                         InputManager.statisticsDelLine();
                     } else {
-                        try {
-                            // 注意这里传入的是三元组，格式为 [y坐标, x坐标, 数值]
-                            PageConfig.screenData = {'1': [...current, '']};
-                        } catch {
-                            console.error('[InputManager] Deletion failed, unable to write "screenData".');
-                            return;
-                        }
+                        // 注意这里传入的是三元组，格式为 [y坐标, x坐标, 数值]
+                        PageConfig.screenData = {'1': [...current, '']};
                     }
                 } else {
                     this.ac({acArea: HtmlTools.getCurrentSubscreenArea()});
@@ -4911,14 +4939,9 @@
                 return;
             }
 
-            try {
-                // 从数组中移除目标行
-                gridData.splice(position, 1);
-                PageConfig.screenData = {'1': gridData};
-            } catch {
-                console.error('[InputManager] Deletion failed, unable to write "screenData".');
-                return;
-            }
+            // 从数组中移除目标行
+            gridData.splice(position, 1);
+            PageConfig.screenData = {'1': gridData};
 
             // 如果删除的是最后一行
             if (gridData.length === position) {
@@ -5466,24 +5489,17 @@
                     return;
                 }
 
-                try {
-                    // 如果单元格为空，自动填充为 0，并更新 DOM 显示
-                    if (currentPushA.length === 0 && currentPushB.length === 0) {
-                        continue;
-                    } else if (currentPushA.length === 0) {
-                        // 使用 screenData 提供的精确修改数据方法
-                        PageConfig.screenData = {'1': [i, 0, '0']};
-                        currentPushA = '0';
-                    } else if (currentPushB.length === 0) {
-                        // 使用 screenData 提供的精确修改数据方法
-                        PageConfig.screenData = {'1': [i, 1, '0']};
-                        currentPushB = '0';
-                    }
-                } catch {
-                    // 捕获计算过程中的错误（计算溢出）
-                    this._setMode1Results('error');
-                    this.mode1Results = 'error';
-                    return;
+                // 如果单元格为空，自动填充为 0，并更新 DOM 显示
+                if (currentPushA.length === 0 && currentPushB.length === 0) {
+                    continue;
+                } else if (currentPushA.length === 0) {
+                    // 使用 screenData 提供的精确修改数据方法
+                    PageConfig.screenData = {'1': [i, 0, '0']};
+                    currentPushA = '0';
+                } else if (currentPushB.length === 0) {
+                    // 使用 screenData 提供的精确修改数据方法
+                    PageConfig.screenData = {'1': [i, 1, '0']};
+                    currentPushB = '0';
                 }
 
                 // 将为文本表达式添加到列表中
@@ -6327,14 +6343,8 @@
                     return;
                 }
                 const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
-                try {
-                    PageConfig.screenData = {[exportTarget]: equation};
-                } catch {
-                    // 如果结果为错误，将按钮图标更改为“失败”状态
-                    HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
-                    clickArea.classList.add('Failed');
-                    return;
-                }
+                // 写入存储
+                PageConfig.screenData = {[exportTarget]: equation};
                 // 获取当前选中的回归模型 (this._currentRaModel) 的方程字符串
                 // 将其转换为 HTML 类名数组，并替换目标输入区域的内容
                 HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`), HtmlTools.textToHtmlClass(equation), {mode: 'replace'});
@@ -6888,12 +6898,7 @@
             if (currentMode === '1') {
                 // 如果是统计模式...
                 const current = PageConfig.subModes['1'];
-                try {
-                    PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
-                } catch {
-                    console.error('[PageControlTools] Synchronization failed, unable to write "screenData".');
-                    return;
-                }
+                PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
 
                 // 后续处理
                 const gridData = PageConfig.screenData['1'];
