@@ -978,7 +978,7 @@ p {
     }
 
     #sub_keyboard_ForMode1 {
-        left: calc(30.15625dvw + calc(62dvw / 3));
+        left: calc(30.15625dvw + calc(62.1875dvw / 3));
         width: 21dvw;
         grid-template-columns: calc(21dvw - 1dvmin);
     }
@@ -995,11 +995,11 @@ p {
     }
 
     #keyboard_top > div {
-        width: calc(62dvw / 3);
+        width: calc(62.1875dvw / 3);
     }
 
     #keyboard_top.ForMode1 > div:nth-last-child(-n+2) {
-        width: calc(53dvw / 3);
+        width: calc(53.1875dvw / 3);
     }
 
     #keyboard_top.ForMode1 > #keyboard_top_more {
@@ -1867,7 +1867,7 @@ span.Ripple.IsFadingOut {
     width: min(90dvw, 100dvmin);
     height: 80dvh;
     transition: all 0.5s ease;
-    border-radius: 4dvmin;
+    border-radius: 3.5dvmin;
 }
 
 #explain.ExplainNotShow {
