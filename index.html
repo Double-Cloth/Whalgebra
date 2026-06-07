@@ -37,25 +37,28 @@
         body {
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
             background: #F8FAFC;
-            height: 100vh;
+            /* 优化：允许矮屏下内容撑开滚动，避免截断 */
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden;
+            /* 优化：增加外层内边距，防止卡片贴边 */
+            padding: 24px 16px;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
+            position: relative;
         }
 
         /* === 1. 背景层 === */
         .liquid-bg {
-            position: absolute;
+            position: fixed; /* 优化：改为 fixed，防止滚动时背景穿帮 */
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             z-index: 0;
             background: radial-gradient(circle at center, #FDFBFB 0%, #EBEDEE 100%);
-            overflow: hidden;
+            overflow: hidden; /* 裁剪只在这里生效 */
             pointer-events: none;
         }
 
@@ -75,8 +78,6 @@
         }
 
         /* === 2. 色块个性化配置 === */
-        /* 注意：这里只保留大小、颜色和动画，移除了 top/left 等定位属性，改由 JS 控制 */
-
         .blob-1 {
             width: 500px;
             height: 500px;
@@ -176,9 +177,10 @@
             border-radius: 32px;
             box-shadow: var(--glass-shadow);
 
-            width: 90%;
+            width: 100%;
             max-width: 440px;
-            padding: 56px 40px;
+            /* 优化：使用 clamp 让 padding 在大/小屏间平滑过渡 */
+            padding: clamp(32px, 6vh, 56px) clamp(20px, 5vw, 40px);
             text-align: center;
 
             position: relative;
@@ -197,7 +199,7 @@
         }
 
         h1 {
-            font-size: 2rem;
+            font-size: clamp(1.6rem, 5vw, 2rem); /* 优化：字号自适应 */
             font-weight: 800;
             background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
             -webkit-background-clip: text;
@@ -208,7 +210,7 @@
         p.subtitle {
             color: var(--text-sub);
             font-size: 1rem;
-            margin-bottom: 2.5rem;
+            margin-bottom: clamp(1.5rem, 4vh, 2.5rem); /* 优化：动态间距 */
             font-weight: 500;
         }
 
@@ -221,7 +223,7 @@
             border-radius: 999px;
             font-size: 0.875rem;
             font-weight: 600;
-            margin-bottom: 3rem;
+            margin-bottom: clamp(1.8rem, 5vh, 3rem); /* 优化：动态间距 */
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             transition: transform 0.2s;
         }
@@ -262,14 +264,14 @@
             }
             100% {
                 transform: scale(1);
-                opacity: 0;
+                opacity: 0.3;
             }
         }
 
         .action-group {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px; /* 稍微收紧按钮间距 */
         }
 
         .btn {
@@ -277,13 +279,14 @@
             justify-content: center;
             align-items: center;
             gap: 12px;
-            padding: 18px;
+            padding: clamp(14px, 2vh, 18px); /* 优化：矮屏下自动缩减按钮高度 */
             border-radius: 16px;
             text-decoration: none;
             font-weight: 700;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: none;
             cursor: pointer;
+            font-size: 0.95rem;
         }
 
         .btn-primary {
@@ -302,7 +305,7 @@
             background: rgba(255, 255, 255, 0.6);
             color: var(--text-main);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 12px 24px rgba(215, 215, 215, 0.8);
+            box-shadow: 0 12px 24px rgba(215, 215, 215, 0.4); /* 降低原本过高的阴影不透明度 */
         }
 
         .btn-secondary:hover {
@@ -312,8 +315,8 @@
         }
 
         .warning-glass {
-            margin-top: 32px;
-            padding: 20px;
+            margin-top: clamp(20px, 4vh, 32px); /* 优化：动态间距 */
+            padding: 16px;
             background: rgba(254, 242, 242, 0.7);
             backdrop-filter: blur(10px);
             border-radius: 16px;
@@ -321,6 +324,8 @@
             display: none;
             text-align: left;
             animation: fadeIn 0.5s ease-out;
+            font-size: 0.875rem;
+            line-height: 1.5;
         }
 
         @keyframes fadeIn {
@@ -386,18 +391,67 @@
             display: inline;
         }
 
-        @media (max-width: 480px) {
+        /* === 5. 统一的响应式媒体查询 === */
+
+        /* 针对窄屏 (手机竖屏) 极其矮屏 (手机横屏 / 限制高度的窗口) */
+        @media (max-width: 480px), (max-height: 580px) {
+            body {
+                padding: 12px 12px; /* 极小化外边距 */
+            }
+
             .card {
-                padding: 40px 24px;
-                width: 92%;
+                border-radius: 24px; /* 稍微直角一点，更利用空间 */
             }
 
-            .btn {
-                padding: 16px;
-            }
-
+            /* 减小 Blob 的尺寸，防止小屏幕上出现过大的纯色块，提升移动端渲染性能 */
             .blob {
-                transform: scale(0.7);
+                transform: scale(0.6);
+                filter: blur(50px);
+            }
+
+            .blob-1 {
+                width: 280px;
+                height: 280px;
+            }
+
+            .blob-2 {
+                width: 250px;
+                height: 250px;
+            }
+
+            .blob-3 {
+                width: 200px;
+                height: 200px;
+            }
+
+            .blob-4 {
+                width: 180px;
+                height: 180px;
+            }
+
+            .blob-5 {
+                width: 220px;
+                height: 220px;
+            }
+
+            .blob-6 {
+                width: 150px;
+                height: 150px;
+            }
+        }
+
+        /* 专门针对极其矮屏的额外微调 (例如：开启了虚拟键盘，或者横屏下的手机) */
+        @media (max-height: 450px) {
+            .card {
+                padding: 24px 20px;
+            }
+
+            .status-pill {
+                margin-bottom: 1.5rem;
+            }
+
+            p.subtitle {
+                margin-bottom: 1.2rem;
             }
         }
     </style>

@@ -149,7 +149,14 @@ function addLogToUI(tag, args, level = "info") {
 
     const metaDiv = document.createElement('div');
     metaDiv.className = 'log-meta';
-    metaDiv.innerHTML = `<span class="log-time">${getTimeString()}</span><span class="log-tag ${tagClass}">[${tag}]</span>`;
+    const fullTime = getTimeString();                    // 例如 "15:34:20.123"
+    const shortTime = fullTime.split(':').slice(1).join(':'); // 提取 "分:秒.毫秒"，例如 "34:20.123"
+
+    metaDiv.innerHTML = `
+        <span class="log-time log-time-full">${fullTime}</span>
+        <span class="log-time log-time-short">${shortTime}</span>
+        <span class="log-tag ${tagClass}">[${tag}]</span>
+    `;
     div.appendChild(metaDiv);
 
     const contentDiv = document.createElement('div');

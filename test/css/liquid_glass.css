@@ -48,7 +48,7 @@
 }
 
 body {
-    font-family: var(--font-ui);
+    font-family: var(--font-ui), serif;
     background: #F8FAFC;
     margin: 0;
     padding: 20px;
@@ -148,7 +148,7 @@ body {
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
-    animation: fadeIn Down 0.5s ease-out;
+    animation: fadeIn 0.5s ease-out;
     user-select: none;
 }
 
@@ -171,6 +171,10 @@ h2 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.02em;
+}
+
+h2 small {
+    -webkit-text-fill-color: initial;
 }
 
 /* 状态胶囊 */
@@ -362,7 +366,7 @@ button.primary:hover:not(:disabled) {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
-    font-family: var(--font-code);
+    font-family: var(--font-code), serif;
 }
 
 .btn-small {
@@ -389,7 +393,7 @@ button.primary:hover:not(:disabled) {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
-    font-family: var(--font-code);
+    font-family: var(--font-code), serif;
     font-size: 13px;
     line-height: 1.6;
     color: var(--console-text);
@@ -494,7 +498,7 @@ button.primary:hover:not(:disabled) {
 
 /* --- JSON Tree (适配深色模式) --- */
 .json-tree {
-    font-family: var(--font-code);
+    font-family: var(--font-code), serif;
     cursor: default;
 }
 
@@ -595,4 +599,135 @@ button.primary:hover:not(:disabled) {
 
 iframe {
     display: none;
+}
+
+/* === 默认状态（PC端）=== */
+.log-time-short {
+    display: none; /* 默认隐藏简写时间 */
+}
+
+/* ==========================================================================
+   窄屏幕及移动端适配
+   ========================================================================== */
+
+@media (max-width: 768px) {
+    body {
+        height: auto;
+        min-height: 100vh;
+        overflow: initial; /* 允许整页滚动 */
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 14px 18px;
+    }
+
+    .header-bar h2 {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .header-bar h2 small {
+        margin-left: 0 !important;
+    }
+
+    .status-badge {
+        width: 100%;
+        justify-content: center; /* 状态条在窄屏下撑满并居中，更美观 */
+    }
+
+    .main-layout {
+        flex-direction: column;
+        overflow: initial;
+        height: auto;
+    }
+
+    .control-panel {
+        width: 100%;
+        padding: 16px;
+        overflow-y: initial;
+        display: flex; /* 改为 Flex 垂直排列两个大组 */
+        flex-direction: column;
+        gap: 20px; /* 全局操作和单元测试组之间的间距 */
+    }
+
+    .control-panel > div {
+        margin-bottom: 0;
+        display: flex; /* 将每个组变为弹性盒 */
+        flex-direction: column;
+        gap: 8px; /* 核心：极其精准地控制同一组内按钮的上下间距，不再依赖 margin */
+    }
+
+    /* 针对单元测试用例组的特殊多列优化 */
+    .control-panel > div:last-child {
+        display: grid;
+        /* 使用 minmax 保证在极窄屏幕（如小屏手机）下也能完美容纳字数，不至于挤压换行 */
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px; /* 核心：控制多列按钮之间的上下、左右行间距 */
+    }
+
+    .section-title {
+        margin-bottom: 6px; /* 稍微收紧标题与按钮的距离 */
+        grid-column: 1 / -1; /* 确保在 Grid 布局下标题独占一行 */
+    }
+
+    button {
+        margin-bottom: 0; /* 彻底清除 PC 端的单向间距，交由 gap 接管 */
+        padding: 10px 14px;
+        font-size: 13px;
+        text-align: center; /* 窄屏居中对齐，视觉更平稳 */
+        display: inline-flex; /* 内部居中对齐 */
+        justify-content: center;
+        align-items: center;
+        min-height: 42px; /* 移动端防误触的黄金最小高度 */
+    }
+
+    .console-panel {
+        height: 60vh;
+        min-height: 400px;
+    }
+
+    /* 1. 瘦身元数据列，从 140px 缩减到 100px */
+    .log-meta {
+        width: 100px;
+        font-size: 11px;
+    }
+
+    /* 2. 隐藏完整时间，显示格式化好的简写时间 */
+    .log-time-full {
+        display: none !important;
+    }
+
+    .log-time-short {
+        display: inline-block !important;
+        margin-right: 6px;
+        color: var(--text-sub);
+        opacity: 0.8;
+    }
+
+    /* 3. 略微收紧移动端的日志间距 */
+    #output {
+        padding: 10px;
+    }
+
+    .log-row {
+        padding: 4px 6px;
+    }
+}
+
+/* 针对高度过矮的屏幕适配（如横屏手机） */
+@media (max-height: 600px) and (min-width: 769px) {
+    body {
+        height: auto;
+        overflow: initial;
+    }
+
+    .main-layout {
+        height: 70vh;
+    }
 }
