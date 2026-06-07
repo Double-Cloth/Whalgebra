@@ -1,5 +1,6 @@
 /**
  * @global
+ * @function window.click
  * @description 点击事件监听器，用于处理页面上的用户交互。
  * 它通过检查被点击元素的 ID、类名和父元素信息来分发操作。
  */
@@ -257,6 +258,7 @@ document.addEventListener('click', (event) => {
 
 /**
  * @global
+ * @function window.keydown
  * @description 监听全局键盘按下事件，以实现通过物理键盘与计算器进行交互的功能。
  * 此监听器捕获按键事件，并根据按下的键执行相应的操作，如输入数字/运算符、删除字符、移动光标或执行计算。
  * 它通过调用 `HtmlTools` 和 `PageControlTools` 中的方法来间接操作 DOM 和应用程序状态。

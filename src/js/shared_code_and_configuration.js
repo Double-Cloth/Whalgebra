@@ -751,7 +751,7 @@
          * 这是一个关键的安全措施，用于防止正则表达式拒绝服务（ReDoS）攻击
          * 以及在处理超长数字字符串时可能发生的内存溢出问题。
          */
-        static MAX_INPUT_STRING_LENGTH = 120415;
+        static MAX_INPUT_STRING_LENGTH = 120_415;
 
         /**
          * @static
@@ -760,7 +760,7 @@
          * @description BigNumber 中 `toString()` 方法生成字符串时所允许的最大字符数。
          * 此设置可防止因数字的绝对值过大或过小而生成一个可能耗尽系统内存的超长字符串。
          */
-        static MAX_TO_STRING_LENGTH = 120416;
+        static MAX_TO_STRING_LENGTH = 120_416;
 
         /**
          * @static
@@ -787,7 +787,7 @@
          * @description 在 `MathPlus.pow()` 中，当指数为整数时，当结果的最大十进制位数大于此值，则使用快速幂运算计算，否则使用原生 BigInt。
          * 这是一个安全限制，防止因生成一个极大的数字而耗尽内存或耗时过长。
          */
-        static CRITICAL_MAGNITUDE_FAST_EXP = 10000;
+        static CRITICAL_MAGNITUDE_FAST_EXP = 10_000;
 
         /**
          * @static
@@ -1243,7 +1243,7 @@
                                     // 首次访问时执行字符串转换
                                     const gVal = parseTuple(raw.g);
 
-                                    // 【自覆盖法】：将 g 属性重写为纯静态值
+                                    // 自覆盖法：将 g 属性重写为纯静态值
                                     Object.defineProperty(lanczosObj, 'g', {
                                         value: gVal,
                                         writable: false,      // 防篡改保护 
@@ -1263,7 +1263,7 @@
                                     // 这样生成的数组在 V8 中是内存连续的 HOLEY_ELEMENTS，速度最快。
                                     const pArray = raw.p.map(parseTuple);
 
-                                    // 【自覆盖法】：将 p 属性重写为原生的纯静态数组
+                                    // 自覆盖法：将 p 属性重写为原生的纯静态数组
                                     Object.defineProperty(lanczosObj, 'p', {
                                         value: pArray,
                                         writable: false,
@@ -1282,7 +1282,7 @@
                             val = parseTuple(raw);
                         }
 
-                        // 3. 顶层属性的【自覆盖法】
+                        // 3. 顶层属性的自覆盖法
                         // 将 target[key] 的 Getter 彻底替换为已经计算好的 val
                         Object.defineProperty(target, key, {
                             value: val,

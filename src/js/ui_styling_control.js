@@ -172,7 +172,7 @@
                             safeRaf(() => gridOn.classList.remove('GridOn'));
                         }
 
-                        InputManager.statisticsRenderer.applyToItem(name[0], (el) => {
+                        InputManager.statisticsRenderer.applyToItem(name[0], el => {
                             const targetEl = el.children[name[1] + 1];
                             safeRaf(() => targetEl.classList.add('GridOn'));
                         });
@@ -1377,7 +1377,7 @@
                 }
                 if (!allowed.has(next)) {
                     throw new Error(
-                        `[StateMachine] Illegal transition: "${this._state}" → "${next}". ` +
+                        `[StateMachine] Illegal transition: "${this._state}" -> "${next}". ` +
                         `Allowed: ${[...allowed].join(', ') || '(none)'}`
                     );
                 }
@@ -1612,7 +1612,7 @@
                 const itemsH = (end - start) * itemHeight;
                 let physBottom = this.physicalHeight - physTop - itemsH;
 
-                // 【防抖动核心】吸附容差。浮点计算可能导致 physBottom 出现极小的负数（例如 -0.0001）。
+                // 防抖动核心：吸附容差。浮点计算可能导致 physBottom 出现极小的负数（例如 -0.0001）。
                 // 这种细微溢出会撑大 scrollHeight，从而触发原生滚动条闪烁和回弹抖动。
                 // 我们将其吸收，转移给 physTop（也就是把整体 DOM 再往上提一点点），彻底抹平误差。
                 if (physBottom < 0 && physBottom > -5) {
@@ -2900,7 +2900,7 @@
 
                 // ── 使用局部变量记录本次的 clientHeight，
                 //    与 _lastContainerHeight 比较后立即更新，
-                //    避免重入或外部更新导致的误判 ──────────────────────
+                //    避免重入或外部更新导致的误判
                 const heightChanged = clientHeight !== this._lastContainerHeight;
                 if (heightChanged) {
                     this._lastContainerHeight = clientHeight;
@@ -2920,7 +2920,7 @@
                     }
 
                     // ── 压缩模式下物理上限是 physicalHeight - clientHeight，
-                    //    非压缩模式是 virtualHeight - clientHeight（两者相等）──
+                    //    非压缩模式是 virtualHeight - clientHeight（两者相等）
                     const hm = this._heightMapper;
                     const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
                     const currentST = this.container.scrollTop;
@@ -3285,7 +3285,7 @@
 
             this._isSmoothScrolling = true;
 
-            const step = ts => {
+            const step = (ts) => {
                 if (this._sm.is(VirtualScroll.State.DESTROYED) || !this.container) {
                     this._smoothRAF = null;
                     this._isSmoothScrolling = false;
@@ -4198,7 +4198,7 @@
              * // 可能返回 [3, 7] 表示在这些位置需要插入空格
              *
              */
-            const getUnlimitedAddIndex = classList => {
+            const getUnlimitedAddIndex = (classList) => {
                 // 克隆数组，避免修改参数
                 const clonedList = [...classList];
 
@@ -4996,9 +4996,9 @@
             container: '#print_content_2_inner',   // 滚动区域的选择器
 
             /**
-             * @function rowRenderer
-             * @param {Object} dataSource - 外部传入的完整数据包装对象
+             * @function renderItem
              * @param {number} index - 当前渲染的行索引
+             * @param {Object} dataSource - 外部传入的完整数据包装对象
              * @returns {HTMLElement} 返回拼装好的一行 DOM
              * @description 负责单行 DOM 的组装
              */
@@ -5019,7 +5019,7 @@
                     const subWrapper = document.createElement('div');
                     const subContent = document.createElement('div');
 
-                    // 处理原生数据并映射为带有 'lazy-bg' 标识的数组
+                    // 处理原生数据
                     const formattedNodes = PrintManager._printHandleError(dataItem);
 
                     // 将处理后的节点追加到内容容器中
