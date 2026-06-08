@@ -81,14 +81,14 @@ python ./run_server.py
 ### 2.3. 安装发行版（Android）
 
 1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `.apk`
+2. 下载最新 `.apk` 文件
 3. 安装并启动应用
 
 ### 2.4. 安装发行版（Windows x64）
 
 1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `win-x64` 发行包
-3. 解压并运行 `.exe`
+2. 下载最新 `win-x64` 发行包或 `.exe` 文件
+3. 解压并运行 `.exe` 或双击启动应用
 
 ## 3. 使用说明
 
