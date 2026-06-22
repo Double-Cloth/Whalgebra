@@ -2775,6 +2775,67 @@
             });
         }
 
+        /**
+         * @private
+         * @method _resumeWithRemeasure
+         * @description resume() 后强制重新测量行高，并尽量恢复原滚动位置。
+         *
+         * @param {{index: number, behavior: string, block?: string} | null} pendingScroll
+         *   暂停期间最后一次 scrollToIndex 请求。
+         * @returns {void}
+         */
+        _resumeWithRemeasure(pendingScroll = null) {
+            this._cancelAllRAF();
+            this._cancelSmoothScrollSilent();
+
+            // 记录重测前的逻辑锚点
+            const savedAnchorIndex = this._anchorIndex;
+            const savedAnchorRatio = this._anchorRatio;
+
+            this._heightMapper.reset();
+
+            // 重新测量 itemHeight
+            this._doMeasure();
+            this._measured = true;
+
+            this._syncContainerSize();
+            this._calcBufferSize(true);
+
+            // 重建 spacer DOM
+            this._buildDOM();
+
+            const clientHeight = this.container.clientHeight;
+
+            this._heightMapper.update(
+                this.totalCount,
+                this.itemHeight,
+                clientHeight
+            );
+
+            this._syncContainerSize();
+
+            // 如果暂停期间有 scrollToIndex，则优先执行它
+            if (pendingScroll) {
+                const {index, behavior, block} = pendingScroll;
+                this.scrollToIndex(index, {behavior, block});
+
+                if (!this._isSmoothScrolling) {
+                    this._forceRender();
+                }
+
+                return;
+            }
+
+            // 没有 pending scroll 时，按原来的逻辑锚点恢复位置
+            const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
+            const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
+            const clampedVirt = Math.min(Math.max(0, exactVirtScroll), maxVirt);
+
+            this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
+
+            this._forceRender();
+        }
+
         /* ══════════════════════════════════════════════════════════════════════
             私有 —— 渲染调度
         ══════════════════════════════════════════════════════════════════════ */
@@ -3538,14 +3599,19 @@
          * vs.resume();
          * console.log(vs.state); // 'running'
          */
-        resume() {
+        resume({remeasure = true} = {}) {
             this._assertNotDestroyed('resume');
+
             if (!this._sm.is(VirtualScroll.State.PAUSED)) {
                 console.warn(`[VirtualScroll] resume() requires PAUSED state, current: ${this.state}`);
                 return;
             }
+
             this._sm.transition(VirtualScroll.State.RUNNING);
             this._bindScroll();
+
+            // 保存暂停期间最后一次 scrollToIndex 请求
+            let pendingScroll = null;
 
             if (this._pendingScrollQueue.length > 0) {
                 if (this._pendingScrollQueue.length > 1) {
@@ -3554,9 +3620,22 @@
                         'call(s) were dropped while PAUSED (only the last one is applied).'
                     );
                 }
-                const {index, behavior, block} = this._pendingScrollQueue.at(-1);
+
+                pendingScroll = this._pendingScrollQueue.at(-1);
                 this._pendingScrollQueue = [];
+            }
+
+            // 恢复时强制重测行高
+            if (remeasure && this.container && this.totalCount > 0) {
+                this._resumeWithRemeasure(pendingScroll);
+                return;
+            }
+
+            // 不重测时保持原逻辑
+            if (pendingScroll) {
+                const {index, behavior, block} = pendingScroll;
                 this.scrollToIndex(index, {behavior, block});
+
                 if (!this._isSmoothScrolling) {
                     this._forceRender();
                 }

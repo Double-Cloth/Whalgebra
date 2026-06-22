@@ -178,34 +178,46 @@ document.addEventListener('click', (event) => {
     }
 
     // 键盘输入
-    if (/KeyboardStyle[13]/.test(targetClass)) {
+    if (/KeyboardStyle(?:[123]|EXE)/.test(targetClass)) {
         // 隐藏说明
         PageControlTools.hideExplain();
-        if (firstChildClass === '_add_line_') {
-            const currentSubModes = PageConfig.subModes['1'];
-            const succeed = InputManager.statisticsAddLine({
-                location: currentSubModes[0] - 1,
-                inputX: currentSubModes[1] === 0 ? '0' : '',
-                inputY: currentSubModes[1] === 0 ? '' : '0'
-            });
-            if (succeed && !HtmlTools.getHtml('.InputTip')) {
-                InputManager.ac();
+        switch (firstChildClass) {
+            case '_exe_':
+                return PrintManager.exe();
+            case '_ac_':
+                return InputManager.ac();
+            case '_del_':
+                InputManager.del();
+                if (PageConfig.currentMode === '0') {
+                    PrintManager.mode0ShowOnScreen();
+                }
+                return;
+            case '_add_line_':
+                const currentSubModes = PageConfig.subModes['1'];
+                const succeed = InputManager.statisticsAddLine({
+                    location: currentSubModes[0] - 1,
+                    inputX: currentSubModes[1] === 0 ? '0' : '',
+                    inputY: currentSubModes[1] === 0 ? '' : '0'
+                });
+                if (succeed && !HtmlTools.getHtml('.InputTip')) {
+                    InputManager.ac();
+                }
+                return HtmlTools.scrollToView();
+            case '_del_line_':
+                InputManager.statisticsDelLine();
+                return HtmlTools.scrollToView();
+            default: {
+                const input = HtmlTools.getClassList(target);
+                InputManager.input(input);
+                if (targetClass.includes('NeedParentheses') && PageConfig.keyboardType === 1) {
+                    InputManager.input(['_parentheses_left_']);
+                }
+                if (PageConfig.currentMode === '0') {
+                    PrintManager.mode0ShowOnScreen();
+                }
+                PageControlTools.showExplain(input);
             }
-            return HtmlTools.scrollToView();
         }
-        if (firstChildClass === '_del_line_') {
-            InputManager.statisticsDelLine();
-            return HtmlTools.scrollToView();
-        }
-        const input = HtmlTools.getClassList(target);
-        InputManager.input(input);
-        if (targetClass.includes('NeedParentheses') && PageConfig.keyboardType === 1) {
-            InputManager.input(['_parentheses_left_']);
-        }
-        if (PageConfig.currentMode === '0') {
-            PrintManager.mode0ShowOnScreen();
-        }
-        PageControlTools.showExplain(input);
         return;
     }
 
@@ -231,28 +243,6 @@ document.addEventListener('click', (event) => {
 
     if (/^export_[0-1]$/.test(targetID)) {
         return PageControlTools.exportRa(targetID);
-    }
-
-    // --- 策略 4: 基于子元素图标功能的通用按钮 (Functional Buttons) ---
-
-    switch (firstChildClass) {
-        case '_exe_':
-            // 隐藏说明
-            PageControlTools.hideExplain();
-            return PrintManager.exe();
-        case '_ac_':
-            // 隐藏说明
-            PageControlTools.hideExplain();
-            return InputManager.ac();
-        case '_del_': {
-            // 隐藏说明
-            PageControlTools.hideExplain();
-            InputManager.del();
-            if (PageConfig.currentMode === '0') {
-                PrintManager.mode0ShowOnScreen();
-            }
-            return;
-        }
     }
 });
 
