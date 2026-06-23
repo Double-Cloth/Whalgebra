@@ -136,7 +136,7 @@ console.log(res3.toString());
 
 ```
 Whalgebra/
-├── index.html                  # 项目工作台入口，集中进入发行版、测试页与工具页
+├── index.html                  # 项目控制面板，集中进入发行版、测试页与工具页
 ├── package.json                # Node.js 脚本、版本号与运行环境声明
 ├── dist/                       # 可直接分发的构建产物
 │   ├── Whalgebra.html          # 单文件 Web 应用发行版，核心离线入口
