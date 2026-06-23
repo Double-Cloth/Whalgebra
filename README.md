@@ -66,8 +66,6 @@ npm start
 
 服务默认从 `8000` 端口开始寻找可用端口，并自动打开项目入口。入口页同时提供测试页、独立的逆向构建页面和 SVG 压缩页面。
 
-项目工具使用仓库内置脚本和 `assets/lib/svgo.browser.js`，无需下载 npm 依赖。
-
 常用工具命令：
 
 ```powershell
@@ -138,57 +136,32 @@ console.log(res3.toString());
 
 ```
 Whalgebra/
-├── .git/                        # Git 版本控制目录
-├── .github/                     # GitHub 配置（如 CI、Issue 模板等）
-├── .gitignore                   # Git 忽略文件配置
-├── assets/                      # 公共静态资源目录
-│   ├── ui/                      # 工作台、工具页和测试页的公共 UI 层
-│   │   ├── styles/              # 公共 UI 样式
-│   │   │   ├── shared.css       # 设计令牌、背景、面板、按钮与状态组件
-│   │   │   ├── portal.css       # 根入口专属布局
-│   │   │   ├── tool-page.css    # 工具页表单与日志布局
-│   │   │   └── test-console.css # 测试控制台布局与日志样式
-│   │   └── scripts/             # 公共 UI 脚本与组件
-│   │       ├── shared.js        # 环境检测、状态更新与 JSON 请求工具
-│   │       ├── tool_form.js     # 工具表单提交与状态管理
-│   │       ├── json_tree.js     # JSON 树渲染组件
-│   │       ├── log_console.js   # 浏览器日志控制台组件
-│   │       └── test_console.js  # 测试控制台页面控制器
-│   ├── images/                  # 图片及字体资源
-│   │   ├── chinese_name_of_operators/   # 运算符中文名 SVG
-│   │   ├── instructions_of_operators/   # 运算符说明 SVG
-│   │   ├── fonts/                       # 数学符号/字母 SVG 字体
-│   │   ├── icons/                       # 网站图标
-│   │   └── others/                      # 其他图片
-│   ├── lib/                    # 本地第三方浏览器库
-│   │   └── svgo.browser.js     # SVG 优化引擎
+├── index.html                  # 项目工作台入口，集中进入发行版、测试页与工具页
+├── package.json                # Node.js 脚本、版本号与运行环境声明
+├── dist/                       # 可直接分发的构建产物
+│   ├── Whalgebra.html          # 单文件 Web 应用发行版，核心离线入口
+│   ├── *.apk                   # Android 安装包
+│   └── *.exe                   # Windows x64 安装/运行包
+├── src/                        # 从单文件发行版逆向拆分出的源码区
+│   ├── index.html              # 源码区页面入口
+│   ├── css/                    # 计算器样式与内联 SVG 字体/图片样式
+│   └── js/                     # 计算核心、Worker、UI 状态与初始化逻辑
+├── assets/                     # 公共静态资源
+│   ├── images/                 # Logo、图标、数学符号、运算符说明等 SVG/图片资源
+│   ├── lib/                    # 本地浏览器端辅助库，例如 svgo.browser.js
+│   ├── ui/                     # 工作台、工具页、测试页共用字体、脚本与样式
 │   └── previous_versions.zip   # 旧版本归档
-├── index.html                  # 项目主入口页面
-├── src/                        # 源码目录
-│   ├── .nojekyll               # 阻止 GitHub Pages 使用 Jekyll
-│   ├── css/                    # 样式文件
-│   ├── js/                     # 主要 JS 逻辑
-│   └── index.html              # 源码区入口页面
-├── test/                       # 测试相关
-│   ├── browser/                # 浏览器端测试逻辑
-│   │   └── test_logic.js       # 浏览器端测试用例执行逻辑
-│   ├── cases/                  # 测试用例数据
-│   ├── node/                   # Node.js 工具层自动化测试
-│   └── web/                    # 测试页面入口
-│       └── index.html          # 测试控制台页面
-├── tools/                      # 项目辅助工具
-│   ├── cli/                    # 命令行工具
-│   │   ├── reverse_build.js    # 逆向构建脚本
-│   │   └── svg_compressor.js   # SVG 压缩工具
-│   ├── server/                 # 本地服务
-│   │   └── run_server.js       # 静态服务器与工具 API
-│   └── web/                    # 工具页面
-│       ├── reverse_build.html  # 逆向构建页面
-│       └── svg_compressor.html # SVG 压缩页面
-├── dist/                       # 构建输出目录
-├── package.json                # Node.js 启动命令
-├── README.md                   # 项目说明文档
-└── LICENSE                     # 许可证
+├── tools/                      # 项目辅助工具，不参与计算器运行时
+│   ├── cli/                    # 命令行工具：逆向构建、SVG 压缩
+│   ├── server/                 # 本地静态服务器与工具 API
+│   ├── shared/                 # 工具链共享的路径与文件安全逻辑
+│   └── web/                    # 工具页 UI
+├── test/                       # 自动化测试与浏览器测试控制台
+│   ├── cases/                  # JSON 测试用例
+│   ├── node/                   # Node.js 原生 test runner 测试
+│   ├── browser/                # 浏览器端测试执行逻辑
+│   └── web/                    # 测试控制台页面
+└── .github/                    # Issue 模板与 GitHub Pages 部署流程
 ```
 
 ## 5. 关于作者

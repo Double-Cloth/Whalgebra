@@ -23,7 +23,7 @@
 <header class="test-header glass-panel">
     <div class="test-heading">
         <h1 class="test-title">Whalgebra 测试控制台</h1>
-        <span class="test-version">Core v3.3</span>
+        <span class="test-version">Core v4.1</span>
     </div>
     <div class="test-header-actions">
         <div class="status-pill" data-engine-status data-state="loading" role="status">
@@ -40,6 +40,10 @@
             <h2 class="section-title">全局操作</h2>
             <button class="button button--primary test-button" type="button" data-test-mode="0" disabled>
                 运行全部测试集
+            </button>
+            <button class="button button--secondary test-button test-button--danger" type="button" data-action="cancel"
+                    disabled hidden>
+                取消当前测试
             </button>
             <button class="button button--secondary test-button" type="button" data-action="clear">清空控制台</button>
         </section>
@@ -63,6 +67,10 @@
     <section class="console-panel" aria-label="测试日志">
         <header class="console-header">
             <span class="console-title">DEBUG CONSOLE</span>
+            <div class="run-status" data-run-status role="status" aria-live="polite" hidden>
+                <span class="run-spinner" aria-hidden="true"></span>
+                <span data-run-status-text>等待测试任务</span>
+            </div>
             <button class="button button--small console-button" type="button" data-action="auto-scroll"
                     data-enabled="true">自动滚动：开
             </button>

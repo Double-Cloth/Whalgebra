@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Whalgebra 本地开发与工具入口">
-    <title>项目入口 | Whalgebra</title>
+    <title>控制面板 | Whalgebra</title>
     <link rel="icon" href="./assets/images/icons/logo.png">
     <link rel="stylesheet" href="./assets/ui/styles/shared.css">
     <link rel="stylesheet" href="./assets/ui/styles/portal.css">
@@ -31,9 +31,9 @@
     <section class="portal-hero" aria-labelledby="portal-title">
         <div class="portal-copy">
             <p class="brand-kicker">Local Algebra Engine</p>
-            <h1 class="page-title" id="portal-title">Whalgebra</br>本地工具入口</h1>
+            <h1 class="page-title" id="portal-title">WHALGEBRA</br>控制面板</h1>
             <p class="page-subtitle">
-                集成当前发行版、测试控制台与资源处理工具，为离线计算、本地验证和轻量化发布提供统一、稳定的工作入口。</p>
+                页面集成了当前发行版、测试控制台与资源处理工具，为离线计算、本地验证和轻量化发布提供统一、稳定的工作入口。</p>
             <div class="portal-cta-row">
                 <span class="portal-caption">Vanilla JS · Offline Ready · Precision Control</span>
             </div>
@@ -69,6 +69,10 @@
             <p class="brand-kicker">Workspace tools</p>
             <h2 id="tools-title">项目入口</h2>
         </div>
+        <aside class="notice portal-notice only-file">
+            <strong>本地工具需要静态服务</strong>
+            请在项目根目录运行 <code>npm start</code>，再通过浏览器访问该入口。
+        </aside>
         <nav class="portal-actions" aria-label="项目入口">
             <a class="portal-action portal-action--primary" href="./dist/Whalgebra.html">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -103,11 +107,6 @@
             </a>
         </nav>
     </section>
-
-    <aside class="notice portal-notice only-file">
-        <strong>本地工具需要静态服务</strong>
-        请在项目根目录运行 <code>npm start</code>，再通过浏览器访问该入口。
-    </aside>
 </main>
 </body>
 </html>

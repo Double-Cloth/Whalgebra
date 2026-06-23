@@ -8,8 +8,12 @@
     min-height: calc(100svh - clamp(36px, 6vw, 68px));
     margin: 0 auto;
     display: grid;
-    grid-template-rows: auto 1fr auto auto;
+    grid-template-rows: auto 1fr auto;
     gap: clamp(22px, 3vw, 34px);
+}
+
+body.environment-file .portal-shell {
+    gap: clamp(16px, 2.2vw, 24px);
 }
 
 .portal-topbar,
@@ -112,6 +116,10 @@
     align-items: center;
     gap: clamp(28px, 6vw, 72px);
     min-height: min(560px, 56svh);
+}
+
+body.environment-file .portal-hero {
+    min-height: min(500px, 50svh);
 }
 
 .portal-copy {
@@ -345,9 +353,14 @@
     display: grid;
     grid-template-columns: 220px minmax(0, 1fr);
     align-items: start;
-    gap: clamp(18px, 3vw, 34px);
+    column-gap: clamp(18px, 3vw, 34px);
+    row-gap: 12px;
     padding-top: clamp(10px, 1.7vw, 18px);
     border-top: 1px solid rgba(28, 55, 72, 0.1);
+}
+
+.portal-section-head {
+    grid-row: span 2;
 }
 
 .portal-section-head h2 {
@@ -557,10 +570,17 @@
 }
 
 .portal-notice {
-    max-width: 720px;
+    grid-column: 2;
+    max-width: none;
+    padding: 12px 14px;
+    font-size: 0.82rem;
 }
 
 @media (max-width: 940px) {
+    body.environment-file .portal-shell {
+        gap: clamp(20px, 3vw, 28px);
+    }
+
     .portal-hero {
         grid-template-columns: 1fr;
         min-height: auto;
@@ -576,6 +596,12 @@
 
     .portal-tools {
         grid-template-columns: 1fr;
+    }
+
+    .portal-section-head,
+    .portal-notice {
+        grid-column: auto;
+        grid-row: auto;
     }
 
     .portal-actions {

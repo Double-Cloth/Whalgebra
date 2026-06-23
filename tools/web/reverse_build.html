@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="../../assets/ui/styles/test-console.css">
     <link rel="stylesheet" href="../../assets/ui/styles/tool-page.css">
     <script src="../../assets/ui/scripts/shared.js" defer></script>
+    <script src="../../assets/ui/scripts/json_tree.js" defer></script>
+    <script src="../../assets/ui/scripts/log_console.js" defer></script>
     <script src="../../assets/ui/scripts/tool_form.js" defer></script>
 </head>
 <body class="test-page tool-page">
@@ -21,7 +23,7 @@
 <header class="test-header glass-panel">
     <div class="test-heading">
         <h1 class="test-title">Whalgebra 逆向构建</h1>
-        <span class="test-version">Core v2.0</span>
+        <span class="test-version">Core v2.1</span>
     </div>
     <div class="test-header-actions">
         <div class="status-pill" data-tool-status data-state="loading" role="status">
@@ -64,7 +66,7 @@
         <header class="console-header">
             <span class="console-title">BUILD OUTPUT</span>
         </header>
-        <pre class="tool-log" data-tool-log aria-live="polite">等待执行。</pre>
+        <div class="tool-log" data-tool-log role="log" aria-live="polite"></div>
     </section>
 </main>
 </body>

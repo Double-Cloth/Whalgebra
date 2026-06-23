@@ -86,9 +86,11 @@
     overflow: auto;
     color: var(--console-text);
     font: 0.77rem/1.6 var(--font-code);
-    white-space: pre-wrap;
-    word-break: break-word;
     user-select: text;
+}
+
+.tool-log .log-content {
+    overflow-wrap: anywhere;
 }
 
 .tool-log::-webkit-scrollbar {

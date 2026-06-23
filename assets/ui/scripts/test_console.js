@@ -6,8 +6,17 @@ WhalgebraUI.ready(() => {
     const iframe = document.getElementById("logicEngine");
     const testButtons = [...document.querySelectorAll("[data-test-mode]")];
     const clearButton = document.querySelector('[data-action="clear"]');
+    const cancelButton = document.querySelector('[data-action="cancel"]');
     const autoScrollButton = document.querySelector('[data-action="auto-scroll"]');
+    const runStatus = document.querySelector("[data-run-status]");
+    const runStatusText = document.querySelector("[data-run-status-text]");
     const logger = WhalgebraUI.createLogConsole(output, {autoScrollButton});
+    let isEngineConnected = false;
+    let activeRun = null;
+
+    function waitForPaint() {
+        return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    }
 
     function setControlsDisabled(disabled) {
         testButtons.forEach((button) => {
@@ -15,45 +24,91 @@ WhalgebraUI.ready(() => {
         });
     }
 
+    function syncControls() {
+        setControlsDisabled(Boolean(activeRun) || !isEngineConnected);
+        if (cancelButton) {
+            cancelButton.hidden = !activeRun;
+            cancelButton.disabled = !activeRun || Boolean(activeRun.cancelRequested);
+        }
+    }
+
+    function setRunStatus(title) {
+        document.body.classList.add("is-test-running");
+        if (runStatus) {
+            runStatus.hidden = false;
+        }
+        if (runStatusText) {
+            runStatusText.textContent = `正在运行：${title}`;
+        }
+        WhalgebraUI.setStatus(status, "loading", `正在运行：${title}`);
+        syncControls();
+    }
+
+    function clearRunStatus() {
+        document.body.classList.remove("is-test-running");
+        if (runStatus) {
+            runStatus.hidden = true;
+        }
+        syncControls();
+    }
+
     function updateEngineStatus() {
-        let isConnected = false;
         try {
-            isConnected = Boolean(iframe.contentWindow?.MathPlus);
+            isEngineConnected = Boolean(iframe.contentWindow?.MathPlus);
         } catch {
-            isConnected = false;
+            isEngineConnected = false;
         }
 
-        setControlsDisabled(!isConnected);
-        WhalgebraUI.setStatus(
-            status,
-            isConnected ? "ready" : "error",
-            isConnected ? "计算核心已连接" : "计算核心连接失败"
-        );
-        return isConnected;
+        if (!activeRun) {
+            WhalgebraUI.setStatus(
+                status,
+                isEngineConnected ? "ready" : "error",
+                isEngineConnected ? "计算核心已连接" : "计算核心连接失败"
+            );
+        }
+        syncControls();
+        return isEngineConnected;
     }
 
     async function runTest(mode) {
+        if (activeRun) {
+            return;
+        }
+
         const titles = {0: "全部测试集", 1: "性能测试", 2: "幂函数", 3: "统计", 4: "根式", 5: "值列表", 6: "表达式"};
-        setControlsDisabled(true);
-        WhalgebraUI.setStatus(status, "loading", `正在运行：${titles[mode] || mode}`);
+        const title = titles[mode] || mode;
+        if (!updateEngineStatus()) {
+            logger.addLog("ERR", "计算核心连接已断开", "error");
+            return;
+        }
+
+        const controller = new AbortController();
+        activeRun = {controller, title, cancelRequested: false};
+        setRunStatus(title);
         const divider = document.createElement("div");
         divider.className = "console-divider";
         output.appendChild(divider);
-        logger.addLog("SYS", `开始运行：${titles[mode] || mode}`, "sys");
+        logger.addLog("SYS", `开始运行：${title}`, "sys");
+        await waitForPaint();
         logger.enableConsoleCapture();
 
         try {
-            if (!updateEngineStatus()) {
+            if (!isEngineConnected) {
                 throw new Error("计算核心连接已断开");
             }
-            setControlsDisabled(true);
-            const result = await test(mode, iframe);
+            const result = await test(mode, iframe, {signal: controller.signal});
             logger.addLog("SYS", result ? "测试通过" : "测试未通过，存在错误", result ? "success" : "error");
         } catch (error) {
-            logger.addLog("FATAL", error.message, "error");
-            logger.originalConsole.error(error);
+            if (error?.name === "AbortError") {
+                logger.addLog("SYS", "测试已取消", "warn");
+            } else {
+                logger.addLog("FATAL", error.message, "error");
+                logger.originalConsole.error(error);
+            }
         } finally {
             logger.disableConsoleCapture();
+            activeRun = null;
+            clearRunStatus();
             updateEngineStatus();
         }
     }
@@ -62,6 +117,19 @@ WhalgebraUI.ready(() => {
         button.addEventListener("click", () => runTest(Number(button.dataset.testMode)));
     });
     clearButton.addEventListener("click", logger.clearLog);
+    cancelButton?.addEventListener("click", () => {
+        if (!activeRun) {
+            return;
+        }
+        activeRun.cancelRequested = true;
+        activeRun.controller.abort();
+        cancelButton.disabled = true;
+        if (runStatusText) {
+            runStatusText.textContent = `正在取消：${activeRun.title}`;
+        }
+        WhalgebraUI.setStatus(status, "loading", `正在取消：${activeRun.title}`);
+        logger.addLog("SYS", `正在取消：${activeRun.title}`, "warn");
+    });
     iframe.addEventListener("load", () => {
         if (updateEngineStatus()) {
             logger.addLog("SYS", "计算核心 MathPlus 已加载。", "success");

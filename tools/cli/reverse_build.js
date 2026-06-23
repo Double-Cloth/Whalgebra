@@ -1,13 +1,13 @@
 import {createHash} from "node:crypto";
 import {existsSync} from "node:fs";
 import {mkdir, readFile, rm, writeFile} from "node:fs/promises";
-import {EOL} from "node:os";
 import path from "node:path";
 import process from "node:process";
 import readline from "node:readline/promises";
 import {fileURLToPath} from "node:url";
+import {assertSafeOutputPaths, nativeNewlines, PROJECT_ROOT} from "../shared/filesystem.js";
 
-export const PROJECT_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
+export {PROJECT_ROOT};
 
 export const GLOBAL_CONFIG = Object.freeze({
     DEFAULT_INPUT_FILE: path.join(PROJECT_ROOT, "dist", "Whalgebra.html"),
@@ -49,10 +49,6 @@ export function dedent(content) {
     return lines.map((line) => line.startsWith(prefix) ? line.slice(prefix.length) : line).join("\n");
 }
 
-function nativeNewlines(content) {
-    return content.replace(/\r\n?|\n/gu, EOL);
-}
-
 function getAttribute(attributes, name) {
     const pattern = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\\x60]+))`, "iu");
     const match = attributes.match(pattern);
@@ -66,11 +62,6 @@ function removeAttribute(attributes, name) {
 
 function escapeAttribute(value) {
     return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
-}
-
-function isSameOrAncestor(candidate, target) {
-    const relative = path.relative(candidate, target);
-    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 async function uniqueFilepath(directory, filename) {
@@ -169,18 +160,17 @@ export async function reverseBuild({
                                        logger = console.log
                                    } = {}) {
     const inputPath = path.resolve(inputFile);
-    const outputPath = path.resolve(outputDir || path.join(process.cwd(), `split_files_of_${path.parse(inputPath).name}`));
+    const outputPathValue = outputDir || path.join(process.cwd(), `split_files_of_${path.parse(inputPath).name}`);
 
     if (!existsSync(inputPath)) {
         const error = new Error(`Input file '${inputPath}' not found.`);
         error.code = "INPUT_NOT_FOUND";
         throw error;
     }
-    if (outputPath === path.parse(outputPath).root || isSameOrAncestor(outputPath, PROJECT_ROOT) || isSameOrAncestor(outputPath, inputPath)) {
-        const error = new Error("输出目录不能是磁盘/项目根目录，也不能包含输入文件。");
-        error.code = "UNSAFE_OUTPUT";
-        throw error;
-    }
+    const [outputPath] = assertSafeOutputPaths([outputPathValue], {
+        inputPath,
+        message: "输出目录不能是磁盘/项目根目录，也不能包含输入文件。"
+    });
     if (existsSync(outputPath) && !force) {
         const error = new Error(`目标文件夹已存在: ${outputPath}`);
         error.code = "OUTPUT_EXISTS";

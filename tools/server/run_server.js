@@ -8,8 +8,7 @@ import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {compressSvg, CONFIG as SVG_CONFIG} from "../cli/svg_compressor.js";
 import {reverseBuild, GLOBAL_CONFIG as REVERSE_CONFIG} from "../cli/reverse_build.js";
-
-const PROJECT_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
+import {PROJECT_ROOT, resolveProjectPath} from "../shared/filesystem.js";
 
 export const SERVER_CONFIG = Object.freeze({
     DEFAULT_PORT: 8000,
@@ -63,17 +62,6 @@ function resolveInside(baseDirectory, requestPath) {
     const relative = path.relative(baseDirectory, resolvedPath);
     if (relative.startsWith("..") || path.isAbsolute(relative)) {
         return null;
-    }
-    return resolvedPath;
-}
-
-function resolveProjectPath(value, fallback) {
-    const resolvedPath = path.resolve(PROJECT_ROOT, value || path.relative(PROJECT_ROOT, fallback));
-    const relative = path.relative(PROJECT_ROOT, resolvedPath);
-    if (relative.startsWith("..") || path.isAbsolute(relative)) {
-        const error = new Error("工具路径必须位于项目目录内。");
-        error.code = "PATH_OUTSIDE_PROJECT";
-        throw error;
     }
     return resolvedPath;
 }

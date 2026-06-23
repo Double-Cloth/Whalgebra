@@ -92,6 +92,64 @@
     justify-content: center;
 }
 
+.test-button--danger {
+    border-color: rgba(239, 68, 68, 0.18);
+    background: rgba(254, 226, 226, 0.78);
+    color: var(--color-danger);
+}
+
+.test-button--danger:hover:not(:disabled) {
+    background: rgba(254, 202, 202, 0.86);
+}
+
+.run-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 30px;
+    flex: 1;
+    justify-content: center;
+    padding: 6px 10px;
+    border: 1px solid rgba(125, 211, 252, 0.16);
+    border-radius: var(--radius-control);
+    background: rgba(15, 23, 42, 0.36);
+    color: #7DD3FC;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.run-status[hidden] {
+    display: none;
+}
+
+.run-status [data-run-status-text] {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.run-spinner {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    border: 2px solid rgba(125, 211, 252, 0.2);
+    border-top-color: #7DD3FC;
+    border-radius: 50%;
+    animation: test-spin 0.85s linear infinite;
+}
+
+.test-page.is-test-running .console-panel {
+    border-color: rgba(23, 107, 104, 0.28);
+}
+
+@keyframes test-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .console-panel {
     display: flex;
     min-width: 0;
@@ -118,12 +176,14 @@
 }
 
 .console-title {
+    flex: 0 0 auto;
     color: #9AA8BE;
     font: 750 0.7rem/1.2 var(--font-code);
     letter-spacing: 0.09em;
 }
 
 .console-button {
+    flex: 0 0 auto;
     border-color: rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.08);
     color: #CBD5E1;
@@ -385,13 +445,34 @@
         text-align: center;
     }
 
+    .control-group:first-child .test-button + .test-button {
+        margin-top: 8px;
+    }
+
     .console-panel {
         height: 62vh;
         min-height: 430px;
     }
 
     .log-meta {
-        width: 96px;
+        width: auto;
+        gap: 8px;
+    }
+
+    .log-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+
+    .log-time {
+        margin-right: 0;
+    }
+
+    .log-content {
+        width: 100%;
+        overflow-wrap: anywhere;
+        line-height: 1.65;
     }
 
     .log-time-full {

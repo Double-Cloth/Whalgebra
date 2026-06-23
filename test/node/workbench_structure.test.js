@@ -1,106 +1,15 @@
 import assert from "node:assert/strict";
-import {mkdir, mkdtemp, readFile, readdir, rm, writeFile} from "node:fs/promises";
-import os from "node:os";
+import {readFile, readdir} from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import {fileURLToPath} from "node:url";
 import vm from "node:vm";
-import {compressSvg} from "../../tools/cli/svg_compressor.js";
-import {reverseBuild} from "../../tools/cli/reverse_build.js";
-import {createServer} from "../../tools/server/run_server.js";
+import {PROJECT_ROOT} from "./helpers/temp_directory.js";
 
-const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-
-async function temporaryDirectory(t) {
-    const directory = await mkdtemp(path.join(os.tmpdir(), "whalgebra-tools-"));
-    t.after(() => rm(directory, {recursive: true, force: true}));
-    return directory;
+function entryLabels(entries) {
+    return entries
+        .map((entry) => `${entry.isDirectory() ? "dir" : "file"}:${entry.name}`)
+        .sort();
 }
-
-test("逆向构建会提取有效的内联 CSS 和 JavaScript", async (t) => {
-    const directory = await temporaryDirectory(t);
-    const inputFile = path.join(directory, "single.html");
-    const outputDir = path.join(directory, "output");
-    await writeFile(inputFile, `<!doctype html>
-<html><head>
-    <style id="theme" media="screen">
-        body { color: red; }
-    </style>
-    <style id="theme">p { margin: 0; }</style>
-    <script src="./external.js"></script>
-    <script type="application/json">{"skip": true}</script>
-    <script id="app" type="module">
-        const template = '<style id="not-a-tag">.ignored { color: blue; }</style>';
-        console.log("ok");
-    </script>
-</head><body></body></html>`, "utf8");
-
-    const result = await reverseBuild({
-        inputFile, outputDir, force: true, logger: () => {
-        }
-    });
-    assert.equal(result.cssCount, 2);
-    assert.equal(result.jsCount, 1);
-    assert.deepEqual((await readdir(path.join(outputDir, "css"))).sort(), ["theme.css", "theme_1.css"]);
-    assert.deepEqual(await readdir(path.join(outputDir, "js")), ["app.js"]);
-    assert.equal(await readFile(path.join(outputDir, "css", "theme.css"), "utf8"), "body { color: red; }");
-
-    const html = await readFile(path.join(outputDir, "index.html"), "utf8");
-    assert.match(html, /<link rel="stylesheet" href="\.\/css\/theme\.css" media="screen">/u);
-    assert.match(html, /<script src="\.\/external\.js"><\/script>/u);
-    assert.match(html, /<script type="application\/json">\{"skip": true\}<\/script>/u);
-    assert.match(html, /src="\.\/js\/app\.js"/u);
-    assert.equal((await readFile(path.join(outputDir, "js", "app.js"), "utf8")).replaceAll("\r\n", "\n"), `const template = '<style id="not-a-tag">.ignored { color: blue; }</style>';
-console.log("ok");`);
-});
-
-test("文件处理工具拒绝可能清理项目或输入数据的输出路径", async (t) => {
-    const directory = await temporaryDirectory(t);
-    const inputFile = path.join(directory, "inside.html");
-    await writeFile(inputFile, "<style>body{}</style>", "utf8");
-    await assert.rejects(
-        reverseBuild({
-            inputFile, outputDir: directory, force: true, logger: () => {
-            }
-        }),
-        {code: "UNSAFE_OUTPUT"}
-    );
-
-    const inputDir = path.join(directory, "svg-input");
-    await mkdir(inputDir, {recursive: true});
-    await assert.rejects(
-        compressSvg({
-            inputDir, outputDir: inputDir, tempDir: path.join(directory, "temp"), logger: () => {
-            }
-        }),
-        {code: "UNSAFE_OUTPUT"}
-    );
-});
-
-test("SVG 工具会输出优化文件和 Base64 CSS", async (t) => {
-    const directory = await temporaryDirectory(t);
-    const inputDir = path.join(directory, "input");
-    const outputDir = path.join(directory, "output-css");
-    const tempDir = path.join(directory, "output-svg");
-    await mkdir(inputDir, {recursive: true});
-    await writeFile(path.join(inputDir, "9 icon.svg"), `<?xml version="1.0"?>
-<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-name="icon">
-    <!-- comment --><text x="1" y="12">A</text><path id="unused" fill="#ff0000" d="M0 0h24v24H0z"/>
-</svg>`, "utf8");
-
-    const logs = [];
-    const result = await compressSvg({inputDir, outputDir, tempDir, logger: (line) => logs.push(line), colors: false});
-    assert.equal(result.totalFiles, 1);
-    assert.equal(result.successCount, 1);
-    assert.match(logs.join("\n"), /Font detected/u);
-
-    const optimized = await readFile(path.join(tempDir, "9 icon.svg"), "utf8");
-    assert.doesNotMatch(optimized, /<\?xml|<!--|data-name=/u);
-    const css = await readFile(path.join(outputDir, "icons.css"), "utf8");
-    assert.match(css, /\.__9_icon_ \{/u);
-    assert.match(css, /height: 5dvmin/u);
-    assert.match(css, /content: url\(data:image\/svg\+xml;base64,/u);
-});
 
 test("入口、工具和测试页面共享公共 UI 资源且不包含内联实现", async () => {
     const rootHtml = await readFile(path.join(PROJECT_ROOT, "index.html"), "utf8");
@@ -141,15 +50,22 @@ test("入口、工具和测试页面共享公共 UI 资源且不包含内联实�
     assert.match(testHtml, /src="\.\.\/browser\/test_logic\.js"/u);
     assert.match(testHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/test_console\.js"/u);
     assert.match(testHtml, /src="\.\.\/\.\.\/dist\/Whalgebra\.html"/u);
+    assert.match(testHtml, /data-action="cancel"/u);
+    assert.match(testHtml, /data-run-status/u);
+    assert.match(testHtml, /<header class="console-header">[\s\S]*data-run-status[\s\S]*data-action="auto-scroll"/u);
     assert.match(sharedCss, /\.ambient-background/u);
     assert.match(sharedCss, /\.glass-panel/u);
     assert.match(sharedCss, /\.button--primary/u);
     assert.match(sharedJs, /\[data-server-only\]/u);
     assert.match(toolCss, /\.tool-form/u);
     assert.match(testCss, /\.console-panel/u);
+    assert.match(testCss, /\.run-spinner/u);
+    assert.match(testCss, /@keyframes test-spin/u);
     assert.match(jsonTreeJs, /WhalgebraUI\.JsonTree/u);
     assert.match(logConsoleJs, /createLogConsole/u);
     assert.match(testConsoleJs, /createLogConsole/u);
+    assert.match(testConsoleJs, /AbortController/u);
+    assert.match(testConsoleJs, /controller\.abort/u);
     assert.match(svgToolJs, /assets\/lib\/svgo\.browser\.js/u);
     assert.equal(packageJson.dependencies?.svgo, undefined);
     assert.equal(packageJson.devDependencies?.svgo, undefined);
@@ -165,6 +81,33 @@ test("入口、工具和测试页面共享公共 UI 资源且不包含内联实�
     await assert.rejects(readFile(path.join(PROJECT_ROOT, "assets", "ui", "shared.js"), "utf8"), {code: "ENOENT"});
 });
 
+test("src 和 dist 目录结构保持原样", async () => {
+    assert.deepEqual(
+        entryLabels(await readdir(path.join(PROJECT_ROOT, "src"), {withFileTypes: true})),
+        ["dir:css", "dir:js", "file:.nojekyll", "file:index.html"]
+    );
+    assert.deepEqual(
+        entryLabels(await readdir(path.join(PROJECT_ROOT, "src", "css"), {withFileTypes: true})),
+        ["file:fonts_and_images.css", "file:style.css"]
+    );
+    assert.deepEqual(
+        entryLabels(await readdir(path.join(PROJECT_ROOT, "src", "js"), {withFileTypes: true})),
+        [
+            "file:asynchronous_logic.js",
+            "file:core_computational_logic.js",
+            "file:init.js",
+            "file:shared_code_and_configuration.js",
+            "file:ui_styling_control.js"
+        ]
+    );
+
+    const distEntries = await readdir(path.join(PROJECT_ROOT, "dist"), {withFileTypes: true});
+    assert.equal(distEntries.some((entry) => entry.isDirectory()), false);
+    assert.ok(distEntries.some((entry) => entry.isFile() && entry.name === "Whalgebra.html"));
+    assert.ok(distEntries.some((entry) => entry.isFile() && entry.name === "whalgebra-v3.1.1.apk"));
+    assert.ok(distEntries.some((entry) => entry.isFile() && entry.name === "whalgebra-v3.1.1-win-x64.exe"));
+});
+
 test("浏览器测试逻辑通过参数接收计算核心 iframe", async () => {
     const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
     const context = vm.createContext({console, document: {getElementById: () => null}});
@@ -176,23 +119,42 @@ test("浏览器测试逻辑通过参数接收计算核心 iframe", async () => {
     );
 });
 
-test("静态服务器提供禁用缓存、CORS 和 OPTIONS", async (t) => {
-    const directory = await temporaryDirectory(t);
-    await writeFile(path.join(directory, "index.html"), "server-ok", "utf8");
-    await writeFile(path.join(directory, "font.ttf"), "font-ok", "utf8");
-    const {server, port} = await createServer(directory, 0, false, () => {
+test("浏览器测试逻辑支持取消信号", async () => {
+    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
+    const context = vm.createContext({
+        console,
+        document: {getElementById: () => null},
+        setTimeout
     });
-    t.after(() => new Promise((resolve) => server.close(resolve)));
+    vm.runInContext(`${source}\nglobalThis.testFunction = test;`, context);
 
-    const response = await fetch(`http://127.0.0.1:${port}/`);
-    assert.equal(await response.text(), "server-ok");
-    assert.equal(response.headers.get("cache-control"), "no-cache, no-store, must-revalidate");
-    assert.equal(response.headers.get("access-control-allow-origin"), "*");
+    const controller = new AbortController();
+    controller.abort();
+    const frame = {
+        contentWindow: {
+            CalcConfig: {
+                globalCalcAccuracy: 30,
+                outputAccuracy: 10,
+                globalPrintMode: "algebra"
+            },
+            ComplexNumber: class {
+                constructor(value) {
+                    this.value = value;
+                }
 
-    const options = await fetch(`http://127.0.0.1:${port}/anything`, {method: "OPTIONS"});
-    assert.equal(options.status, 200);
-    assert.equal(options.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS");
+                toString() {
+                    return String(this.value);
+                }
+            },
+            MathPlus: {
+                fact: () => ({toString: () => "fact"}),
+                pow: () => ({toString: () => "pow"})
+            }
+        }
+    };
 
-    const font = await fetch(`http://127.0.0.1:${port}/font.ttf`);
-    assert.equal(font.headers.get("content-type"), "font/ttf");
+    await assert.rejects(
+        context.testFunction(1, frame, {signal: controller.signal}),
+        {name: "AbortError"}
+    );
 });

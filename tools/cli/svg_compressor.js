@@ -1,12 +1,12 @@
 import {existsSync} from "node:fs";
 import {mkdir, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
-import {EOL} from "node:os";
 import path from "node:path";
 import process from "node:process";
 import {fileURLToPath} from "node:url";
 import {optimize} from "../../assets/lib/svgo.browser.js";
+import {assertSafeOutputPaths, nativeNewlines, PROJECT_ROOT} from "../shared/filesystem.js";
 
-export const PROJECT_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
+export {PROJECT_ROOT};
 
 export const CONFIG = Object.freeze({
     inputDir: path.join(PROJECT_ROOT, "tmp", "input"),
@@ -53,15 +53,6 @@ function formatPath(targetPath) {
     return path.relative(process.cwd(), targetPath).replaceAll(path.sep, "/") || ".";
 }
 
-function nativeNewlines(content) {
-    return content.replace(/\r\n?|\n/gu, EOL);
-}
-
-function isSameOrAncestor(candidate, target) {
-    const relative = path.relative(candidate, target);
-    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
-}
-
 export function optimizeSvg(source) {
     const normalizedSource = source
         .replace(/\s+data-name=(["']).*?\1/gu, "")
@@ -89,19 +80,11 @@ export async function compressSvg({
                                       colors = process.stdout.isTTY
                                   } = {}) {
     const inputPath = path.resolve(inputDir);
-    const outputPath = path.resolve(outputDir);
-    const tempPath = path.resolve(tempDir);
-
-    const unsafeOutput = [outputPath, tempPath].some((candidate) =>
-        candidate === path.parse(candidate).root
-        || isSameOrAncestor(candidate, PROJECT_ROOT)
-        || isSameOrAncestor(candidate, inputPath));
-    const overlappingOutputs = isSameOrAncestor(outputPath, tempPath) || isSameOrAncestor(tempPath, outputPath);
-    if (unsafeOutput || overlappingOutputs) {
-        const error = new Error("输出目录不能包含输入目录、项目根目录或彼此嵌套。");
-        error.code = "UNSAFE_OUTPUT";
-        throw error;
-    }
+    const [outputPath, tempPath] = assertSafeOutputPaths([outputDir, tempDir], {
+        inputPath,
+        disallowOverlapping: true,
+        message: "输出目录不能包含输入目录、项目根目录或彼此嵌套。"
+    });
 
     if (!existsSync(inputPath)) {
         await mkdir(inputPath, {recursive: true});
@@ -154,7 +137,7 @@ export async function compressSvg({
             logger(`${String(index + 1).padEnd(4)} DONE     ${filename.slice(0, 24).padEnd(25)} ${formatBytes(originalSize)} -> ${formatBytes(optimizedSize)} (v${savingsPercent.toFixed(0)}%)`);
 
             if (/<(text|tspan|textPath|flowRoot)\b/iu.test(source)) {
-                logger(colorize("     └── [WARN] Font detected (<text>). Please convert to outlines.", ANSI.yellow, colors));
+                logger(colorize("     [WARN] Font detected (<text>). Please convert to outlines.", ANSI.yellow, colors));
             }
 
             await writeFile(path.join(tempPath, filename), nativeNewlines(optimizedSvg), "utf8");
@@ -253,9 +236,9 @@ async function runCli() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     runCli().catch((error) => {
-        console.error(`[!!] ${error.message}`);
+        console.error(`[ERROR] ${error.message}`);
         if (error.code === "INPUT_CREATED") {
-            console.error(">> 操作指南: 请将 SVG 文件放入输入文件夹后重新运行本工具。");
+            console.error("[INFO] 操作指南: 请将 SVG 文件放入输入文件夹后重新运行本工具。");
         }
         process.exitCode = 1;
     });
