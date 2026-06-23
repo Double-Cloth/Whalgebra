@@ -49,7 +49,7 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 ### 2.2. 本地运行（Windows）
 
-环境要求：Git、Python 3.13+、Chrome 109+
+环境要求：Git、Node.js 20+、Chrome 109+
 
 1. 克隆仓库并进入项目目录
 
@@ -58,24 +58,21 @@ git clone https://github.com/Double-Cloth/Whalgebra.git
 cd ./Whalgebra
 ```
 
-2. 创建并激活虚拟环境 (可选但推荐)
+2. 启动本地服务
+
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate
+npm start
 ```
 
-3. 安装依赖
+服务默认从 `8000` 端口开始寻找可用端口，并自动打开项目入口。入口页同时提供测试页、独立的逆向构建页面和 SVG 压缩页面。
+
+项目工具使用仓库内置脚本和 `assets/lib/svgo.browser.js`，无需下载 npm 依赖。
+
+常用工具命令：
 
 ```powershell
-python -m pip install --upgrade pip
-python -m pip install -r ./tools/requirements.txt
-```
-
-4. 启动本地服务
-
-```powershell
-cd ./tools
-python ./run_server.py
+npm run reverse-build -- --force
+npm run compress-svg
 ```
 
 ### 2.3. 安装发行版（Android）
@@ -135,7 +132,7 @@ console.log(res3.toString());
 
 - **核心层**: HTML5, CSS3, Vanilla JavaScript (ES6+ 标准)。坚持无框架依赖原则，确保代码的轻量化与底层控制力。
 - **渲染层**: 全部使用 svg 作为字体和图片，保证了在不同设备上显示效果相同。
-- **工具层**: Python (主要用于文件处理流程，不参与计算过程)。
+- **工具层**: Node.js（静态开发服务器、单文件逆向构建和 SVG 资源处理，不参与计算过程）。
 
 ### 4.2. 目录结构
 
@@ -144,14 +141,27 @@ Whalgebra/
 ├── .git/                        # Git 版本控制目录
 ├── .github/                     # GitHub 配置（如 CI、Issue 模板等）
 ├── .gitignore                   # Git 忽略文件配置
-├── assets/                      # 静态资源目录
+├── assets/                      # 公共静态资源目录
+│   ├── ui/                      # 工作台、工具页和测试页的公共 UI 层
+│   │   ├── styles/              # 公共 UI 样式
+│   │   │   ├── shared.css       # 设计令牌、背景、面板、按钮与状态组件
+│   │   │   ├── portal.css       # 根入口专属布局
+│   │   │   ├── tool-page.css    # 工具页表单与日志布局
+│   │   │   └── test-console.css # 测试控制台布局与日志样式
+│   │   └── scripts/             # 公共 UI 脚本与组件
+│   │       ├── shared.js        # 环境检测、状态更新与 JSON 请求工具
+│   │       ├── tool_form.js     # 工具表单提交与状态管理
+│   │       ├── json_tree.js     # JSON 树渲染组件
+│   │       ├── log_console.js   # 浏览器日志控制台组件
+│   │       └── test_console.js  # 测试控制台页面控制器
 │   ├── images/                  # 图片及字体资源
 │   │   ├── chinese_name_of_operators/   # 运算符中文名 SVG
 │   │   ├── instructions_of_operators/   # 运算符说明 SVG
 │   │   ├── fonts/                       # 数学符号/字母 SVG 字体
 │   │   ├── icons/                       # 网站图标
 │   │   └── others/                      # 其他图片
-│   ├── lib/                    # Python 第三方库
+│   ├── lib/                    # 本地第三方浏览器库
+│   │   └── svgo.browser.js     # SVG 优化引擎
 │   └── previous_versions.zip   # 旧版本归档
 ├── index.html                  # 项目主入口页面
 ├── src/                        # 源码目录
@@ -160,16 +170,23 @@ Whalgebra/
 │   ├── js/                     # 主要 JS 逻辑
 │   └── index.html              # 源码区入口页面
 ├── test/                       # 测试相关
-│   ├── css/                    # 测试样式
-│   ├── js/                     # 测试脚本
-│   ├── test_cases/             # 测试用例数据
-│   └── index.html              # 测试入口页面
-├── tools/                      # 工具脚本及依赖
-│   ├── requirements.txt        # Python 依赖列表
-│   ├── reverse_build.py        # 逆向构建脚本
-│   ├── run_server.py           # 本地服务器脚本
-│   └── SVG_compressor.py       # SVG 压缩工具
+│   ├── browser/                # 浏览器端测试逻辑
+│   │   └── test_logic.js       # 浏览器端测试用例执行逻辑
+│   ├── cases/                  # 测试用例数据
+│   ├── node/                   # Node.js 工具层自动化测试
+│   └── web/                    # 测试页面入口
+│       └── index.html          # 测试控制台页面
+├── tools/                      # 项目辅助工具
+│   ├── cli/                    # 命令行工具
+│   │   ├── reverse_build.js    # 逆向构建脚本
+│   │   └── svg_compressor.js   # SVG 压缩工具
+│   ├── server/                 # 本地服务
+│   │   └── run_server.js       # 静态服务器与工具 API
+│   └── web/                    # 工具页面
+│       ├── reverse_build.html  # 逆向构建页面
+│       └── svg_compressor.html # SVG 压缩页面
 ├── dist/                       # 构建输出目录
+├── package.json                # Node.js 启动命令
 ├── README.md                   # 项目说明文档
 └── LICENSE                     # 许可证
 ```

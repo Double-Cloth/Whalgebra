@@ -1,550 +1,113 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Access Portal</title>
-    <style>
-        :root {
-            /* === 核心色板 === */
-            --hue: 220;
-            --text-main: #1E293B;
-            --text-sub: #64748B;
-
-            /* === 玻璃拟态参数 === */
-            --glass-surface: rgba(255, 255, 255, 0.65);
-            --glass-border: rgba(255, 255, 255, 0.8);
-            --glass-shadow: 0 20px 40px -5px rgba(22, 28, 45, 0.1),
-            inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
-
-            /* === 氛围色块 === */
-            --blob-1: #667EEA;
-            --blob-2: #764BA2;
-            --blob-3: #FF9A9E;
-            --blob-4: #4FACFE;
-            --blob-5: #A18CD1;
-            --blob-6: #FBC2EB;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-
-        body {
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: #F8FAFC;
-            /* 优化：允许矮屏下内容撑开滚动，避免截断 */
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* 优化：增加外层内边距，防止卡片贴边 */
-            padding: 24px 16px;
-            color: var(--text-main);
-            -webkit-font-smoothing: antialiased;
-            position: relative;
-        }
-
-        /* === 1. 背景层 === */
-        .liquid-bg {
-            position: fixed; /* 优化：改为 fixed，防止滚动时背景穿帮 */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            background: radial-gradient(circle at center, #FDFBFB 0%, #EBEDEE 100%);
-            overflow: hidden; /* 裁剪只在这里生效 */
-            pointer-events: none;
-        }
-
-        .blob {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            will-change: transform;
-            /* 初始隐藏，防止位置计算前的闪烁 */
-            opacity: 0;
-            transition: opacity 1s ease-in;
-        }
-
-        /* 辅助类：位置确定后显示 */
-        .blob.ready {
-            opacity: 0.6;
-        }
-
-        /* === 2. 色块个性化配置 === */
-        .blob-1 {
-            width: 500px;
-            height: 500px;
-            background: var(--blob-1);
-            animation: drift-1 25s infinite alternate ease-in-out;
-        }
-
-        .blob-2 {
-            width: 450px;
-            height: 450px;
-            background: var(--blob-2);
-            animation: drift-2 30s infinite alternate-reverse ease-in-out;
-        }
-
-        .blob-3 {
-            width: 350px;
-            height: 350px;
-            background: var(--blob-3);
-            animation: drift-3 22s infinite alternate ease-in-out;
-        }
-
-        .blob-4 {
-            width: 300px;
-            height: 300px;
-            background: var(--blob-4);
-            animation: drift-1 28s infinite alternate-reverse ease-in-out;
-        }
-
-        .blob-5 {
-            width: 400px;
-            height: 400px;
-            background: var(--blob-5);
-            animation: drift-2 35s infinite alternate ease-in-out;
-        }
-
-        .blob-6 {
-            width: 250px;
-            height: 250px;
-            background: var(--blob-6);
-            animation: drift-center 20s infinite ease-in-out;
-        }
-
-        /* === 3. 动画轨迹 === */
-        @keyframes drift-1 {
-            0% {
-                transform: translate(0, 0) scale(1) rotate(0deg);
-            }
-            50% {
-                transform: translate(50px, 30px) scale(1.1) rotate(10deg);
-            }
-            100% {
-                transform: translate(-20px, 60px) scale(0.95) rotate(-5deg);
-            }
-        }
-
-        @keyframes drift-2 {
-            0% {
-                transform: translate(0, 0) scale(1);
-                border-radius: 50%;
-            }
-            100% {
-                transform: translate(-30px, -80px) scale(1.2);
-                border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
-            }
-        }
-
-        @keyframes drift-3 {
-            0% {
-                transform: translate(0, 0);
-            }
-            100% {
-                transform: translate(80px, -20px);
-            }
-        }
-
-        @keyframes drift-center {
-            0% {
-                transform: translate(0, 0) scale(1) rotate(0deg);
-            }
-            33% {
-                transform: translate(30px, -50px) scale(1.2) rotate(45deg);
-            }
-            66% {
-                transform: translate(-50px, 40px) scale(0.9) rotate(90deg);
-            }
-            100% {
-                transform: translate(0, 0) scale(1) rotate(0deg);
-            }
-        }
-
-        /* === 4. 卡片层 === */
-        .card {
-            background: var(--glass-surface);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
-            border: 1px solid var(--glass-border);
-            border-radius: 32px;
-            box-shadow: var(--glass-shadow);
-
-            width: 100%;
-            max-width: 440px;
-            /* 优化：使用 clamp 让 padding 在大/小屏间平滑过渡 */
-            padding: clamp(32px, 6vh, 56px) clamp(20px, 5vw, 40px);
-            text-align: center;
-
-            position: relative;
-            z-index: 10;
-
-            opacity: 0;
-            transform: translateY(20px);
-            animation: card-entry 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-        }
-
-        @keyframes card-entry {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        h1 {
-            font-size: clamp(1.6rem, 5vw, 2rem); /* 优化：字号自适应 */
-            font-weight: 800;
-            background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-
-        p.subtitle {
-            color: var(--text-sub);
-            font-size: 1rem;
-            margin-bottom: clamp(1.5rem, 4vh, 2.5rem); /* 优化：动态间距 */
-            font-weight: 500;
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: clamp(1.8rem, 5vh, 3rem); /* 优化：动态间距 */
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-            transition: transform 0.2s;
-        }
-
-        .status-pill:hover {
-            background: rgba(255, 255, 255, 0.8);
-            transform: translateY(-1px);
-        }
-
-        .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            position: relative;
-        }
-
-        .dot::after {
-            content: '';
-            position: absolute;
-            top: -4px;
-            left: -4px;
-            right: -4px;
-            bottom: -4px;
-            border-radius: 50%;
-            background: currentColor;
-            opacity: 0.3;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                opacity: 0.3;
-            }
-            50% {
-                transform: scale(1.5);
-                opacity: 0;
-            }
-            100% {
-                transform: scale(1);
-                opacity: 0.3;
-            }
-        }
-
-        .action-group {
-            display: flex;
-            flex-direction: column;
-            gap: 14px; /* 稍微收紧按钮间距 */
-        }
-
-        .btn {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 12px;
-            padding: clamp(14px, 2vh, 18px); /* 优化：矮屏下自动缩减按钮高度 */
-            border-radius: 16px;
-            text-decoration: none;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            border: none;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
-            color: white;
-            box-shadow: 0 8px 20px rgba(118, 75, 162, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 24px rgba(118, 75, 162, 0.4);
-            filter: brightness(105%);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.6);
-            color: var(--text-main);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 12px 24px rgba(215, 215, 215, 0.4); /* 降低原本过高的阴影不透明度 */
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-        }
-
-        .warning-glass {
-            margin-top: clamp(20px, 4vh, 32px); /* 优化：动态间距 */
-            padding: 16px;
-            background: rgba(254, 242, 242, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            color: #991B1B;
-            display: none;
-            text-align: left;
-            animation: fadeIn 0.5s ease-out;
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .warning-title {
-            display: flex;
-            gap: 8px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            color: #7F1D1D;
-            align-items: center;
-        }
-
-        code {
-            background: rgba(255, 255, 255, 0.7);
-            padding: 2px 6px;
-            border-radius: 6px;
-            font-family: monospace;
-            color: #B91C1C;
-            border: 1px solid rgba(220, 38, 38, 0.1);
-        }
-
-        body.env-local .dot {
-            color: #F59E0B;
-            background: currentColor;
-            box-shadow: 0 0 10px #F59E0B;
-        }
-
-        body.env-server .dot {
-            color: #10B981;
-            background: currentColor;
-            box-shadow: 0 0 10px #10B981;
-        }
-
-        body.env-local .warning-glass {
-            display: block;
-        }
-
-        body.env-local .btn-server-only {
-            opacity: 0.5;
-            filter: grayscale(1);
-            pointer-events: none;
-        }
-
-        .t-local, .t-server {
-            display: none;
-        }
-
-        body.env-local .t-local {
-            display: inline;
-        }
-
-        body.env-server .t-server {
-            display: inline;
-        }
-
-        /* === 5. 统一的响应式媒体查询 === */
-
-        /* 针对窄屏 (手机竖屏) 极其矮屏 (手机横屏 / 限制高度的窗口) */
-        @media (max-width: 480px), (max-height: 580px) {
-            body {
-                padding: 12px 12px; /* 极小化外边距 */
-            }
-
-            .card {
-                border-radius: 24px; /* 稍微直角一点，更利用空间 */
-            }
-
-            /* 减小 Blob 的尺寸，防止小屏幕上出现过大的纯色块，提升移动端渲染性能 */
-            .blob {
-                transform: scale(0.6);
-                filter: blur(50px);
-            }
-
-            .blob-1 {
-                width: 280px;
-                height: 280px;
-            }
-
-            .blob-2 {
-                width: 250px;
-                height: 250px;
-            }
-
-            .blob-3 {
-                width: 200px;
-                height: 200px;
-            }
-
-            .blob-4 {
-                width: 180px;
-                height: 180px;
-            }
-
-            .blob-5 {
-                width: 220px;
-                height: 220px;
-            }
-
-            .blob-6 {
-                width: 150px;
-                height: 150px;
-            }
-        }
-
-        /* 专门针对极其矮屏的额外微调 (例如：开启了虚拟键盘，或者横屏下的手机) */
-        @media (max-height: 450px) {
-            .card {
-                padding: 24px 20px;
-            }
-
-            .status-pill {
-                margin-bottom: 1.5rem;
-            }
-
-            p.subtitle {
-                margin-bottom: 1.2rem;
-            }
-        }
-    </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Whalgebra 本地开发与工具入口">
+    <title>项目入口 | Whalgebra</title>
+    <link rel="icon" href="./assets/images/icons/logo.png">
+    <link rel="stylesheet" href="./assets/ui/styles/shared.css">
+    <link rel="stylesheet" href="./assets/ui/styles/portal.css">
+    <script src="./assets/ui/scripts/shared.js" defer></script>
 </head>
-<body>
+<body class="portal-page">
+<div class="ambient-background" aria-hidden="true"></div>
 
-<div class="liquid-bg">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-    <div class="blob blob-3"></div>
-    <div class="blob blob-4"></div>
-    <div class="blob blob-5"></div>
-    <div class="blob blob-6"></div>
-</div>
-
-<div class="card">
-    <h1>Access Portal</h1>
-    <p class="subtitle">Secure Gateway</p>
-
-    <div class="status-pill">
-        <div class="dot"></div>
-        <span class="t-local">Local Mode (Restricted)</span>
-        <span class="t-server">System Online</span>
-    </div>
-
-    <div class="action-group">
-        <a href="./dist/Whalgebra.html" class="btn btn-primary">
-            <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                      d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
-            Launch Whalgebra
+<main class="portal-shell">
+    <header class="portal-topbar">
+        <a class="portal-brand" href="./dist/Whalgebra.html" aria-label="启动 Whalgebra">
+            <img class="portal-logo" src="./assets/images/icons/logo.png" alt="" width="48" height="48">
+            <span>
+                <strong>Whalgebra</strong>
+                <small>v3.1.2 Workspace</small>
+            </span>
         </a>
-
-        <a href="./test/index.html" class="btn btn-secondary btn-server-only" id="secure-link">
-            <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-            </svg>
-            <span class="t-server">Development Tests</span>
-            <span class="t-local">Test Suite (Locked)</span>
-        </a>
-    </div>
-
-    <div class="warning-glass">
-        <div class="warning-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            Environment Check Failed
+        <div class="status-pill portal-status" data-service-status data-state="loading" role="status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span data-status-text>正在检查本地服务……</span>
         </div>
-        <div>Local file protocol detected. Please start the server using <code>tools/run_server.py</code> to unlock
-            capabilities.
+    </header>
+
+    <section class="portal-hero" aria-labelledby="portal-title">
+        <div class="portal-copy">
+            <p class="brand-kicker">Local Algebra Engine</p>
+            <h1 class="page-title" id="portal-title">Whalgebra</br>本地工具入口</h1>
+            <p class="page-subtitle">
+                集成当前发行版、测试控制台与资源处理工具，为离线计算、本地验证和轻量化发布提供统一、稳定的工作入口。</p>
+            <div class="portal-cta-row">
+                <span class="portal-caption">Vanilla JS · Offline Ready · Precision Control</span>
+            </div>
         </div>
-    </div>
-</div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // === 1. 环境检测 ===
-        const isLocal = window.location.protocol === 'file:';
-        document.body.classList.add(isLocal ? 'env-local' : 'env-server');
-        if (isLocal) {
-            document.getElementById('secure-link').removeAttribute('href');
-        }
+        <aside class="portal-preview glass-panel" aria-label="Whalgebra 预览">
+            <div class="preview-toolbar">
+                <span></span>
+                <span></span>
+                <span></span>
+                <strong>calc session</strong>
+            </div>
+            <div class="preview-screen">
+                <div class="formula-line formula-line--active">sin([pi] / 4 + [i])</div>
+                <div class="formula-line">1.09112... + 0.83099...[i]</div>
+                <div class="preview-grid" aria-hidden="true">
+                    <span>Re</span>
+                    <span>Im</span>
+                    <span>arg</span>
+                    <span>abs</span>
+                </div>
+            </div>
+            <div class="preview-meta">
+                <span>复数域</span>
+                <span>任意精度</span>
+                <span>单文件分发</span>
+            </div>
+        </aside>
+    </section>
 
-        // === 2. 随机化色块位置 ===
-        const blobs = document.querySelectorAll('.blob');
+    <section class="portal-tools" aria-labelledby="tools-title">
+        <div class="portal-section-head">
+            <p class="brand-kicker">Workspace tools</p>
+            <h2 id="tools-title">项目入口</h2>
+        </div>
+        <nav class="portal-actions" aria-label="项目入口">
+            <a class="portal-action portal-action--primary" href="./dist/Whalgebra.html">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"
+                          d="M13 3 4 14h7v7l9-11h-7V3Z"></path>
+                </svg>
+                <span><strong>当前发行版</strong><small>打开 dist/Whalgebra.html</small></span>
+            </a>
 
-        blobs.forEach(blob => {
-            // 生成随机位置 (范围: -20% 到 90%，允许部分溢出屏幕，制造自然感)
-            // x, y 是百分比
-            const randomX = Math.floor(Math.random() * 110) - 20;
-            const randomY = Math.floor(Math.random() * 110) - 20;
+            <a class="portal-action" href="./test/web/index.html" data-server-only>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="m10 20 4-16m4 4 4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+                <span><strong>测试控制台</strong><small>运行计算核心测试</small></span>
+            </a>
 
-            // 生成随机的动画延迟 (-20s 到 0s)，让它们不要同时开始“呼吸”
-            const randomDelay = Math.floor(Math.random() * -20);
+            <a class="portal-action" href="./tools/web/reverse_build.html" data-server-only>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 7h16M7 4v6m10-6v6M5 12h14v8H5z"></path>
+                </svg>
+                <span><strong>逆向构建</strong><small>拆分单文件应用</small></span>
+            </a>
 
-            // 应用样式
-            blob.style.left = `${randomX}%`;
-            blob.style.top = `${randomY}%`;
-            blob.style.animationDelay = `${randomDelay}s`;
+            <a class="portal-action" href="./tools/web/svg_compressor.html" data-server-only>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="m4 17 4-4 4 4 8-8m-6 0h6v6"></path>
+                </svg>
+                <span><strong>SVG 压缩</strong><small>优化资源并生成 CSS</small></span>
+            </a>
+        </nav>
+    </section>
 
-            // 添加类名以显示元素（配合 CSS transition 实现淡入，防止位置跳变）
-            // 使用 setTimeout 确保 DOM 渲染了位置后再显示
-            setTimeout(() => {
-                blob.classList.add('ready');
-            }, 100);
-        });
-    });
-</script>
+    <aside class="notice portal-notice only-file">
+        <strong>本地工具需要静态服务</strong>
+        请在项目根目录运行 <code>npm start</code>，再通过浏览器访问该入口。
+    </aside>
+</main>
 </body>
 </html>

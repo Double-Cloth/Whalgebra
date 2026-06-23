@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="批量优化 SVG 并生成 Base64 CSS">
+    <title>SVG 压缩 | Whalgebra</title>
+    <link rel="icon" href="../../assets/images/icons/logo.png">
+    <link rel="stylesheet" href="../../assets/ui/styles/shared.css">
+    <link rel="stylesheet" href="../../assets/ui/styles/test-console.css">
+    <link rel="stylesheet" href="../../assets/ui/styles/tool-page.css">
+    <script src="../../assets/ui/scripts/shared.js" defer></script>
+    <script src="../../assets/ui/scripts/tool_form.js" defer></script>
+</head>
+<body class="test-page tool-page">
+<div class="ambient-background" aria-hidden="true">
+    <span class="ambient-blob"></span><span class="ambient-blob"></span>
+    <span class="ambient-blob"></span><span class="ambient-blob"></span>
+</div>
+
+<header class="test-header glass-panel">
+    <div class="test-heading">
+        <h1 class="test-title">Whalgebra SVG 压缩</h1>
+        <span class="test-version">Core v1.0</span>
+    </div>
+    <div class="test-header-actions">
+        <div class="status-pill" data-tool-status data-state="loading" role="status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span data-status-text>正在检查服务……</span>
+        </div>
+        <a class="button button--secondary button--small" href="../../index.html">返回工作台</a>
+    </div>
+</header>
+
+<main class="test-layout tool-layout">
+    <aside class="control-panel glass-panel" aria-label="SVG 压缩操作">
+        <form class="tool-form" data-tool-form data-endpoint="/api/tools/svg-compressor">
+            <section class="control-group">
+                <h2 class="section-title">路径设置</h2>
+                <div class="field">
+                    <label for="svg-input">输入目录</label>
+                    <input id="svg-input" name="inputDir" type="text" value="tmp/input" required>
+                </div>
+                <div class="field">
+                    <label for="svg-output">CSS 输出目录</label>
+                    <input id="svg-output" name="outputDir" type="text" value="tmp/output-css" required>
+                </div>
+                <div class="field">
+                    <label for="svg-temp">优化后 SVG 目录</label>
+                    <input id="svg-temp" name="tempDir" type="text" value="tmp/output-svg" required>
+                </div>
+            </section>
+            <section class="control-group">
+                <h2 class="section-title">全局操作</h2>
+                <button class="button button--primary test-button" type="submit">压缩并生成 CSS</button>
+            </section>
+        </form>
+    </aside>
+
+    <section class="console-panel" aria-label="SVG 压缩日志">
+        <header class="console-header">
+            <span class="console-title">OPTIMIZER OUTPUT</span>
+        </header>
+        <pre class="tool-log" data-tool-log aria-live="polite">等待执行。</pre>
+    </section>
+</main>
+</body>
+</html>

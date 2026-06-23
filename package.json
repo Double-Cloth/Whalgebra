@@ -1,0 +1,16 @@
+{
+  "name": "whalgebra",
+  "version": "3.1.2",
+  "private": true,
+  "description": "A web-based calculator, built with Vanilla JS.",
+  "type": "module",
+  "scripts": {
+    "start": "node tools/server/run_server.js --dir .",
+    "reverse-build": "node tools/cli/reverse_build.js",
+    "compress-svg": "node tools/cli/svg_compressor.js",
+    "test": "node --test test/node/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
