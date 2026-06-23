@@ -47,9 +47,6 @@ pnpm-debug.log*
 .stylelintcache
 .prettiercache
 
-# --- TypeScript ---
-*.tsbuildinfo
-
 # --- Temporary Files ---
 *.tmp
 *.temp
