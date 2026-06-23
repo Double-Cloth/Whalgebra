@@ -88,7 +88,6 @@ body {
     --shadow-grey-1: 108 123 130;
     --shadow-grey-2: 182 192 196;
     --shadow-grey-3: 209 217 220;
-    --print-odd-grey: 228 233 235;
     --print-group-background: 240 240 236;
 
     /* 强调色与状态色 */
@@ -1510,7 +1509,6 @@ p {
 #print_content_3 > div:nth-child(4n+2) {
     border-radius: 1.5dvmin 1.5dvmin 0 0;
     margin-top: 1dvmin;
-
     background-color: rgb(var(--print-group-background) / 0.94);
 }
 
@@ -1518,7 +1516,6 @@ p {
 #statistics_results_window > div > div:nth-child(4n + 2),
 #print_content_3 > div:nth-child(4n+3) {
     border-radius: 0 0 1.5dvmin 1.5dvmin;
-
     background-color: rgb(var(--print-group-background) / 0.94);
 }
 
@@ -1962,8 +1959,8 @@ span.Ripple.IsFadingOut {
     :nth-child(3):nth-last-child(2)
 ) {
     border-radius: 1.5dvmin;
-    background: rgb(var(--print-odd-grey) / 0.8);
     margin-top: 1dvmin;
+    background-color: rgb(var(--print-group-background) / 0.94);
 }
 
 #print_content_2_error {
