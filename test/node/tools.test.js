@@ -179,6 +179,7 @@ test("浏览器测试逻辑通过参数接收计算核心 iframe", async () => {
 test("静态服务器提供禁用缓存、CORS 和 OPTIONS", async (t) => {
     const directory = await temporaryDirectory(t);
     await writeFile(path.join(directory, "index.html"), "server-ok", "utf8");
+    await writeFile(path.join(directory, "font.ttf"), "font-ok", "utf8");
     const {server, port} = await createServer(directory, 0, false, () => {
     });
     t.after(() => new Promise((resolve) => server.close(resolve)));
@@ -191,4 +192,7 @@ test("静态服务器提供禁用缓存、CORS 和 OPTIONS", async (t) => {
     const options = await fetch(`http://127.0.0.1:${port}/anything`, {method: "OPTIONS"});
     assert.equal(options.status, 200);
     assert.equal(options.headers.get("access-control-allow-methods"), "GET, POST, OPTIONS");
+
+    const font = await fetch(`http://127.0.0.1:${port}/font.ttf`);
+    assert.equal(font.headers.get("content-type"), "font/ttf");
 });

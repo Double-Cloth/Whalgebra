@@ -2,8 +2,8 @@
     font-family: "Whalgebra Latin";
     font-style: normal;
     font-weight: 400 599;
-    font-display: swap;
-    src: url("../fonts/FiraCode-Regular.ttf") format("truetype");
+    font-display: block;
+    src: url("../fonts/SourceCodePro-Regular.ttf") format("truetype");
     unicode-range: U+0000-00FF,
     U+2000-206F,
     U+2070-209F,
@@ -18,8 +18,8 @@
     font-family: "Whalgebra Latin";
     font-style: normal;
     font-weight: 600 900;
-    font-display: swap;
-    src: url("../fonts/FiraCode-Bold.ttf") format("truetype");
+    font-display: block;
+    src: url("../fonts/SourceCodePro-Bold.ttf") format("truetype");
     unicode-range: U+0000-00FF,
     U+2000-206F,
     U+2070-209F,
@@ -34,7 +34,7 @@
     font-family: "Whalgebra CJK";
     font-style: normal;
     font-weight: 400 599;
-    font-display: swap;
+    font-display: block;
     src: url("../fonts/LXGWWenKaiMono-Regular.ttf") format("truetype");
 }
 
@@ -42,7 +42,7 @@
     font-family: "Whalgebra CJK";
     font-style: normal;
     font-weight: 600 900;
-    font-display: swap;
+    font-display: block;
     src: url("../fonts/LXGWWenKaiMono-Medium.ttf") format("truetype");
 }
 
@@ -86,6 +86,8 @@ body {
     margin: 0;
     color: var(--color-text);
     font-family: var(--font-ui);
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
