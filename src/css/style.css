@@ -28,7 +28,7 @@ body {
     overflow: hidden;
     width: 100dvw;
     height: 100dvh;
-    background-color: rgb(var(--page-background));
+    background-color: hsl(var(--page-background));
 }
 
 :root {
@@ -36,72 +36,72 @@ body {
     color-scheme: light;
 
     /* 基础中性色 */
-    --white: 255 255 255;
-    --black: 0 0 0;
-    --soft-white: 250 252 251;
+    --white: 0 0% 100%;
+    --black: 0 0% 0%;
+    --soft-white: 150 25% 98.43%;
 
     /* 页面与通用表面 */
-    --page-background: 244 247 249;
-    --surface-raised: 251 253 253;
-    --surface-base: 235 241 244;
-    --surface-soft: 218 226 229;
-    --surface-mid: 203 214 217;
-    --surface-pressed: 194 214 202;
-    --control-hover: 211 222 226;
-    --control-active: 195 208 213;
-    --selection-inactive: 230 229 219;
-    --selection-inactive-hover: 221 232 218;
+    --page-background: 204 29.41% 96.67%;
+    --surface-raised: 180 33.33% 98.82%;
+    --surface-base: 200 29.03% 93.92%;
+    --surface-soft: 196.36 17.46% 87.65%;
+    --surface-mid: 192.86 15.56% 82.35%;
+    --surface-pressed: 144 19.61% 80%;
+    --control-hover: 196 20.55% 85.69%;
+    --control-active: 196.67 17.65% 80%;
+    --selection-inactive: 54.55 18.03% 88.04%;
+    --selection-inactive-hover: 107.14 23.33% 88.24%;
 
     /* 键盘功能分组 */
-    --key-value: 210 224 233;
-    --key-edit: 207 226 214;
-    --key-operator: 233 217 205;
-    --key-white: 255 245 240;
-    --keyboard-top-background: 198 211 216;
+    --key-value: 203.48 34.33% 86.86%;
+    --key-edit: 142.11 24.68% 84.9%;
+    --key-operator: 25.71 38.89% 85.88%;
+    --key-white: 20 100% 97.06%;
+    --keyboard-top-background: 196.67 18.75% 81.18%;
 
     /* 输入区与浮层 */
-    --input-gradient-top: 226 238 239;
-    --input-gradient-upper: 242 248 248;
-    --input-gradient-lower: 247 250 249;
-    --input-gradient-bottom: 231 241 238;
-    --setting-panel: 253 248 247;
-    --explain-panel: 252 247 237;
-    --sub-keyboard-panel: 235 240 242;
+    --input-gradient-top: 184.62 28.89% 91.18%;
+    --input-gradient-upper: 180 30% 96.08%;
+    --input-gradient-lower: 160 23.08% 97.45%;
+    --input-gradient-bottom: 162 26.32% 92.55%;
+    --setting-panel: 10 60% 98.04%;
+    --explain-panel: 40 71.43% 95.88%;
+    --sub-keyboard-panel: 197.14 21.21% 93.53%;
 
     /* 开关 */
-    --switch-track: 232 238 241;
-    --switch-shadow: 196 207 213;
-    --switch-shadow-dark: 72 86 94;
-    --switch-shadow-mid: 93 107 115;
-    --switch-shadow-pressed: 61 75 83;
-    --switch-shadow-pressed-bottom: 77 91 98;
+    --switch-track: 200 24.32% 92.75%;
+    --switch-shadow: 201.18 16.83% 80.2%;
+    --switch-shadow-dark: 201.82 13.25% 32.55%;
+    --switch-shadow-mid: 201.82 10.58% 40.78%;
+    --switch-shadow-pressed: 201.82 15.28% 28.24%;
+    --switch-shadow-pressed-bottom: 200 12% 34.31%;
 
     /* 图标与加载动画 */
-    --arrow-stroke: 102 102 102;
-    --switch-icon-off: 113 128 150;
-    --loading-ring-color: hsl(223 10% 10% / 0.1);
-    --loading-gradient-start-color: hsl(193 90% 55%);
-    --loading-gradient-end-color: hsl(223 90% 55%);
+    --arrow-stroke: 0 0% 40%;
+    --switch-icon-off: 215.68 14.98% 51.57%;
+    --loading-ring-color: 223 10% 10%;
+    --loading-gradient-start-color: 193 90% 55%;
+    --loading-gradient-end-color: 223 90% 55%;
 
     /* 阴影与打印 */
-    --shadow-grey-0: 76 91 99;
-    --shadow-grey-1: 108 123 130;
-    --shadow-grey-2: 182 192 196;
-    --shadow-grey-3: 209 217 220;
-    --print-group-background: 240 240 236;
+    --shadow-grey-0: 200.87 13.14% 34.31%;
+    --shadow-grey-1: 199.09 9.24% 46.67%;
+    --shadow-grey-2: 197.14 10.61% 74.12%;
+    --shadow-grey-3: 196.36 13.58% 84.12%;
+    --print-group-background: 60 9.52% 91.76%;
 
     /* 强调色与状态色 */
-    --line-teal: 88 151 154;
-    --cursor-pink: 181 91 112;
-    --action-green: 74 118 70;
-    --action-active-green: 61 102 57;
-    --action-green-shadow: 124 164 106;
-    --selection-green: 156 199 170;
-    --selection-active-green: 184 214 194;
-    --selection-green-shadow: 136 176 149;
-    --screen-selection-green: 183 220 197;
+    --line-teal: 182.73 27.27% 47.45%;
+    --cursor-pink: 346 37.82% 53.33%;
+    --action-green: 115 25.53% 36.86%;
+    --action-active-green: 114.67 28.3% 31.18%;
+    --action-green-shadow: 101.38 24.17% 52.94%;
+    --selection-green: 139.53 27.74% 69.61%;
+    --selection-active-green: 140 26.79% 78.04%;
+    --selection-green-shadow: 139.5 20.2% 61.18%;
+    --screen-selection-green: 142.7 34.58% 79.02%;
 
-    --danger-red: 193 58 47;
+    --danger-red: 4.52 60.83% 47.06%;
 }
 
 p {
@@ -140,32 +140,32 @@ p {
 
 ::-webkit-scrollbar-track {
     border-radius: 100dvmax;
-    background: linear-gradient(145deg, rgb(var(--shadow-grey-2) / 0.22), rgb(var(--white) / 0.62)),
-    rgb(var(--shadow-grey-3) / 0.92);
-    box-shadow: inset 0.2dvmin 0.22dvmin 0.48dvmin rgb(var(--shadow-grey-1) / 0.64),
-    inset -0.16dvmin -0.16dvmin 0.4dvmin rgb(var(--white) / 0.68);
+    background: linear-gradient(145deg, hsl(var(--shadow-grey-2) / 0.22), hsl(var(--white) / 0.62)),
+    hsl(var(--shadow-grey-3) / 0.92);
+    box-shadow: inset 0.2dvmin 0.22dvmin 0.48dvmin hsl(var(--shadow-grey-1) / 0.64),
+    inset -0.16dvmin -0.16dvmin 0.4dvmin hsl(var(--white) / 0.68);
 }
 
 ::-webkit-scrollbar-thumb {
     border-radius: 100dvmax;
-    background: linear-gradient(145deg, rgb(var(--white) / 0.28) 0%, rgb(var(--white) / 0.04) 18%, rgb(var(--shadow-grey-0) / 0.52) 58%),
-    rgb(var(--shadow-grey-1) / 0.82);
-    box-shadow: inset 0.11dvmin 0.13dvmin 0.3dvmin rgb(var(--white) / 0.66),
-    inset -0.13dvmin -0.15dvmin 0.36dvmin rgb(var(--shadow-grey-0) / 0.72);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.28) 0%, hsl(var(--white) / 0.04) 18%, hsl(var(--shadow-grey-0) / 0.52) 58%),
+    hsl(var(--shadow-grey-1) / 0.82);
+    box-shadow: inset 0.11dvmin 0.13dvmin 0.3dvmin hsl(var(--white) / 0.66),
+    inset -0.13dvmin -0.15dvmin 0.36dvmin hsl(var(--shadow-grey-0) / 0.72);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.22) 0%, rgb(var(--white) / 0.02) 16%, rgb(var(--shadow-grey-0) / 0.58) 54%),
-    rgb(var(--shadow-grey-0) / 0.88);
-    box-shadow: inset 0.11dvmin 0.13dvmin 0.3dvmin rgb(var(--white) / 0.56),
-    inset -0.13dvmin -0.15dvmin 0.36dvmin rgb(var(--shadow-grey-0) / 0.82);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.22) 0%, hsl(var(--white) / 0.02) 16%, hsl(var(--shadow-grey-0) / 0.58) 54%),
+    hsl(var(--shadow-grey-0) / 0.88);
+    box-shadow: inset 0.11dvmin 0.13dvmin 0.3dvmin hsl(var(--white) / 0.56),
+    inset -0.13dvmin -0.15dvmin 0.36dvmin hsl(var(--shadow-grey-0) / 0.82);
 }
 
 ::-webkit-scrollbar-thumb:active {
-    background: linear-gradient(145deg, rgb(var(--shadow-grey-0) / 0.52), rgb(var(--white) / 0.04)),
-    rgb(var(--shadow-grey-0));
-    box-shadow: inset 0.17dvmin 0.19dvmin 0.42dvmin rgb(var(--black) / 0.52),
-    inset -0.09dvmin -0.11dvmin 0.26dvmin rgb(var(--white) / 0.3);
+    background: linear-gradient(145deg, hsl(var(--shadow-grey-0) / 0.52), hsl(var(--white) / 0.04)),
+    hsl(var(--shadow-grey-0));
+    box-shadow: inset 0.17dvmin 0.19dvmin 0.42dvmin hsl(var(--black) / 0.52),
+    inset -0.09dvmin -0.11dvmin 0.26dvmin hsl(var(--white) / 0.3);
 }
 
 ::-webkit-scrollbar-button,
@@ -182,7 +182,7 @@ p {
     z-index: 0;
     width: 0.5dvmin;
     height: 0.5dvmin;
-    background-color: rgb(var(--line-teal));
+    background-color: hsl(var(--line-teal));
 }
 
 .Paragraph,
@@ -282,22 +282,22 @@ p {
 }
 
 .HeadNotMain:hover {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.64), rgb(var(--white) / 0.14) 44%, rgb(var(--black) / 0.075)),
-    rgb(var(--control-hover) / 0.96);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin rgb(var(--white) / 0.8),
-    0.3dvmin 0.48dvmin 0.84dvmin rgb(var(--shadow-grey-0) / 0.34),
-    inset 0.16dvmin 0.2dvmin 0.38dvmin rgb(var(--white) / 0.82),
-    inset -0.16dvmin -0.22dvmin 0.44dvmin rgb(var(--shadow-grey-1) / 0.22),
-    0 0 0 0.07dvmin rgb(var(--shadow-grey-1) / 0.34);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.64), hsl(var(--white) / 0.14) 44%, hsl(var(--black) / 0.075)),
+    hsl(var(--control-hover) / 0.96);
+    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.8),
+    0.3dvmin 0.48dvmin 0.84dvmin hsl(var(--shadow-grey-0) / 0.34),
+    inset 0.16dvmin 0.2dvmin 0.38dvmin hsl(var(--white) / 0.82),
+    inset -0.16dvmin -0.22dvmin 0.44dvmin hsl(var(--shadow-grey-1) / 0.22),
+    0 0 0 0.07dvmin hsl(var(--shadow-grey-1) / 0.34);
 }
 
 .HeadNotMain:active {
-    background: linear-gradient(145deg, rgb(var(--black) / 0.13), rgb(var(--white) / 0.06) 68%),
-    rgb(var(--control-active));
-    box-shadow: inset 0.28dvmin 0.34dvmin 0.74dvmin rgb(var(--shadow-grey-0) / 0.46),
-    inset -0.12dvmin -0.14dvmin 0.3dvmin rgb(var(--white) / 0.42),
-    0 0.04dvmin 0.08dvmin rgb(var(--shadow-grey-0) / 0.14),
-    0 0 0 0.07dvmin rgb(var(--shadow-grey-1) / 0.38);
+    background: linear-gradient(145deg, hsl(var(--black) / 0.13), hsl(var(--white) / 0.06) 68%),
+    hsl(var(--control-active));
+    box-shadow: inset 0.28dvmin 0.34dvmin 0.74dvmin hsl(var(--shadow-grey-0) / 0.46),
+    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.42),
+    0 0.04dvmin 0.08dvmin hsl(var(--shadow-grey-0) / 0.14),
+    0 0 0 0.07dvmin hsl(var(--shadow-grey-1) / 0.38);
 }
 
 #head {
@@ -307,11 +307,11 @@ p {
     height: 6.5dvh;
     border-radius: 0 0 2.5dvmin 2.5dvmin;
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.46), rgb(var(--white) / 0.1) 42%, rgb(var(--black) / 0.07)),
-    rgb(var(--shadow-grey-3));
-    box-shadow: inset 0.2dvmin 0.24dvmin 0.46dvmin rgb(var(--white) / 0.88),
-    inset -0.2dvmin -0.26dvmin 0.54dvmin rgb(var(--shadow-grey-0) / 0.19),
-    0 0.18dvmin 0.42dvmin rgb(var(--shadow-grey-0) / 0.12);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.46), hsl(var(--white) / 0.1) 42%, hsl(var(--black) / 0.07)),
+    hsl(var(--shadow-grey-3));
+    box-shadow: inset 0.2dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.88),
+    inset -0.2dvmin -0.26dvmin 0.54dvmin hsl(var(--shadow-grey-0) / 0.19),
+    0 0.18dvmin 0.42dvmin hsl(var(--shadow-grey-0) / 0.12);
 }
 
 #head_setting > p:not(.Horizontal) {
@@ -360,7 +360,7 @@ p {
 #screen_title {
     width: 100dvw;
     height: 6.5dvh;
-    border-bottom: 0.5dvmin solid rgb(var(--line-teal));
+    border-bottom: 0.5dvmin solid hsl(var(--line-teal));
     background-color: transparent;
 }
 
@@ -397,27 +397,27 @@ p {
     border-radius: 100dvmax;
     cursor: pointer;
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.84), rgb(var(--surface-raised) / 0.94) 46%, rgb(var(--surface-soft) / 0.9));
-    box-shadow: inset 0.11dvmin 0.13dvmin 0.26dvmin rgb(var(--white) / 0.88),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin rgb(var(--shadow-grey-1) / 0.18);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.84), hsl(var(--surface-raised) / 0.94) 46%, hsl(var(--surface-soft) / 0.9));
+    box-shadow: inset 0.11dvmin 0.13dvmin 0.26dvmin hsl(var(--white) / 0.88),
+    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--shadow-grey-1) / 0.18);
 }
 
 #back_btn:hover {
     transform: translateX(-0.4dvmin);
-    background: linear-gradient(145deg, rgb(var(--white) / 0.92), rgb(var(--surface-raised)) 44%, rgb(var(--control-hover) / 0.92));
-    box-shadow: inset 0.12dvmin 0.14dvmin 0.28dvmin rgb(var(--white) / 0.92),
-    inset -0.12dvmin -0.14dvmin 0.32dvmin rgb(var(--shadow-grey-1) / 0.2);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.92), hsl(var(--surface-raised)) 44%, hsl(var(--control-hover) / 0.92));
+    box-shadow: inset 0.12dvmin 0.14dvmin 0.28dvmin hsl(var(--white) / 0.92),
+    inset -0.12dvmin -0.14dvmin 0.32dvmin hsl(var(--shadow-grey-1) / 0.2);
 }
 
 #back_btn:active {
-    background: linear-gradient(145deg, rgb(var(--shadow-grey-1) / 0.18), rgb(var(--surface-base) / 0.96));
-    box-shadow: inset 0.22dvmin 0.26dvmin 0.58dvmin rgb(var(--shadow-grey-0) / 0.36),
-    inset -0.1dvmin -0.12dvmin 0.28dvmin rgb(var(--white) / 0.42);
+    background: linear-gradient(145deg, hsl(var(--shadow-grey-1) / 0.18), hsl(var(--surface-base) / 0.96));
+    box-shadow: inset 0.22dvmin 0.26dvmin 0.58dvmin hsl(var(--shadow-grey-0) / 0.36),
+    inset -0.1dvmin -0.12dvmin 0.28dvmin hsl(var(--white) / 0.42);
 }
 
 #back_btn rect {
     transition: opacity 0.3s ease;
-    filter: drop-shadow(-0.05dvmin -0.05dvmin 0.1dvmin rgb(var(--white) / 0.64));
+    filter: drop-shadow(-0.05dvmin -0.05dvmin 0.1dvmin hsl(var(--white) / 0.64));
 }
 
 #back_btn:hover rect {
@@ -426,7 +426,7 @@ p {
 
 #back_btn path {
     transition: transform 0.3s ease;
-    filter: drop-shadow(0.05dvmin 0.06dvmin 0.08dvmin rgb(var(--white) / 0.72));
+    filter: drop-shadow(0.05dvmin 0.06dvmin 0.08dvmin hsl(var(--white) / 0.72));
 }
 
 #back_btn:hover path {
@@ -439,11 +439,11 @@ p {
     width: 100dvw;
     height: calc(36.5dvh - min(8dvh, 13.5dvmin));
 
-    background-color: rgb(var(--page-background));
-    box-shadow: inset 0 0 0 0.12dvmin rgb(var(--shadow-grey-1) / 0.18),
-    inset 0.42dvmin 0.46dvmin 0.96dvmin rgb(var(--white) / 0.92),
-    inset -0.42dvmin -0.48dvmin 1dvmin rgb(var(--shadow-grey-0) / 0.17),
-    0 0.24dvmin 0.58dvmin rgb(var(--shadow-grey-0) / 0.13);
+    background-color: hsl(var(--page-background));
+    box-shadow: inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.18),
+    inset 0.42dvmin 0.46dvmin 0.96dvmin hsl(var(--white) / 0.92),
+    inset -0.42dvmin -0.48dvmin 1dvmin hsl(var(--shadow-grey-0) / 0.17),
+    0 0.24dvmin 0.58dvmin hsl(var(--shadow-grey-0) / 0.13);
 }
 
 .ScreenNoDisplay {
@@ -455,16 +455,16 @@ p {
 .GridOn {
     background: linear-gradient(
             180deg,
-            rgb(var(--white) / 0.56) 0%,
-            rgb(var(--white) / 0.16) 38%,
-            rgb(var(--shadow-grey-0) / 0.03) 70%,
-            rgb(var(--shadow-grey-0) / 0.075) 100%
+            hsl(var(--white) / 0.56) 0%,
+            hsl(var(--white) / 0.16) 38%,
+            hsl(var(--shadow-grey-0) / 0.03) 70%,
+            hsl(var(--shadow-grey-0) / 0.075) 100%
     ),
-    rgb(var(--screen-selection-green));
-    box-shadow: inset 0.12dvmin 0.18dvmin 0.38dvmin rgb(var(--white) / 0.64),
-    inset -0.18dvmin -0.22dvmin 0.46dvmin rgb(var(--selection-green-shadow) / 0.24),
-    0 0.22dvmin 0.52dvmin rgb(var(--selection-green-shadow) / 0.16),
-    0 0 0 0.08dvmin rgb(var(--selection-green-shadow) / 0.28);
+    hsl(var(--screen-selection-green));
+    box-shadow: inset 0.12dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.64),
+    inset -0.18dvmin -0.22dvmin 0.46dvmin hsl(var(--selection-green-shadow) / 0.24),
+    0 0.22dvmin 0.52dvmin hsl(var(--selection-green-shadow) / 0.16),
+    0 0 0 0.08dvmin hsl(var(--selection-green-shadow) / 0.28);
 }
 
 /* screen 部分-part 0 */
@@ -561,21 +561,21 @@ p {
 #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):hover {
     border-radius: 2.5dvmin;
 
-    background-color: rgb(var(--surface-soft));
-    box-shadow: inset 0.16dvmin 0.18dvmin 0.38dvmin rgb(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.44dvmin rgb(var(--shadow-grey-1) / 0.24),
-    inset 0 0 0 0.06dvmin rgb(var(--selection-green-shadow) / 0.22),
-    inset 0 0 0.76dvmin 0.16dvmin rgb(var(--white) / 0.15);
+    background-color: hsl(var(--surface-soft));
+    box-shadow: inset 0.16dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.78),
+    inset -0.16dvmin -0.2dvmin 0.44dvmin hsl(var(--shadow-grey-1) / 0.24),
+    inset 0 0 0 0.06dvmin hsl(var(--selection-green-shadow) / 0.22),
+    inset 0 0 0.76dvmin 0.16dvmin hsl(var(--white) / 0.15);
 }
 
 #grid_data > div > div:nth-last-child(-n+2):not(.GridOn):active {
     border-radius: 2.5dvmin;
 
-    background-color: rgb(var(--surface-pressed));
-    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin rgb(var(--shadow-grey-0) / 0.4),
-    inset -0.11dvmin -0.13dvmin 0.32dvmin rgb(var(--white) / 0.42),
-    inset 0 0 0 0.07dvmin rgb(var(--selection-green-shadow) / 0.24),
-    inset 0 0 0.86dvmin 0.2dvmin rgb(var(--shadow-grey-1) / 0.13);
+    background-color: hsl(var(--surface-pressed));
+    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.4),
+    inset -0.11dvmin -0.13dvmin 0.32dvmin hsl(var(--white) / 0.42),
+    inset 0 0 0 0.07dvmin hsl(var(--selection-green-shadow) / 0.24),
+    inset 0 0 0.86dvmin 0.2dvmin hsl(var(--shadow-grey-1) / 0.13);
 }
 
 #grid_data > div > div > div {
@@ -604,53 +604,53 @@ p {
     transition: all 0.18s ease;
     border-radius: 2.5dvmin;
 
-    box-shadow: inset 0.18dvmin 0.2dvmin 0.44dvmin rgb(var(--white) / 0.78),
-    inset -0.18dvmin -0.22dvmin 0.5dvmin rgb(var(--shadow-grey-0) / 0.21),
-    -0.16dvmin -0.16dvmin 0.38dvmin rgb(var(--white) / 0.7),
-    0.24dvmin 0.34dvmin 0.62dvmin rgb(var(--shadow-grey-0) / 0.21),
-    0 0 0 0.11dvmin rgb(var(--shadow-grey-1) / 0.34);
+    box-shadow: inset 0.18dvmin 0.2dvmin 0.44dvmin hsl(var(--white) / 0.78),
+    inset -0.18dvmin -0.22dvmin 0.5dvmin hsl(var(--shadow-grey-0) / 0.21),
+    -0.16dvmin -0.16dvmin 0.38dvmin hsl(var(--white) / 0.7),
+    0.24dvmin 0.34dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21),
+    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.34);
 }
 
 .Screen234 > div.ScreenInputsOn {
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.38dvmin rgb(var(--white) / 0.7),
-    inset -0.18dvmin -0.22dvmin 0.46dvmin rgb(var(--selection-green-shadow) / 0.28),
-    0 0 0 0.14dvmin rgb(var(--selection-green-shadow) / 0.62),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.62),
-    0 0.3dvmin 0.62dvmin rgb(var(--selection-green-shadow) / 0.25);
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.7),
+    inset -0.18dvmin -0.22dvmin 0.46dvmin hsl(var(--selection-green-shadow) / 0.28),
+    0 0 0 0.14dvmin hsl(var(--selection-green-shadow) / 0.62),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.62),
+    0 0.3dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.25);
 }
 
 .Screen234 > div:not(.ScreenInputsOn) {
     background: linear-gradient(
             180deg,
-            rgb(var(--white) / 0.66) 0%,
-            rgb(var(--white) / 0.18) 44%,
-            rgb(var(--shadow-grey-0) / 0.025) 72%,
-            rgb(var(--shadow-grey-0) / 0.055) 100%
+            hsl(var(--white) / 0.66) 0%,
+            hsl(var(--white) / 0.18) 44%,
+            hsl(var(--shadow-grey-0) / 0.025) 72%,
+            hsl(var(--shadow-grey-0) / 0.055) 100%
     ),
-    rgb(var(--selection-inactive));
+    hsl(var(--selection-inactive));
 }
 
 .Screen234 > div:not(.ScreenInputsOn):hover {
     transform: scale(1.006);
     background: linear-gradient(
             180deg,
-            rgb(var(--white) / 0.72) 0%,
-            rgb(var(--white) / 0.2) 44%,
-            rgb(var(--selection-green-shadow) / 0.025) 72%,
-            rgb(var(--selection-green-shadow) / 0.055) 100%
+            hsl(var(--white) / 0.72) 0%,
+            hsl(var(--white) / 0.2) 44%,
+            hsl(var(--selection-green-shadow) / 0.025) 72%,
+            hsl(var(--selection-green-shadow) / 0.055) 100%
     ),
-    rgb(var(--selection-inactive-hover));
+    hsl(var(--selection-inactive-hover));
 }
 
 .Screen234 > div:not(.ScreenInputsOn):active {
     background: linear-gradient(
             180deg,
-            rgb(var(--white) / 0.36) 0%,
-            rgb(var(--white) / 0.08) 42%,
-            rgb(var(--shadow-grey-0) / 0.025) 72%,
-            rgb(var(--shadow-grey-0) / 0.07) 100%
+            hsl(var(--white) / 0.36) 0%,
+            hsl(var(--white) / 0.08) 42%,
+            hsl(var(--shadow-grey-0) / 0.025) 72%,
+            hsl(var(--shadow-grey-0) / 0.07) 100%
     ),
-    rgb(var(--surface-pressed));
+    hsl(var(--surface-pressed));
 }
 
 .Screen234 > div > div:first-child {
@@ -719,14 +719,14 @@ p {
     left: 0;
     width: 100dvw;
     height: min(8dvh, 13.5dvmin);
-    border-top: 0.5dvmin solid rgb(var(--line-teal));
-    border-bottom: 0.5dvmin solid rgb(var(--line-teal));
+    border-top: 0.5dvmin solid hsl(var(--line-teal));
+    border-bottom: 0.5dvmin solid hsl(var(--line-teal));
 
-    background: linear-gradient(180deg, rgb(var(--input-gradient-top)), rgb(var(--input-gradient-upper)) 35%, rgb(var(--input-gradient-lower)) 62%, rgb(var(--input-gradient-bottom)));
-    box-shadow: inset 0.22dvmin 0.28dvmin 0.62dvmin rgb(var(--shadow-grey-0) / 0.22),
-    inset -0.18dvmin -0.22dvmin 0.5dvmin rgb(var(--white) / 0.92),
-    inset 0 0 0 0.1dvmin rgb(var(--line-teal) / 0.25),
-    0 0.2dvmin 0.44dvmin rgb(var(--shadow-grey-1) / 0.14);
+    background: linear-gradient(180deg, hsl(var(--input-gradient-top)), hsl(var(--input-gradient-upper)) 35%, hsl(var(--input-gradient-lower)) 62%, hsl(var(--input-gradient-bottom)));
+    box-shadow: inset 0.22dvmin 0.28dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.22),
+    inset -0.18dvmin -0.22dvmin 0.5dvmin hsl(var(--white) / 0.92),
+    inset 0 0 0 0.1dvmin hsl(var(--line-teal) / 0.25),
+    0 0.2dvmin 0.44dvmin hsl(var(--shadow-grey-1) / 0.14);
 }
 
 @keyframes flicker {
@@ -748,7 +748,7 @@ p {
     margin: auto 0.35dvmin auto;
     animation: flicker 1s linear infinite;
     border-radius: 100dvmax;
-    background-color: rgb(var(--cursor-pink));
+    background-color: hsl(var(--cursor-pink));
 }
 
 /* == keyboard 部分 == */
@@ -757,59 +757,59 @@ p {
     /* 初始浅蓝：数字键、常量键与扩展值 */
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.68) 0%,
-            rgb(var(--white) / 0.18) 42%,
-            rgb(var(--black) / 0.075) 100%
+            hsl(var(--white) / 0.68) 0%,
+            hsl(var(--white) / 0.18) 42%,
+            hsl(var(--black) / 0.075) 100%
     ),
-    rgb(var(--key-value) / 0.95);
+    hsl(var(--key-value) / 0.95);
 }
 
 .KeyboardStyle2 {
     /* 初始薄荷绿：删除与清除操作 */
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.64) 0%,
-            rgb(var(--white) / 0.16) 42%,
-            rgb(var(--black) / 0.08) 100%
+            hsl(var(--white) / 0.64) 0%,
+            hsl(var(--white) / 0.16) 42%,
+            hsl(var(--black) / 0.08) 100%
     ),
-    rgb(var(--key-edit));
+    hsl(var(--key-edit));
 }
 
 .KeyboardStyle3 {
     /* 初始海贝色：运算符与函数键 */
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.6) 0%,
-            rgb(var(--white) / 0.14) 42%,
-            rgb(var(--black) / 0.085) 100%
+            hsl(var(--white) / 0.6) 0%,
+            hsl(var(--white) / 0.14) 42%,
+            hsl(var(--black) / 0.085) 100%
     ),
-    rgb(var(--key-operator));
+    hsl(var(--key-operator));
 }
 
 .KeyboardStyleEXE {
-    background: linear-gradient(155deg, rgb(var(--white) / 0.4), transparent 44%, rgb(var(--black) / 0.18)),
-    rgb(var(--action-green) / 0.86);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin rgb(var(--white) / 0.64),
-    0.28dvmin 0.46dvmin 0.82dvmin rgb(var(--action-green-shadow) / 0.42),
-    inset 0.16dvmin 0.22dvmin 0.42dvmin rgb(var(--white) / 0.5),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin rgb(var(--black) / 0.23),
-    0 0 0 0.08dvmin rgb(var(--action-green-shadow) / 0.46);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.86);
+    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
+    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
+    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
+    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.46);
 }
 
 .KeyboardStyle1:active {
-    background-color: rgb(var(--key-value) / 0.82);
+    background-color: hsl(var(--key-value) / 0.82);
 }
 
 .KeyboardStyle2:active {
-    background-color: rgb(var(--key-edit) / 0.82);
+    background-color: hsl(var(--key-edit) / 0.82);
 }
 
 .KeyboardStyle3:active {
-    background-color: rgb(var(--key-operator) / 0.82);
+    background-color: hsl(var(--key-operator) / 0.82);
 }
 
 .KeyboardStyleEXE:active {
-    background-color: rgb(var(--action-active-green) / 0.94);
+    background-color: hsl(var(--action-active-green) / 0.94);
 }
 
 .KeyboardCover {
@@ -841,11 +841,11 @@ p {
     filter 0.13s ease-out;
     border-radius: 3dvmin;
 
-    box-shadow: -0.24dvmin -0.24dvmin 0.58dvmin rgb(var(--white) / 0.86),
-    0.28dvmin 0.46dvmin 0.82dvmin rgb(var(--shadow-grey-0) / 0.38),
-    inset 0.16dvmin 0.22dvmin 0.42dvmin rgb(var(--white) / 0.9),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin rgb(var(--shadow-grey-0) / 0.26),
-    0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.58);
+    box-shadow: -0.24dvmin -0.24dvmin 0.58dvmin hsl(var(--white) / 0.86),
+    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.38),
+    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.9),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--shadow-grey-0) / 0.26),
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.58);
 }
 
 :where(
@@ -854,11 +854,11 @@ p {
     #sub_keyboard > div
 ) > div:hover {
     filter: brightness(1.015);
-    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin rgb(var(--white) / 0.92),
-    0.34dvmin 0.54dvmin 0.94dvmin rgb(var(--shadow-grey-0) / 0.4),
-    inset 0.18dvmin 0.24dvmin 0.46dvmin rgb(var(--white) / 0.94),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin rgb(var(--shadow-grey-0) / 0.24),
-    0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.54);
+    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin hsl(var(--white) / 0.92),
+    0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.4),
+    inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.94),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--shadow-grey-0) / 0.24),
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.54);
 }
 
 :where(
@@ -868,10 +868,10 @@ p {
 ) > div:active {
     transform: scale(0.99);
     filter: brightness(0.985);
-    box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin rgb(var(--shadow-grey-0) / 0.42),
-    inset -0.12dvmin -0.14dvmin 0.32dvmin rgb(var(--white) / 0.38),
-    0 0.06dvmin 0.14dvmin rgb(var(--shadow-grey-0) / 0.2),
-    0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.58);
+    box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin hsl(var(--shadow-grey-0) / 0.42),
+    inset -0.12dvmin -0.14dvmin 0.32dvmin hsl(var(--white) / 0.38),
+    0 0.06dvmin 0.14dvmin hsl(var(--shadow-grey-0) / 0.2),
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.58);
 }
 
 /* sub_keyboard 部分 */
@@ -892,18 +892,18 @@ p {
 
     background: linear-gradient(
             150deg,
-            rgb(var(--white) / 0.58) 0%,
-            rgb(var(--white) / 0.18) 42%,
-            rgb(var(--shadow-grey-2) / 0.17) 100%
+            hsl(var(--white) / 0.58) 0%,
+            hsl(var(--white) / 0.18) 42%,
+            hsl(var(--shadow-grey-2) / 0.17) 100%
     ),
-    rgb(var(--sub-keyboard-panel) / 0.97);
+    hsl(var(--sub-keyboard-panel) / 0.97);
 
-    box-shadow: 0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.4),
-    0.42dvmin 0.64dvmin 1.2dvmin rgb(var(--shadow-grey-0) / 0.4),
-    0.82dvmin 1.3dvmin 3.1dvmin 0.4dvmin rgb(var(--shadow-grey-0) / 0.44),
-    -0.3dvmin -0.3dvmin 0.82dvmin rgb(var(--white) / 0.74),
-    inset 0.22dvmin 0.26dvmin 0.58dvmin rgb(var(--white) / 0.9),
-    inset -0.22dvmin -0.3dvmin 0.66dvmin rgb(var(--shadow-grey-0) / 0.23);
+    box-shadow: 0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.4),
+    0.42dvmin 0.64dvmin 1.2dvmin hsl(var(--shadow-grey-0) / 0.4),
+    0.82dvmin 1.3dvmin 3.1dvmin 0.4dvmin hsl(var(--shadow-grey-0) / 0.44),
+    -0.3dvmin -0.3dvmin 0.82dvmin hsl(var(--white) / 0.74),
+    inset 0.22dvmin 0.26dvmin 0.58dvmin hsl(var(--white) / 0.9),
+    inset -0.22dvmin -0.3dvmin 0.66dvmin hsl(var(--shadow-grey-0) / 0.23);
 
     backdrop-filter: blur(6px);
 }
@@ -940,11 +940,11 @@ p {
     height: 6.5dvh;
     border-radius: 3dvmin;
 
-    background: radial-gradient(ellipse at 42% -18%, rgb(var(--white) / 0.78), transparent 60%),
-    rgb(var(--keyboard-top-background) / 0.7);
-    box-shadow: inset 0.18dvmin 0.22dvmin 0.48dvmin rgb(var(--white) / 0.78),
-    inset -0.18dvmin -0.26dvmin 0.54dvmin rgb(var(--shadow-grey-0) / 0.23),
-    0 0.18dvmin 0.42dvmin rgb(var(--shadow-grey-0) / 0.12);
+    background: radial-gradient(ellipse at 42% -18%, hsl(var(--white) / 0.78), transparent 60%),
+    hsl(var(--keyboard-top-background) / 0.7);
+    box-shadow: inset 0.18dvmin 0.22dvmin 0.48dvmin hsl(var(--white) / 0.78),
+    inset -0.18dvmin -0.26dvmin 0.54dvmin hsl(var(--shadow-grey-0) / 0.23),
+    0 0.18dvmin 0.42dvmin hsl(var(--shadow-grey-0) / 0.12);
 }
 
 #keyboard_top > div {
@@ -964,66 +964,66 @@ p {
 }
 
 #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
-    color: rgb(var(--white) / 0.96);
-    background: linear-gradient(155deg, rgb(var(--white) / 0.4), transparent 44%, rgb(var(--black) / 0.18)),
-    rgb(var(--action-green) / 0.86);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin rgb(var(--white) / 0.64),
-    0.28dvmin 0.46dvmin 0.82dvmin rgb(var(--action-green-shadow) / 0.42),
-    inset 0.16dvmin 0.22dvmin 0.42dvmin rgb(var(--white) / 0.5),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin rgb(var(--black) / 0.23),
-    0 0 0 0.08dvmin rgb(var(--action-green-shadow) / 0.46);
+    color: hsl(var(--white) / 0.96);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.86);
+    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
+    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
+    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
+    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.46);
 }
 
 #keyboard_top > div:not(.Ordinary):nth-child(-n+3) > p {
-    background-color: rgb(var(--key-white));
+    background-color: hsl(var(--key-white));
 }
 
 #keyboard_top > div.Ordinary:nth-child(-n+3) > p {
-    background-color: rgb(var(--shadow-grey-0));
+    background-color: hsl(var(--shadow-grey-0));
 }
 
 #keyboard_top > div:hover {
-    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin rgb(var(--white) / 0.86),
-    0.34dvmin 0.54dvmin 0.94dvmin rgb(var(--shadow-grey-0) / 0.38),
-    inset 0.18dvmin 0.24dvmin 0.46dvmin rgb(var(--white) / 0.88),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin rgb(var(--shadow-grey-1) / 0.24),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.4);
+    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin hsl(var(--white) / 0.86),
+    0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.38),
+    inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.88),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--shadow-grey-1) / 0.24),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.4);
 }
 
 #keyboard_top > div:not(#keyboard_top_more).Ordinary:active {
-    box-shadow: inset 0.28dvmin 0.34dvmin 0.74dvmin rgb(var(--shadow-grey-0) / 0.46),
-    inset -0.12dvmin -0.14dvmin 0.3dvmin rgb(var(--white) / 0.42),
-    0 0.04dvmin 0.08dvmin rgb(var(--shadow-grey-0) / 0.14),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.38);
+    box-shadow: inset 0.28dvmin 0.34dvmin 0.74dvmin hsl(var(--shadow-grey-0) / 0.46),
+    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.42),
+    0 0.04dvmin 0.08dvmin hsl(var(--shadow-grey-0) / 0.14),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.38);
 }
 
 #keyboard_top > div:not(#keyboard_top_more):not(.Ordinary):active {
-    background: linear-gradient(145deg, rgb(var(--black) / 0.17), rgb(var(--white) / 0.06) 68%),
-    rgb(var(--action-active-green));
-    box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin rgb(var(--black) / 0.42),
-    inset -0.12dvmin -0.14dvmin 0.3dvmin rgb(var(--white) / 0.34),
-    0 0 0 0.08dvmin rgb(var(--action-green-shadow) / 0.54) !important;
+    background: linear-gradient(145deg, hsl(var(--black) / 0.17), hsl(var(--white) / 0.06) 68%),
+    hsl(var(--action-active-green));
+    box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin hsl(var(--black) / 0.42),
+    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.34),
+    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.54) !important;
 }
 
 #keyboard_top > div.Ordinary:hover,
 #keyboard_top > div#keyboard_top_more:hover {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.72), rgb(var(--white) / 0.18) 42%, rgb(var(--black) / 0.09)),
-    rgb(var(--surface-soft));
-    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin rgb(var(--white) / 0.88),
-    0.34dvmin 0.54dvmin 0.94dvmin rgb(var(--shadow-grey-0) / 0.38),
-    inset 0.18dvmin 0.24dvmin 0.46dvmin rgb(var(--white) / 0.88),
-    inset -0.18dvmin -0.24dvmin 0.48dvmin rgb(var(--shadow-grey-1) / 0.24),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.4);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.72), hsl(var(--white) / 0.18) 42%, hsl(var(--black) / 0.09)),
+    hsl(var(--surface-soft));
+    box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin hsl(var(--white) / 0.88),
+    0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.38),
+    inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.88),
+    inset -0.18dvmin -0.24dvmin 0.48dvmin hsl(var(--shadow-grey-1) / 0.24),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.4);
 }
 
 #keyboard_top > div.Ordinary:active,
 #keyboard_top > div#keyboard_top_more:active {
-    background: linear-gradient(145deg, rgb(var(--black) / 0.16), rgb(var(--white) / 0.05) 70%),
-    rgb(var(--surface-mid));
-    box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin rgb(var(--shadow-grey-0) / 0.5),
-    inset -0.13dvmin -0.15dvmin 0.32dvmin rgb(var(--white) / 0.44),
-    0 0.03dvmin 0.06dvmin rgb(var(--shadow-grey-0) / 0.12),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.42);
+    background: linear-gradient(145deg, hsl(var(--black) / 0.16), hsl(var(--white) / 0.05) 70%),
+    hsl(var(--surface-mid));
+    box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin hsl(var(--shadow-grey-0) / 0.5),
+    inset -0.13dvmin -0.15dvmin 0.32dvmin hsl(var(--white) / 0.44),
+    0 0.03dvmin 0.06dvmin hsl(var(--shadow-grey-0) / 0.12),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.42);
 }
 
 #keyboard_top > div:nth-child(5) > p {
@@ -1051,7 +1051,7 @@ p {
     transform: scaleY(-1);
     transform-origin: center;
     fill: none;
-    stroke: rgb(var(--arrow-stroke));
+    stroke: hsl(var(--arrow-stroke));
 
     /* 核心动画设置 */
     stroke-width: 2;
@@ -1085,9 +1085,9 @@ p {
     grid-template-rows: repeat(6, calc(175dvh / 24));
     place-items: center;
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.72), rgb(var(--surface-base) / 0.92) 52%, rgb(var(--shadow-grey-2) / 0.36));
-    box-shadow: inset 0.28dvmin 0.32dvmin 0.72dvmin rgb(var(--white) / 0.88),
-    inset -0.28dvmin -0.34dvmin 0.78dvmin rgb(var(--shadow-grey-0) / 0.24);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.72), hsl(var(--surface-base) / 0.92) 52%, hsl(var(--shadow-grey-2) / 0.36));
+    box-shadow: inset 0.28dvmin 0.32dvmin 0.72dvmin hsl(var(--white) / 0.88),
+    inset -0.28dvmin -0.34dvmin 0.78dvmin hsl(var(--shadow-grey-0) / 0.24);
 }
 
 #keyboard_main > div {
@@ -1190,9 +1190,9 @@ p {
         left: 0;
         width: 37.5dvw;
         height: 50.5dvh;
-        border-right: 0.5dvmin solid rgb(var(--line-teal));
-        background: linear-gradient(155deg, rgb(var(--white) / 0.34), rgb(var(--white) / 0.08) 42%, rgb(var(--shadow-grey-2) / 0.16)),
-        rgb(var(--sub-keyboard-panel) / 0.92);
+        border-right: 0.5dvmin solid hsl(var(--line-teal));
+        background: linear-gradient(155deg, hsl(var(--white) / 0.34), hsl(var(--white) / 0.08) 42%, hsl(var(--shadow-grey-2) / 0.16)),
+        hsl(var(--sub-keyboard-panel) / 0.92);
     }
 
     #sub_keyboard > div {
@@ -1266,10 +1266,10 @@ p {
 /* == print 窗口样式 == */
 
 #main_print {
-    background: linear-gradient(145deg, rgb(var(--white)), rgb(var(--soft-white)) 56%, rgb(var(--shadow-grey-2) / 0.15));
-    box-shadow: inset 0 0 0 0.12dvmin rgb(var(--shadow-grey-1) / 0.16),
-    inset 0.32dvmin 0.36dvmin 0.78dvmin rgb(var(--white) / 0.84),
-    inset -0.28dvmin -0.32dvmin 0.72dvmin rgb(var(--shadow-grey-1) / 0.12);
+    background: linear-gradient(145deg, hsl(var(--white)), hsl(var(--soft-white)) 56%, hsl(var(--shadow-grey-2) / 0.15));
+    box-shadow: inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.16),
+    inset 0.32dvmin 0.36dvmin 0.78dvmin hsl(var(--white) / 0.84),
+    inset -0.28dvmin -0.32dvmin 0.72dvmin hsl(var(--shadow-grey-1) / 0.12);
 }
 
 /* 加载动画部分 */
@@ -1285,7 +1285,7 @@ p {
     width: 100dvw;
     height: 100dvh;
 
-    background-color: rgb(var(--shadow-grey-0) / 0.08);
+    background-color: hsl(var(--shadow-grey-0) / 0.08);
     backdrop-filter: blur(5px);
 }
 
@@ -1295,13 +1295,13 @@ p {
     border-radius: 3dvmin;
 
     /* 启用背景色，使用定义的局部变量 */
-    background: linear-gradient(145deg, rgb(var(--white) / 0.34), rgb(var(--surface-raised) / 0.98) 42%, rgb(var(--surface-soft) / 0.96));
+    background: linear-gradient(145deg, hsl(var(--white) / 0.34), hsl(var(--surface-raised) / 0.98) 42%, hsl(var(--surface-soft) / 0.96));
     /* 添加卡片阴影，增加层次感 */
-    box-shadow: 0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.22),
-    0.78dvmin 1.2dvmin 5dvmin rgb(var(--shadow-grey-0) / 0.24),
-    -0.3dvmin -0.3dvmin 0.78dvmin rgb(var(--white) / 0.64),
-    inset 0.24dvmin 0.28dvmin 0.62dvmin rgb(var(--white) / 0.88),
-    inset -0.24dvmin -0.3dvmin 0.66dvmin rgb(var(--shadow-grey-0) / 0.12);
+    box-shadow: 0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.22),
+    0.78dvmin 1.2dvmin 5dvmin hsl(var(--shadow-grey-0) / 0.24),
+    -0.3dvmin -0.3dvmin 0.78dvmin hsl(var(--white) / 0.64),
+    inset 0.24dvmin 0.28dvmin 0.62dvmin hsl(var(--white) / 0.88),
+    inset -0.24dvmin -0.3dvmin 0.66dvmin hsl(var(--shadow-grey-0) / 0.12);
 }
 
 #load > div {
@@ -1318,7 +1318,7 @@ p {
 #load_cancel {
     width: 60% !important;
     margin-top: 1dvh !important;
-    background-color: rgb(var(--danger-red)) !important;
+    background-color: hsl(var(--danger-red)) !important;
 }
 
 #load_box {
@@ -1350,7 +1350,7 @@ p {
 .plRing {
     /* 背景圆环 */
     transition: stroke 0.3s;
-    stroke: var(--loading-ring-color);
+    stroke: hsl(var(--loading-ring-color) / 0.1);
 }
 
 .plWorm {
@@ -1436,31 +1436,31 @@ p {
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
 
-    background: linear-gradient(155deg, rgb(var(--white) / 0.38), transparent 44%, rgb(var(--black) / 0.18)),
-    rgb(var(--action-green) / 0.92);
-    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin rgb(var(--white) / 0.64),
-    0.28dvmin 0.42dvmin 0.76dvmin rgb(var(--shadow-grey-0) / 0.3),
-    inset 0.16dvmin 0.2dvmin 0.4dvmin rgb(var(--soft-white) / 0.54),
-    inset -0.14dvmin -0.22dvmin 0.44dvmin rgb(var(--black) / 0.22);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.92);
+    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.64),
+    0.28dvmin 0.42dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.3),
+    inset 0.16dvmin 0.2dvmin 0.4dvmin hsl(var(--soft-white) / 0.54),
+    inset -0.14dvmin -0.22dvmin 0.44dvmin hsl(var(--black) / 0.22);
 }
 
 #print_close:hover,
 #load_cancel:hover {
     opacity: 0.9;
-    background-color: rgb(var(--action-active-green) / 0.94);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin rgb(var(--white) / 0.68),
-    0.3dvmin 0.46dvmin 0.82dvmin rgb(var(--shadow-grey-0) / 0.34),
-    inset 0.16dvmin 0.2dvmin 0.42dvmin rgb(var(--soft-white) / 0.52),
-    inset -0.15dvmin -0.23dvmin 0.46dvmin rgb(var(--black) / 0.25);
+    background-color: hsl(var(--action-active-green) / 0.94);
+    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.68),
+    0.3dvmin 0.46dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.34),
+    inset 0.16dvmin 0.2dvmin 0.42dvmin hsl(var(--soft-white) / 0.52),
+    inset -0.15dvmin -0.23dvmin 0.46dvmin hsl(var(--black) / 0.25);
 }
 
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
-    background-color: rgb(var(--action-active-green) / 0.98);
-    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin rgb(var(--shadow-grey-0) / 0.42),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin rgb(var(--white) / 0.34),
-    0 0 0 0.07dvmin rgb(var(--shadow-grey-0) / 0.22);
+    background-color: hsl(var(--action-active-green) / 0.98);
+    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
+    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
+    0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
 }
 
 /* print_content 部分 */
@@ -1509,14 +1509,14 @@ p {
 #print_content_3 > div:nth-child(4n+2) {
     border-radius: 1.5dvmin 1.5dvmin 0 0;
     margin-top: 1dvmin;
-    background-color: rgb(var(--print-group-background) / 0.94);
+    background-color: hsl(var(--print-group-background) / 0.97);
 }
 
 #print_content_1 > div:nth-child(8),
 #statistics_results_window > div > div:nth-child(4n + 2),
 #print_content_3 > div:nth-child(4n+3) {
     border-radius: 0 0 1.5dvmin 1.5dvmin;
-    background-color: rgb(var(--print-group-background) / 0.94);
+    background-color: hsl(var(--print-group-background) / 0.97);
 }
 
 #print_content_1_cover {
@@ -1542,16 +1542,16 @@ p {
     grid-template-columns: max(99dvmin, 80dvw);
     grid-template-rows: min(8dvh, 12dvmin) repeat(7, min(14dvmin, 8dvh));
 
-    background: linear-gradient(155deg, rgb(var(--white)) 0%, rgb(var(--setting-panel)) 42%, rgb(var(--selection-inactive)) 100%);
+    background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
     backdrop-filter: blur(7px);
-    box-shadow: 0 0 0 0.14dvmin rgb(var(--shadow-grey-1) / 0.44),
-    -0.18dvmin -0.18dvmin 0.42dvmin rgb(var(--white) / 0.66),
-    0.52dvmin 0.68dvmin 1.24dvmin rgb(var(--shadow-grey-0) / 0.25),
-    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin rgb(var(--shadow-grey-0) / 0.24),
-    inset 0 0 0 0.12dvmin rgb(var(--shadow-grey-1) / 0.2),
-    inset 0.2dvmin 0.22dvmin 0.4dvmin rgb(var(--white) / 0.72),
-    inset -0.16dvmin -0.2dvmin 0.34dvmin rgb(var(--shadow-grey-1) / 0.15),
-    inset 0 -0.32dvmin 0.62dvmin rgb(var(--shadow-grey-0) / 0.21);
+    box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
+    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
+    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
+    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.24),
+    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
+    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
+    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
+    inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
 }
 
 #print_content_1_choose.PrintContent1ChooseOff {
@@ -1575,16 +1575,16 @@ p {
 .Print1ChooseOn {
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.6) 0%,
-            rgb(var(--white) / 0.16) 42%,
-            rgb(var(--selection-green-shadow) / 0.07) 100%
+            hsl(var(--white) / 0.6) 0%,
+            hsl(var(--white) / 0.16) 42%,
+            hsl(var(--selection-green-shadow) / 0.07) 100%
     ),
-    rgb(var(--selection-green));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin rgb(var(--white) / 0.68),
-    inset -0.16dvmin -0.22dvmin 0.4dvmin rgb(var(--selection-green-shadow) / 0.28),
-    0 0 0 0.16dvmin rgb(var(--selection-green-shadow) / 0.68),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.66),
-    0.22dvmin 0.32dvmin 0.62dvmin rgb(var(--selection-green-shadow) / 0.28);
+    hsl(var(--selection-green));
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin hsl(var(--white) / 0.68),
+    inset -0.16dvmin -0.22dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.28),
+    0 0 0 0.16dvmin hsl(var(--selection-green-shadow) / 0.68),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.66),
+    0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
     transition: all 0.45s ease;
 }
 
@@ -1594,16 +1594,16 @@ p {
 ) {
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.7) 0%,
-            rgb(var(--white) / 0.18) 44%,
-            rgb(var(--shadow-grey-0) / 0.07) 100%
+            hsl(var(--white) / 0.7) 0%,
+            hsl(var(--white) / 0.18) 44%,
+            hsl(var(--shadow-grey-0) / 0.07) 100%
     ),
-    rgb(var(--selection-inactive));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin rgb(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.38dvmin rgb(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.11dvmin rgb(var(--shadow-grey-1) / 0.38),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.7),
-    0.22dvmin 0.3dvmin 0.56dvmin rgb(var(--shadow-grey-0) / 0.19);
+    hsl(var(--selection-inactive));
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
+    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
+    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
+    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
     transition: all 0.25s ease;
 }
 
@@ -1613,28 +1613,28 @@ p {
 ):hover {
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.66) 0%,
-            rgb(var(--white) / 0.16) 44%,
-            rgb(var(--selection-green-shadow) / 0.06) 100%
+            hsl(var(--white) / 0.66) 0%,
+            hsl(var(--white) / 0.16) 44%,
+            hsl(var(--selection-green-shadow) / 0.06) 100%
     ),
-    rgb(var(--selection-active-green));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin rgb(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.38dvmin rgb(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.11dvmin rgb(var(--shadow-grey-1) / 0.38),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.7),
-    0.22dvmin 0.3dvmin 0.56dvmin rgb(var(--shadow-grey-0) / 0.19);
+    hsl(var(--selection-active-green));
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
+    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
+    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
+    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
 }
 
 #print_content_1_choose > div:not(
     :first-child,
     .Print1ChooseOn
 ):active {
-    background: linear-gradient(145deg, rgb(var(--black) / 0.09), rgb(var(--white) / 0.07) 70%),
-    rgb(var(--selection-active-green));
-    box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin rgb(var(--shadow-grey-0) / 0.34),
-    inset -0.13dvmin -0.15dvmin 0.32dvmin rgb(var(--white) / 0.5),
-    0 0.03dvmin 0.06dvmin rgb(var(--shadow-grey-0) / 0.08),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.34);
+    background: linear-gradient(145deg, hsl(var(--black) / 0.09), hsl(var(--white) / 0.07) 70%),
+    hsl(var(--selection-active-green));
+    box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin hsl(var(--shadow-grey-0) / 0.34),
+    inset -0.13dvmin -0.15dvmin 0.32dvmin hsl(var(--white) / 0.5),
+    0 0.03dvmin 0.06dvmin hsl(var(--shadow-grey-0) / 0.08),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.34);
 }
 
 #print_1_0_choose {
@@ -1643,32 +1643,32 @@ p {
     border-radius: 2dvmin;
     transition: all 0.23s ease;
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.62), transparent 44%, rgb(var(--shadow-grey-0) / 0.06)),
-    rgb(var(--surface-base) / 0.78);
-    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin rgb(var(--white) / 0.82),
-    0.28dvmin 0.38dvmin 0.72dvmin rgb(var(--shadow-grey-0) / 0.24),
-    inset 0.15dvmin 0.17dvmin 0.34dvmin rgb(var(--white) / 0.84),
-    inset -0.14dvmin -0.18dvmin 0.38dvmin rgb(var(--shadow-grey-1) / 0.16),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.26);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.62), transparent 44%, hsl(var(--shadow-grey-0) / 0.06)),
+    hsl(var(--surface-base) / 0.78);
+    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.82),
+    0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.24),
+    inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.84),
+    inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.16),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.26);
 }
 
 #print_1_0_choose:hover {
-    background-image: linear-gradient(145deg, rgb(var(--white) / 0.7), rgb(var(--white) / 0.16) 46%, rgb(var(--selection-green-shadow) / 0.09));
-    background-color: rgb(var(--selection-active-green) / 0.76);
-    box-shadow: -0.26dvmin -0.26dvmin 0.58dvmin rgb(var(--white) / 0.88),
-    0.32dvmin 0.44dvmin 0.8dvmin rgb(var(--selection-green-shadow) / 0.27),
-    inset 0.15dvmin 0.17dvmin 0.36dvmin rgb(var(--white) / 0.82),
-    inset -0.14dvmin -0.18dvmin 0.4dvmin rgb(var(--selection-green-shadow) / 0.19),
-    0 0 0 0.08dvmin rgb(var(--selection-green-shadow) / 0.34);
+    background-image: linear-gradient(145deg, hsl(var(--white) / 0.7), hsl(var(--white) / 0.16) 46%, hsl(var(--selection-green-shadow) / 0.09));
+    background-color: hsl(var(--selection-active-green) / 0.76);
+    box-shadow: -0.26dvmin -0.26dvmin 0.58dvmin hsl(var(--white) / 0.88),
+    0.32dvmin 0.44dvmin 0.8dvmin hsl(var(--selection-green-shadow) / 0.27),
+    inset 0.15dvmin 0.17dvmin 0.36dvmin hsl(var(--white) / 0.82),
+    inset -0.14dvmin -0.18dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.19),
+    0 0 0 0.08dvmin hsl(var(--selection-green-shadow) / 0.34);
 }
 
 #print_1_0_choose:active {
-    background-image: linear-gradient(145deg, rgb(var(--shadow-grey-0) / 0.14), rgb(var(--white) / 0.09));
-    background-color: rgb(var(--surface-pressed) / 0.72);
-    box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin rgb(var(--shadow-grey-0) / 0.38),
-    inset -0.12dvmin -0.14dvmin 0.3dvmin rgb(var(--white) / 0.4),
-    0 0.04dvmin 0.1dvmin rgb(var(--shadow-grey-0) / 0.12),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.32);
+    background-image: linear-gradient(145deg, hsl(var(--shadow-grey-0) / 0.14), hsl(var(--white) / 0.09));
+    background-color: hsl(var(--surface-pressed) / 0.72);
+    box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.38),
+    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.4),
+    0 0.04dvmin 0.1dvmin hsl(var(--shadow-grey-0) / 0.12),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.32);
 }
 
 #print_1_0_choose > p:last-child {
@@ -1680,7 +1680,7 @@ p {
 #export {
     width: 98dvw;
     height: min(13dvmin, 10dvh);
-    border-bottom: 0.5dvmin solid rgb(var(--shadow-grey-2));
+    border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2));
     display: grid;
     grid-gap: 0;
     grid-template-columns: repeat(2, 49dvw);
@@ -1691,12 +1691,12 @@ p {
     width: 45dvw;
     height: min(9.1dvmin, 7dvh);
     margin: auto;
-    background: linear-gradient(155deg, rgb(var(--white) / 0.38), transparent 44%, rgb(var(--black) / 0.18)),
-    rgb(var(--action-green) / 0.92);
-    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin rgb(var(--white) / 0.64),
-    0.28dvmin 0.42dvmin 0.76dvmin rgb(var(--shadow-grey-0) / 0.3),
-    inset 0.16dvmin 0.2dvmin 0.4dvmin rgb(var(--soft-white) / 0.52),
-    inset -0.14dvmin -0.22dvmin 0.44dvmin rgb(var(--black) / 0.22);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.92);
+    box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.64),
+    0.28dvmin 0.42dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.3),
+    inset 0.16dvmin 0.2dvmin 0.4dvmin hsl(var(--soft-white) / 0.52),
+    inset -0.14dvmin -0.22dvmin 0.44dvmin hsl(var(--black) / 0.22);
     border-radius: 3dvmin;
     display: flex;
     justify-content: center;
@@ -1705,23 +1705,23 @@ p {
 }
 
 #export div:hover {
-    background-color: rgb(var(--action-active-green));
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin rgb(var(--white) / 0.68),
-    0.3dvmin 0.46dvmin 0.82dvmin rgb(var(--shadow-grey-0) / 0.34),
-    inset 0.16dvmin 0.2dvmin 0.42dvmin rgb(var(--soft-white) / 0.5),
-    inset -0.15dvmin -0.23dvmin 0.46dvmin rgb(var(--black) / 0.25);
+    background-color: hsl(var(--action-active-green));
+    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.68),
+    0.3dvmin 0.46dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.34),
+    inset 0.16dvmin 0.2dvmin 0.42dvmin hsl(var(--soft-white) / 0.5),
+    inset -0.15dvmin -0.23dvmin 0.46dvmin hsl(var(--black) / 0.25);
 }
 
 #export div:active {
     transform: translateY(0.3dvmin);
-    background-color: rgb(var(--action-active-green) / 0.94);
-    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin rgb(var(--shadow-grey-0) / 0.42),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin rgb(var(--white) / 0.34),
-    0 0 0 0.07dvmin rgb(var(--shadow-grey-0) / 0.22);
+    background-color: hsl(var(--action-active-green) / 0.94);
+    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
+    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
+    0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
 }
 
 #export div.Failed {
-    background-color: rgb(var(--danger-red) / 0.9);
+    background-color: hsl(var(--danger-red) / 0.9);
 }
 
 #statistics_results_top {
@@ -1738,12 +1738,12 @@ p {
     #statistics_results_top.ResultY > div:not(:nth-child(2)),
     #statistics_results_top.ResultXY > div:not(:nth-child(3))
 ):not(.Lines):hover {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.46), transparent 48%, rgb(var(--shadow-grey-0) / 0.04)),
-    rgb(var(--surface-soft) / 0.48);
-    box-shadow: -0.1dvmin -0.1dvmin 0.24dvmin rgb(var(--white) / 0.58),
-    0.12dvmin 0.18dvmin 0.32dvmin rgb(var(--shadow-grey-0) / 0.16),
-    inset 0.08dvmin 0.1dvmin 0.2dvmin rgb(var(--white) / 0.52),
-    inset -0.08dvmin -0.1dvmin 0.22dvmin rgb(var(--shadow-grey-1) / 0.1);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.46), transparent 48%, hsl(var(--shadow-grey-0) / 0.04)),
+    hsl(var(--surface-soft) / 0.48);
+    box-shadow: -0.1dvmin -0.1dvmin 0.24dvmin hsl(var(--white) / 0.58),
+    0.12dvmin 0.18dvmin 0.32dvmin hsl(var(--shadow-grey-0) / 0.16),
+    inset 0.08dvmin 0.1dvmin 0.2dvmin hsl(var(--white) / 0.52),
+    inset -0.08dvmin -0.1dvmin 0.22dvmin hsl(var(--shadow-grey-1) / 0.1);
 }
 
 #statistics_results_top > div:not(.Lines) {
@@ -1764,10 +1764,10 @@ p {
 }
 
 #statistics_results_choose {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.42), transparent 28%, rgb(var(--black) / 0.16)),
-    rgb(var(--line-teal));
-    box-shadow: inset 0.06dvmin 0.07dvmin 0.12dvmin rgb(var(--white) / 0.78),
-    inset -0.06dvmin -0.08dvmin 0.14dvmin rgb(var(--black) / 0.2);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.42), transparent 28%, hsl(var(--black) / 0.16)),
+    hsl(var(--line-teal));
+    box-shadow: inset 0.06dvmin 0.07dvmin 0.12dvmin hsl(var(--white) / 0.78),
+    inset -0.06dvmin -0.08dvmin 0.14dvmin hsl(var(--black) / 0.2);
 }
 
 #statistics_results_top.ResultX > div.Lines {
@@ -1792,19 +1792,19 @@ p {
 }
 
 .SelectBtn.IsSelected {
-    background: linear-gradient(145deg, rgb(var(--white) / 0.42), rgb(var(--white) / 0.1) 48%, rgb(var(--shadow-grey-0) / 0.05)),
-    rgb(var(--surface-base) / 0.42);
-    box-shadow: inset 0.16dvmin 0.18dvmin 0.4dvmin rgb(var(--shadow-grey-1) / 0.2),
-    inset -0.09dvmin -0.1dvmin 0.24dvmin rgb(var(--white) / 0.4),
-    0 0.08dvmin 0.16dvmin rgb(var(--shadow-grey-1) / 0.08),
-    0 0 0 0.06dvmin rgb(var(--line-teal) / 0.15);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.42), hsl(var(--white) / 0.1) 48%, hsl(var(--shadow-grey-0) / 0.05)),
+    hsl(var(--surface-base) / 0.42);
+    box-shadow: inset 0.16dvmin 0.18dvmin 0.4dvmin hsl(var(--shadow-grey-1) / 0.2),
+    inset -0.09dvmin -0.1dvmin 0.24dvmin hsl(var(--white) / 0.4),
+    0 0.08dvmin 0.16dvmin hsl(var(--shadow-grey-1) / 0.08),
+    0 0 0 0.06dvmin hsl(var(--line-teal) / 0.15);
 }
 
 /* 波纹元素样式 */
 span.Ripple {
     position: absolute;
     border-radius: 50%;
-    background-color: rgb(var(--black) / 0.1);
+    background-color: hsl(var(--black) / 0.1);
     pointer-events: none; /* 核心：确保不阻挡交互 */
     transform: scale(0);
 
@@ -1960,7 +1960,7 @@ span.Ripple.IsFadingOut {
 ) {
     border-radius: 1.5dvmin;
     margin-top: 1dvmin;
-    background-color: rgb(var(--print-group-background));
+    background-color: hsl(var(--print-group-background));
 }
 
 #print_content_2_error {
@@ -1978,14 +1978,14 @@ span.Ripple.IsFadingOut {
 #number_table_error {
     width: 47dvw;
     height: min(10dvh, 16dvmin);
-    background: linear-gradient(145deg, rgb(var(--white)), rgb(var(--soft-white)) 48%, rgb(var(--surface-base)));
-    box-shadow: -0.32dvmin -0.32dvmin 0.72dvmin rgb(var(--white) / 0.92),
-    0.38dvmin 0.48dvmin 0.9dvmin rgb(var(--shadow-grey-0) / 0.3),
-    inset 0.18dvmin 0.2dvmin 0.4dvmin rgb(var(--white) / 0.88),
-    inset -0.2dvmin -0.24dvmin 0.5dvmin rgb(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.06dvmin rgb(var(--shadow-grey-1) / 0.16);
+    background: linear-gradient(145deg, hsl(var(--white)), hsl(var(--soft-white)) 48%, hsl(var(--surface-base)));
+    box-shadow: -0.32dvmin -0.32dvmin 0.72dvmin hsl(var(--white) / 0.92),
+    0.38dvmin 0.48dvmin 0.9dvmin hsl(var(--shadow-grey-0) / 0.3),
+    inset 0.18dvmin 0.2dvmin 0.4dvmin hsl(var(--white) / 0.88),
+    inset -0.2dvmin -0.24dvmin 0.5dvmin hsl(var(--shadow-grey-1) / 0.2),
+    0 0 0 0.06dvmin hsl(var(--shadow-grey-1) / 0.16);
     backdrop-filter: blur(5px);
-    border: 0.5dvmin solid rgb(var(--line-teal));
+    border: 0.5dvmin solid hsl(var(--line-teal));
     border-radius: 2dvmin;
     display: flex;
     justify-content: center;
@@ -2015,9 +2015,9 @@ span.Ripple.IsFadingOut {
     height: 93.5dvh;
     transition: all 0.3s ease;
     border-radius: 0 2.5dvmin 2.5dvmin 0;
-    background: linear-gradient(90deg, transparent 0%, transparent 92%, rgb(var(--selection-inactive) / 0.38) 100%),
-    linear-gradient(155deg, rgb(var(--white) / 0.44) 0%, rgb(var(--setting-panel) / 0.22) 42%, rgb(var(--selection-inactive) / 0.32) 100%),
-    rgb(var(--setting-panel) / 0.94);
+    background: linear-gradient(90deg, transparent 0%, transparent 92%, hsl(var(--selection-inactive) / 0.38) 100%),
+    linear-gradient(155deg, hsl(var(--white) / 0.44) 0%, hsl(var(--setting-panel) / 0.22) 42%, hsl(var(--selection-inactive) / 0.32) 100%),
+    hsl(var(--setting-panel) / 0.94);
     backdrop-filter: blur(6px);
 }
 
@@ -2027,14 +2027,14 @@ span.Ripple.IsFadingOut {
 
 #setting:not(.SettingNotShow) {
     left: 0;
-    box-shadow: 0 0 0 0.14dvmin rgb(var(--shadow-grey-1) / 0.44),
-    -0.18dvmin -0.18dvmin 0.42dvmin rgb(var(--white) / 0.66),
-    0.52dvmin 0.68dvmin 1.24dvmin rgb(var(--shadow-grey-0) / 0.25),
-    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin rgb(var(--shadow-grey-0) / 0.24),
-    inset 0 0 0 0.12dvmin rgb(var(--shadow-grey-1) / 0.2),
-    inset 0.2dvmin 0.22dvmin 0.4dvmin rgb(var(--white) / 0.72),
-    inset -0.16dvmin -0.2dvmin 0.34dvmin rgb(var(--shadow-grey-1) / 0.15),
-    inset 0 -0.32dvmin 0.62dvmin rgb(var(--shadow-grey-0) / 0.21);
+    box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
+    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
+    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
+    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.24),
+    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
+    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
+    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
+    inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
 }
 
 /* setting 开关部分 */
@@ -2045,25 +2045,25 @@ span.Ripple.IsFadingOut {
 @property --knob-color-1 {
     syntax: "<color>";
     inherits: false;
-    initial-value: rgb(255 255 255);
+    initial-value: hsl(0 0% 100%);
 }
 
 @property --knob-color-2 {
     syntax: "<color>";
     inherits: false;
-    initial-value: rgb(250 251 252);
+    initial-value: hsl(210 25% 98.43%);
 }
 
 @property --knob-color-3 {
     syntax: "<color>";
     inherits: false;
-    initial-value: rgb(238 242 244);
+    initial-value: hsl(200 21.43% 94.51%);
 }
 
 @property --knob-color-4 {
     syntax: "<color>";
     inherits: false;
-    initial-value: rgb(219 225 229);
+    initial-value: hsl(204 16.13% 87.84%);
 }
 
 @property --knob-base-color {
@@ -2103,17 +2103,17 @@ span.Ripple.IsFadingOut {
      */
     background: linear-gradient(
             145deg,
-            rgb(var(--shadow-grey-0) / 0.08) 0%,
-            rgb(var(--white) / 0.24) 100%
+            hsl(var(--shadow-grey-0) / 0.08) 0%,
+            hsl(var(--white) / 0.24) 100%
     ),
-    rgb(var(--switch-track));
+    hsl(var(--switch-track));
 
     /*
      * 普通状态也保留两层透明内阴影，
      * 确保激活动画前后的阴影层数和顺序完全一致。
      */
-    box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) rgb(var(--switch-shadow-dark) / 0.3),
-    inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) rgb(var(--white) / 0.7);
+    box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--switch-shadow-dark) / 0.3),
+    inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.7);
 
     transition: box-shadow 0.4s ease;
 }
@@ -2126,10 +2126,10 @@ span.Ripple.IsFadingOut {
     /*
      * 未激活状态的白灰渐变颜色。
      */
-    --knob-color-1: rgb(var(--white));
-    --knob-color-2: rgb(var(--soft-white));
-    --knob-color-3: rgb(var(--switch-track));
-    --knob-color-4: rgb(var(--switch-shadow));
+    --knob-color-1: hsl(var(--white));
+    --knob-color-2: hsl(var(--soft-white));
+    --knob-color-3: hsl(var(--switch-track));
+    --knob-color-4: hsl(var(--switch-shadow));
 
     /*
      * 始终保留基础背景层。
@@ -2170,11 +2170,11 @@ span.Ripple.IsFadingOut {
      *
      * 这样切换状态时不会发生阴影层错位。
      */
-    box-shadow: /* 预留激活状态的绿色发光层 */ 0 0 calc(var(--h) * 0.24) rgb(var(--action-green) / 0),
-        /* 右下外阴影 */ calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) rgb(var(--switch-shadow-dark) / 0.4),
-        /* 左上外高光 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) rgb(var(--white) / 0.86),
-        /* 顶部内高光 */ inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) rgb(var(--white) / 0.94),
-        /* 底部内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) rgb(var(--switch-shadow-mid) / 0.2);
+    box-shadow: /* 预留激活状态的绿色发光层 */ 0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
+        /* 右下外阴影 */ calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
+        /* 左上外高光 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.86),
+        /* 顶部内高光 */ inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.94),
+        /* 底部内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--switch-shadow-mid) / 0.2);
 
     transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
     --knob-color-1 0.4s ease,
@@ -2208,7 +2208,7 @@ span.Ripple.IsFadingOut {
 .IconOff {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1) rotate(0deg);
-    stroke: rgb(var(--switch-icon-off));
+    stroke: hsl(var(--switch-icon-off));
 }
 
 /* 开启图标 */
@@ -2216,7 +2216,7 @@ span.Ripple.IsFadingOut {
 .IconOn {
     opacity: 0;
     transform: translate(-50%, -50%) scale(0.5) rotate(-45deg);
-    stroke: rgb(var(--white));
+    stroke: hsl(var(--white));
 }
 
 /* =========================
@@ -2224,8 +2224,8 @@ span.Ripple.IsFadingOut {
    ========================= */
 
 #switch_container.Active {
-    box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) rgb(var(--shadow-grey-0) / 0.42),
-    inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) rgb(var(--white) / 0.48);
+    box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--shadow-grey-0) / 0.42),
+    inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.48);
 }
 
 #switch_container.Active #switch_knob {
@@ -2233,12 +2233,12 @@ span.Ripple.IsFadingOut {
      * 激活状态的透明渐变。
      * 底层绿色会透过渐变显示。
      */
-    --knob-color-1: rgb(var(--white) / 0.22);
-    --knob-color-2: rgb(var(--white) / 0.07);
-    --knob-color-3: rgb(var(--black) / 0.035);
-    --knob-color-4: rgb(var(--black) / 0.13);
+    --knob-color-1: hsl(var(--white) / 0.22);
+    --knob-color-2: hsl(var(--white) / 0.07);
+    --knob-color-3: hsl(var(--black) / 0.035);
+    --knob-color-4: hsl(var(--black) / 0.13);
 
-    --knob-base-color: rgb(var(--action-green) / 0.82);
+    --knob-base-color: hsl(var(--action-green) / 0.82);
 
     /*
      * 轨道宽度为 2h，旋钮直径为 0.8h，
@@ -2246,11 +2246,11 @@ span.Ripple.IsFadingOut {
      */
     transform: translateX(var(--h));
 
-    box-shadow: /* 绿色发光层 */ 0 0 calc(var(--h) * 0.26) rgb(var(--action-green) / 0.86),
-        /* 绿色右下外阴影 */ calc(var(--h) * 0.05) calc(var(--h) * 0.06) calc(var(--h) * 0.13) rgb(var(--action-green-shadow) / 0.44),
-        /* 保留左上外高光层，但设置为透明 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) rgb(var(--white) / 0),
-        /* 顶部内高光 */ inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) rgb(var(--white) / 0.5),
-        /* 底部绿色内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) rgb(var(--action-green-shadow) / 0.36);
+    box-shadow: /* 绿色发光层 */ 0 0 calc(var(--h) * 0.26) hsl(var(--action-green) / 0.86),
+        /* 绿色右下外阴影 */ calc(var(--h) * 0.05) calc(var(--h) * 0.06) calc(var(--h) * 0.13) hsl(var(--action-green-shadow) / 0.44),
+        /* 保留左上外高光层，但设置为透明 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0),
+        /* 顶部内高光 */ inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.5),
+        /* 底部绿色内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.36);
 }
 
 /* 激活后的图标切换 */
@@ -2279,11 +2279,11 @@ span.Ripple.IsFadingOut {
 
 #switch_container:active #switch_knob {
     filter: brightness(0.97);
-    box-shadow: /* 保留发光层 */ 0 0 calc(var(--h) * 0.19) rgb(var(--action-green) / 0),
-        /* 按压后的右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) rgb(var(--switch-shadow-pressed) / 0.34),
-        /* 按压时减弱左上外高光 */ calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) rgb(var(--white) / 0.46),
-        /* 顶部内高光 */ inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) rgb(var(--white) / 0.74),
-        /* 底部内阴影 */ inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) rgb(var(--switch-shadow-pressed-bottom) / 0.28);
+    box-shadow: /* 保留发光层 */ 0 0 calc(var(--h) * 0.19) hsl(var(--action-green) / 0),
+        /* 按压后的右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--switch-shadow-pressed) / 0.34),
+        /* 按压时减弱左上外高光 */ calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0.46),
+        /* 顶部内高光 */ inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.74),
+        /* 底部内阴影 */ inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--switch-shadow-pressed-bottom) / 0.28);
 }
 
 /* =========================
@@ -2291,11 +2291,11 @@ span.Ripple.IsFadingOut {
    ========================= */
 
 #switch_container.Active:active #switch_knob {
-    box-shadow: /* 按压时减弱绿色发光 */ 0 0 calc(var(--h) * 0.2) rgb(var(--action-green) / 0.76),
-        /* 绿色右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) rgb(var(--action-green-shadow) / 0.44),
-        /* 保留透明的左上外高光层 */ calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) rgb(var(--white) / 0),
-        /* 顶部内高光 */ inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) rgb(var(--white) / 0.38),
-        /* 底部绿色内阴影 */ inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) rgb(var(--action-green-shadow) / 0.42);
+    box-shadow: /* 按压时减弱绿色发光 */ 0 0 calc(var(--h) * 0.2) hsl(var(--action-green) / 0.76),
+        /* 绿色右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.44),
+        /* 保留透明的左上外高光层 */ calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0),
+        /* 顶部内高光 */ inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.38),
+        /* 底部绿色内阴影 */ inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--action-green-shadow) / 0.42);
 }
 
 /* =========================
@@ -2303,7 +2303,7 @@ span.Ripple.IsFadingOut {
    ========================= */
 
 #switch_container:focus-visible {
-    outline: calc(var(--h) * 0.035) solid rgb(var(--action-green) / 0.48);
+    outline: calc(var(--h) * 0.035) solid hsl(var(--action-green) / 0.48);
     outline-offset: calc(var(--h) * 0.055);
 }
 
@@ -2334,23 +2334,23 @@ span.Ripple.IsFadingOut {
 
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.6) 0%,
-            rgb(var(--white) / 0.16) 42%,
-            rgb(var(--selection-green-shadow) / 0.07) 100%
+            hsl(var(--white) / 0.6) 0%,
+            hsl(var(--white) / 0.16) 42%,
+            hsl(var(--selection-green-shadow) / 0.07) 100%
     ),
-    rgb(var(--selection-green));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin rgb(var(--white) / 0.68),
-    inset -0.16dvmin -0.22dvmin 0.4dvmin rgb(var(--selection-green-shadow) / 0.28),
-    0 0 0 0.16dvmin rgb(var(--selection-green-shadow) / 0.68),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.66),
-    0.22dvmin 0.32dvmin 0.62dvmin rgb(var(--selection-green-shadow) / 0.28);
+    hsl(var(--selection-green));
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin hsl(var(--white) / 0.68),
+    inset -0.16dvmin -0.22dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.28),
+    0 0 0 0.16dvmin hsl(var(--selection-green-shadow) / 0.68),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.66),
+    0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
 }
 
 .SettingSelection {
     display: grid;
     overflow: hidden;
     width: min(65dvw, 90dvmin);
-    border-bottom: 0.5dvmin solid rgb(var(--shadow-grey-2) / 0.85);
+    border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
     grid-gap: 0;
     grid-template-columns: min(65dvw, 90dvmin);
 }
@@ -2370,16 +2370,16 @@ span.Ripple.IsFadingOut {
 
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.7) 0%,
-            rgb(var(--white) / 0.18) 44%,
-            rgb(var(--shadow-grey-0) / 0.07) 100%
+            hsl(var(--white) / 0.7) 0%,
+            hsl(var(--white) / 0.18) 44%,
+            hsl(var(--shadow-grey-0) / 0.07) 100%
     ),
-    rgb(var(--selection-inactive));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin rgb(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.38dvmin rgb(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.11dvmin rgb(var(--shadow-grey-1) / 0.38),
-    -0.14dvmin -0.14dvmin 0.34dvmin rgb(var(--white) / 0.7),
-    0.22dvmin 0.3dvmin 0.56dvmin rgb(var(--shadow-grey-0) / 0.19);
+    hsl(var(--selection-inactive));
+    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
+    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
+    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
+    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
 
     transform-origin: left center;
 }
@@ -2389,11 +2389,11 @@ span.Ripple.IsFadingOut {
 
     background: linear-gradient(
             155deg,
-            rgb(var(--white) / 0.66) 0%,
-            rgb(var(--white) / 0.16) 44%,
-            rgb(var(--selection-green-shadow) / 0.06) 100%
+            hsl(var(--white) / 0.66) 0%,
+            hsl(var(--white) / 0.16) 44%,
+            hsl(var(--selection-green-shadow) / 0.06) 100%
     ),
-    rgb(var(--selection-active-green));
+    hsl(var(--selection-active-green));
 }
 
 #setting_selection_mode {
@@ -2413,8 +2413,8 @@ span.Ripple.IsFadingOut {
     width: min(65dvw, 90dvmin);
     height: calc(7.5dvh + 0.5dvmin);
 
-    border-bottom: 0.5dvmin solid rgb(var(--shadow-grey-2) / 0.85);
-    background: linear-gradient(155deg, rgb(var(--white) / 0.68), rgb(var(--surface-base) / 0.96) 58%, rgb(var(--shadow-grey-2) / 0.14));
+    border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.68), hsl(var(--surface-base) / 0.96) 58%, hsl(var(--shadow-grey-2) / 0.14));
 }
 
 #setting_acc_control > div {
@@ -2465,13 +2465,13 @@ span.Ripple.IsFadingOut {
     top: 10dvh;
     left: calc(50dvw - min(45dvw, 50dvmin));
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.7), rgb(var(--explain-panel) / 0.94) 46%, rgb(var(--shadow-grey-3) / 0.22)),
-    rgb(var(--explain-panel));
-    box-shadow: 0 0 0 0.1dvmin rgb(var(--shadow-grey-1) / 0.27),
-    0.92dvmin 1.18dvmin 2.8dvmin 0.44dvmin rgb(var(--shadow-grey-0) / 0.27),
-    -0.48dvmin -0.48dvmin 1.16dvmin rgb(var(--white) / 0.9),
-    inset 0.32dvmin 0.36dvmin 0.76dvmin rgb(var(--white) / 0.94),
-    inset -0.34dvmin -0.38dvmin 0.82dvmin rgb(var(--shadow-grey-0) / 0.15);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.7), hsl(var(--explain-panel) / 0.94) 46%, hsl(var(--shadow-grey-3) / 0.22)),
+    hsl(var(--explain-panel));
+    box-shadow: 0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.27),
+    0.92dvmin 1.18dvmin 2.8dvmin 0.44dvmin hsl(var(--shadow-grey-0) / 0.27),
+    -0.48dvmin -0.48dvmin 1.16dvmin hsl(var(--white) / 0.9),
+    inset 0.32dvmin 0.36dvmin 0.76dvmin hsl(var(--white) / 0.94),
+    inset -0.34dvmin -0.38dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.15);
     backdrop-filter: blur(6px);
 }
 
@@ -2484,10 +2484,10 @@ span.Ripple.IsFadingOut {
     width: min(90dvw, 100dvmin);
     height: 7dvh;
 
-    background: linear-gradient(155deg, rgb(var(--white) / 0.8), rgb(var(--explain-panel) / 0.72) 50%, rgb(var(--shadow-grey-2) / 0.16));
-    box-shadow: inset 0.22dvmin 0.26dvmin 0.52dvmin rgb(var(--white) / 0.94),
-    inset -0.22dvmin -0.26dvmin 0.58dvmin rgb(var(--shadow-grey-0) / 0.15),
-    0 0.24dvmin 0.54dvmin rgb(var(--shadow-grey-0) / 0.13);
+    background: linear-gradient(155deg, hsl(var(--white) / 0.8), hsl(var(--explain-panel) / 0.72) 50%, hsl(var(--shadow-grey-2) / 0.16));
+    box-shadow: inset 0.22dvmin 0.26dvmin 0.52dvmin hsl(var(--white) / 0.94),
+    inset -0.22dvmin -0.26dvmin 0.58dvmin hsl(var(--shadow-grey-0) / 0.15),
+    0 0.24dvmin 0.54dvmin hsl(var(--shadow-grey-0) / 0.13);
 }
 
 #explain_title_inner {
@@ -2510,31 +2510,31 @@ span.Ripple.IsFadingOut {
 #explain_close:hover,
 #explain_close:active {
     transition-property: none;
-    background: linear-gradient(145deg, rgb(var(--white) / 0.34), transparent 42%, rgb(var(--black) / 0.16)),
-    rgb(var(--danger-red) / 0.95);
-    box-shadow: -0.12dvmin -0.12dvmin 0.3dvmin rgb(var(--white) / 0.48),
-    0.18dvmin 0.24dvmin 0.48dvmin rgb(var(--shadow-grey-0) / 0.26),
-    inset 0.14dvmin 0.16dvmin 0.34dvmin rgb(var(--white) / 0.28),
-    inset -0.16dvmin -0.2dvmin 0.42dvmin rgb(var(--black) / 0.28);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.34), transparent 42%, hsl(var(--black) / 0.16)),
+    hsl(var(--danger-red) / 0.95);
+    box-shadow: -0.12dvmin -0.12dvmin 0.3dvmin hsl(var(--white) / 0.48),
+    0.18dvmin 0.24dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.26),
+    inset 0.14dvmin 0.16dvmin 0.34dvmin hsl(var(--white) / 0.28),
+    inset -0.16dvmin -0.2dvmin 0.42dvmin hsl(var(--black) / 0.28);
 }
 
 #explain_close:active {
     opacity: 0.77;
-    background: linear-gradient(145deg, rgb(var(--black) / 0.2), transparent 64%, rgb(var(--white) / 0.1)),
-    rgb(var(--danger-red) / 0.98);
-    box-shadow: inset 0.28dvmin 0.34dvmin 0.72dvmin rgb(var(--shadow-grey-0) / 0.5),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin rgb(var(--white) / 0.3),
-    0 0 0 0.07dvmin rgb(var(--black) / 0.18);
+    background: linear-gradient(145deg, hsl(var(--black) / 0.2), transparent 64%, hsl(var(--white) / 0.1)),
+    hsl(var(--danger-red) / 0.98);
+    box-shadow: inset 0.28dvmin 0.34dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.5),
+    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.3),
+    0 0 0 0.07dvmin hsl(var(--black) / 0.18);
 }
 
 #explain_close > p {
-    background-color: rgb(var(--danger-red) / 0.95);
+    background-color: hsl(var(--danger-red) / 0.95);
 }
 
 #explain_close:hover > p,
 #explain_close:active > p {
     width: 4.3dvmin;
-    background-color: rgb(var(--surface-raised) / 0.96);
+    background-color: hsl(var(--surface-raised) / 0.96);
 }
 
 /* explain_content 部分 */
@@ -2543,15 +2543,15 @@ span.Ripple.IsFadingOut {
     width: min(90dvw, 100dvmin);
     height: 73dvh;
     padding-top: 1dvmin;
-    border-top: 0.5dvmin dashed rgb(var(--shadow-grey-2));
+    border-top: 0.5dvmin dashed hsl(var(--shadow-grey-2));
 
-    background: linear-gradient(145deg, rgb(var(--white) / 0.34), transparent 44%, rgb(var(--shadow-grey-2) / 0.11)),
-    rgb(var(--explain-panel) / 0.96);
-    box-shadow: -0.2dvmin -0.2dvmin 0.48dvmin rgb(var(--white) / 0.74),
-    0.28dvmin 0.38dvmin 0.7dvmin rgb(var(--shadow-grey-0) / 0.2),
-    inset 0.14dvmin 0.16dvmin 0.34dvmin rgb(var(--white) / 0.68),
-    inset -0.14dvmin -0.18dvmin 0.38dvmin rgb(var(--shadow-grey-0) / 0.09),
-    0 0 0 0.08dvmin rgb(var(--shadow-grey-1) / 0.14);
+    background: linear-gradient(145deg, hsl(var(--white) / 0.34), transparent 44%, hsl(var(--shadow-grey-2) / 0.11)),
+    hsl(var(--explain-panel) / 0.96);
+    box-shadow: -0.2dvmin -0.2dvmin 0.48dvmin hsl(var(--white) / 0.74),
+    0.28dvmin 0.38dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.2),
+    inset 0.14dvmin 0.16dvmin 0.34dvmin hsl(var(--white) / 0.68),
+    inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-0) / 0.09),
+    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.14);
 }
 
 #explain_content > p:not(.ExplainLeft) {
