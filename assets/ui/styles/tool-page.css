@@ -19,6 +19,21 @@
     gap: 6px;
 }
 
+.field-hint {
+    margin: -2px 0 12px 3px;
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.field-hint code {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.62);
+    font-family: var(--font-code);
+}
+
 .field + .field {
     margin-top: 11px;
 }

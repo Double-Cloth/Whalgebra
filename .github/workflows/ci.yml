@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "index.html"
+      - "assets/**"
+      - "tools/**"
+      - "test/**"
+      - "src/**"
+      - "package.json"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "assets/**"
+      - "tools/**"
+      - "test/**"
+      - "src/**"
+      - "package.json"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run tests
+        run: npm test

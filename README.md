@@ -66,12 +66,20 @@ npm start
 
 服务默认从 `8000` 端口开始寻找可用端口，并自动打开项目入口。入口页同时提供测试页、独立的逆向构建页面和 SVG 压缩页面。
 
+本地服务默认仅监听 `127.0.0.1`，工具 API 只接受同源的 `application/json` 请求。需要在局域网内预览静态页面时，可显式开启局域网监听：
+
+```powershell
+npm start -- --lan
+```
+
 常用工具命令：
 
 ```powershell
 npm run reverse-build -- --force
 npm run compress-svg
 ```
+
+通过网页执行工具时，逆向构建的输出目录限制在 `src` 或 `tmp` 内，SVG 压缩的输入、输出和临时目录限制在 `tmp` 内。
 
 ### 2.3. 安装发行版（Android）
 
@@ -136,32 +144,62 @@ console.log(res3.toString());
 
 ```
 Whalgebra/
-├── index.html                  # 项目控制面板，集中进入发行版、测试页与工具页
-├── package.json                # Node.js 脚本、版本号与运行环境声明
-├── dist/                       # 可直接分发的构建产物
-│   ├── Whalgebra.html          # 单文件 Web 应用发行版，核心离线入口
-│   ├── *.apk                   # Android 安装包
-│   └── *.exe                   # Windows x64 安装/运行包
-├── src/                        # 从单文件发行版逆向拆分出的源码区
-│   ├── index.html              # 源码区页面入口
-│   ├── css/                    # 计算器样式与内联 SVG 字体/图片样式
-│   └── js/                     # 计算核心、Worker、UI 状态与初始化逻辑
-├── assets/                     # 公共静态资源
-│   ├── images/                 # Logo、图标、数学符号、运算符说明等 SVG/图片资源
-│   ├── lib/                    # 本地浏览器端辅助库，例如 svgo.browser.js
-│   ├── ui/                     # 工作台、工具页、测试页共用字体、脚本与样式
-│   └── previous_versions.zip   # 旧版本归档
-├── tools/                      # 项目辅助工具，不参与计算器运行时
-│   ├── cli/                    # 命令行工具：逆向构建、SVG 压缩
-│   ├── server/                 # 本地静态服务器与工具 API
-│   ├── shared/                 # 工具链共享的路径与文件安全逻辑
-│   └── web/                    # 工具页 UI
-├── test/                       # 自动化测试与浏览器测试控制台
-│   ├── cases/                  # JSON 测试用例
-│   ├── node/                   # Node.js 原生 test runner 测试
-│   ├── browser/                # 浏览器端测试执行逻辑
-│   └── web/                    # 测试控制台页面
-└── .github/                    # Issue 模板与 GitHub Pages 部署流程
+├── index.html                    # 本地工作台入口，集中跳转发行版、测试页与工具页
+├── package.json                  # Node.js 脚本、项目版本与运行环境声明
+├── README.md                     # 项目说明与本地开发指引
+├── LICENSE                       # MIT License
+├── dist/                         # 可直接分发的构建产物；通常只作为发布结果，不作为日常开发入口
+│   ├── Whalgebra.html            # 单文件 Web 应用发行版，核心离线入口
+│   ├── *.apk                     # Android 安装包
+│   └── *.exe                     # Windows x64 安装/运行包
+├── src/                          # 从单文件发行版逆向拆分出的源码区，用于 GitHub Pages 部署
+│   ├── index.html                # 源码区页面入口
+│   ├── css/                      # 计算器样式，以及由发行版拆出的内联 SVG 字体/图片样式
+│   └── js/                       # 计算核心、Worker、UI 状态控制与初始化逻辑
+├── assets/                       # 非业务逻辑的公共静态资源，供工作台、工具页和测试页复用
+│   ├── images/                   # Logo、图标、数学符号字体、运算符中文名与说明图
+│   │   ├── icons/                # Logo、favicon 等入口图标
+│   │   ├── fonts/                # 计算器内使用的 SVG 字形资源
+│   │   ├── chinese_name_of_operators/ # 运算符中文名 SVG 资源
+│   │   └── instructions_of_operators/ # 运算符说明 SVG 资源
+│   ├── lib/                      # 本地浏览器端辅助库，例如内置的 svgo.browser.js
+│   ├── ui/                       # 工作台、工具页、测试页共享的 UI 资源
+│   │   ├── fonts/                # 控制台、工具页和工作台使用的本地字体
+│   │   ├── scripts/              # 非计算核心脚本
+│   │   │   ├── shared.js         # 环境识别、状态展示和 JSON 请求封装
+│   │   │   ├── log_console.js    # 工具页与测试页共享的日志控制台
+│   │   │   ├── json_tree.js      # 测试输出对象的树形展示
+│   │   │   ├── tool_form.js      # 逆向构建、SVG 压缩工具页表单逻辑
+│   │   │   └── test_console.js   # 浏览器测试控制台交互逻辑
+│   │   └── styles/               # 非计算器主体页面样式
+│   │       ├── shared.css        # 字体、按钮、状态、notice 等基础样式
+│   │       ├── portal.css        # 根目录工作台样式
+│   │       ├── test-console.css  # 测试控制台与日志面板样式
+│   │       └── tool-page.css     # 工具页表单和路径提示样式
+│   └── previous_versions.zip     # 旧版本归档
+├── tools/                        # 项目辅助工具，不参与计算器运行时
+│   ├── cli/                      # 可单独运行的命令行工具
+│   │   ├── reverse_build.js      # 从 dist/Whalgebra.html 拆分 HTML、CSS、JS 到源码目录
+│   │   └── svg_compressor.js     # 批量优化 SVG，并生成 Base64 CSS
+│   ├── server/                   # 本地静态服务器与受限工具 API
+│   │   └── run_server.js         # npm start 入口，默认仅本机监听，可显式开启 --lan
+│   ├── shared/                   # 工具链共享逻辑
+│   │   └── filesystem.js         # 项目路径解析、换行标准化和安全输出路径校验
+│   └── web/                      # 浏览器工具页面
+│       ├── reverse_build.html    # 逆向构建工具 UI
+│       └── svg_compressor.html   # SVG 压缩工具 UI
+├── test/                         # 自动化测试、测试数据与浏览器测试控制台
+│   ├── cases/                    # JSON 测试用例，覆盖表达式、幂函数、统计、根式和值列表
+│   ├── node/                     # Node.js 原生 test runner 测试
+│   │   ├── *.test.js             # 工具链、服务器、安全边界和工作台结构测试
+│   │   └── helpers/              # 测试辅助逻辑
+│   ├── browser/                  # 浏览器端测试执行逻辑
+│   │   └── test_logic.js         # 调用计算核心 iframe 并执行各类测试集
+│   └── web/                      # 测试控制台页面
+│       └── index.html            # 浏览器测试入口，加载 dist/Whalgebra.html 作为计算核心
+└── .github/                      # GitHub 协作与自动化配置
+    ├── workflows/                # CI 与 GitHub Pages 部署流程
+    └── ISSUE_TEMPLATE/           # Bug、功能请求和自定义 Issue 模板
 ```
 
 ## 5. 关于作者

@@ -1,5 +1,5 @@
 import {createReadStream, existsSync} from "node:fs";
-import {readdir, stat} from "node:fs/promises";
+import {stat} from "node:fs/promises";
 import http from "node:http";
 import {networkInterfaces} from "node:os";
 import path from "node:path";
@@ -39,9 +39,8 @@ function setCommonHeaders(response) {
     response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     response.setHeader("Pragma", "no-cache");
     response.setHeader("Expires", "0");
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response.setHeader("Access-Control-Allow-Headers", "X-Requested-With, Content-Type");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("Referrer-Policy", "same-origin");
 }
 
 function sendJson(response, statusCode, body) {
@@ -64,6 +63,36 @@ function resolveInside(baseDirectory, requestPath) {
         return null;
     }
     return resolvedPath;
+}
+
+function isSameOrChildDirectory(baseDirectory, targetPath) {
+    const relative = path.relative(path.resolve(baseDirectory), path.resolve(targetPath));
+    return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function resolveWebToolPath(value, fallback, allowedDirectories, message) {
+    const resolvedPath = resolveProjectPath(value, fallback);
+    if (!allowedDirectories.some((directory) => isSameOrChildDirectory(directory, resolvedPath))) {
+        const error = new Error(message);
+        error.code = "PATH_NOT_ALLOWED";
+        throw error;
+    }
+    return resolvedPath;
+}
+
+function isJsonRequest(request) {
+    const contentType = request.headers["content-type"];
+    return typeof contentType === "string" && contentType.toLowerCase().split(";")[0].trim() === "application/json";
+}
+
+function getRequestOrigin(request) {
+    const host = request.headers.host;
+    return host ? `http://${host}` : null;
+}
+
+function isAllowedApiOrigin(request) {
+    const origin = request.headers.origin;
+    return !origin || origin === getRequestOrigin(request);
 }
 
 async function readJson(request) {
@@ -90,22 +119,38 @@ async function readJson(request) {
 
 async function handleToolApi(request, response, pathname) {
     if (request.method === "GET" && pathname === "/api/tools/status") {
-        sendJson(response, 200, {ok: true, projectRoot: PROJECT_ROOT});
+        sendJson(response, 200, {ok: true});
         return true;
     }
     if (request.method !== "POST") {
         return false;
     }
 
+    if (!isAllowedApiOrigin(request)) {
+        sendJson(response, 403, {ok: false, code: "FORBIDDEN_ORIGIN", error: "工具 API 只允许同源页面调用。"});
+        return true;
+    }
+    if (!isJsonRequest(request)) {
+        sendJson(response, 415, {ok: false, code: "UNSUPPORTED_MEDIA_TYPE", error: "工具 API 只接受 application/json 请求。"});
+        return true;
+    }
+
     const logs = [];
     const logger = (message) => logs.push(String(message));
+    const tmpDirectory = path.join(PROJECT_ROOT, "tmp");
+    const reverseBuildOutputDirectories = [REVERSE_CONFIG.DEFAULT_OUTPUT_DIR, tmpDirectory];
 
     try {
         const body = await readJson(request);
         if (pathname === "/api/tools/reverse-build") {
             const result = await reverseBuild({
                 inputFile: resolveProjectPath(body.inputFile, REVERSE_CONFIG.DEFAULT_INPUT_FILE),
-                outputDir: resolveProjectPath(body.outputDir, REVERSE_CONFIG.DEFAULT_OUTPUT_DIR),
+                outputDir: resolveWebToolPath(
+                    body.outputDir,
+                    REVERSE_CONFIG.DEFAULT_OUTPUT_DIR,
+                    reverseBuildOutputDirectories,
+                    "Web 逆向构建只能输出到 src 或 tmp 目录。"
+                ),
                 noDedent: Boolean(body.noDedent),
                 force: Boolean(body.force),
                 logger
@@ -116,9 +161,9 @@ async function handleToolApi(request, response, pathname) {
 
         if (pathname === "/api/tools/svg-compressor") {
             const result = await compressSvg({
-                inputDir: resolveProjectPath(body.inputDir, SVG_CONFIG.inputDir),
-                outputDir: resolveProjectPath(body.outputDir, SVG_CONFIG.outputDir),
-                tempDir: resolveProjectPath(body.tempDir, SVG_CONFIG.tempDir),
+                inputDir: resolveWebToolPath(body.inputDir, SVG_CONFIG.inputDir, [tmpDirectory], "Web SVG 工具路径必须位于 tmp 目录内。"),
+                outputDir: resolveWebToolPath(body.outputDir, SVG_CONFIG.outputDir, [tmpDirectory], "Web SVG 工具路径必须位于 tmp 目录内。"),
+                tempDir: resolveWebToolPath(body.tempDir, SVG_CONFIG.tempDir, [tmpDirectory], "Web SVG 工具路径必须位于 tmp 目录内。"),
                 logger,
                 colors: false
             });
@@ -132,25 +177,6 @@ async function handleToolApi(request, response, pathname) {
         sendJson(response, statusCode, {ok: false, code: error.code || "TOOL_ERROR", error: error.message, logs});
         return true;
     }
-}
-
-function escapeHtml(value) {
-    return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-
-async function serveDirectory(response, directory, pathname) {
-    const entries = await readdir(directory, {withFileTypes: true});
-    const links = entries
-        .sort((left, right) => left.name.localeCompare(right.name))
-        .map((entry) => {
-            const suffix = entry.isDirectory() ? "/" : "";
-            return `<li><a href="${encodeURIComponent(entry.name)}${suffix}">${escapeHtml(entry.name)}${suffix}</a></li>`;
-        })
-        .join("");
-    const body = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>Directory listing for ${escapeHtml(pathname)}</title></head><body><h1>Directory listing for ${escapeHtml(pathname)}</h1><hr><ul>${links}</ul><hr></body></html>`;
-    response.statusCode = 200;
-    response.setHeader("Content-Type", "text/html; charset=utf-8");
-    response.end(body);
 }
 
 async function serveStatic(request, response, rootDirectory, pathname) {
@@ -172,7 +198,7 @@ async function serveStatic(request, response, rootDirectory, pathname) {
         if (existsSync(indexPath)) {
             filePath = indexPath;
         } else {
-            await serveDirectory(response, filePath, pathname);
+            sendText(response, 403, "403 - Forbidden");
             return;
         }
     }
@@ -201,8 +227,8 @@ export function createRequestHandler(rootDirectory, logger = console.log) {
         logger(`[${new Date().toLocaleString()}] ${request.method} ${requestUrl.pathname}`);
 
         if (request.method === "OPTIONS") {
-            response.statusCode = 200;
-            response.statusMessage = "ok";
+            response.statusCode = 204;
+            response.setHeader("Allow", "GET, HEAD, POST, OPTIONS");
             response.end();
             return;
         }
@@ -283,7 +309,7 @@ function openBrowser(url) {
 
 function printHelp() {
     console.log(`Node.js 静态文件服务器
-支持：并发请求、CORS 跨域、禁用缓存、开发工具 API。
+支持：并发请求、禁用缓存、开发工具 API。
 
 用法:
   node tools/server/run_server.js [选项]
@@ -291,19 +317,22 @@ function printHelp() {
 选项:
   --dir <PATH>   指定服务目录（默认：项目根目录）
   --port <PORT>  指定起始端口（默认：8000）
-  --local        仅监听 127.0.0.1
+  --lan          监听 0.0.0.0，允许局域网访问静态页面
+  --local        仅监听 127.0.0.1（默认）
   --no-open      启动后不自动打开浏览器
   -h, --help     显示帮助`);
 }
 
 function parseArguments(argv) {
-    const options = {directory: SERVER_CONFIG.DEFAULT_DIR, port: SERVER_CONFIG.DEFAULT_PORT, local: false, open: true};
+    const options = {directory: SERVER_CONFIG.DEFAULT_DIR, port: SERVER_CONFIG.DEFAULT_PORT, lan: false, open: true};
     for (let index = 0; index < argv.length; index += 1) {
         const argument = argv[index];
         if (argument === "-h" || argument === "--help") {
             options.help = true;
+        } else if (argument === "--lan") {
+            options.lan = true;
         } else if (argument === "--local") {
-            options.local = true;
+            options.lan = false;
         } else if (argument === "--no-open") {
             options.open = false;
         } else if (argument === "--dir" || argument === "--port") {
@@ -337,15 +366,17 @@ async function runCli() {
         throw new Error(`目录 '${options.directory}' 不存在。`);
     }
 
-    const {server, port} = await createServer(options.directory, options.port, !options.local);
+    const {server, port} = await createServer(options.directory, options.port, options.lan);
     const localhostUrl = `http://localhost:${port}`;
     console.log("=".repeat(60));
     console.log("服务器已启动");
     console.log(`根目录: ${options.directory}`);
     console.log("-".repeat(60));
     console.log(`本机访问: ${localhostUrl}`);
-    if (!options.local) {
+    if (options.lan) {
         console.log(`局域网访问: http://${getLocalIp()}:${port}`);
+    } else {
+        console.log("局域网访问: 未开启（需要时使用 --lan）");
     }
     console.log("-".repeat(60));
     console.log("提示: 修改文件后刷新即生效。按 Ctrl+C 停止。");
