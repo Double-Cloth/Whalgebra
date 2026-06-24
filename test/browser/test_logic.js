@@ -1,6 +1,11 @@
 "use strict";
 
 const TEST_SUITES_URL = "../cases/test_suites.json";
+const NOOP = () => {};
+const LOG_STYLE_PASS = "color: #34D399; font-weight: bold";
+const LOG_STYLE_FAIL = "color: #F87171; font-weight: bold";
+const BENCHMARK_LOOP_COUNT = 111;
+const BENCHMARK_YIELD_INTERVAL = 8;
 const DEFAULT_TEST_CALC_CONFIG = Object.freeze({
     globalCalcAccuracy: 220,
     outputAccuracy: 0.9,
@@ -38,6 +43,11 @@ async function loadWhalgebraTestSuites({signal} = {}) {
 }
 
 globalThis.loadWhalgebraTestSuites = loadWhalgebraTestSuites;
+
+async function loadSuiteById(id, {signal} = {}) {
+    await loadWhalgebraTestSuites({signal});
+    return WhalgebraTestSuiteById[id];
+}
 
 function createAbortError() {
     const error = new Error("测试已取消");
@@ -154,31 +164,32 @@ async function yieldToUi(signal, index = 0, interval = 1) {
 
 function measureTime(func, signal) {
     throwIfAborted(signal);
-    const s = Date.now();
+    const start = Date.now();
     func();
     throwIfAborted(signal);
-    return Date.now() - s;
+    return Date.now() - start;
 }
 
 function deepEqual(obj1, obj2) {
     if (obj1 === obj2) {
         return true;
     }
-    if (typeof obj1 === 'number' && typeof obj2 === 'number' && isNaN(obj1) && isNaN(obj2)) {
+    if (typeof obj1 === "number" && typeof obj2 === "number" && Number.isNaN(obj1) && Number.isNaN(obj2)) {
         return true;
     }
-    if (obj1 === null || typeof obj1 !== 'object' || obj2 === null || typeof obj2 !== 'object') {
+    if (obj1 === null || typeof obj1 !== "object" || obj2 === null || typeof obj2 !== "object") {
         return false;
     }
     if (obj1 instanceof Date && obj2 instanceof Date) {
         return obj1.getTime() === obj2.getTime();
     }
-    const k1 = Object.keys(obj1), k2 = Object.keys(obj2);
-    if (k1.length !== k2.length) {
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    if (keys1.length !== keys2.length) {
         return false;
     }
-    for (let k of k1) {
-        if (!k2.includes(k) || !deepEqual(obj1[k], obj2[k])) {
+    for (const key of keys1) {
+        if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
             return false;
         }
     }
@@ -187,12 +198,12 @@ function deepEqual(obj1, obj2) {
 
 async function fetchJson(url, {signal} = {}) {
     try {
-        return await (await fetch(url + '?t=' + Date.now(), {signal})).json();
-    } catch (e) {
-        if (signal?.aborted || e?.name === "AbortError") {
+        return await (await fetch(`${url}?t=${Date.now()}`, {signal})).json();
+    } catch (error) {
+        if (signal?.aborted || error?.name === "AbortError") {
             throw createAbortError();
         }
-        console.error("Fetch error:", e);
+        console.error("Fetch error:", error);
         return [];
     }
 }
@@ -207,6 +218,10 @@ function normalizeCaseFile(json) {
     return {cases: [], configSource: json};
 }
 
+function caseUrl(suite) {
+    return `../cases/${suite.file}`;
+}
+
 async function loadCaseFile(suite, {signal} = {}) {
     return normalizeCaseFile(await fetchJson(caseUrl(suite), {signal}));
 }
@@ -216,6 +231,22 @@ async function loadConfiguredSuiteCases(win, suite, {signal} = {}) {
     const assignCaseCalcConfig = createCalcConfigAssigner(win, suite, caseFile.configSource);
     assignCaseCalcConfig();
     return {cases: caseFile.cases, assignCaseCalcConfig};
+}
+
+async function loadConfiguredSuiteCasesById(win, id, {signal} = {}) {
+    const suite = await loadSuiteById(id, {signal});
+    return loadConfiguredSuiteCases(win, suite, {signal});
+}
+
+function createTestLogger() {
+    return (title, pass, input, expected, actual, extra = {}) => {
+        const logData = {Input: input, Expected: expected, Actual: actual, ...extra};
+        if (pass) {
+            console.log(`%c[Passed]%c ${title}`, LOG_STYLE_PASS, "", logData);
+        } else {
+            console.log(`%c[Failed]%c ${title}`, LOG_STYLE_FAIL, "", logData);
+        }
+    };
 }
 
 function createCalcOptions(win, c) {
@@ -229,8 +260,7 @@ function createCalcOptions(win, c) {
     };
 }
 
-async function runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcConfig = () => {
-}) {
+async function runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcConfig = NOOP) {
     let allPass = true;
     for (let i = 0; i < cases.length; i++) {
         throwIfAborted(signal);
@@ -243,10 +273,10 @@ async function runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcC
 
         let idealPass = true;
         if (win.Public) {
-            const midRes = await win.WorkerTools.exec(c.coeffs[0], {...opts, outputMode: 'mid'});
+            const midRes = await win.WorkerTools.exec(c.coeffs[0], {...opts, outputMode: "mid"});
             throwIfAborted(signal);
             const idealized = win.Public.idealizationToString(new win.ComplexNumber(midRes.result), {acc: c.coeffs[2]});
-            idealPass = (idealized === res.result);
+            idealPass = idealized === res.result;
         }
         pass = pass && idealPass;
 
@@ -264,8 +294,7 @@ async function runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcC
     return allPass;
 }
 
-async function runCalcErrorCases(win, cases, signal, logResult, assignCaseCalcConfig = () => {
-}) {
+async function runCalcErrorCases(win, cases, signal, logResult, assignCaseCalcConfig = NOOP) {
     return runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
         run: async (c) => {
             const opts = createCalcOptions(win, c);
@@ -280,8 +309,7 @@ async function runCalcErrorCases(win, cases, signal, logResult, assignCaseCalcCo
     });
 }
 
-async function runExpectedCases(cases, signal, logResult, assignCaseCalcConfig = () => {
-}, {run, title, input}) {
+async function runExpectedCases(cases, signal, logResult, assignCaseCalcConfig = NOOP, {run, title, input}) {
     let allPass = true;
     for (let i = 0; i < cases.length; i++) {
         throwIfAborted(signal);
@@ -297,14 +325,10 @@ async function runExpectedCases(cases, signal, logResult, assignCaseCalcConfig =
     return allPass;
 }
 
-async function runPerformanceBenchmark(win, signal) {
-    console.info("--- 性能基准测试 ---");
-
-    const count = 111; // 循环次数
-    const num1 = new win.ComplexNumber('23.4-42.8[i]');
-    const num2 = new win.ComplexNumber('-12.43+3.21[i]');
-
-    const testSet = [
+function createPerformanceBenchmarks(win) {
+    const num1 = new win.ComplexNumber("23.4-42.8[i]");
+    const num2 = new win.ComplexNumber("-12.43+3.21[i]");
+    return [
         {
             name: "Pow",
             run: () => win.MathPlus.pow(num1, num2),
@@ -315,24 +339,26 @@ async function runPerformanceBenchmark(win, signal) {
             run: () => win.MathPlus.fact(num2),
             args: [num2]
         }
-        // 你可以在这里继续添加其他函数...
-        // { name: "Exp", run: () => win.MathPlus.exp(num1), args: [num1] },
     ];
+}
 
-    for (const item of testSet) {
+async function runPerformanceBenchmark(win, signal) {
+    console.info("--- 性能基准测试 ---");
+
+    for (const item of createPerformanceBenchmarks(win)) {
         let totalTime = 0;
 
-        for (let i = 0; i < count; i++) {
-            await yieldToUi(signal, i, 8);
+        for (let i = 0; i < BENCHMARK_LOOP_COUNT; i++) {
+            await yieldToUi(signal, i, BENCHMARK_YIELD_INTERVAL);
             totalTime += measureTime(item.run, signal);
         }
 
         throwIfAborted(signal);
         console.log(`${item.name}:`, {
-            LoopCount: count,
-            Input: item.args.map(arg => arg.toString()),
+            LoopCount: BENCHMARK_LOOP_COUNT,
+            Input: item.args.map((arg) => arg.toString()),
             Actual: item.run().toString(),
-            Time: '平均一次计算耗时：' + (totalTime / count).toFixed(3) + 'ms'
+            Time: `平均一次计算耗时：${(totalTime / BENCHMARK_LOOP_COUNT).toFixed(3)}ms`
         });
         await yieldToUi(signal);
     }
@@ -365,12 +391,7 @@ function serializeMathPlusValue(win, value) {
     return win.Public.idealizationToString(value, options);
 }
 
-function caseUrl(suite) {
-    return `../cases/${suite.file}`;
-}
-
-async function runMathPlusFunctionCases(win, cases, signal, logResult, assignCaseCalcConfig = () => {
-}) {
+async function runMathPlusFunctionCases(win, cases, signal, logResult, assignCaseCalcConfig = NOOP) {
     const assignNestedCaseCalcConfig = (c) => assignCaseCalcConfig(getNestedCalcConfigSource(c));
     return runExpectedCases(cases, signal, logResult, assignNestedCaseCalcConfig, {
         run: (c) => {
@@ -387,6 +408,78 @@ async function runMathPlusFunctionCases(win, cases, signal, logResult, assignCas
     });
 }
 
+async function runConfiguredCaseSuite({win, signal, logResult}, suiteId, runCases) {
+    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal});
+    return runCases(win, cases, signal, logResult, assignCaseCalcConfig);
+}
+
+async function runExpectedCaseSuite({win, signal, logResult}, suiteId, definition) {
+    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal});
+    return runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
+        run: (c, i) => definition.run(win, c, i),
+        title: definition.title,
+        input: definition.input
+    });
+}
+
+async function runBenchmarkSuite({win, signal}) {
+    assignCalcConfigFromJson(win, await loadSuiteById(9, {signal}));
+    await runPerformanceBenchmark(win, signal);
+    return true;
+}
+
+async function runAllIncludedSuites(engineFrame, signal) {
+    let result = true;
+    const runOrder = (await loadWhalgebraTestSuites({signal})).filter((suite) => suite.includeInAll);
+    for (const suite of runOrder) {
+        throwIfAborted(signal);
+        console.info(`\n============== [${suite.id}] ${suite.title} ==============`);
+        const subResult = await test(suite.id, engineFrame, {signal});
+        result = subResult && result;
+        await yieldToUi(signal);
+    }
+    return result;
+}
+
+const EXPECTED_CASE_SUITES = Object.freeze({
+    5: Object.freeze({
+        run: (win, c) => win.WorkerTools.powerFunctionAnalysis(c.coeffs),
+        title: (c, i) => `Case ${i + 1}: ${c.description[0]}`,
+        input: (c) => c.coeffs
+    }),
+    6: Object.freeze({
+        run: (win, c) => win.WorkerTools.radicalFunctionAnalysis(c.coeffs[0], c.coeffs[1]),
+        title: (_c, i) => `Case ${i + 1}`,
+        input: (c) => ({z: c.coeffs[0], n: c.coeffs[1]})
+    }),
+    7: Object.freeze({
+        run: (win, c) => win.WorkerTools.valueList(...c.coeffs),
+        title: (_c, i) => `Case ${i + 1}`,
+        input: (c) => c.coeffs
+    }),
+    8: Object.freeze({
+        run: (win, c) => win.WorkerTools.statisticsCalc(c.coeffs[0], c.coeffs[1]),
+        title: (_c, i) => `Case ${i + 1}`,
+        input: (c) => c.coeffs
+    })
+});
+
+const TEST_MODE_RUNNERS = Object.freeze({
+    1: (context) => runConfiguredCaseSuite(context, 1, runCalcNormalCases),
+    2: (context) => runConfiguredCaseSuite(context, 2, runCalcNormalCases),
+    3: (context) => runConfiguredCaseSuite(context, 3, runCalcErrorCases),
+    4: (context) => runConfiguredCaseSuite(context, 4, runMathPlusFunctionCases),
+    5: (context) => runExpectedCaseSuite(context, 5, EXPECTED_CASE_SUITES[5]),
+    6: (context) => runExpectedCaseSuite(context, 6, EXPECTED_CASE_SUITES[6]),
+    7: (context) => runExpectedCaseSuite(context, 7, EXPECTED_CASE_SUITES[7]),
+    8: (context) => runExpectedCaseSuite(context, 8, EXPECTED_CASE_SUITES[8]),
+    9: (context) => runBenchmarkSuite(context)
+});
+
+function getTestModeRunner(mode) {
+    return Number.isInteger(mode) ? TEST_MODE_RUNNERS[mode] : undefined;
+}
+
 async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal} = {}) {
     const win = engineFrame?.contentWindow;
     if (!win || !win.MathPlus) {
@@ -397,104 +490,18 @@ async function test(mode = 0, engineFrame = document.getElementById("logicEngine
     const originalCalcConfig = captureCalcConfig(win);
     assignCalcConfigFromJson(win);
 
-    let result = true;
-
-    const logResult = (title, pass, input, expected, actual, extra = {}) => {
-        const logData = {Input: input, Expected: expected, Actual: actual, ...extra};
-        if (pass) {
-            console.log(`%c[Passed]%c ${title}`, 'color: #34D399; font-weight: bold', '', logData);
-        } else {
-            console.log(`%c[Failed]%c ${title}`, 'color: #F87171; font-weight: bold', '', logData);
-        }
-    };
-
     try {
-        const getSuite = async (id) => {
-            await loadWhalgebraTestSuites({signal});
-            return WhalgebraTestSuiteById[id];
+        const context = {
+            win,
+            signal,
+            logResult: createTestLogger()
         };
-        const getSuiteCases = async (id) => {
-            const suite = await getSuite(id);
-            return loadConfiguredSuiteCases(win, suite, {signal});
-        };
-
-        switch (mode) {
-            case 1: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(1);
-                result = await runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcConfig);
-                break;
-            }
-            case 2: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(2);
-                result = await runCalcNormalCases(win, cases, signal, logResult, assignCaseCalcConfig);
-                break;
-            }
-            case 3: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(3);
-                result = await runCalcErrorCases(win, cases, signal, logResult, assignCaseCalcConfig);
-                break;
-            }
-            case 4: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(4);
-                result = await runMathPlusFunctionCases(win, cases, signal, logResult, assignCaseCalcConfig);
-                break;
-            }
-            case 5: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(5);
-                result = await runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
-                    run: (c) => win.WorkerTools.powerFunctionAnalysis(c.coeffs),
-                    title: (c, i) => `Case ${i + 1}: ${c.description[0]}`,
-                    input: (c) => c.coeffs
-                });
-                break;
-            }
-            case 6: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(6);
-                result = await runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
-                    run: (c) => win.WorkerTools.radicalFunctionAnalysis(c.coeffs[0], c.coeffs[1]),
-                    title: (_c, i) => `Case ${i + 1}`,
-                    input: (c) => ({z: c.coeffs[0], n: c.coeffs[1]})
-                });
-                break;
-            }
-            case 7: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(7);
-                result = await runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
-                    run: (c) => win.WorkerTools.valueList(...c.coeffs),
-                    title: (_c, i) => `Case ${i + 1}`,
-                    input: (c) => c.coeffs
-                });
-                break;
-            }
-            case 8: {
-                const {cases, assignCaseCalcConfig} = await getSuiteCases(8);
-                result = await runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
-                    run: (c) => win.WorkerTools.statisticsCalc(c.coeffs[0], c.coeffs[1]),
-                    title: (_c, i) => `Case ${i + 1}`,
-                    input: (c) => c.coeffs
-                });
-                break;
-            }
-            case 9: {
-                assignCalcConfigFromJson(win, await getSuite(9));
-                await runPerformanceBenchmark(win, signal);
-                break;
-            }
-            default: {
-                const runOrder = (await loadWhalgebraTestSuites({signal})).filter((suite) => suite.includeInAll);
-                for (const suite of runOrder) {
-                    throwIfAborted(signal);
-                    console.info(`\n============== [${suite.id}] ${suite.title} ==============`);
-                    const subResult = await test(suite.id, engineFrame, {signal});
-                    result = subResult && result;
-                    await yieldToUi(signal);
-                }
-                break;
-            }
+        const runner = getTestModeRunner(mode);
+        if (runner) {
+            return await runner(context);
         }
+        return await runAllIncludedSuites(engineFrame, signal);
     } finally {
         restoreCalcConfig(win, originalCalcConfig);
     }
-
-    return result;
 }
