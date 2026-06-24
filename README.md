@@ -182,7 +182,7 @@ Whalgebra/
 │   │   ├── reverse_build.js      # 从 dist/Whalgebra.html 拆分 HTML、CSS、JS 到源码目录
 │   │   └── svg_compressor.js     # 批量优化 SVG，并生成 Base64 CSS
 │   ├── server/                   # 本地静态服务器与受限工具 API
-│   │   └── run_server.js         # npm start 入口，默认仅本机监听，可显式开启 --lan
+│   │   └── run_server.js         # npm start 入口
 │   ├── shared/                   # 工具链共享逻辑
 │   │   └── filesystem.js         # 项目路径解析、换行标准化和安全输出路径校验
 │   └── web/                      # 浏览器工具页面
