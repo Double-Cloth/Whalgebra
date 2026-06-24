@@ -1,0 +1,372 @@
+[
+  {
+    "description": [
+      "[error] 空字符串"
+    ],
+    "coeffs": [
+      "",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Input is empty."
+    }
+  },
+  {
+    "description": [
+      "[error] tokenizer 非法字符"
+    ],
+    "coeffs": [
+      "@",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Illegal input (0)."
+    }
+  },
+  {
+    "description": [
+      "[error] tokenizer 数字格式错误，多个小数点"
+    ],
+    "coeffs": [
+      "1.2.3",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Illegal input (3)."
+    }
+  },
+  {
+    "description": [
+      "[error] 私有 token N 不能直接输入"
+    ],
+    "coeffs": [
+      "N1",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Illegal input (0)."
+    }
+  },
+  {
+    "description": [
+      "[error] 私有 token A 不能直接输入"
+    ],
+    "coeffs": [
+      "A(1)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Illegal input (0)."
+    }
+  },
+  {
+    "description": [
+      "[error] 私有 token & 不能直接输入"
+    ],
+    "coeffs": [
+      "1&2",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Illegal input (1)."
+    }
+  },
+  {
+    "description": [
+      "[error] 前缀二元函数后必须跟左括号"
+    ],
+    "coeffs": [
+      "log2,8",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: A prefix binary function must be followed by a left parenthesis (3)."
+    }
+  },
+  {
+    "description": [
+      "[error] 前缀二元函数参数不足"
+    ],
+    "coeffs": [
+      "log(2)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Insufficient parameters for function log."
+    }
+  },
+  {
+    "description": [
+      "[error] 逗号不在前缀二元函数括号内"
+    ],
+    "coeffs": [
+      "1,2",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Commas mismatch or incorrect position."
+    }
+  },
+  {
+    "description": [
+      "[error] 一元函数中出现逗号"
+    ],
+    "coeffs": [
+      "sin(1,2)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Commas mismatch or incorrect position."
+    }
+  },
+  {
+    "description": [
+      "[error] 前缀二元函数逗号数量错误"
+    ],
+    "coeffs": [
+      "log(2,8,3)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Commas mismatch or incorrect position."
+    }
+  },
+  {
+    "description": [
+      "[error] 顶层 [x] 未提供 unknown"
+    ],
+    "coeffs": [
+      "[x]",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] input error: x is undefined."
+    }
+  },
+  {
+    "description": [
+      "[error] 一元前缀函数参数不足"
+    ],
+    "coeffs": [
+      "sqrt",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Insufficient parameters for function sqrt."
+    }
+  },
+  {
+    "description": [
+      "[error] 绝对值内部右括号过多"
+    ],
+    "coeffs": [
+      "|1)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Absolute value internal parentheses do not match (2)."
+    }
+  },
+  {
+    "description": [
+      "[error] 空括号导致最终求值栈不是 1"
+    ],
+    "coeffs": [
+      "()",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: The final stack should have exactly one value."
+    }
+  },
+  {
+    "description": [
+      "[error] 二元中缀运算参数不足"
+    ],
+    "coeffs": [
+      "1+",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Insufficient parameters for function +."
+    }
+  },
+  {
+    "description": [
+      "[error] 二元中缀运算左操作数不足"
+    ],
+    "coeffs": [
+      "*1",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] syntax error: Insufficient parameters for function *."
+    }
+  },
+  {
+    "description": [
+      "[error] 非字符串且非 MathPlus 支持类型"
+    ],
+    "coeffs": [
+      [],
+      220,
+      0.9,
+      "calc",
+      "output",
+      "sin2[x]",
+      "3[x]+3f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] Disallowed input type."
+    }
+  },
+  {
+    "description": [
+      "[error] 自定义 f 未定义"
+    ],
+    "coeffs": [
+      "f(1)",
+      220,
+      0.9,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "error": "[MathPlus] input error: Function f is undefined or cyclically called."
+    }
+  },
+  {
+    "description": [
+      "[error] 自定义 g 未定义"
+    ],
+    "coeffs": [
+      "g(1)",
+      220,
+      0.9,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "error": "[MathPlus] input error: Function g is undefined or cyclically called."
+    }
+  },
+  {
+    "description": [
+      "[error] 自定义 f/g 循环互相引用，从 f 入口触发"
+    ],
+    "coeffs": [
+      "f(1)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "g([x])",
+      "f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] input error: Function f is undefined or cyclically called."
+    }
+  },
+  {
+    "description": [
+      "[error] 自定义 f/g 循环互相引用，从 g 入口触发"
+    ],
+    "coeffs": [
+      "g(1)",
+      220,
+      0.9,
+      "calc",
+      "output",
+      "g([x])",
+      "f([x])"
+    ],
+    "expected": {
+      "error": "[MathPlus] input error: Function g is undefined or cyclically called."
+    }
+  }
+]

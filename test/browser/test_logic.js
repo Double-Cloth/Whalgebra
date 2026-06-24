@@ -84,6 +84,71 @@ async function fetchJson(url, {signal} = {}) {
     }
 }
 
+function createCalcOptions(c) {
+    return {
+        calcAcc: c.coeffs[1],
+        outputAcc: c.coeffs[2],
+        calcMode: c.coeffs[3],
+        outputMode: c.coeffs[4],
+        f: c.coeffs[5],
+        g: c.coeffs[6]
+    };
+}
+
+async function runCalcNormalCases(win, cases, signal, logResult) {
+    let allPass = true;
+    for (let i = 0; i < cases.length; i++) {
+        throwIfAborted(signal);
+        const c = cases[i];
+        const opts = createCalcOptions(c);
+        const res = await win.WorkerTools.exec(c.coeffs[0], opts);
+        throwIfAborted(signal);
+        let pass = deepEqual(c.expected, res);
+
+        let idealPass = true;
+        if (win.Public) {
+            const midRes = await win.WorkerTools.exec(c.coeffs[0], {...opts, outputMode: 'mid'});
+            throwIfAborted(signal);
+            const idealized = win.Public.idealizationToString(new win.ComplexNumber(midRes.result), {acc: c.coeffs[2]});
+            idealPass = (idealized === res.result);
+        }
+        pass = pass && idealPass;
+
+        logResult(
+            `Case ${i + 1}: ${c.description[0]}`,
+            pass,
+            c.coeffs,
+            c.expected,
+            res,
+            {SyntaxCheck: idealPass}
+        );
+        allPass = allPass && pass;
+        await yieldToUi(signal);
+    }
+    return allPass;
+}
+
+async function runCalcErrorCases(win, cases, signal, logResult) {
+    let allPass = true;
+    for (let i = 0; i < cases.length; i++) {
+        throwIfAborted(signal);
+        const c = cases[i];
+        const opts = createCalcOptions(c);
+        let actual;
+        try {
+            actual = await win.WorkerTools.exec(c.coeffs[0], opts);
+        } catch (error) {
+            actual = {error: error.message};
+        }
+        throwIfAborted(signal);
+        const pass = deepEqual(c.expected, actual);
+        allPass = allPass && pass;
+        logResult(`Case ${i + 1}: ${c.description[0]}`, pass, c.coeffs, c.expected, actual);
+        await yieldToUi(signal);
+    }
+    return allPass;
+}
+
 async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal} = {}) {
     const win = engineFrame?.contentWindow;
     if (!win || !win.MathPlus) {
@@ -226,44 +291,13 @@ async function test(mode = 0, engineFrame = document.getElementById("logicEngine
                 break;
             }
             case 6: { // Expr
-                let allPass = true;
-                const cases = await fetchJson('../cases/test_calc_expr.json', {signal});
-                for (let i = 0; i < cases.length; i++) {
-                    throwIfAborted(signal);
-                    const c = cases[i];
-                    const opts = {
-                        calcAcc: c.coeffs[1],
-                        outputAcc: c.coeffs[2],
-                        calcMode: c.coeffs[3],
-                        outputMode: c.coeffs[4],
-                        f: c.coeffs[5],
-                        g: c.coeffs[6]
-                    };
-                    const res = await win.WorkerTools.exec(c.coeffs[0], opts);
-                    throwIfAborted(signal);
-                    let pass = deepEqual(c.expected, res);
-
-                    let idealPass = true;
-                    if (win.Public) {
-                        const midRes = await win.WorkerTools.exec(c.coeffs[0], {...opts, outputMode: 'mid'});
-                        throwIfAborted(signal);
-                        const idealized = win.Public.idealizationToString(new win.ComplexNumber(midRes.result), {acc: c.coeffs[2]});
-                        idealPass = (idealized === res.result);
-                    }
-                    pass = pass && idealPass;
-
-                    logResult(
-                        `Case ${i + 1}: ${c.coeffs[0]}`,
-                        pass,
-                        c.coeffs,
-                        c.expected,
-                        res,
-                        {SyntaxCheck: idealPass}
-                    );
-                    allPass = allPass && pass;
-                    await yieldToUi(signal);
-                }
-                result = allPass;
+                const cases = await fetchJson('../cases/mathplus_calc_public_branch_normal_cases.json', {signal});
+                result = await runCalcNormalCases(win, cases, signal, logResult);
+                break;
+            }
+            case 7: { // ExprError
+                const cases = await fetchJson('../cases/mathplus_calc_public_branch_error_cases.json', {signal});
+                result = await runCalcErrorCases(win, cases, signal, logResult);
                 break;
             }
             default: {
@@ -272,9 +306,10 @@ async function test(mode = 0, engineFrame = document.getElementById("logicEngine
                     3: "统计计算",
                     4: "根式函数",
                     5: "函数值列表",
-                    6: "表达式解析"
+                    6: "表达式解析",
+                    7: "表达式错误分支"
                 };
-                for (let i = 2; i <= 6; i++) {
+                for (let i = 2; i <= 7; i++) {
                     throwIfAborted(signal);
                     console.info(`\n============== [${i}] ${sections[i]} ==============`);
                     const subResult = await test(i, engineFrame, {signal});
