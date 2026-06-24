@@ -189,7 +189,7 @@ Whalgebra/
 │       ├── reverse_build.html    # 逆向构建工具 UI
 │       └── svg_compressor.html   # SVG 压缩工具 UI
 ├── test/                         # 自动化测试、测试数据与浏览器测试控制台
-│   ├── cases/                    # JSON 测试用例，覆盖表达式、幂函数、统计、根式和值列表
+│   ├── cases/                    # JSON 测试用例与测试集清单，覆盖表达式、幂函数、统计、根式和值列表
 │   ├── node/                     # Node.js 原生 test runner 测试
 │   │   ├── *.test.js             # 工具链、服务器、安全边界和工作台结构测试
 │   │   └── helpers/              # 测试辅助逻辑

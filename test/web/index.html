@@ -23,7 +23,7 @@
 <header class="test-header glass-panel">
     <div class="test-heading">
         <h1 class="test-title">Whalgebra 测试控制台</h1>
-        <span class="test-version">Core v4.1</span>
+        <span class="test-version">Core v4.2</span>
     </div>
     <div class="test-header-actions">
         <div class="status-pill" data-engine-status data-state="loading" role="status">
@@ -38,30 +38,54 @@
     <aside class="control-panel glass-panel" aria-label="测试操作">
         <section class="control-group">
             <h2 class="section-title">全局操作</h2>
-            <button class="button button--primary test-button" type="button" data-test-mode="0" disabled>
+            <button class="button button--primary test-button" type="button" data-test-mode="0"
+                    title="按推荐顺序运行除性能基准外的全部测试集" aria-label="运行全部测试集" disabled>
                 运行全部测试集
             </button>
             <button class="button button--secondary test-button test-button--danger" type="button" data-action="cancel"
-                    disabled hidden>
+                    title="中止当前正在执行的测试任务" aria-label="取消当前测试" disabled hidden>
                 取消当前测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-action="clear">清空控制台</button>
+            <button class="button button--secondary test-button" type="button" data-action="clear"
+                    title="清空下方测试日志，不影响测试结果文件" aria-label="清空控制台">清空控制台</button>
         </section>
         <section class="control-group">
             <h2 class="section-title">单元测试用例</h2>
-            <button class="button button--secondary test-button" type="button" data-test-mode="1" disabled>1. 性能测试
+            <button class="button button--secondary test-button" type="button" data-test-mode="1"
+                    title="运行 1. 表达式测试 - 综合分支（test_mathplus_calc_complex_cases.json），覆盖复杂表达式综合计算"
+                    aria-label="1. 表达式测试 - 综合分支" disabled>1. 表达式测试 - 综合分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="2" disabled>2. 幂函数分析
+            <button class="button button--secondary test-button" type="button" data-test-mode="2"
+                    title="运行 2. 表达式测试 - 正确分支（test_mathplus_calc_normal_cases.json），覆盖表达式解析正常分支"
+                    aria-label="2. 表达式测试 - 正确分支" disabled>2. 表达式测试 - 正确分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="3" disabled>3. 统计计算
+            <button class="button button--secondary test-button" type="button" data-test-mode="3"
+                    title="运行 3. 表达式测试 - 错误分支（test_mathplus_calc_error_cases.json），覆盖表达式解析错误分支"
+                    aria-label="3. 表达式测试 - 错误分支" disabled>3. 表达式测试 - 错误分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="4" disabled>4. 根式函数
+            <button class="button button--secondary test-button" type="button" data-test-mode="4"
+                    title="运行 4. MathPlus 函数测试（test_mathplus_functions.json），覆盖 MathPlus 公开函数分支"
+                    aria-label="4. MathPlus 函数测试" disabled>4. MathPlus 函数测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="5" disabled>5. 函数值列表
+            <button class="button button--secondary test-button" type="button" data-test-mode="5"
+                    title="运行 5. 幂函数分析测试（test_power_function.json），覆盖幂函数图像分析"
+                    aria-label="5. 幂函数分析测试" disabled>5. 幂函数分析测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="6" disabled>6. 表达式解析
+            <button class="button button--secondary test-button" type="button" data-test-mode="6"
+                    title="运行 6. 根式函数测试（test_radical_function.json），覆盖复数根式分析"
+                    aria-label="6. 根式函数测试" disabled>6. 根式函数测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="7" disabled>7. 表达式错误分支
+            <button class="button button--secondary test-button" type="button" data-test-mode="7"
+                    title="运行 7. 函数值列表测试（test_func_value_list.json），覆盖函数值列表生成"
+                    aria-label="7. 函数值列表测试" disabled>7. 函数值列表测试
+            </button>
+            <button class="button button--secondary test-button" type="button" data-test-mode="8"
+                    title="运行 8. 统计计算测试（test_statistics.json），覆盖统计计算和回归分析"
+                    aria-label="8. 统计计算测试" disabled>8. 统计计算测试
+            </button>
+            <button class="button button--secondary test-button" type="button" data-test-mode="9"
+                    title="运行 9. 性能基准，统计核心函数平均耗时"
+                    aria-label="9. 性能基准" disabled>9. 性能基准
             </button>
         </section>
     </aside>

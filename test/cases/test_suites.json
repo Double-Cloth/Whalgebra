@@ -1,0 +1,65 @@
+[
+  {
+    "id": 1,
+    "title": "表达式测试 - 综合分支",
+    "file": "test_mathplus_calc_complex_cases.json",
+    "description": "覆盖复杂表达式综合计算",
+    "includeInAll": true
+  },
+  {
+    "id": 2,
+    "title": "表达式测试 - 正确分支",
+    "file": "test_mathplus_calc_normal_cases.json",
+    "description": "覆盖表达式解析正常分支",
+    "includeInAll": true
+  },
+  {
+    "id": 3,
+    "title": "表达式测试 - 错误分支",
+    "file": "test_mathplus_calc_error_cases.json",
+    "description": "覆盖表达式解析错误分支",
+    "includeInAll": true
+  },
+  {
+    "id": 4,
+    "title": "MathPlus 函数测试",
+    "file": "test_mathplus_functions.json",
+    "description": "覆盖 MathPlus 公开函数分支",
+    "includeInAll": true
+  },
+  {
+    "id": 5,
+    "title": "幂函数分析测试",
+    "file": "test_power_function.json",
+    "description": "覆盖幂函数图像分析",
+    "includeInAll": true
+  },
+  {
+    "id": 6,
+    "title": "根式函数测试",
+    "file": "test_radical_function.json",
+    "description": "覆盖复数根式分析",
+    "includeInAll": true
+  },
+  {
+    "id": 7,
+    "title": "函数值列表测试",
+    "file": "test_func_value_list.json",
+    "description": "覆盖函数值列表生成",
+    "includeInAll": true
+  },
+  {
+    "id": 8,
+    "title": "统计计算测试",
+    "file": "test_statistics.json",
+    "description": "覆盖统计计算和回归分析",
+    "includeInAll": true
+  },
+  {
+    "id": 9,
+    "title": "性能基准",
+    "file": null,
+    "description": "统计核心函数平均耗时",
+    "includeInAll": false
+  }
+]

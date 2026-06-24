@@ -119,6 +119,63 @@ test("浏览器测试逻辑通过参数接收计算核心 iframe", async () => {
     );
 });
 
+test("浏览器测试集编号和描述与 cases 清单、测试 UI 保持一致", async () => {
+    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
+    const suitesJson = await readFile(path.join(PROJECT_ROOT, "test", "cases", "test_suites.json"), "utf8");
+    const testHtml = await readFile(path.join(PROJECT_ROOT, "test", "web", "index.html"), "utf8");
+    const suites = JSON.parse(suitesJson);
+
+    assert.doesNotMatch(source, /const WhalgebraTestSuites = Object\.freeze\(\[/u);
+    assert.match(source, /const TEST_SUITES_URL = "\.\.\/cases\/test_suites\.json"/u);
+    assert.deepEqual(suites.map((suite) => suite.id), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    for (const suite of suites) {
+        assert.match(testHtml, new RegExp(`data-test-mode="${suite.id}"`, "u"));
+        assert.match(testHtml, new RegExp(`${suite.id}\\. ${suite.title}`, "u"));
+        assert.match(testHtml, new RegExp(suite.description, "u"));
+    }
+});
+
+test("浏览器测试逻辑可以从 JSON 解析并分配 CalcConfig", async () => {
+    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
+    const context = vm.createContext({console, document: {getElementById: () => null}});
+    vm.runInContext(source, context);
+
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(context.parseCalcConfigFromJson())),
+        {
+            globalCalcAccuracy: 220,
+            outputAccuracy: 0.9,
+            globalPrintMode: "algebra"
+        }
+    );
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(context.parseCalcConfigFromJson(
+            {calcConfig: {globalCalcAccuracy: 120, outputAccuracy: 16, globalPrintMode: "science"}},
+            {calcAcc: 60, outputAcc: 8, printMode: "algebra"}
+        ))),
+        {
+            globalCalcAccuracy: 60,
+            outputAccuracy: 8,
+            globalPrintMode: "algebra"
+        }
+    );
+
+    const win = {
+        CalcConfig: {
+            globalCalcAccuracy: 1,
+            outputAccuracy: 2,
+            globalPrintMode: "old"
+        }
+    };
+    context.assignCalcConfigFromJson(win, {calcConfig: {globalCalcAccuracy: 80}}, {outputAcc: 12});
+    assert.deepEqual(win.CalcConfig, {
+        globalCalcAccuracy: 80,
+        outputAccuracy: 12,
+        globalPrintMode: "algebra"
+    });
+});
+
 test("浏览器测试逻辑支持取消信号", async () => {
     const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
     const context = vm.createContext({
@@ -154,7 +211,7 @@ test("浏览器测试逻辑支持取消信号", async () => {
     };
 
     await assert.rejects(
-        context.testFunction(1, frame, {signal: controller.signal}),
+        context.testFunction(9, frame, {signal: controller.signal}),
         {name: "AbortError"}
     );
 });

@@ -1186,5 +1186,71 @@
       "result": "2560",
       "expr": "2^(3^2)*5"
     }
+  },
+  {
+    "description": [
+      "[normal:config] calcAcc=30 时计算精度降低"
+    ],
+    "coeffs": [
+      "1/7",
+      30,
+      0.9,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "result": "0.142857142857142857142857143",
+      "expr": "1/7"
+    }
+  },
+  {
+    "description": [
+      "[normal:config] outputAcc=8 时输出精度降低"
+    ],
+    "coeffs": [
+      "[pi]",
+      220,
+      8,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "result": "3.1415927",
+      "expr": "[pi]"
+    }
+  },
+  {
+    "description": [
+      "[normal:config] globalPrintMode=algebra 输出代数式"
+    ],
+    "globalPrintMode": "algebra",
+    "coeffs": [
+      "1+[i]",
+      220,
+      8,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "result": "1+[i]",
+      "expr": "1+[i]"
+    }
+  },
+  {
+    "description": [
+      "[normal:config] globalPrintMode=polar 输出极坐标式"
+    ],
+    "globalPrintMode": "polar",
+    "coeffs": [
+      "1+[i]",
+      220,
+      8,
+      "calc",
+      "output"
+    ],
+    "expected": {
+      "result": "1.4142136[toPolar]0.78539816",
+      "expr": "1+[i]"
+    }
   }
 ]

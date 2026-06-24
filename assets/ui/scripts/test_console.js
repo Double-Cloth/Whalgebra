@@ -75,16 +75,12 @@ WhalgebraUI.ready(() => {
             return;
         }
 
-        const titles = {
-            0: "全部测试集",
-            1: "性能测试",
-            2: "幂函数",
-            3: "统计",
-            4: "根式",
-            5: "值列表",
-            6: "表达式",
-            7: "表达式错误分支"
-        };
+        const suites = await globalThis.loadWhalgebraTestSuites?.();
+        const titles = Object.fromEntries((suites ?? []).map((suite) => [
+            suite.id,
+            `${suite.id}. ${suite.title}`
+        ]));
+        titles[0] = "全部测试集";
         const title = titles[mode] || mode;
         if (!updateEngineStatus()) {
             logger.addLog("ERR", "计算核心连接已断开", "error");
