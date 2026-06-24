@@ -1960,7 +1960,7 @@ span.Ripple.IsFadingOut {
 ) {
     border-radius: 1.5dvmin;
     margin-top: 1dvmin;
-    background-color: rgb(var(--print-group-background) / 0.94);
+    background-color: rgb(var(--print-group-background));
 }
 
 #print_content_2_error {
