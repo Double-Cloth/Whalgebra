@@ -416,7 +416,13 @@ async function runConfiguredCaseSuite({win, signal, logResult}, suiteId, runCase
 async function runExpectedCaseSuite({win, signal, logResult}, suiteId, definition) {
     const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal});
     return runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
-        run: (c, i) => definition.run(win, c, i),
+        run: async (c, i) => {
+            try {
+                return await definition.run(win, c, i);
+            } catch (error) {
+                return {error: error.message};
+            }
+        },
         title: definition.title,
         input: definition.input
     });
@@ -449,17 +455,17 @@ const EXPECTED_CASE_SUITES = Object.freeze({
     }),
     6: Object.freeze({
         run: (win, c) => win.WorkerTools.radicalFunctionAnalysis(c.coeffs[0], c.coeffs[1]),
-        title: (_c, i) => `Case ${i + 1}`,
+        title: (c, i) => `Case ${i + 1}: ${c.description[0]}`,
         input: (c) => ({z: c.coeffs[0], n: c.coeffs[1]})
     }),
     7: Object.freeze({
         run: (win, c) => win.WorkerTools.valueList(...c.coeffs),
-        title: (_c, i) => `Case ${i + 1}`,
+        title: (c, i) => `Case ${i + 1}: ${c.description[0]}`,
         input: (c) => c.coeffs
     }),
     8: Object.freeze({
         run: (win, c) => win.WorkerTools.statisticsCalc(c.coeffs[0], c.coeffs[1]),
-        title: (_c, i) => `Case ${i + 1}`,
+        title: (c, i) => `Case ${i + 1}: ${c.description[0]}`,
         input: (c) => c.coeffs
     })
 });

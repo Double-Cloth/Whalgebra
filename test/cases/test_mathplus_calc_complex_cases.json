@@ -1,7 +1,7 @@
 [
   {
     "description": [
-      "none"
+      "[complex:trig-abs-factorial-complex] 复杂嵌套表达式，覆盖三角函数、绝对值嵌套、反三角复数阶乘和默认比例输出精度。"
     ],
     "coeffs": [
       "3+4-(sin3+|6-|-3||)+sin cos arctan3-(arccos3)!",
@@ -19,7 +19,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:high-output-accuracy] 同一复杂表达式使用 outputAcc=200，覆盖高输出精度下的结果字符串。"
     ],
     "coeffs": [
       "3+4-(sin3+|6-|-3||)+sin cos arctan3-(arccos3)!",
@@ -37,7 +37,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:implicit-multiply-double-factorial] 覆盖小数边界写法、隐式乘法、绝对值、双阶乘和自定义函数参数解析。"
     ],
     "coeffs": [
       ".4-4.-(sin3|6-|-3||)+sin9 cos arctan3-(arccos3)!!",
@@ -55,7 +55,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:nroot-log-factorial-low-accuracy] 覆盖 nroot/log 嵌套、阶乘和较低 calcAcc/outputAcc 下的复杂计算。"
     ],
     "coeffs": [
       ".4-4.nroot(log(nroot(2,3),4),log(2,3))!",
@@ -73,7 +73,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:custom-g-calls-f] 覆盖表达式调用 g(30)，且 g 内部依赖 f 的自定义函数链式求值。"
     ],
     "coeffs": [
       "3+4-(sin3+|6-|-3||)+sin cos arctan3-(arccos3)!+g30",
@@ -91,7 +91,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:syntax-check-formatting] 覆盖 syntaxCheck 模式，只格式化复杂表达式和自定义函数调用，不执行实际计算。"
     ],
     "coeffs": [
       ".4-4.-(sin3|6[x]-|-3||)+sin9 cos arctan3f(1)-(arccos3)!!",
@@ -109,7 +109,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:nested-log-nroot-absolute] 覆盖 log、nroot、绝对值和多层嵌套根式的高精度组合计算。"
     ],
     "coeffs": [
       "log(nroot(2,3),5)+log(|3|,|-2|nroot(2,3))-nroot(nroot(4,log(2,3)),2)",
@@ -127,7 +127,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:hyperbolic-complex-chain] 覆盖双曲函数及反双曲函数在复数参数上的链式计算和隐式乘法。"
     ],
     "coeffs": [
       "sh ch th(3+2[i])arch arth arsh(9.2-6.2[i])",
@@ -145,7 +145,7 @@
   },
   {
     "description": [
-      "none"
+      "[complex:constants-factorial-implicit-multiply] 覆盖 pi/e 常量、阶乘、括号相邻、函数相邻和数字常量间的隐式乘法。"
     ],
     "coeffs": [
       "3[pi]+2sin3+2!sin3+2!2+2!(2)(2)[pi]+[e](2)sin3",
