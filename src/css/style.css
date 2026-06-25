@@ -15,8 +15,6 @@
 html, body {
     /* 确保全屏范围内的触摸行为都被控制 */
     touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
