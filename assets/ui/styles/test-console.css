@@ -1,4 +1,10 @@
 .test-page {
+    font-family: var(--font-code);
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 18px;
     --console-bg: rgba(22, 30, 49, 0.94);
     --console-header: rgba(12, 19, 34, 0.72);
     --console-text: #DBE5F2;
@@ -8,41 +14,35 @@
     --json-number: #BEF264;
     --json-boolean: #60A5FA;
     --json-null: #C4B5FD;
-    display: flex;
-    height: 100dvh;
-    flex-direction: column;
     gap: 14px;
-    padding: 18px;
-    overflow: hidden;
-    font-family: var(--font-code);
 }
 
 .test-header {
     display: flex;
-    flex: 0 0 auto;
     align-items: center;
+    flex: 0 0 auto;
     justify-content: space-between;
-    gap: 18px;
     padding: 15px 20px;
+    gap: 18px;
 }
 
 .test-heading {
     display: flex;
-    min-width: 0;
     align-items: baseline;
+    min-width: 0;
     gap: 10px;
 }
 
 .test-title {
-    margin: 0;
     font-size: 1.18rem;
     font-weight: 850;
+    margin: 0;
     letter-spacing: 0;
 }
 
 .test-version {
-    color: var(--color-text-muted);
     font-size: 0.74rem;
+    color: var(--color-text-muted);
 }
 
 .test-header-actions {
@@ -53,16 +53,16 @@
 
 .test-layout {
     display: grid;
-    min-height: 0;
     flex: 1;
+    min-height: 0;
     grid-template-columns: 250px minmax(0, 1fr);
     gap: 14px;
 }
 
 .control-panel {
+    overflow-y: auto;
     min-height: 0;
     padding: 18px;
-    overflow-y: auto;
 }
 
 .control-group + .control-group {
@@ -70,21 +70,21 @@
 }
 
 .section-title {
-    margin: 0 0 9px 3px;
-    color: var(--color-text-muted);
     font-size: 0.7rem;
     font-weight: 800;
+    margin: 0 0 9px 3px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    color: var(--color-text-muted);
 }
 
 .test-button {
+    font-size: 0.81rem;
+    justify-content: flex-start;
     width: 100%;
     min-height: 42px;
-    justify-content: flex-start;
     margin-top: 8px;
     padding: 9px 13px;
-    font-size: 0.81rem;
     text-align: left;
 }
 
@@ -93,9 +93,9 @@
 }
 
 .test-button--danger {
+    color: var(--color-danger);
     border-color: rgba(239, 68, 68, 0.18);
     background: rgba(254, 226, 226, 0.78);
-    color: var(--color-danger);
 }
 
 .test-button--danger:hover:not(:disabled) {
@@ -103,20 +103,20 @@
 }
 
 .run-status {
+    font-size: 0.72rem;
+    font-weight: 800;
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-width: 0;
-    min-height: 30px;
     flex: 1;
     justify-content: center;
+    min-width: 0;
+    min-height: 30px;
     padding: 6px 10px;
+    color: #7DD3FC;
     border: 1px solid rgba(125, 211, 252, 0.16);
     border-radius: var(--radius-control);
     background: rgba(15, 23, 42, 0.36);
-    color: #7DD3FC;
-    font-size: 0.72rem;
-    font-weight: 800;
+    gap: 10px;
 }
 
 .run-status[hidden] {
@@ -124,20 +124,20 @@
 }
 
 .run-status [data-run-status-text] {
-    min-width: 0;
     overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
     white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .run-spinner {
+    flex: 0 0 auto;
     width: 16px;
     height: 16px;
-    flex: 0 0 auto;
+    animation: test-spin 0.85s linear infinite;
     border: 2px solid rgba(125, 211, 252, 0.2);
     border-top-color: #7DD3FC;
     border-radius: 50%;
-    animation: test-spin 0.85s linear infinite;
 }
 
 .test-page.is-test-running .console-panel {
@@ -152,10 +152,10 @@
 
 .console-panel {
     display: flex;
+    overflow: hidden;
+    flex-direction: column;
     min-width: 0;
     min-height: 0;
-    flex-direction: column;
-    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--radius-panel);
     background: var(--console-bg);
@@ -166,27 +166,27 @@
 
 .console-header {
     display: flex;
-    flex: 0 0 auto;
     align-items: center;
+    flex: 0 0 auto;
     justify-content: space-between;
-    gap: 12px;
     padding: 10px 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     background: var(--console-header);
+    gap: 12px;
 }
 
 .console-title {
-    flex: 0 0 auto;
-    color: #9AA8BE;
     font: 750 0.7rem/1.2 var(--font-code);
+    flex: 0 0 auto;
     letter-spacing: 0.09em;
+    color: #9AA8BE;
 }
 
 .console-button {
     flex: 0 0 auto;
+    color: #CBD5E1;
     border-color: rgba(255, 255, 255, 0.12);
     background: rgba(255, 255, 255, 0.08);
-    color: #CBD5E1;
     box-shadow: none;
 }
 
@@ -199,13 +199,13 @@
 }
 
 #output {
-    min-height: 0;
-    flex: 1;
-    padding: 12px;
-    overflow: auto;
-    color: var(--console-text);
     font: 0.77rem/1.6 var(--font-code);
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+    padding: 12px;
     user-select: text;
+    color: var(--console-text);
 }
 
 #output *,
@@ -255,19 +255,19 @@
 }
 
 .log-meta {
-    display: flex;
-    width: 142px;
-    flex: 0 0 auto;
-    padding-top: 2px;
-    color: var(--console-muted);
     font-size: 0.7rem;
+    display: flex;
+    flex: 0 0 auto;
+    width: 142px;
+    padding-top: 2px;
     user-select: none;
+    color: var(--console-muted);
 }
 
 .log-time {
     margin-right: 9px;
-    font-variant-numeric: tabular-nums;
     opacity: 0.75;
+    font-variant-numeric: tabular-nums;
 }
 
 .log-time-short {
@@ -275,11 +275,11 @@
 }
 
 .log-tag {
+    font-size: 0.66rem;
+    font-weight: 800;
     padding: 1px 4px;
     border-radius: 4px;
     background: rgba(0, 0, 0, 0.2);
-    font-size: 0.66rem;
-    font-weight: 800;
 }
 
 .tag-info {
@@ -303,8 +303,8 @@
 }
 
 .log-content {
-    min-width: 0;
     flex: 1;
+    min-width: 0;
     word-break: break-word;
 }
 
@@ -347,14 +347,14 @@
 }
 
 .jv-toggle {
+    font-size: 0.62rem;
     display: inline-block;
     width: 14px;
-    color: #64748B;
     cursor: pointer;
-    font-size: 0.62rem;
-    text-align: center;
     user-select: none;
+    text-align: center;
     vertical-align: middle;
+    color: #64748B;
 }
 
 .jv-node.collapsed > .jv-children {
@@ -381,8 +381,8 @@
 
 .jv-ellipsis {
     margin: 0 4px;
-    color: #64748B;
     cursor: pointer;
+    color: #64748B;
 }
 
 .jv-children {
@@ -401,10 +401,10 @@
 
 @media (max-width: 780px) {
     .test-page {
+        overflow: visible;
         height: auto;
         min-height: 100svh;
         padding: 12px;
-        overflow: visible;
     }
 
     .test-header {
@@ -413,8 +413,8 @@
     }
 
     .test-header-actions {
-        width: 100%;
         flex-wrap: wrap;
+        width: 100%;
     }
 
     .test-header-actions .status-pill {
@@ -440,8 +440,8 @@
     }
 
     .test-button {
-        margin: 0;
         justify-content: center;
+        margin: 0;
         text-align: center;
     }
 
@@ -470,9 +470,9 @@
     }
 
     .log-content {
+        line-height: 1.65;
         width: 100%;
         overflow-wrap: anywhere;
-        line-height: 1.65;
     }
 
     .log-time-full {

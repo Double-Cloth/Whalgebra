@@ -2,33 +2,33 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Whalgebra 本地开发与工具入口">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="Whalgebra 本地开发与工具入口" name="description">
     <title>控制面板 | Whalgebra</title>
-    <link rel="icon" href="./assets/images/icons/logo.png">
-    <link rel="stylesheet" href="./assets/ui/styles/shared.css">
-    <link rel="stylesheet" href="./assets/ui/styles/portal.css">
-    <script src="./assets/ui/scripts/shared.js" defer></script>
+    <link href="./assets/images/icons/logo.png" rel="icon">
+    <link href="./assets/ui/styles/shared.css" rel="stylesheet">
+    <link href="./assets/ui/styles/portal.css" rel="stylesheet">
+    <script defer src="./assets/ui/scripts/shared.js"></script>
 </head>
 <body class="portal-page">
-<div class="ambient-background" aria-hidden="true"></div>
+<div aria-hidden="true" class="ambient-background"></div>
 
 <main class="portal-shell">
     <header class="portal-topbar">
-        <a class="portal-brand" href="./dist/Whalgebra.html" aria-label="启动 Whalgebra">
-            <img class="portal-logo" src="./assets/images/icons/logo.png" alt="" width="48" height="48">
+        <a aria-label="启动 Whalgebra" class="portal-brand" href="./dist/Whalgebra.html">
+            <img alt="" class="portal-logo" height="48" src="./assets/images/icons/logo.png" width="48">
             <span>
                 <strong>Whalgebra</strong>
                 <small>v3.1.2 Workspace</small>
             </span>
         </a>
         <div class="status-pill portal-status" data-service-status data-state="loading" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
+            <span aria-hidden="true" class="status-dot"></span>
             <span data-status-text>正在检查本地服务……</span>
         </div>
     </header>
 
-    <section class="portal-hero" aria-labelledby="portal-title">
+    <section aria-labelledby="portal-title" class="portal-hero">
         <div class="portal-copy">
             <p class="brand-kicker">Local Algebra Engine</p>
             <h1 class="page-title" id="portal-title">WHALGEBRA</br>控制面板</h1>
@@ -39,7 +39,7 @@
             </div>
         </div>
 
-        <aside class="portal-preview glass-panel" aria-label="Whalgebra 预览">
+        <aside aria-label="Whalgebra 预览" class="portal-preview glass-panel">
             <div class="preview-toolbar">
                 <span></span>
                 <span></span>
@@ -49,7 +49,7 @@
             <div class="preview-screen">
                 <div class="formula-line formula-line--active">sin([pi] / 4 + [i])</div>
                 <div class="formula-line">= 1.09112... + 0.83099...[i]</div>
-                <div class="preview-grid" aria-hidden="true">
+                <div aria-hidden="true" class="preview-grid">
                     <span>re</span>
                     <span>im</span>
                     <span>arg</span>
@@ -64,7 +64,7 @@
         </aside>
     </section>
 
-    <section class="portal-tools" aria-labelledby="tools-title">
+    <section aria-labelledby="tools-title" class="portal-tools">
         <div class="portal-section-head">
             <p class="brand-kicker">Workspace tools</p>
             <h2 id="tools-title">项目入口</h2>
@@ -73,35 +73,35 @@
             <strong>本地工具需要静态服务</strong>
             请在项目根目录运行 <code>npm start</code>，默认仅本机访问；局域网预览使用 <code>npm start -- --lan</code>
         </aside>
-        <nav class="portal-actions" aria-label="项目入口">
+        <nav aria-label="项目入口" class="portal-actions">
             <a class="portal-action portal-action--primary" href="./dist/Whalgebra.html">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"
-                          d="M13 3 4 14h7v7l9-11h-7V3Z"></path>
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M13 3 4 14h7v7l9-11h-7V3Z" stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2.2"></path>
                 </svg>
                 <span><strong>当前发行版</strong><small>打开 dist/Whalgebra.html</small></span>
             </a>
 
-            <a class="portal-action" href="./test/web/index.html" data-server-only>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="m10 20 4-16m4 4 4 4-4 4M6 16l-4-4 4-4"></path>
+            <a class="portal-action" data-server-only href="./test/web/index.html">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="m10 20 4-16m4 4 4 4-4 4M6 16l-4-4 4-4" stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2"></path>
                 </svg>
                 <span><strong>测试控制台</strong><small>运行计算核心测试</small></span>
             </a>
 
-            <a class="portal-action" href="./tools/web/reverse_build.html" data-server-only>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M4 7h16M7 4v6m10-6v6M5 12h14v8H5z"></path>
+            <a class="portal-action" data-server-only href="./tools/web/reverse_build.html">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 7h16M7 4v6m10-6v6M5 12h14v8H5z" stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2"></path>
                 </svg>
                 <span><strong>逆向构建</strong><small>拆分单文件应用</small></span>
             </a>
 
-            <a class="portal-action" href="./tools/web/svg_compressor.html" data-server-only>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="m4 17 4-4 4 4 8-8m-6 0h6v6"></path>
+            <a class="portal-action" data-server-only href="./tools/web/svg_compressor.html">
+                <svg aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path d="m4 17 4-4 4 4 8-8m-6 0h6v6" stroke-linecap="round" stroke-linejoin="round"
+                          stroke-width="2"></path>
                 </svg>
                 <span><strong>SVG 压缩</strong><small>优化资源并生成 CSS</small></span>
             </a>

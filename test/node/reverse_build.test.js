@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {readFile, readdir, writeFile} from "node:fs/promises";
+import {readdir, readFile, writeFile} from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import {reverseBuild} from "../../tools/cli/reverse_build.js";

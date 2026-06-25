@@ -7,7 +7,7 @@ import process from "node:process";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {compressSvg, CONFIG as SVG_CONFIG} from "../cli/svg_compressor.js";
-import {reverseBuild, GLOBAL_CONFIG as REVERSE_CONFIG} from "../cli/reverse_build.js";
+import {GLOBAL_CONFIG as REVERSE_CONFIG, reverseBuild} from "../cli/reverse_build.js";
 import {PROJECT_ROOT, resolveProjectPath} from "../shared/filesystem.js";
 
 export const SERVER_CONFIG = Object.freeze({

@@ -2,20 +2,20 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Whalgebra 计算核心测试控制台">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="Whalgebra 计算核心测试控制台" name="description">
     <title>测试控制台 | Whalgebra</title>
-    <link rel="icon" href="../../assets/images/icons/logo.png">
-    <link rel="stylesheet" href="../../assets/ui/styles/shared.css">
-    <link rel="stylesheet" href="../../assets/ui/styles/test-console.css">
-    <script src="../../assets/ui/scripts/shared.js" defer></script>
-    <script src="../../assets/ui/scripts/json_tree.js" defer></script>
-    <script src="../../assets/ui/scripts/log_console.js" defer></script>
-    <script src="../browser/test_logic.js" defer></script>
-    <script src="../../assets/ui/scripts/test_console.js" defer></script>
+    <link href="../../assets/images/icons/logo.png" rel="icon">
+    <link href="../../assets/ui/styles/shared.css" rel="stylesheet">
+    <link href="../../assets/ui/styles/test-console.css" rel="stylesheet">
+    <script defer src="../../assets/ui/scripts/shared.js"></script>
+    <script defer src="../../assets/ui/scripts/json_tree.js"></script>
+    <script defer src="../../assets/ui/scripts/log_console.js"></script>
+    <script defer src="../browser/test_logic.js"></script>
+    <script defer src="../../assets/ui/scripts/test_console.js"></script>
 </head>
 <body class="test-page">
-<div class="ambient-background" aria-hidden="true">
+<div aria-hidden="true" class="ambient-background">
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
 </div>
@@ -27,7 +27,7 @@
     </div>
     <div class="test-header-actions">
         <div class="status-pill" data-engine-status data-state="loading" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
+            <span aria-hidden="true" class="status-dot"></span>
             <span data-status-text>正在等待计算核心……</span>
         </div>
         <a class="button button--secondary button--small" href="../../index.html">返回工作台</a>
@@ -35,73 +35,74 @@
 </header>
 
 <main class="test-layout">
-    <aside class="control-panel glass-panel" aria-label="测试操作">
+    <aside aria-label="测试操作" class="control-panel glass-panel">
         <section class="control-group">
             <h2 class="section-title">全局操作</h2>
-            <button class="button button--primary test-button" type="button" data-test-mode="0"
-                    title="按推荐顺序运行除性能基准外的全部测试集" aria-label="运行全部测试集" disabled>
+            <button aria-label="运行全部测试集" class="button button--primary test-button" data-test-mode="0"
+                    disabled title="按推荐顺序运行除性能基准外的全部测试集" type="button">
                 运行全部测试集
             </button>
-            <button class="button button--secondary test-button test-button--danger" type="button" data-action="cancel"
-                    title="中止当前正在执行的测试任务" aria-label="取消当前测试" disabled hidden>
+            <button aria-label="取消当前测试" class="button button--secondary test-button test-button--danger" data-action="cancel"
+                    disabled hidden title="中止当前正在执行的测试任务" type="button">
                 取消当前测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-action="clear"
-                    title="清空下方测试日志，不影响测试结果文件" aria-label="清空控制台">清空控制台</button>
+            <button aria-label="清空控制台" class="button button--secondary test-button" data-action="clear"
+                    title="清空下方测试日志，不影响测试结果文件" type="button">清空控制台
+            </button>
         </section>
         <section class="control-group">
             <h2 class="section-title">单元测试用例</h2>
-            <button class="button button--secondary test-button" type="button" data-test-mode="1"
-                    title="运行 1. 表达式测试 - 综合分支（test_mathplus_calc_complex_cases.json），覆盖复杂表达式综合计算"
-                    aria-label="1. 表达式测试 - 综合分支" disabled>1. 表达式测试 - 综合分支
+            <button aria-label="1. 表达式测试 - 综合分支" class="button button--secondary test-button" data-test-mode="1"
+                    disabled
+                    title="运行 1. 表达式测试 - 综合分支（test_mathplus_calc_complex_cases.json），覆盖复杂表达式综合计算" type="button">1. 表达式测试 - 综合分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="2"
-                    title="运行 2. 表达式测试 - 正确分支（test_mathplus_calc_normal_cases.json），覆盖表达式解析正常分支"
-                    aria-label="2. 表达式测试 - 正确分支" disabled>2. 表达式测试 - 正确分支
+            <button aria-label="2. 表达式测试 - 正确分支" class="button button--secondary test-button" data-test-mode="2"
+                    disabled
+                    title="运行 2. 表达式测试 - 正确分支（test_mathplus_calc_normal_cases.json），覆盖表达式解析正常分支" type="button">2. 表达式测试 - 正确分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="3"
-                    title="运行 3. 表达式测试 - 错误分支（test_mathplus_calc_error_cases.json），覆盖表达式解析错误分支"
-                    aria-label="3. 表达式测试 - 错误分支" disabled>3. 表达式测试 - 错误分支
+            <button aria-label="3. 表达式测试 - 错误分支" class="button button--secondary test-button" data-test-mode="3"
+                    disabled
+                    title="运行 3. 表达式测试 - 错误分支（test_mathplus_calc_error_cases.json），覆盖表达式解析错误分支" type="button">3. 表达式测试 - 错误分支
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="4"
-                    title="运行 4. MathPlus 函数测试（test_mathplus_functions.json），覆盖 MathPlus 公开函数分支"
-                    aria-label="4. MathPlus 函数测试" disabled>4. MathPlus 函数测试
+            <button aria-label="4. MathPlus 函数测试" class="button button--secondary test-button" data-test-mode="4"
+                    disabled
+                    title="运行 4. MathPlus 函数测试（test_mathplus_functions.json），覆盖 MathPlus 公开函数分支" type="button">4. MathPlus 函数测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="5"
-                    title="运行 5. 幂函数分析测试（test_power_function.json），覆盖幂函数图像分析"
-                    aria-label="5. 幂函数分析测试" disabled>5. 幂函数分析测试
+            <button aria-label="5. 幂函数分析测试" class="button button--secondary test-button" data-test-mode="5"
+                    disabled
+                    title="运行 5. 幂函数分析测试（test_power_function.json），覆盖幂函数图像分析" type="button">5. 幂函数分析测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="6"
-                    title="运行 6. 根式函数测试（test_radical_function.json），覆盖复数根式分析"
-                    aria-label="6. 根式函数测试" disabled>6. 根式函数测试
+            <button aria-label="6. 根式函数测试" class="button button--secondary test-button" data-test-mode="6"
+                    disabled
+                    title="运行 6. 根式函数测试（test_radical_function.json），覆盖复数根式分析" type="button">6. 根式函数测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="7"
-                    title="运行 7. 函数值列表测试（test_func_value_list.json），覆盖函数值列表生成"
-                    aria-label="7. 函数值列表测试" disabled>7. 函数值列表测试
+            <button aria-label="7. 函数值列表测试" class="button button--secondary test-button" data-test-mode="7"
+                    disabled
+                    title="运行 7. 函数值列表测试（test_func_value_list.json），覆盖函数值列表生成" type="button">7. 函数值列表测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="8"
-                    title="运行 8. 统计计算测试（test_statistics.json），覆盖统计计算和回归分析"
-                    aria-label="8. 统计计算测试" disabled>8. 统计计算测试
+            <button aria-label="8. 统计计算测试" class="button button--secondary test-button" data-test-mode="8"
+                    disabled
+                    title="运行 8. 统计计算测试（test_statistics.json），覆盖统计计算和回归分析" type="button">8. 统计计算测试
             </button>
-            <button class="button button--secondary test-button" type="button" data-test-mode="9"
-                    title="运行 9. 性能基准，统计核心函数平均耗时"
-                    aria-label="9. 性能基准" disabled>9. 性能基准
+            <button aria-label="9. 性能基准" class="button button--secondary test-button" data-test-mode="9"
+                    disabled
+                    title="运行 9. 性能基准，统计核心函数平均耗时" type="button">9. 性能基准
             </button>
         </section>
     </aside>
 
-    <section class="console-panel" aria-label="测试日志">
+    <section aria-label="测试日志" class="console-panel">
         <header class="console-header">
             <span class="console-title">DEBUG CONSOLE</span>
-            <div class="run-status" data-run-status role="status" aria-live="polite" hidden>
-                <span class="run-spinner" aria-hidden="true"></span>
+            <div aria-live="polite" class="run-status" data-run-status hidden role="status">
+                <span aria-hidden="true" class="run-spinner"></span>
                 <span data-run-status-text>等待测试任务</span>
             </div>
-            <button class="button button--small console-button" type="button" data-action="auto-scroll"
-                    data-enabled="true">自动滚动：开
+            <button class="button button--small console-button" data-action="auto-scroll" data-enabled="true"
+                    type="button">自动滚动：开
             </button>
         </header>
-        <div id="output" role="log" aria-live="polite"></div>
+        <div aria-live="polite" id="output" role="log"></div>
     </section>
 </main>
 

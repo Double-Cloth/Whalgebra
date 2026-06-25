@@ -1,5 +1,5 @@
 import {existsSync} from "node:fs";
-import {mkdir, readFile, readdir, rm, stat, writeFile} from "node:fs/promises";
+import {mkdir, readdir, readFile, rm, stat, writeFile} from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import {fileURLToPath} from "node:url";

@@ -7,20 +7,21 @@
     <title>Whalgebra</title>
 
     <!-- 共用代码和计算配置 -->
-    <script type="text/javascript" id="shared_code_and_configuration"  src="./js/shared_code_and_configuration.js"></script>
+    <script id="shared_code_and_configuration" src="./js/shared_code_and_configuration.js"
+            type="text/javascript"></script>
     <!-- 核心计算逻辑代码 -->
-    <script type="text/javascript" id="core_computational_logic"  src="./js/core_computational_logic.js"></script>
+    <script id="core_computational_logic" src="./js/core_computational_logic.js" type="text/javascript"></script>
     <!-- 异步逻辑代码 -->
-    <script type="text/javascript" id="asynchronous_logic"  src="./js/asynchronous_logic.js"></script>
+    <script id="asynchronous_logic" src="./js/asynchronous_logic.js" type="text/javascript"></script>
     <!-- 样式控制、UI 交互代码 -->
-    <script type="text/javascript" id="ui_styling_control"  src="./js/ui_styling_control.js"></script>
+    <script id="ui_styling_control" src="./js/ui_styling_control.js" type="text/javascript"></script>
     <!-- 初始化代码、监听器 -->
-    <script type="text/javascript" id="init"  src="./js/init.js"></script>
+    <script id="init" src="./js/init.js" type="text/javascript"></script>
 
     <!-- 字体和图片 -->
-    <link rel="stylesheet" href="./css/fonts_and_images.css">
+    <link href="./css/fonts_and_images.css" rel="stylesheet">
     <!-- 主要样式表 -->
-    <link rel="stylesheet" href="./css/style.css">
+    <link href="./css/style.css" rel="stylesheet">
 
     <meta content="light" name="color-scheme"/>
     <meta content="#f0f8ff" name="theme-color"/>
@@ -59,13 +60,13 @@
             </div>
             <div class="NoDisplay" id="title_mode_2_1">
                 <div id="back_btn_father">
-                    <svg xmlns="http://www.w3.org/2000/svg" id="back_btn" viewBox="0 0 60 36" fill="none">
-                        <rect id="back_btn_child1" width="60" height="36" rx="18" fill="currentColor"
-                              opacity="0.1"></rect>
-                        <path id="back_btn_child2" d="M31 11L24 18L31 25M24 18h14" stroke="currentColor"
-                              stroke-width="2"
+                    <svg fill="none" id="back_btn" viewBox="0 0 60 36" xmlns="http://www.w3.org/2000/svg">
+                        <rect fill="currentColor" height="36" id="back_btn_child1" opacity="0.1" rx="18"
+                              width="60"></rect>
+                        <path d="M31 11L24 18L31 25M24 18h14" id="back_btn_child2" stroke="currentColor"
                               stroke-linecap="round"
-                              stroke-linejoin="round"></path>
+                              stroke-linejoin="round"
+                              stroke-width="2"></path>
                     </svg>
                 </div>
                 <p class="_mode_title_2_1_"></p>

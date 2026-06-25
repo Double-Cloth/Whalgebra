@@ -2,20 +2,20 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="批量优化 SVG 并生成 Base64 CSS">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="批量优化 SVG 并生成 Base64 CSS" name="description">
     <title>SVG 压缩 | Whalgebra</title>
-    <link rel="icon" href="../../assets/images/icons/logo.png">
-    <link rel="stylesheet" href="../../assets/ui/styles/shared.css">
-    <link rel="stylesheet" href="../../assets/ui/styles/test-console.css">
-    <link rel="stylesheet" href="../../assets/ui/styles/tool-page.css">
-    <script src="../../assets/ui/scripts/shared.js" defer></script>
-    <script src="../../assets/ui/scripts/json_tree.js" defer></script>
-    <script src="../../assets/ui/scripts/log_console.js" defer></script>
-    <script src="../../assets/ui/scripts/tool_form.js" defer></script>
+    <link href="../../assets/images/icons/logo.png" rel="icon">
+    <link href="../../assets/ui/styles/shared.css" rel="stylesheet">
+    <link href="../../assets/ui/styles/test-console.css" rel="stylesheet">
+    <link href="../../assets/ui/styles/tool-page.css" rel="stylesheet">
+    <script defer src="../../assets/ui/scripts/shared.js"></script>
+    <script defer src="../../assets/ui/scripts/json_tree.js"></script>
+    <script defer src="../../assets/ui/scripts/log_console.js"></script>
+    <script defer src="../../assets/ui/scripts/tool_form.js"></script>
 </head>
 <body class="test-page tool-page">
-<div class="ambient-background" aria-hidden="true">
+<div aria-hidden="true" class="ambient-background">
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
 </div>
@@ -26,8 +26,8 @@
         <span class="test-version">Core v2.1</span>
     </div>
     <div class="test-header-actions">
-        <div class="status-pill" data-tool-status data-state="loading" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
+        <div class="status-pill" data-state="loading" data-tool-status role="status">
+            <span aria-hidden="true" class="status-dot"></span>
             <span data-status-text>正在检查服务……</span>
         </div>
         <a class="button button--secondary button--small" href="../../index.html">返回工作台</a>
@@ -35,22 +35,22 @@
 </header>
 
 <main class="test-layout tool-layout">
-    <aside class="control-panel glass-panel" aria-label="SVG 压缩操作">
-        <form class="tool-form" data-tool-form data-endpoint="/api/tools/svg-compressor">
+    <aside aria-label="SVG 压缩操作" class="control-panel glass-panel">
+        <form class="tool-form" data-endpoint="/api/tools/svg-compressor" data-tool-form>
             <section class="control-group">
                 <h2 class="section-title">路径设置</h2>
                 <p class="field-hint">Web 工具输入、输出和临时目录仅限 <code>tmp</code>。</p>
                 <div class="field">
                     <label for="svg-input">输入目录</label>
-                    <input id="svg-input" name="inputDir" type="text" value="tmp/input" required>
+                    <input id="svg-input" name="inputDir" required type="text" value="tmp/input">
                 </div>
                 <div class="field">
                     <label for="svg-output">CSS 输出目录</label>
-                    <input id="svg-output" name="outputDir" type="text" value="tmp/output-css" required>
+                    <input id="svg-output" name="outputDir" required type="text" value="tmp/output-css">
                 </div>
                 <div class="field">
                     <label for="svg-temp">优化后 SVG 目录</label>
-                    <input id="svg-temp" name="tempDir" type="text" value="tmp/output-svg" required>
+                    <input id="svg-temp" name="tempDir" required type="text" value="tmp/output-svg">
                 </div>
             </section>
             <section class="control-group">
@@ -60,11 +60,11 @@
         </form>
     </aside>
 
-    <section class="console-panel" aria-label="SVG 压缩日志">
+    <section aria-label="SVG 压缩日志" class="console-panel">
         <header class="console-header">
             <span class="console-title">OPTIMIZER OUTPUT</span>
         </header>
-        <div class="tool-log" data-tool-log role="log" aria-live="polite"></div>
+        <div aria-live="polite" class="tool-log" data-tool-log role="log"></div>
     </section>
 </main>
 </body>

@@ -2,20 +2,20 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="将 Whalgebra 单文件应用拆分为模块化源码">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <meta content="将 Whalgebra 单文件应用拆分为模块化源码" name="description">
     <title>逆向构建 | Whalgebra</title>
-    <link rel="icon" href="../../assets/images/icons/logo.png">
-    <link rel="stylesheet" href="../../assets/ui/styles/shared.css">
-    <link rel="stylesheet" href="../../assets/ui/styles/test-console.css">
-    <link rel="stylesheet" href="../../assets/ui/styles/tool-page.css">
-    <script src="../../assets/ui/scripts/shared.js" defer></script>
-    <script src="../../assets/ui/scripts/json_tree.js" defer></script>
-    <script src="../../assets/ui/scripts/log_console.js" defer></script>
-    <script src="../../assets/ui/scripts/tool_form.js" defer></script>
+    <link href="../../assets/images/icons/logo.png" rel="icon">
+    <link href="../../assets/ui/styles/shared.css" rel="stylesheet">
+    <link href="../../assets/ui/styles/test-console.css" rel="stylesheet">
+    <link href="../../assets/ui/styles/tool-page.css" rel="stylesheet">
+    <script defer src="../../assets/ui/scripts/shared.js"></script>
+    <script defer src="../../assets/ui/scripts/json_tree.js"></script>
+    <script defer src="../../assets/ui/scripts/log_console.js"></script>
+    <script defer src="../../assets/ui/scripts/tool_form.js"></script>
 </head>
 <body class="test-page tool-page">
-<div class="ambient-background" aria-hidden="true">
+<div aria-hidden="true" class="ambient-background">
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
     <span class="ambient-blob"></span><span class="ambient-blob"></span>
 </div>
@@ -26,8 +26,8 @@
         <span class="test-version">Core v2.1</span>
     </div>
     <div class="test-header-actions">
-        <div class="status-pill" data-tool-status data-state="loading" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
+        <div class="status-pill" data-state="loading" data-tool-status role="status">
+            <span aria-hidden="true" class="status-dot"></span>
             <span data-status-text>正在检查服务……</span>
         </div>
         <a class="button button--secondary button--small" href="../../index.html">返回工作台</a>
@@ -35,25 +35,25 @@
 </header>
 
 <main class="test-layout tool-layout">
-    <aside class="control-panel glass-panel" aria-label="逆向构建操作">
-        <form class="tool-form" data-tool-form data-endpoint="/api/tools/reverse-build" data-confirm-overwrite>
+    <aside aria-label="逆向构建操作" class="control-panel glass-panel">
+        <form class="tool-form" data-confirm-overwrite data-endpoint="/api/tools/reverse-build" data-tool-form>
             <section class="control-group">
                 <h2 class="section-title">路径设置</h2>
                 <p class="field-hint">Web 工具输出目录仅限 <code>src</code> 或 <code>tmp</code>。</p>
                 <div class="field">
                     <label for="reverse-input">输入 HTML</label>
-                    <input id="reverse-input" name="inputFile" type="text" value="dist/Whalgebra.html" required>
+                    <input id="reverse-input" name="inputFile" required type="text" value="dist/Whalgebra.html">
                 </div>
                 <div class="field">
                     <label for="reverse-output">输出目录</label>
-                    <input id="reverse-output" name="outputDir" type="text" value="src" required>
+                    <input id="reverse-output" name="outputDir" required type="text" value="src">
                 </div>
             </section>
             <section class="control-group">
                 <h2 class="section-title">构建选项</h2>
                 <div class="form-options">
                     <label class="check-option"><input name="noDedent" type="checkbox">保留原始缩进</label>
-                    <label class="check-option"><input name="force" type="checkbox" checked>覆盖已有目录</label>
+                    <label class="check-option"><input checked name="force" type="checkbox">覆盖已有目录</label>
                 </div>
             </section>
             <section class="control-group">
@@ -63,11 +63,11 @@
         </form>
     </aside>
 
-    <section class="console-panel" aria-label="逆向构建日志">
+    <section aria-label="逆向构建日志" class="console-panel">
         <header class="console-header">
             <span class="console-title">BUILD OUTPUT</span>
         </header>
-        <div class="tool-log" data-tool-log role="log" aria-live="polite"></div>
+        <div aria-live="polite" class="tool-log" data-tool-log role="log"></div>
     </section>
 </main>
 </body>

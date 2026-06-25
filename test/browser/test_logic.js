@@ -1,7 +1,8 @@
 "use strict";
 
 const TEST_SUITES_URL = "../cases/test_suites.json";
-const NOOP = () => {};
+const NOOP = () => {
+};
 const LOG_STYLE_PASS = "color: #34D399; font-weight: bold";
 const LOG_STYLE_FAIL = "color: #F87171; font-weight: bold";
 const BENCHMARK_LOOP_COUNT = 111;
