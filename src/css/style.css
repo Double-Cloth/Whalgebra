@@ -1507,14 +1507,14 @@ p {
 #print_content_3 > div:nth-child(4n+2) {
     margin-top: 1dvmin;
     border-radius: 1.5dvmin 1.5dvmin 0 0;
-    background-color: hsl(var(--print-group-background) / 0.97);
+    background-color: hsl(var(--print-group-background) / 0.85);
 }
 
 #print_content_1 > div:nth-child(8),
 #statistics_results_window > div > div:nth-child(4n + 2),
 #print_content_3 > div:nth-child(4n+3) {
     border-radius: 0 0 1.5dvmin 1.5dvmin;
-    background-color: hsl(var(--print-group-background) / 0.97);
+    background-color: hsl(var(--print-group-background) / 0.85);
 }
 
 #print_content_1_cover {
@@ -1958,7 +1958,7 @@ span.Ripple.IsFadingOut {
 ) {
     margin-top: 1dvmin;
     border-radius: 1.5dvmin;
-    background-color: hsl(var(--print-group-background));
+    background-color: hsl(var(--print-group-background) / 0.95);
 }
 
 #print_content_2_error {
