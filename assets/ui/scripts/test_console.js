@@ -20,6 +20,15 @@ WhalgebraUI.ready(() => {
         return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
     }
 
+    function createTestOutputLogger() {
+        return Object.freeze({
+            log: (...args) => logger.addLog("LOG", args),
+            info: (...args) => logger.addLog("INFO", args, "success"),
+            warn: (...args) => logger.addLog("WARN", args, "warn"),
+            error: (...args) => logger.addLog("ERR", args, "error")
+        });
+    }
+
     function setControlsDisabled(disabled) {
         testButtons.forEach((button) => {
             button.disabled = disabled;
@@ -77,7 +86,8 @@ WhalgebraUI.ready(() => {
             return;
         }
 
-        const suites = await loadWhalgebraTestSuites();
+        const testOutputLogger = createTestOutputLogger();
+        const suites = await loadWhalgebraTestSuites({logger: testOutputLogger});
         const titles = Object.fromEntries((suites ?? []).map((suite) => [
             suite.id,
             `${suite.id}. ${suite.title}`
@@ -97,23 +107,20 @@ WhalgebraUI.ready(() => {
         output.appendChild(divider);
         logger.addLog("SYS", `开始运行：${title}`, "sys");
         await waitForPaint();
-        logger.enableConsoleCapture();
 
         try {
             if (!isEngineConnected) {
                 throw new Error("计算核心连接已断开");
             }
-            const result = await test(mode, iframe, {signal: controller.signal});
+            const result = await test(mode, iframe, {signal: controller.signal, logger: testOutputLogger});
             logger.addLog("SYS", result ? "测试通过" : "测试未通过，存在错误", result ? "success" : "error");
         } catch (error) {
             if (error?.name === "AbortError") {
                 logger.addLog("SYS", "测试已取消", "warn");
             } else {
                 logger.addLog("FATAL", error.message, "error");
-                logger.originalConsole.error(error);
             }
         } finally {
-            logger.disableConsoleCapture();
             activeRun = null;
             clearRunStatus();
             updateEngineStatus();

@@ -15,12 +15,6 @@
 
     function createLogConsole(output, {autoScrollButton = null} = {}) {
         let isAutoScroll = true;
-        const originalConsole = {
-            log: console.log,
-            warn: console.warn,
-            error: console.error,
-            info: console.info
-        };
 
         function appendConsoleArguments(container, values) {
             const args = Array.isArray(values) ? values : [values];
@@ -92,37 +86,11 @@
             }
         }
 
-        function enableConsoleCapture() {
-            console.log = (...args) => {
-                addLog("LOG", args);
-                originalConsole.log.apply(console, args);
-            };
-            console.warn = (...args) => {
-                addLog("WARN", args, "warn");
-                originalConsole.warn.apply(console, args);
-            };
-            console.error = (...args) => {
-                addLog("ERR", args, "error");
-                originalConsole.error.apply(console, args);
-            };
-            console.info = (...args) => {
-                addLog("INFO", args, "success");
-                originalConsole.info.apply(console, args);
-            };
-        }
-
-        function disableConsoleCapture() {
-            Object.assign(console, originalConsole);
-        }
-
         autoScrollButton?.addEventListener("click", toggleAutoScroll);
 
         return Object.freeze({
             addLog,
-            clearLog,
-            enableConsoleCapture,
-            disableConsoleCapture,
-            originalConsole
+            clearLog
         });
     }
 

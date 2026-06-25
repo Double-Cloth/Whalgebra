@@ -18,13 +18,22 @@ const CALC_CONFIG_ALIASES = Object.freeze({
 let whalgebraTestSuitesPromise = null;
 let WhalgebraTestSuiteById = Object.freeze({});
 
+function createLogger(logger = console) {
+    const fallback = console;
+    const log = typeof logger?.log === "function" ? logger.log.bind(logger) : fallback.log.bind(fallback);
+    const info = typeof logger?.info === "function" ? logger.info.bind(logger) : log;
+    const warn = typeof logger?.warn === "function" ? logger.warn.bind(logger) : log;
+    const error = typeof logger?.error === "function" ? logger.error.bind(logger) : log;
+    return Object.freeze({log, info, warn, error});
+}
+
 function isPlainObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-export async function loadWhalgebraTestSuites({signal} = {}) {
+export async function loadWhalgebraTestSuites({signal, logger} = {}) {
     if (!whalgebraTestSuitesPromise) {
-        whalgebraTestSuitesPromise = fetchJson(TEST_SUITES_URL, {signal})
+        whalgebraTestSuitesPromise = fetchJson(TEST_SUITES_URL, {signal, logger})
             .then((suites) => {
                 const frozenSuites = Object.freeze(suites.map((suite) => Object.freeze({...suite})));
                 WhalgebraTestSuiteById = Object.freeze(Object.fromEntries(
@@ -41,8 +50,8 @@ export async function loadWhalgebraTestSuites({signal} = {}) {
     return whalgebraTestSuitesPromise;
 }
 
-async function loadSuiteById(id, {signal} = {}) {
-    await loadWhalgebraTestSuites({signal});
+async function loadSuiteById(id, {signal, logger} = {}) {
+    await loadWhalgebraTestSuites({signal, logger});
     return WhalgebraTestSuiteById[id];
 }
 
@@ -193,14 +202,15 @@ function deepEqual(obj1, obj2) {
     return true;
 }
 
-async function fetchJson(url, {signal} = {}) {
+async function fetchJson(url, {signal, logger} = {}) {
+    const outputLogger = createLogger(logger);
     try {
         return await (await fetch(`${url}?t=${Date.now()}`, {signal})).json();
     } catch (error) {
         if (signal?.aborted || error?.name === "AbortError") {
             throw createAbortError();
         }
-        console.error("Fetch error:", error);
+        outputLogger.error("Fetch error:", error);
         return [];
     }
 }
@@ -219,29 +229,30 @@ function caseUrl(suite) {
     return `../cases/${suite.file}`;
 }
 
-async function loadCaseFile(suite, {signal} = {}) {
-    return normalizeCaseFile(await fetchJson(caseUrl(suite), {signal}));
+async function loadCaseFile(suite, {signal, logger} = {}) {
+    return normalizeCaseFile(await fetchJson(caseUrl(suite), {signal, logger}));
 }
 
-async function loadConfiguredSuiteCases(win, suite, {signal} = {}) {
-    const caseFile = await loadCaseFile(suite, {signal});
+async function loadConfiguredSuiteCases(win, suite, {signal, logger} = {}) {
+    const caseFile = await loadCaseFile(suite, {signal, logger});
     const assignCaseCalcConfig = createCalcConfigAssigner(win, suite, caseFile.configSource);
     assignCaseCalcConfig();
     return {cases: caseFile.cases, assignCaseCalcConfig};
 }
 
-async function loadConfiguredSuiteCasesById(win, id, {signal} = {}) {
-    const suite = await loadSuiteById(id, {signal});
-    return loadConfiguredSuiteCases(win, suite, {signal});
+async function loadConfiguredSuiteCasesById(win, id, {signal, logger} = {}) {
+    const suite = await loadSuiteById(id, {signal, logger});
+    return loadConfiguredSuiteCases(win, suite, {signal, logger});
 }
 
-function createTestLogger() {
+function createTestLogger(logger = console) {
+    const outputLogger = createLogger(logger);
     return (title, pass, input, expected, actual, extra = {}) => {
         const logData = {Input: input, Expected: expected, Actual: actual, ...extra};
         if (pass) {
-            console.log(`%c[Passed]%c ${title}`, LOG_STYLE_PASS, "", logData);
+            outputLogger.log(`%c[Passed]%c ${title}`, LOG_STYLE_PASS, "", logData);
         } else {
-            console.log(`%c[Failed]%c ${title}`, LOG_STYLE_FAIL, "", logData);
+            outputLogger.log(`%c[Failed]%c ${title}`, LOG_STYLE_FAIL, "", logData);
         }
     };
 }
@@ -339,8 +350,9 @@ function createPerformanceBenchmarks(win) {
     ];
 }
 
-async function runPerformanceBenchmark(win, signal) {
-    console.info("--- 性能基准测试 ---");
+async function runPerformanceBenchmark(win, signal, logger) {
+    const outputLogger = createLogger(logger);
+    outputLogger.info("--- 性能基准测试 ---");
 
     for (const item of createPerformanceBenchmarks(win)) {
         let totalTime = 0;
@@ -351,7 +363,7 @@ async function runPerformanceBenchmark(win, signal) {
         }
 
         throwIfAborted(signal);
-        console.log(`${item.name}:`, {
+        outputLogger.log(`${item.name}:`, {
             LoopCount: BENCHMARK_LOOP_COUNT,
             Input: item.args.map((arg) => arg.toString()),
             Actual: item.run().toString(),
@@ -405,13 +417,13 @@ async function runMathPlusFunctionCases(win, cases, signal, logResult, assignCas
     });
 }
 
-async function runConfiguredCaseSuite({win, signal, logResult}, suiteId, runCases) {
-    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal});
+async function runConfiguredCaseSuite({win, signal, logResult, logger}, suiteId, runCases) {
+    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal, logger});
     return runCases(win, cases, signal, logResult, assignCaseCalcConfig);
 }
 
-async function runExpectedCaseSuite({win, signal, logResult}, suiteId, definition) {
-    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal});
+async function runExpectedCaseSuite({win, signal, logResult, logger}, suiteId, definition) {
+    const {cases, assignCaseCalcConfig} = await loadConfiguredSuiteCasesById(win, suiteId, {signal, logger});
     return runExpectedCases(cases, signal, logResult, assignCaseCalcConfig, {
         run: async (c, i) => {
             try {
@@ -425,19 +437,20 @@ async function runExpectedCaseSuite({win, signal, logResult}, suiteId, definitio
     });
 }
 
-async function runBenchmarkSuite({win, signal}) {
-    assignCalcConfigFromJson(win, await loadSuiteById(9, {signal}));
-    await runPerformanceBenchmark(win, signal);
+async function runBenchmarkSuite({win, signal, logger}) {
+    assignCalcConfigFromJson(win, await loadSuiteById(9, {signal, logger}));
+    await runPerformanceBenchmark(win, signal, logger);
     return true;
 }
 
-async function runAllIncludedSuites(engineFrame, signal) {
+async function runAllIncludedSuites(engineFrame, signal, logger) {
+    const outputLogger = createLogger(logger);
     let result = true;
-    const runOrder = (await loadWhalgebraTestSuites({signal})).filter((suite) => suite.includeInAll);
+    const runOrder = (await loadWhalgebraTestSuites({signal, logger})).filter((suite) => suite.includeInAll);
     for (const suite of runOrder) {
         throwIfAborted(signal);
-        console.info(`\n============== [${suite.id}] ${suite.title} ==============`);
-        const subResult = await test(suite.id, engineFrame, {signal});
+        outputLogger.info(`\n============== [${suite.id}] ${suite.title} ==============`);
+        const subResult = await test(suite.id, engineFrame, {signal, logger});
         result = subResult && result;
         await yieldToUi(signal);
     }
@@ -483,13 +496,14 @@ function getTestModeRunner(mode) {
     return Number.isInteger(mode) ? TEST_MODE_RUNNERS[mode] : undefined;
 }
 
-export async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal} = {}) {
+export async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal, logger} = {}) {
     const win = engineFrame?.contentWindow;
     if (!win || !win.MathPlus) {
         throw new Error("计算核心尚未加载");
     }
     throwIfAborted(signal);
 
+    const outputLogger = createLogger(logger);
     const originalCalcConfig = captureCalcConfig(win);
     assignCalcConfigFromJson(win);
 
@@ -497,13 +511,14 @@ export async function test(mode = 0, engineFrame = document.getElementById("logi
         const context = {
             win,
             signal,
-            logResult: createTestLogger()
+            logger: outputLogger,
+            logResult: createTestLogger(outputLogger)
         };
         const runner = getTestModeRunner(mode);
         if (runner) {
             return await runner(context);
         }
-        return await runAllIncludedSuites(engineFrame, signal);
+        return await runAllIncludedSuites(engineFrame, signal, outputLogger);
     } finally {
         restoreCalcConfig(win, originalCalcConfig);
     }
