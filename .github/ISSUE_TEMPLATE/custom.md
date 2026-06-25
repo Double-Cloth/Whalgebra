@@ -1,6 +1,6 @@
 ---
 name: Custom issue
-about: Ask a question or report something that does not fit other templates.
+about: Ask a question, give feedback, or report something that does not fit other templates.
 title: ''
 labels: ''
 assignees: ''
@@ -8,13 +8,13 @@ assignees: ''
 ---
 
 **Description**
-Describe the issue, question, or feedback clearly.
+Describe your question, issue, or feedback clearly.
 
 **Context**
-Explain the background or situation where this issue appears.
+Explain the background, use case, or situation where this applies.
 
 **What have you tried?**
-List any steps, checks, or solutions you have already tried.
+List any steps, checks, or solutions you have already tried, if any.
 
 **Expected result**
 Describe what you expected to happen, if applicable.
