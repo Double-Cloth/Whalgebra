@@ -1,5 +1,3 @@
-"use strict";
-
 const TEST_SUITES_URL = "../cases/test_suites.json";
 const NOOP = () => {
 };
@@ -24,7 +22,7 @@ function isPlainObject(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-async function loadWhalgebraTestSuites({signal} = {}) {
+export async function loadWhalgebraTestSuites({signal} = {}) {
     if (!whalgebraTestSuitesPromise) {
         whalgebraTestSuitesPromise = fetchJson(TEST_SUITES_URL, {signal})
             .then((suites) => {
@@ -42,8 +40,6 @@ async function loadWhalgebraTestSuites({signal} = {}) {
     }
     return whalgebraTestSuitesPromise;
 }
-
-globalThis.loadWhalgebraTestSuites = loadWhalgebraTestSuites;
 
 async function loadSuiteById(id, {signal} = {}) {
     await loadWhalgebraTestSuites({signal});
@@ -95,7 +91,7 @@ function readConfigValue(source, aliases) {
     return undefined;
 }
 
-function parseCalcConfigFromJson(...sources) {
+export function parseCalcConfigFromJson(...sources) {
     const config = {...DEFAULT_TEST_CALC_CONFIG};
     for (const source of sources) {
         const configSource = getCalcConfigSource(source);
@@ -126,7 +122,7 @@ function restoreCalcConfig(win, config) {
     win.CalcConfig.globalPrintMode = config.globalPrintMode;
 }
 
-function assignCalcConfigFromJson(win, ...sources) {
+export function assignCalcConfigFromJson(win, ...sources) {
     const config = parseCalcConfigFromJson(...sources);
     restoreCalcConfig(win, config);
     return config;
@@ -487,7 +483,7 @@ function getTestModeRunner(mode) {
     return Number.isInteger(mode) ? TEST_MODE_RUNNERS[mode] : undefined;
 }
 
-async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal} = {}) {
+export async function test(mode = 0, engineFrame = document.getElementById("logicEngine"), {signal} = {}) {
     const win = engineFrame?.contentWindow;
     if (!win || !win.MathPlus) {
         throw new Error("计算核心尚未加载");

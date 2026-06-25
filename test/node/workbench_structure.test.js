@@ -2,13 +2,36 @@ import assert from "node:assert/strict";
 import {readdir, readFile} from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import vm from "node:vm";
+import {pathToFileURL} from "node:url";
 import {PROJECT_ROOT} from "./helpers/temp_directory.js";
 
 function entryLabels(entries) {
     return entries
         .map((entry) => `${entry.isDirectory() ? "dir" : "file"}:${entry.name}`)
         .sort();
+}
+
+function browserTestLogicUrl() {
+    return pathToFileURL(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js")).href;
+}
+
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function assertElementWithAttributes(html, tagName, attributes) {
+    const assertions = attributes.map((attribute) => {
+        if (typeof attribute === "string") {
+            return `(?=[^>]*\\b${escapeRegex(attribute)}\\b)`;
+        }
+        const [name, value] = attribute;
+        return `(?=[^>]*\\b${escapeRegex(name)}="${escapeRegex(value)}")`;
+    }).join("");
+    assert.match(html, new RegExp(`<${tagName}\\b${assertions}[^>]*>`, "u"));
+}
+
+function assertServerOnlyLink(html, href) {
+    assertElementWithAttributes(html, "a", [["href", href], "data-server-only"]);
 }
 
 test("入口、工具和测试页面共享公共 UI 资源且不包含内联实现", async () => {
@@ -27,16 +50,16 @@ test("入口、工具和测试页面共享公共 UI 资源且不包含内联实�
     const svgToolJs = await readFile(path.join(PROJECT_ROOT, "tools", "cli", "svg_compressor.js"), "utf8");
     const toolJs = await readFile(path.join(PROJECT_ROOT, "assets", "ui", "scripts", "tool_form.js"), "utf8");
 
-    assert.match(rootHtml, /href="\.\/test\/web\/index\.html" data-server-only/u);
-    assert.match(rootHtml, /href="\.\/tools\/web\/reverse_build\.html" data-server-only/u);
-    assert.match(rootHtml, /href="\.\/tools\/web\/svg_compressor\.html" data-server-only/u);
+    assertServerOnlyLink(rootHtml, "./test/web/index.html");
+    assertServerOnlyLink(rootHtml, "./tools/web/reverse_build.html");
+    assertServerOnlyLink(rootHtml, "./tools/web/svg_compressor.html");
     assert.match(rootHtml, /href="\.\/assets\/ui\/styles\/shared\.css"/u);
     assert.match(rootHtml, /src="\.\/assets\/ui\/scripts\/shared\.js"/u);
     assert.match(reverseHtml, /href="\.\.\/\.\.\/assets\/ui\/styles\/tool-page\.css"/u);
     assert.match(reverseHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/tool_form\.js"/u);
     assert.match(reverseHtml, /href="\.\.\/\.\.\/assets\/ui\/styles\/shared\.css"/u);
     assert.match(reverseHtml, /data-endpoint="\/api\/tools\/reverse-build"/u);
-    assert.match(reverseHtml, /<input name="force" type="checkbox" checked>/u);
+    assertElementWithAttributes(reverseHtml, "input", [["name", "force"], ["type", "checkbox"], "checked"]);
     assert.doesNotMatch(reverseHtml, /\/api\/tools\/svg-compressor/u);
     assert.match(svgHtml, /href="\.\.\/\.\.\/assets\/ui\/styles\/tool-page\.css"/u);
     assert.match(svgHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/tool_form\.js"/u);
@@ -47,8 +70,8 @@ test("入口、工具和测试页面共享公共 UI 资源且不包含内联实�
     assert.match(testHtml, /href="\.\.\/\.\.\/assets\/ui\/styles\/test-console\.css"/u);
     assert.match(testHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/json_tree\.js"/u);
     assert.match(testHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/log_console\.js"/u);
-    assert.match(testHtml, /src="\.\.\/browser\/test_logic\.js"/u);
-    assert.match(testHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/test_console\.js"/u);
+    assert.doesNotMatch(testHtml, /src="\.\.\/browser\/test_logic\.js"/u);
+    assert.match(testHtml, /src="\.\.\/\.\.\/assets\/ui\/scripts\/test_console\.js" type="module"/u);
     assert.match(testHtml, /src="\.\.\/\.\.\/dist\/Whalgebra\.html"/u);
     assert.match(testHtml, /data-action="cancel"/u);
     assert.match(testHtml, /data-run-status/u);
@@ -109,12 +132,10 @@ test("src 和 dist 目录结构保持原样", async () => {
 });
 
 test("浏览器测试逻辑通过参数接收计算核心 iframe", async () => {
-    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
-    const context = vm.createContext({console, document: {getElementById: () => null}});
-    vm.runInContext(`${source}\nglobalThis.testFunction = test;`, context);
+    const {test: runBrowserTest} = await import(browserTestLogicUrl());
 
     await assert.rejects(
-        context.testFunction(0, {contentWindow: null}),
+        runBrowserTest(0, {contentWindow: null}),
         /计算核心尚未加载/u
     );
 });
@@ -123,10 +144,12 @@ test("浏览器测试集编号和描述与 cases 清单、测试 UI 保持一致
     const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
     const suitesJson = await readFile(path.join(PROJECT_ROOT, "test", "cases", "test_suites.json"), "utf8");
     const testHtml = await readFile(path.join(PROJECT_ROOT, "test", "web", "index.html"), "utf8");
+    const testConsoleJs = await readFile(path.join(PROJECT_ROOT, "assets", "ui", "scripts", "test_console.js"), "utf8");
     const suites = JSON.parse(suitesJson);
 
     assert.doesNotMatch(source, /const WhalgebraTestSuites = Object\.freeze\(\[/u);
     assert.match(source, /const TEST_SUITES_URL = "\.\.\/cases\/test_suites\.json"/u);
+    assert.match(testConsoleJs, /import \{loadWhalgebraTestSuites, test\} from "\.\.\/\.\.\/\.\.\/test\/browser\/test_logic\.js"/u);
     assert.deepEqual(suites.map((suite) => suite.id), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
     for (const suite of suites) {
@@ -137,12 +160,10 @@ test("浏览器测试集编号和描述与 cases 清单、测试 UI 保持一致
 });
 
 test("浏览器测试逻辑可以从 JSON 解析并分配 CalcConfig", async () => {
-    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
-    const context = vm.createContext({console, document: {getElementById: () => null}});
-    vm.runInContext(source, context);
+    const {assignCalcConfigFromJson, parseCalcConfigFromJson} = await import(browserTestLogicUrl());
 
     assert.deepEqual(
-        JSON.parse(JSON.stringify(context.parseCalcConfigFromJson())),
+        JSON.parse(JSON.stringify(parseCalcConfigFromJson())),
         {
             globalCalcAccuracy: 220,
             outputAccuracy: 0.9,
@@ -150,7 +171,7 @@ test("浏览器测试逻辑可以从 JSON 解析并分配 CalcConfig", async () 
         }
     );
     assert.deepEqual(
-        JSON.parse(JSON.stringify(context.parseCalcConfigFromJson(
+        JSON.parse(JSON.stringify(parseCalcConfigFromJson(
             {calcConfig: {globalCalcAccuracy: 120, outputAccuracy: 16, globalPrintMode: "science"}},
             {calcAcc: 60, outputAcc: 8, printMode: "algebra"}
         ))),
@@ -168,7 +189,7 @@ test("浏览器测试逻辑可以从 JSON 解析并分配 CalcConfig", async () 
             globalPrintMode: "old"
         }
     };
-    context.assignCalcConfigFromJson(win, {calcConfig: {globalCalcAccuracy: 80}}, {outputAcc: 12});
+    assignCalcConfigFromJson(win, {calcConfig: {globalCalcAccuracy: 80}}, {outputAcc: 12});
     assert.deepEqual(win.CalcConfig, {
         globalCalcAccuracy: 80,
         outputAccuracy: 12,
@@ -177,13 +198,7 @@ test("浏览器测试逻辑可以从 JSON 解析并分配 CalcConfig", async () 
 });
 
 test("浏览器测试逻辑支持取消信号", async () => {
-    const source = await readFile(path.join(PROJECT_ROOT, "test", "browser", "test_logic.js"), "utf8");
-    const context = vm.createContext({
-        console,
-        document: {getElementById: () => null},
-        setTimeout
-    });
-    vm.runInContext(`${source}\nglobalThis.testFunction = test;`, context);
+    const {test: runBrowserTest} = await import(browserTestLogicUrl());
 
     const controller = new AbortController();
     controller.abort();
@@ -211,7 +226,7 @@ test("浏览器测试逻辑支持取消信号", async () => {
     };
 
     await assert.rejects(
-        context.testFunction(9, frame, {signal: controller.signal}),
+        runBrowserTest(9, frame, {signal: controller.signal}),
         {name: "AbortError"}
     );
 });

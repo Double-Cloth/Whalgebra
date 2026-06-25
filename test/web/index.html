@@ -11,8 +11,7 @@
     <script defer src="../../assets/ui/scripts/shared.js"></script>
     <script defer src="../../assets/ui/scripts/json_tree.js"></script>
     <script defer src="../../assets/ui/scripts/log_console.js"></script>
-    <script defer src="../browser/test_logic.js"></script>
-    <script defer src="../../assets/ui/scripts/test_console.js"></script>
+    <script src="../../assets/ui/scripts/test_console.js" type="module"></script>
 </head>
 <body class="test-page">
 <div aria-hidden="true" class="ambient-background">
@@ -42,7 +41,8 @@
                     disabled title="按推荐顺序运行除性能基准外的全部测试集" type="button">
                 运行全部测试集
             </button>
-            <button aria-label="取消当前测试" class="button button--secondary test-button test-button--danger" data-action="cancel"
+            <button aria-label="取消当前测试" class="button button--secondary test-button test-button--danger"
+                    data-action="cancel"
                     disabled hidden title="中止当前正在执行的测试任务" type="button">
                 取消当前测试
             </button>
@@ -52,21 +52,28 @@
         </section>
         <section class="control-group">
             <h2 class="section-title">单元测试用例</h2>
-            <button aria-label="1. 表达式测试 - 综合分支" class="button button--secondary test-button" data-test-mode="1"
+            <button aria-label="1. 表达式测试 - 综合分支" class="button button--secondary test-button"
+                    data-test-mode="1"
                     disabled
-                    title="运行 1. 表达式测试 - 综合分支（test_mathplus_calc_complex_cases.json），覆盖复杂表达式综合计算" type="button">1. 表达式测试 - 综合分支
+                    title="运行 1. 表达式测试 - 综合分支（test_mathplus_calc_complex_cases.json），覆盖复杂表达式综合计算"
+                    type="button">1. 表达式测试 - 综合分支
             </button>
-            <button aria-label="2. 表达式测试 - 正确分支" class="button button--secondary test-button" data-test-mode="2"
+            <button aria-label="2. 表达式测试 - 正确分支" class="button button--secondary test-button"
+                    data-test-mode="2"
                     disabled
-                    title="运行 2. 表达式测试 - 正确分支（test_mathplus_calc_normal_cases.json），覆盖表达式解析正常分支" type="button">2. 表达式测试 - 正确分支
+                    title="运行 2. 表达式测试 - 正确分支（test_mathplus_calc_normal_cases.json），覆盖表达式解析正常分支"
+                    type="button">2. 表达式测试 - 正确分支
             </button>
-            <button aria-label="3. 表达式测试 - 错误分支" class="button button--secondary test-button" data-test-mode="3"
+            <button aria-label="3. 表达式测试 - 错误分支" class="button button--secondary test-button"
+                    data-test-mode="3"
                     disabled
-                    title="运行 3. 表达式测试 - 错误分支（test_mathplus_calc_error_cases.json），覆盖表达式解析错误分支" type="button">3. 表达式测试 - 错误分支
+                    title="运行 3. 表达式测试 - 错误分支（test_mathplus_calc_error_cases.json），覆盖表达式解析错误分支"
+                    type="button">3. 表达式测试 - 错误分支
             </button>
             <button aria-label="4. MathPlus 函数测试" class="button button--secondary test-button" data-test-mode="4"
                     disabled
-                    title="运行 4. MathPlus 函数测试（test_mathplus_functions.json），覆盖 MathPlus 公开函数分支" type="button">4. MathPlus 函数测试
+                    title="运行 4. MathPlus 函数测试（test_mathplus_functions.json），覆盖 MathPlus 公开函数分支"
+                    type="button">4. MathPlus 函数测试
             </button>
             <button aria-label="5. 幂函数分析测试" class="button button--secondary test-button" data-test-mode="5"
                     disabled
@@ -78,7 +85,8 @@
             </button>
             <button aria-label="7. 函数值列表测试" class="button button--secondary test-button" data-test-mode="7"
                     disabled
-                    title="运行 7. 函数值列表测试（test_func_value_list.json），覆盖函数值列表生成" type="button">7. 函数值列表测试
+                    title="运行 7. 函数值列表测试（test_func_value_list.json），覆盖函数值列表生成" type="button">7.
+                函数值列表测试
             </button>
             <button aria-label="8. 统计计算测试" class="button button--secondary test-button" data-test-mode="8"
                     disabled

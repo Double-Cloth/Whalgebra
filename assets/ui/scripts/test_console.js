@@ -1,3 +1,5 @@
+import {loadWhalgebraTestSuites, test} from "../../../test/browser/test_logic.js";
+
 WhalgebraUI.ready(() => {
     "use strict";
 
@@ -75,7 +77,7 @@ WhalgebraUI.ready(() => {
             return;
         }
 
-        const suites = await globalThis.loadWhalgebraTestSuites?.();
+        const suites = await loadWhalgebraTestSuites();
         const titles = Object.fromEntries((suites ?? []).map((suite) => [
             suite.id,
             `${suite.id}. ${suite.title}`
