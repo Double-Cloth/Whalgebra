@@ -1,5 +1,4 @@
 ---
-
 name: Custom issue
 about: Ask a question or report something that does not fit other templates.
 title: ''
