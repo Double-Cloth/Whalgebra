@@ -7,6 +7,58 @@
      */
     class TokenConfig {
 
+        // 放置在两个操作数之前的二元运算符
+        static _func_01_2 = ['log', 'nroot'];
+        // '&' 是内部表示的隐式乘法。
+        static _func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'];
+
+        // --- 基础数组定义 (私有，仅用于初始化) ---
+        // 'N' (一元负号) 和 'A' (绝对值) 是内部表示。
+        static _func_01_1 = ['sqrt', 'cbrt', 'ln', 'exp', 'lg', 'f', 'g', 're', 'im', 'conj', 'ceil', 'floor', 'arg', 'sgn', '[gamma]', 'sin', 'arcsin', 'cos', 'arccos', 'tan', 'arctan', 'sh', 'arsh', 'ch', 'arch', 'th', 'arth', 'abs', 'A', 'N'];
+        // 放置在两个操作数之间的二元运算符（例如 a + b）
+        // 放置在操作数之后的一元运算符（例如 5!）
+        static _func_10_1 = ['!', '[degree]'];
+        // 接受一个参数的函数（例如 sin(x)）
+        // 内部使用的私有函数/运算符，不应直接由用户输入。
+        static _private_func = ['A', 'N', '&'];
+        // 在 HTML 只占用一个类名的函数。
+        static _htmlClass_len_one_func = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
+        // 定义数字常量和变量 'x'。
+        static _baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
+        static _codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
+        // 其他有效符号。
+        static _other = ['|', ',', '(', ')'];
+        // 将所有函数和运算符合并到一个列表中，以便于查找。
+        static allFunc = new Set([...this._func_01_2, ...this._func_11_2, ...this._func_01_1, ...this._func_10_1]);
+        // 右结合运算符
+        static htmlClassLenOneFunc = new Set(this._htmlClass_len_one_func);
+
+        // --- 暴露给外部的高速 Set 集合 (O(1) 查询) ---
+        // 内部使用的私有函数/运算符，不应直接由用户输入。
+        static privateFunc = new Set(this._private_func);
+        // 稍后用于添加临时标记以插入括号。
+        static rightAssocFunc = new Set([...this._func_01_1, '^']);
+        static needParensFunc = new Set(['^', ...this._complement(this._func_01_1, ['A', 'N'])]);
+        // 需要特殊括号处理的函数和运算符
+        // 数字和常量
+        static baseNumbers = new Set(this._baseNumbers);
+        static codeNumbers = new Set(this._codeNumbers);
+        // 剩余符号
+        static other = new Set(this._other);
+        // 所有有效词法单元的完整列表
+        static allSigns = new Set([...this.allFunc, ...this._baseNumbers, ...this._codeNumbers, ...this._other]);
+        // 按参数数量分组
+        static params_1_set = new Set([...this._func_01_1, ...this._func_10_1]);
+        static params_2_set = new Set([...this._func_01_2, ...this._func_11_2]);
+
+        // 为快速判断参数数量和位置准备的 Set
+        // 按函数位置分组
+        static PlaceFrontSet = new Set([...this._func_01_2, ...this._func_01_1]);
+        static PlaceMiddleSet = new Set(this._func_11_2);
+        static PlaceBackSet = new Set(this._func_10_1);
+        // --- 预计算的优先级 Map ---
+        static priorityMap = new Map();
+
         /**
          * @constructor
          * @description TokenConfig 的构造函数。
@@ -32,63 +84,6 @@
             const setB = new Set(arrB);
             return arrA.filter(item => !setB.has(item));
         }
-
-        // --- 基础数组定义 (私有，仅用于初始化) ---
-        // 放置在两个操作数之前的二元运算符
-        static _func_01_2 = ['log', 'nroot'];
-        // 放置在两个操作数之间的二元运算符（例如 a + b）
-        // '&' 是内部表示的隐式乘法。
-        static _func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'];
-        // 接受一个参数的函数（例如 sin(x)）
-        // 'N' (一元负号) 和 'A' (绝对值) 是内部表示。
-        static _func_01_1 = ['sqrt', 'cbrt', 'ln', 'exp', 'lg', 'f', 'g', 're', 'im', 'conj', 'ceil', 'floor', 'arg', 'sgn', '[gamma]', 'sin', 'arcsin', 'cos', 'arccos', 'tan', 'arctan', 'sh', 'arsh', 'ch', 'arch', 'th', 'arth', 'abs', 'A', 'N'];
-        // 放置在操作数之后的一元运算符（例如 5!）
-        static _func_10_1 = ['!', '[degree]'];
-        // 内部使用的私有函数/运算符，不应直接由用户输入。
-        static _private_func = ['A', 'N', '&'];
-        // 在 HTML 只占用一个类名的函数。
-        static _htmlClass_len_one_func = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
-
-        // 定义数字常量和变量 'x'。
-        static _baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
-        static _codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
-
-        // 其他有效符号。
-        static _other = ['|', ',', '(', ')'];
-
-        // --- 暴露给外部的高速 Set 集合 (O(1) 查询) ---
-        // 将所有函数和运算符合并到一个列表中，以便于查找。
-        static allFunc = new Set([...this._func_01_2, ...this._func_11_2, ...this._func_01_1, ...this._func_10_1]);
-        // 右结合运算符
-        static htmlClassLenOneFunc = new Set(this._htmlClass_len_one_func);
-        // 内部使用的私有函数/运算符，不应直接由用户输入。
-        static privateFunc = new Set(this._private_func);
-        // 需要特殊括号处理的函数和运算符
-        // 稍后用于添加临时标记以插入括号。
-        static rightAssocFunc = new Set([...this._func_01_1, '^']);
-        static needParensFunc = new Set(['^', ...this._complement(this._func_01_1, ['A', 'N'])]);
-
-        // 数字和常量
-        static baseNumbers = new Set(this._baseNumbers);
-        static codeNumbers = new Set(this._codeNumbers);
-
-        // 剩余符号
-        static other = new Set(this._other);
-
-        // 所有有效词法单元的完整列表
-        static allSigns = new Set([...this.allFunc, ...this._baseNumbers, ...this._codeNumbers, ...this._other]);
-
-        // 为快速判断参数数量和位置准备的 Set
-        // 按参数数量分组
-        static params_1_set = new Set([...this._func_01_1, ...this._func_10_1]);
-        static params_2_set = new Set([...this._func_01_2, ...this._func_11_2]);
-        // 按函数位置分组
-        static PlaceFrontSet = new Set([...this._func_01_2, ...this._func_01_1]);
-        static PlaceMiddleSet = new Set(this._func_11_2);
-        static PlaceBackSet = new Set(this._func_10_1);
-
-        // --- 预计算的优先级 Map ---
-        static priorityMap = new Map();
 
         // 静态初始化块：只在类加载时执行一次，用于处理复杂的初始化逻辑
         static {
@@ -1186,6 +1181,19 @@
         };
 
         /**
+         * @constructor
+         * @description CalcConfig 的构造函数。
+         * 这个类被设计为静态类，不应该被实例化。
+         * 如果尝试创建 CalcConfig 的实例，构造函数会抛出一个错误。
+         * @throws {Error} 总是抛出错误，以防止实例化。
+         */
+        constructor() {
+            // 抛出错误以明确表示这是一个静态类，不应创建实例。
+            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
+            throw new Error('[CalcConfig] CalcConfig is a static class and should not be instantiated.');
+        }
+
+        /**
          * @static
          * @returns {Object} 包含基础数学常数（如 e, pi）和复杂算法系数（如 lanczos）的集合。
          * @description 获取高精度常数对象集合。
@@ -1301,19 +1309,6 @@
             // 保存组装好 Getter 的目标对象至缓存
             this._constantsCache = target;
             return this._constantsCache;
-        }
-
-        /**
-         * @constructor
-         * @description CalcConfig 的构造函数。
-         * 这个类被设计为静态类，不应该被实例化。
-         * 如果尝试创建 CalcConfig 的实例，构造函数会抛出一个错误。
-         * @throws {Error} 总是抛出错误，以防止实例化。
-         */
-        constructor() {
-            // 抛出错误以明确表示这是一个静态类，不应创建实例。
-            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
-            throw new Error('[CalcConfig] CalcConfig is a static class and should not be instantiated.');
         }
 
         /**

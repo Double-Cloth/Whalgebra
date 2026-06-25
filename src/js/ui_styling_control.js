@@ -1662,6 +1662,33 @@
             }
 
             /**
+             * @description 当前池中空闲的可复用包装元素数量。
+             * @type {number}
+             * @readonly
+             */
+            get poolSize() {
+                return this._pool.length;
+            }
+
+            /**
+             * @description 当前正在使用中的包装 `<div>` 数量（已出池、未回收）。
+             * @type {number}
+             * @readonly
+             */
+            get wrapperCount() {
+                return this._wrapperSet.size;
+            }
+
+            /**
+             * @description 当前正在使用中的用户原生 `HTMLElement` 数量（引用计数 > 0）。
+             * @type {number}
+             * @readonly
+             */
+            get userElemCount() {
+                return this._userRefCnt.size;
+            }
+
+            /**
              * @method toElement
              * @description 将 `renderItem()` 的返回值规范化为一个 `HTMLElement`。
              * * 若返回值是字符串，则从池中取出（或新建）包装 `<div>`，
@@ -1790,33 +1817,6 @@
                 this._pool = [];
                 this._wrapperSet.clear();
                 this._userRefCnt.clear();
-            }
-
-            /**
-             * @description 当前池中空闲的可复用包装元素数量。
-             * @type {number}
-             * @readonly
-             */
-            get poolSize() {
-                return this._pool.length;
-            }
-
-            /**
-             * @description 当前正在使用中的包装 `<div>` 数量（已出池、未回收）。
-             * @type {number}
-             * @readonly
-             */
-            get wrapperCount() {
-                return this._wrapperSet.size;
-            }
-
-            /**
-             * @description 当前正在使用中的用户原生 `HTMLElement` 数量（引用计数 > 0）。
-             * @type {number}
-             * @readonly
-             */
-            get userElemCount() {
-                return this._userRefCnt.size;
             }
         };
 
