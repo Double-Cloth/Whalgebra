@@ -1644,33 +1644,55 @@ p {
 #print_1_0_choose {
     width: 97dvw !important;
     height: min(8dvh, 11dvmin) !important;
-    transition: all 0.23s ease;
+    transition: background-color 0.23s ease,
+    background-image 0.23s ease,
+    box-shadow 0.23s ease,
+    transform 0.16s ease;
     border-radius: 2dvmin;
 
-    background: linear-gradient(145deg, hsl(var(--white) / 0.62), transparent 44%, hsl(var(--shadow-grey-0) / 0.06)),
-    hsl(var(--surface-base) / 0.78);
+    background-color: hsl(var(--shadow-grey-3) / 0.56);
+    background-image: linear-gradient(
+            145deg,
+            hsl(var(--white) / 0.64),
+            transparent 44%,
+            hsl(var(--shadow-grey-0) / 0.055)
+    );
+
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.82),
-    0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.24),
-    inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.84),
-    inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.16),
-    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.26);
+    0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.22),
+    inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.82),
+    inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.15),
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.24);
 }
 
 #print_1_0_choose:hover {
-    background-color: hsl(var(--selection-active-green) / 0.76);
-    background-image: linear-gradient(145deg, hsl(var(--white) / 0.7), hsl(var(--white) / 0.16) 46%, hsl(var(--selection-green-shadow) / 0.09));
-    box-shadow: -0.26dvmin -0.26dvmin 0.58dvmin hsl(var(--white) / 0.88),
-    0.32dvmin 0.44dvmin 0.8dvmin hsl(var(--selection-green-shadow) / 0.27),
-    inset 0.15dvmin 0.17dvmin 0.36dvmin hsl(var(--white) / 0.82),
-    inset -0.14dvmin -0.18dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.19),
-    0 0 0 0.1dvmin hsl(var(--selection-green-shadow) / 0.34);
+    background-color: hsl(var(--shadow-grey-2) / 0.68);
+    background-image: linear-gradient(
+            145deg,
+            hsl(var(--white) / 0.76),
+            hsl(var(--white) / 0.1) 42%,
+            hsl(var(--shadow-grey-0) / 0.12)
+    );
+
+    box-shadow: -0.3dvmin -0.3dvmin 0.66dvmin hsl(var(--white) / 0.92),
+    0.42dvmin 0.52dvmin 0.96dvmin hsl(var(--shadow-grey-0) / 0.32),
+    inset 0.16dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.84),
+    inset -0.16dvmin -0.2dvmin 0.44dvmin hsl(var(--shadow-grey-1) / 0.24),
+    0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.42);
 }
 
 #print_1_0_choose:active {
-    background-color: hsl(var(--surface-pressed) / 0.72);
-    background-image: linear-gradient(145deg, hsl(var(--shadow-grey-0) / 0.14), hsl(var(--white) / 0.09));
-    box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.38),
-    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.4),
+    transform: scale(0.995);
+
+    background-color: hsl(var(--shadow-grey-2) / 0.62);
+    background-image: linear-gradient(
+            145deg,
+            hsl(var(--shadow-grey-0) / 0.15),
+            hsl(var(--white) / 0.08)
+    );
+
+    box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.34),
+    inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.38),
     0 0.04dvmin 0.1dvmin hsl(var(--shadow-grey-0) / 0.12),
     0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.32);
 }
@@ -2508,6 +2530,7 @@ span.Ripple.IsFadingOut {
     justify-content: center;
     width: 8dvw;
     height: 7dvh;
+    cursor: pointer;
     transition: all 0.3s ease;
 }
 
