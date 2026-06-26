@@ -462,7 +462,13 @@ p {
     box-shadow: inset 0.12dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.64),
     inset -0.18dvmin -0.22dvmin 0.46dvmin hsl(var(--selection-green-shadow) / 0.24),
     0 0.22dvmin 0.52dvmin hsl(var(--selection-green-shadow) / 0.16),
-    0 0 0 0.08dvmin hsl(var(--selection-green-shadow) / 0.28);
+    0 0 0 0.1dvmin hsl(var(--selection-green-shadow) / 0.28);
+}
+
+.GridOn {
+    box-shadow: inset 0.12dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.64),
+    inset -0.18dvmin -0.22dvmin 0.46dvmin hsl(var(--selection-green-shadow) / 0.24),
+    inset 0 0 0 0.1dvmin hsl(var(--selection-green-shadow));
 }
 
 /* screen 部分-part 0 */
@@ -791,7 +797,7 @@ p {
     0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
     inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
     inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
-    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.46);
+    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.46);
 }
 
 .KeyboardStyle1:active {
@@ -969,7 +975,7 @@ p {
     0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
     inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
     inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
-    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.46);
+    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.46);
 }
 
 #keyboard_top > div:not(.Ordinary):nth-child(-n+3) > p {
@@ -985,14 +991,14 @@ p {
     0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.38),
     inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.88),
     inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--shadow-grey-1) / 0.24),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.4);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.4);
 }
 
 #keyboard_top > div:not(#keyboard_top_more).Ordinary:active {
     box-shadow: inset 0.28dvmin 0.34dvmin 0.74dvmin hsl(var(--shadow-grey-0) / 0.46),
     inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.42),
     0 0.04dvmin 0.08dvmin hsl(var(--shadow-grey-0) / 0.14),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.38);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.38);
 }
 
 #keyboard_top > div:not(#keyboard_top_more):not(.Ordinary):active {
@@ -1000,7 +1006,7 @@ p {
     hsl(var(--action-active-green));
     box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin hsl(var(--black) / 0.42),
     inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.34),
-    0 0 0 0.08dvmin hsl(var(--action-green-shadow) / 0.54) !important;
+    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.54) !important;
 }
 
 #keyboard_top > div.Ordinary:hover,
@@ -1011,7 +1017,7 @@ p {
     0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.38),
     inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.88),
     inset -0.18dvmin -0.24dvmin 0.48dvmin hsl(var(--shadow-grey-1) / 0.24),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.4);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.4);
 }
 
 #keyboard_top > div.Ordinary:active,
@@ -1021,7 +1027,7 @@ p {
     box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin hsl(var(--shadow-grey-0) / 0.5),
     inset -0.13dvmin -0.15dvmin 0.32dvmin hsl(var(--white) / 0.44),
     0 0.03dvmin 0.06dvmin hsl(var(--shadow-grey-0) / 0.12),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.42);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.42);
 }
 
 #keyboard_top > div:nth-child(5) > p {
@@ -1632,7 +1638,7 @@ p {
     box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin hsl(var(--shadow-grey-0) / 0.34),
     inset -0.13dvmin -0.15dvmin 0.32dvmin hsl(var(--white) / 0.5),
     0 0.03dvmin 0.06dvmin hsl(var(--shadow-grey-0) / 0.08),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.34);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.34);
 }
 
 #print_1_0_choose {
@@ -1647,7 +1653,7 @@ p {
     0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.24),
     inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.84),
     inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.16),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.26);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.26);
 }
 
 #print_1_0_choose:hover {
@@ -1657,7 +1663,7 @@ p {
     0.32dvmin 0.44dvmin 0.8dvmin hsl(var(--selection-green-shadow) / 0.27),
     inset 0.15dvmin 0.17dvmin 0.36dvmin hsl(var(--white) / 0.82),
     inset -0.14dvmin -0.18dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.19),
-    0 0 0 0.08dvmin hsl(var(--selection-green-shadow) / 0.34);
+    0 0 0 0.1dvmin hsl(var(--selection-green-shadow) / 0.34);
 }
 
 #print_1_0_choose:active {
@@ -1666,7 +1672,7 @@ p {
     box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.38),
     inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.4),
     0 0.04dvmin 0.1dvmin hsl(var(--shadow-grey-0) / 0.12),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.32);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.32);
 }
 
 #print_1_0_choose > p:last-child {
@@ -2549,7 +2555,7 @@ span.Ripple.IsFadingOut {
     0.28dvmin 0.38dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.2),
     inset 0.14dvmin 0.16dvmin 0.34dvmin hsl(var(--white) / 0.68),
     inset -0.14dvmin -0.18dvmin 0.38dvmin hsl(var(--shadow-grey-0) / 0.09),
-    0 0 0 0.08dvmin hsl(var(--shadow-grey-1) / 0.14);
+    0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.14);
 }
 
 #explain_content > p:not(.ExplainLeft) {
