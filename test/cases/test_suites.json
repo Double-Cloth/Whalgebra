@@ -57,7 +57,7 @@
   },
   {
     "id": 9,
-    "title": "性能基准",
+    "title": "性能基准测试",
     "file": null,
     "description": "统计核心函数平均耗时",
     "includeInAll": false
