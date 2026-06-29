@@ -264,7 +264,7 @@ document.addEventListener('keydown', (event) => {
     // 隐藏说明
     PageControlTools.hideExplain();
 
-    // 1. 优先处理功能控制键 (Switch 结构更清晰)
+    // 优先处理功能控制键 (Switch 结构更清晰)
     switch (key) {
         case 'Backspace':
             event.preventDefault(); // 阻止浏览器默认的退格行为（如返回上一页）
@@ -308,7 +308,7 @@ document.addEventListener('keydown', (event) => {
             return PrintManager.exe();
     }
 
-    // 2. 处理字符输入 (字母/数字/E)
+    // 处理字符输入 (字母/数字)
     // 使用正则表达式匹配单个字母、数字或 'E'
     if (/^([a-z0-9E])$/.test(key)) {
         event.preventDefault(); // 阻止将字符输入到非预期的元素中
@@ -329,7 +329,7 @@ document.addEventListener('keydown', (event) => {
         return;
     }
 
-    // 3. 处理运算符
+    // 处理运算符
     // 使用正则表达式匹配常见的数学运算符
     if (/^[+\-*/^|!,.()]$/.test(key)) {
         event.preventDefault(); // 阻止默认的浏览器快捷键或行为
@@ -383,7 +383,7 @@ window.addEventListener('load', () => {
         }
     };
 
-    // --- 开始恢复，注意顺序！ ---
+    // --- 开始恢复，注意顺序 ---
 
     // 当前模式
     recoverData('currentMode', (data) => {
@@ -413,7 +413,7 @@ window.addEventListener('load', () => {
         }
     });
 
-    // 子模式 (需要 JSON.parse)
+    // 子模式
     recoverData('subModes', (data) => {
         data = JSON.parse(data);
         const dataLen = PageConfig.screenData['1'].length;

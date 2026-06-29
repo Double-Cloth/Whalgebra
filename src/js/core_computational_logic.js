@@ -4574,22 +4574,28 @@
         static _getStatisticsInfo(list, {averageAndSum = null, varianceList = null} = {}) {
             // 初始化一个空对象，用于存储所有计算出的统计结果。
             const statisticsResult = {};
+
             // 一次性计算列表的总和与平均值，以提高效率。
             averageAndSum = averageAndSum === null ? StatisticsTools._averageAndSum(list) : averageAndSum;
             statisticsResult.average = Public.idealizationToString(averageAndSum.average);
             statisticsResult.sum = Public.idealizationToString(averageAndSum.sum);
+
             // 计算列表中每个元素的平方，得到一个新的列表 [x₁², x₂², ...]。
             const list2 = StatisticsTools._changeInner(list, x => MathPlus.times(x, x));
+
             // 计算平方和 (Σx²)。
             statisticsResult.sum2 = Public.idealizationToString(StatisticsTools._averageAndSum(list2).sum);
+
             // 计算方差。
             const variance = varianceList === null ? StatisticsTools._variance(list, averageAndSum) : varianceList;
             statisticsResult.totalVariance = Public.idealizationToString(MathPlus.sqrt(variance[0]));
             statisticsResult.sampleVariance = Public.idealizationToString(variance[1] === 'error' ? 'error' : MathPlus.sqrt(variance[1]));
+
             // 查找列表中的最大值和最小值。
             const maxAndMin = StatisticsTools._getMaxAndMin(list);
             statisticsResult.max = Public.idealizationToString(maxAndMin.max);
             statisticsResult.min = Public.idealizationToString(maxAndMin.min);
+
             // 返回一个包含统计结果和平方列表的对象，以便调用者可以复用这些计算。
             return {statisticsResult: statisticsResult, squareList: list2};
         }
@@ -5107,26 +5113,26 @@
         /**
          * @private
          * @static
-         * @method _solveX1
+         * @method _solveLinear
          * @description 求解一次方程 ax + b = 0。
          * @param {Array<ComplexNumber|string|number>} list - 包含两个系数 [a, b] 的数组。
          * @returns {Array<ComplexNumber>} 一个包含方程唯一解的数组。
          */
-        static _solveX1(list) {
+        static _solveLinear(list) {
             // 从列表中提取系数 a, b。
             const a = list[0], b = list[1];
             // 根据公式 x = -b / a 计算解。
             // MathPlus.minus(0, b) 计算 -b。
             // MathPlus.divide(...) 计算 (-b) / a。
             const root = MathPlus.divide(MathPlus.minus(0, b), a);
-            // 以数组形式返回解，以保持与其他求解函数（如 _solveX2）的返回格式一致。
+            // 以数组形式返回解，以保持与其他求解函数（如 _solveQuadratic）的返回格式一致。
             return [root];
         }
 
         /**
          * @private
          * @static
-         * @method _solveX2
+         * @method _solveQuadratic
          * @description 使用二次公式 `x = [-b ± sqrt(b² - 4ac)] / 2a` 求解二次方程 `ax² + bx + c = 0`。
          * 该方法通过分析判别式 `Δ = b² - 4ac` 的值来处理实数根和复数根的情况。
          * @param {Array<ComplexNumber|string|number>} list - 一个包含二次方程系数 `[a, b, c]` 的数组。
@@ -5136,7 +5142,7 @@
          * - 如果 `Δ < 0` (一对共轭复数根): 返回 `[complexRoot1, complexRoot2, null]`。
          *   数组末尾的 `null` 是一个特殊的标志，用于向调用者指示根是复数。
          */
-        static _solveX2(list) {
+        static _solveQuadratic(list) {
             // 从列表中提取系数 a, b, c。
             const a = list[0], b = list[1], c = list[2];
 
@@ -5188,7 +5194,7 @@
         /**
          * @private
          * @static
-         * @method _solveX3
+         * @method _solveCubic
          * @description 使用盛金公式（Sheng Jin's Formulas）解析求解三次方程 ax³ + bx² + cx + d = 0。
          * 该方法能够精确处理所有情况，包括三个不等实根、一个实根和一对共轭复根，以及各种重根情况。
          * @param {Array<ComplexNumber|string|number>} list - 包含四个系数 [a, b, c, d] 的数组，分别对应 x³, x², x, 和常数项。
@@ -5198,7 +5204,7 @@
          * - **三重实根**: 返回一个只包含一个元素的数组 `[tripleRoot]`。
          * - **一个二重实根和一个单实根**: 返回一个包含两个元素的数组 `[doubleRoot, singleRoot]`。
          */
-        static _solveX3(list) {
+        static _solveCubic(list) {
             // 从列表中提取系数 a, b, c, d。
             const a = list[0], b = list[1], c = list[2], d = list[3];
 
@@ -5356,13 +5362,13 @@
         /**
          * @private
          * @static
-         * @method _solveX4 (内部辅助方法)
+         * @method _solveQuartic (内部辅助方法)
          * @description 使用天珩公式解析求解四次方程 ax⁴ + bx³ + cx² + dx + e = 0。
          * 该方法通过引入一个预解三次方程来降次，能够处理所有情况，包括四个实数根、两对共轭复数根、一对共轭复数根和两个实数根，以及各种重根的情况。
          * @param {Array<ComplexNumber|string|number>} list - 包含五个系数 [a, b, c, d, e] 的数组。这些系数可以是数字或与 MathPlus 库兼容的对象。
          * @returns {Array<ComplexNumber>} 一个包含方程四个根的数组。根是 ComplexNumber 的实例。
          */
-        static _solveX4(list) {
+        static _solveQuartic(list) {
             // 从列表中提取系数 a, b, c, d, e。
             const a = list[0], b = list[1], c = list[2], d = list[3], e = list[4];
 
@@ -5756,9 +5762,9 @@
                 list = [a, b, c, d, e];
                 // 计算一阶和二阶导数及其根。
                 const diff1 = PowerFunctionTools._differentiate(list);
-                const diff1Roots = PowerFunctionTools._solveX3(diff1);
+                const diff1Roots = PowerFunctionTools._solveCubic(diff1);
                 const diff2 = PowerFunctionTools._differentiate(diff1);
-                const diff2Roots = PowerFunctionTools._solveX2(diff2);
+                const diff2Roots = PowerFunctionTools._solveQuadratic(diff2);
 
                 // --- 分析单调性和极值 (基于一阶导数) ---
                 if ([1, 2, 4].includes(diff1Roots.length)) {
@@ -5806,7 +5812,7 @@
 
                 // --- 求解方程的根 ---
                 const roots = [];
-                const originalRoots = PowerFunctionTools._solveX4(list);
+                const originalRoots = PowerFunctionTools._solveQuartic(list);
                 for (let i = 0; i < Math.min(4, originalRoots.length); i++) {
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
@@ -5819,9 +5825,9 @@
                 list = [b, c, d, e];
                 // 计算一阶和二阶导数及其根。
                 const diff1 = PowerFunctionTools._differentiate(list);
-                const diff1Roots = PowerFunctionTools._solveX2(diff1);
+                const diff1Roots = PowerFunctionTools._solveQuadratic(diff1);
                 const diff2 = PowerFunctionTools._differentiate(diff1);
-                const diff2Roots = PowerFunctionTools._solveX1(diff2);
+                const diff2Roots = PowerFunctionTools._solveLinear(diff2);
                 result.range = ['-inf', '+inf'];
 
                 // --- 分析单调性和极值 ---
@@ -5847,7 +5853,7 @@
 
                 // --- 求解方程的根 ---
                 const roots = [];
-                const originalRoots = PowerFunctionTools._solveX3(list);
+                const originalRoots = PowerFunctionTools._solveCubic(list);
                 for (let i = 0; i < Math.min(3, originalRoots.length); i++) {
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
@@ -5859,7 +5865,7 @@
                 list = [c, d, e];
                 // --- 情况 3: 二次函数 (a = b = 0, c ≠ 0) ---
                 const diff1 = PowerFunctionTools._differentiate(list);
-                const diff1Roots = PowerFunctionTools._solveX1(diff1);
+                const diff1Roots = PowerFunctionTools._solveLinear(diff1);
                 const point = Public.idealizationToString(diff1Roots[0]);
                 const minMax = Public.idealizationToString(PowerFunctionTools._getPowerFunctionValue(list, diff1Roots[0]));
                 result.range = c.isPositive() ? [minMax, '+inf'] : ['-inf', minMax];
@@ -5873,7 +5879,7 @@
 
                 // --- 求解方程的根 ---
                 const roots = [];
-                const originalRoots = PowerFunctionTools._solveX2(list);
+                const originalRoots = PowerFunctionTools._solveQuadratic(list);
                 for (let i = 0; i < Math.min(2, originalRoots.length); i++) {
                     roots.push(Public.idealizationToString(originalRoots[i]));
                 }
@@ -5892,7 +5898,7 @@
                 result.convexInterval = [['null', 'null']];
                 result.concaveInterval = [['null', 'null']];
                 result.inflectionPoint = [['null', 'null']];
-                result.roots = Public.idealizationToString(PowerFunctionTools._solveX1(list));
+                result.roots = Public.idealizationToString(PowerFunctionTools._solveLinear(list));
                 return result;
             }
 

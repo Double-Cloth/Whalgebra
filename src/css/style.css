@@ -99,6 +99,7 @@ body {
     --selection-green-shadow: 139.5 20.2% 61.18%;
     --screen-selection-green: 142.7 34.58% 79.02%;
 
+    /* 警示红色 */
     --danger-red: 4.52 60.83% 47.06%;
 }
 
@@ -138,6 +139,7 @@ p {
 
 ::-webkit-scrollbar-track {
     border-radius: 100dvmax;
+
     background: linear-gradient(145deg, hsl(var(--shadow-grey-2) / 0.22), hsl(var(--white) / 0.62)),
     hsl(var(--shadow-grey-3) / 0.92);
     box-shadow: inset 0.2dvmin 0.22dvmin 0.48dvmin hsl(var(--shadow-grey-1) / 0.64),
@@ -146,6 +148,7 @@ p {
 
 ::-webkit-scrollbar-thumb {
     border-radius: 100dvmax;
+
     background: linear-gradient(145deg, hsl(var(--white) / 0.28) 0%, hsl(var(--white) / 0.04) 18%, hsl(var(--shadow-grey-0) / 0.52) 58%),
     hsl(var(--shadow-grey-1) / 0.82);
     box-shadow: inset 0.11dvmin 0.13dvmin 0.3dvmin hsl(var(--white) / 0.66),
@@ -221,6 +224,17 @@ p {
     margin-right: 0.45dvmin;
 }
 
+/* ===== 彩蛋部分 ===== */
+
+._ship_.ShipLeft {
+    left: 100dvw;
+    transform: scaleX(-1);
+}
+
+._ship_:not(.ShipLeft) {
+    left: max(-5dvh, -7.79dvmin);
+}
+
 /* ===== main 窗口样式 ===== */
 
 #main_cover {
@@ -274,7 +288,6 @@ p {
     transition: background 0.13s ease-out,
     box-shadow 0.13s ease-out;
     border-radius: 2.5dvmin;
-
     background: transparent;
     box-shadow: none;
 }
@@ -344,15 +357,6 @@ p {
     transform: scale(0.82);
 }
 
-._ship_.ShipLeft {
-    left: 100dvw;
-    transform: scaleX(-1);
-}
-
-._ship_:not(.ShipLeft) {
-    left: max(-5dvh, -7.79dvmin);
-}
-
 /* screen_title 部分 */
 
 #screen_title {
@@ -379,6 +383,8 @@ p {
     gap: 1dvmin;
 }
 
+/* screen_title 部分-返回按钮 */
+
 #back_btn_father {
     display: flex;
     overflow: hidden;
@@ -402,6 +408,7 @@ p {
 
 #back_btn:hover {
     transform: translateX(-0.4dvmin);
+
     background: linear-gradient(145deg, hsl(var(--white) / 0.92), hsl(var(--surface-raised)) 44%, hsl(var(--control-hover) / 0.92));
     box-shadow: inset 0.12dvmin 0.14dvmin 0.28dvmin hsl(var(--white) / 0.92),
     inset -0.12dvmin -0.14dvmin 0.32dvmin hsl(var(--shadow-grey-1) / 0.2);
@@ -891,6 +898,7 @@ p {
     overflow: hidden;
     transition: all 0.25s ease;
     border-radius: 3dvmin;
+
     background: linear-gradient(
             150deg,
             hsl(var(--white) / 0.58) 0%,
@@ -969,6 +977,7 @@ p {
 
 #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
     color: hsl(var(--white) / 0.96);
+
     background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
     hsl(var(--action-green) / 0.86);
     box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
@@ -1044,6 +1053,8 @@ p {
     justify-content: center;
 }
 
+/* keyboard_top 部分-更多菜单 */
+
 #sort_svg {
     overflow: visible;
     width: 81%;
@@ -1086,6 +1097,7 @@ p {
     overflow: hidden;
     height: 50.5dvh;
     padding-top: 6.75dvh;
+
     background: linear-gradient(145deg, hsl(var(--white) / 0.72), hsl(var(--surface-base) / 0.92) 52%, hsl(var(--shadow-grey-2) / 0.36));
     box-shadow: inset 0.28dvmin 0.32dvmin 0.72dvmin hsl(var(--white) / 0.88),
     inset -0.28dvmin -0.34dvmin 0.78dvmin hsl(var(--shadow-grey-0) / 0.24);
@@ -1195,6 +1207,7 @@ p {
         width: 37.5dvw;
         height: 50.5dvh;
         border-right: 0.5dvmin solid hsl(var(--line-teal));
+
         background: linear-gradient(155deg, hsl(var(--white) / 0.34), hsl(var(--white) / 0.08) 42%, hsl(var(--shadow-grey-2) / 0.16)),
         hsl(var(--sub-keyboard-panel) / 0.92);
     }
@@ -1288,7 +1301,6 @@ p {
     justify-content: center;
     width: 100dvw;
     height: 100dvh;
-
     background-color: hsl(var(--shadow-grey-0) / 0.08);
     backdrop-filter: blur(5px);
 }
@@ -1450,7 +1462,6 @@ p {
 
 #print_close:hover,
 #load_cancel:hover {
-    opacity: 0.9;
     background-color: hsl(var(--action-active-green) / 0.94);
     box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.68),
     0.3dvmin 0.46dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.34),
@@ -1461,6 +1472,7 @@ p {
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
+
     background-color: hsl(var(--action-active-green) / 0.98);
     box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
     inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
@@ -1503,8 +1515,8 @@ p {
 
 .MultipleLines > div {
     width: -moz-max-content;
-
     width: max-content;
+
     height: min(7.5dvh, 9dvmin);
 }
 
@@ -1542,6 +1554,7 @@ p {
     padding-top: 2dvmin;
     transition: all 0.3s ease;
     border-radius: 2.5dvmin 2.5dvmin 0 0;
+
     background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
     box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
     -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
@@ -1551,8 +1564,8 @@ p {
     inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
     inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
     inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
-    grid-gap: 0;
 
+    grid-gap: 0;
     grid-template-columns: max(99dvmin, 80dvw);
     grid-template-rows: min(8dvh, 12dvmin) repeat(7, min(14dvmin, 8dvh));
     backdrop-filter: blur(7px);
@@ -1578,6 +1591,7 @@ p {
 
 .Print1ChooseOn {
     transition: all 0.45s ease;
+
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.6) 0%,
@@ -1597,6 +1611,7 @@ p {
     .Print1ChooseOn
 ) {
     transition: all 0.25s ease;
+
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.7) 0%,
@@ -1657,7 +1672,6 @@ p {
             transparent 44%,
             hsl(var(--shadow-grey-0) / 0.055)
     );
-
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.82),
     0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.22),
     inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.82),
@@ -1673,7 +1687,6 @@ p {
             hsl(var(--white) / 0.1) 42%,
             hsl(var(--shadow-grey-0) / 0.12)
     );
-
     box-shadow: -0.3dvmin -0.3dvmin 0.66dvmin hsl(var(--white) / 0.92),
     0.42dvmin 0.52dvmin 0.96dvmin hsl(var(--shadow-grey-0) / 0.32),
     inset 0.16dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.84),
@@ -1690,7 +1703,6 @@ p {
             hsl(var(--shadow-grey-0) / 0.15),
             hsl(var(--white) / 0.08)
     );
-
     box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.34),
     inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.38),
     0 0.04dvmin 0.1dvmin hsl(var(--shadow-grey-0) / 0.12),
@@ -1722,6 +1734,7 @@ p {
     margin: auto;
     transition: all 0.15s ease;
     border-radius: 3dvmin;
+
     background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
     hsl(var(--action-green) / 0.92);
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.64),
@@ -1740,6 +1753,7 @@ p {
 
 #export div:active {
     transform: translateY(0.3dvmin);
+
     background-color: hsl(var(--action-active-green) / 0.94);
     box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
     inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
@@ -1810,9 +1824,8 @@ p {
 
 .SelectBtn {
     position: relative;
-    overflow: hidden; /* 核心：裁剪溢出的波纹 */
+    overflow: hidden; /* 裁剪溢出的波纹 */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
     /* 外观样式 */
     outline: none;
 }
@@ -1826,12 +1839,13 @@ p {
     0 0 0 0.06dvmin hsl(var(--line-teal) / 0.15);
 }
 
-/* 波纹元素样式 */
+/* --- print_content 部分-波纹元素样式 --- */
+
 span.Ripple {
     position: absolute;
     transform: scale(0);
     animation: RippleFill 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-    pointer-events: none; /* 核心：确保不阻挡交互 */
+    pointer-events: none; /* 确保不阻挡交互 */
     border-radius: 50%;
 
     /* 进入动画：扩散 */
@@ -1860,6 +1874,8 @@ span.Ripple.IsFadingOut {
         transform: scale(4.2);
     }
 }
+
+/* ------ */
 
 #statistics_results {
     overflow: hidden;
@@ -1906,11 +1922,15 @@ span.Ripple.IsFadingOut {
     left: calc((199dvw - 0.5dvmin) / 3);
 }
 
-#print_content_2:not(.TwoFunc) #print_grid_line_2 {
+#print_content_2:not(.TwoFunc) #print_grid_line_2,
+#print_content_2.TwoFunc #print_grid_line_error {
     display: none;
 }
 
-#print_content_2.TwoFunc #print_grid_line_error {
+#print_content_2:not(.TwoFunc) :is(
+    #print_content_2_head > div:last-child,
+    #print_content_2_inner > div > div:last-child
+) {
     display: none;
 }
 
@@ -1932,13 +1952,6 @@ span.Ripple.IsFadingOut {
     #print_content_2_inner > div
 ) {
     grid-template-columns: calc((98dvw - 1dvmin) / 3) calc((196dvw - 0.5dvmin) / 3);
-}
-
-#print_content_2:not(.TwoFunc) :is(
-    #print_content_2_head > div:last-child,
-    #print_content_2_inner > div > div:last-child
-) {
-    display: none;
 }
 
 #print_content_2_head,
@@ -2010,12 +2023,14 @@ span.Ripple.IsFadingOut {
     height: min(10dvh, 16dvmin);
     border: 0.5dvmin solid hsl(var(--line-teal));
     border-radius: 2dvmin;
+
     background: linear-gradient(145deg, hsl(var(--white)), hsl(var(--soft-white)) 48%, hsl(var(--surface-base)));
     box-shadow: -0.32dvmin -0.32dvmin 0.72dvmin hsl(var(--white) / 0.92),
     0.38dvmin 0.48dvmin 0.9dvmin hsl(var(--shadow-grey-0) / 0.3),
     inset 0.18dvmin 0.2dvmin 0.4dvmin hsl(var(--white) / 0.88),
     inset -0.2dvmin -0.24dvmin 0.5dvmin hsl(var(--shadow-grey-1) / 0.2),
     0 0 0 0.06dvmin hsl(var(--shadow-grey-1) / 0.16);
+
     backdrop-filter: blur(5px);
 }
 
@@ -2041,9 +2056,11 @@ span.Ripple.IsFadingOut {
     height: 93.5dvh;
     transition: all 0.3s ease;
     border-radius: 0 2.5dvmin 2.5dvmin 0;
+
     background: linear-gradient(90deg, transparent 0%, transparent 92%, hsl(var(--selection-inactive) / 0.38) 100%),
     linear-gradient(155deg, hsl(var(--white) / 0.44) 0%, hsl(var(--setting-panel) / 0.22) 42%, hsl(var(--selection-inactive) / 0.32) 100%),
     hsl(var(--setting-panel) / 0.94);
+
     backdrop-filter: blur(6px);
 }
 
@@ -2053,6 +2070,7 @@ span.Ripple.IsFadingOut {
 
 #setting:not(.SettingNotShow) {
     left: 0;
+
     box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
     -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
     0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
@@ -2098,29 +2116,22 @@ span.Ripple.IsFadingOut {
     initial-value: transparent;
 }
 
-/* =========================
-   开关轨道
-   ========================= */
-
 #switch_container {
     /*
      * 轨道尺寸：
-     * 高度为 h，宽度恒为 2h。
+     * 高度为 h，宽度恒为 2h
      */
     position: relative;
-    /* 旋钮与轨道边缘之间的间距 */
     overflow: hidden;
     /* 旋钮直径 */
     width: calc(var(--h) * 2);
-
     height: var(--h);
     padding: 0;
-
     cursor: pointer;
     transition: box-shadow 0.4s ease;
-
     border: 0;
     border-radius: var(--h);
+
     background: linear-gradient(
             145deg,
             hsl(var(--shadow-grey-0) / 0.08) 0%,
@@ -2130,40 +2141,20 @@ span.Ripple.IsFadingOut {
     box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--switch-shadow-dark) / 0.3),
     inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.7);
 
-    /*
-     * 灰色塑料轨道。
-     */
+    /* 灰色轨道 */
     --h: min(6dvh, 7.5dvw);
-
-    /*
-     * 普通状态也保留两层透明内阴影，
-     * 确保激活动画前后的阴影层数和顺序完全一致。
-     */
     --switch-gap: calc(var(--h) * 0.1);
-
     --knob-size: calc(var(--h) * 0.8);
 }
 
-/* =========================
-   圆形旋钮
-   ========================= */
-
 #switch_knob {
-    /*
-     * 未激活状态的白灰渐变颜色。
-     */
+    /* 未激活状态的白灰渐变颜色 */
     position: absolute;
     top: var(--switch-gap);
     left: var(--switch-gap);
     display: flex;
 
-    /*
-     * 始终保留基础背景层。
-     * 未激活时上方渐变完全不透明，
-     * 因此透明基础色不可见。
-     */
     align-items: center;
-
     justify-content: center;
     width: var(--knob-size);
     height: var(--knob-size);
@@ -2177,6 +2168,7 @@ span.Ripple.IsFadingOut {
     box-shadow 0.4s ease,
     filter 0.15s ease;
     border-radius: 50%;
+
     background: linear-gradient(
             145deg,
             var(--knob-color-1) 0%,
@@ -2185,7 +2177,6 @@ span.Ripple.IsFadingOut {
             var(--knob-color-4) 100%
     ),
     var(--knob-base-color);
-
     box-shadow: /* 预留激活状态的绿色发光层 */ 0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
         /* 右下外阴影 */ calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
         /* 左上外高光 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.86),
@@ -2193,7 +2184,6 @@ span.Ripple.IsFadingOut {
         /* 底部内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--switch-shadow-mid) / 0.2);
     --knob-color-1: hsl(var(--white));
     --knob-color-2: hsl(var(--soft-white));
-
     --knob-color-3: hsl(var(--switch-track));
 
     /*
@@ -2205,24 +2195,18 @@ span.Ripple.IsFadingOut {
      * 4. 顶部内高光
      * 5. 底部内阴影
      *
-     * 这样切换状态时不会发生阴影层错位。
      */
     --knob-color-4: hsl(var(--switch-shadow));
-
     --knob-base-color: transparent;
 }
 
-/* =========================
-   开关图标
-   ========================= */
-
+/* 开关图标 */
 .SwitchIcon {
     position: absolute;
     top: 50%;
     left: 50%;
     width: calc(var(--h) * 0.4);
     height: calc(var(--h) * 0.4);
-
     transition: opacity 0.3s ease,
     transform 0.3s ease;
     transform-origin: center;
@@ -2230,7 +2214,6 @@ span.Ripple.IsFadingOut {
 }
 
 /* 关闭图标 */
-
 .IconOff {
     transform: translate(-50%, -50%) scale(1) rotate(0deg);
     opacity: 1;
@@ -2238,16 +2221,13 @@ span.Ripple.IsFadingOut {
 }
 
 /* 开启图标 */
-
 .IconOn {
     transform: translate(-50%, -50%) scale(0.5) rotate(-45deg);
     opacity: 0;
     stroke: hsl(var(--white));
 }
 
-/* =========================
-   激活状态
-   ========================= */
+/* 激活状态 */
 
 #switch_container.Active {
     box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--shadow-grey-0) / 0.42),
@@ -2260,6 +2240,7 @@ span.Ripple.IsFadingOut {
      * 底层绿色会透过渐变显示。
      */
     transform: translateX(var(--h));
+
     box-shadow: /* 绿色发光层 */ 0 0 calc(var(--h) * 0.26) hsl(var(--action-green) / 0.86),
         /* 绿色右下外阴影 */ calc(var(--h) * 0.05) calc(var(--h) * 0.06) calc(var(--h) * 0.13) hsl(var(--action-green-shadow) / 0.44),
         /* 保留左上外高光层，但设置为透明 */ calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0),
@@ -2267,7 +2248,6 @@ span.Ripple.IsFadingOut {
         /* 底部绿色内阴影 */ inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.36);
     --knob-color-1: hsl(var(--white) / 0.22);
     --knob-color-2: hsl(var(--white) / 0.07);
-
     --knob-color-3: hsl(var(--black) / 0.035);
 
     /*
@@ -2275,7 +2255,6 @@ span.Ripple.IsFadingOut {
      * 左右边距各为 0.1h，因此移动距离正好为 h。
      */
     --knob-color-4: hsl(var(--black) / 0.13);
-
     --knob-base-color: hsl(var(--action-green) / 0.82);
 }
 
@@ -2291,18 +2270,12 @@ span.Ripple.IsFadingOut {
     opacity: 1;
 }
 
-/* =========================
-   悬停状态
-   ========================= */
-
+/* 悬停状态 */
 #switch_container:hover #switch_knob {
     filter: brightness(1.025);
 }
 
-/* =========================
-   普通按压状态
-   ========================= */
-
+/* 普通按压状态 */
 #switch_container:active #switch_knob {
     box-shadow: /* 保留发光层 */ 0 0 calc(var(--h) * 0.19) hsl(var(--action-green) / 0),
         /* 按压后的右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--switch-shadow-pressed) / 0.34),
@@ -2312,10 +2285,7 @@ span.Ripple.IsFadingOut {
     filter: brightness(0.97);
 }
 
-/* =========================
-   激活按压状态
-   ========================= */
-
+/* 激活按压状态 */
 #switch_container.Active:active #switch_knob {
     box-shadow: /* 按压时减弱绿色发光 */ 0 0 calc(var(--h) * 0.2) hsl(var(--action-green) / 0.76),
         /* 绿色右下外阴影 */ calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.44),
@@ -2324,19 +2294,12 @@ span.Ripple.IsFadingOut {
         /* 底部绿色内阴影 */ inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--action-green-shadow) / 0.42);
 }
 
-/* =========================
-   键盘焦点
-   ========================= */
-
 #switch_container:focus-visible {
     outline: calc(var(--h) * 0.035) solid hsl(var(--action-green) / 0.48);
     outline-offset: calc(var(--h) * 0.055);
 }
 
-/* =========================
-   减少动态效果
-   ========================= */
-
+/* 减少动态效果 */
 @media (prefers-reduced-motion: reduce) {
     #switch_container,
     #switch_knob,
@@ -2393,8 +2356,8 @@ span.Ripple.IsFadingOut {
 
 .SettingSelection > div:not(.SelectionOn) {
     width: min(46dvw, 64.7dvmin);
-
     transform-origin: left center;
+
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.7) 0%,
@@ -2402,7 +2365,6 @@ span.Ripple.IsFadingOut {
             hsl(var(--shadow-grey-0) / 0.07) 100%
     ),
     hsl(var(--selection-inactive));
-
     box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
     inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
     0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
@@ -2438,8 +2400,8 @@ span.Ripple.IsFadingOut {
     justify-content: center;
     width: min(65dvw, 90dvmin);
     height: calc(7.5dvh + 0.5dvmin);
-
     border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
+
     background: linear-gradient(155deg, hsl(var(--white) / 0.68), hsl(var(--surface-base) / 0.96) 58%, hsl(var(--shadow-grey-2) / 0.14));
 }
 
@@ -2498,6 +2460,7 @@ span.Ripple.IsFadingOut {
     -0.48dvmin -0.48dvmin 1.16dvmin hsl(var(--white) / 0.9),
     inset 0.32dvmin 0.36dvmin 0.76dvmin hsl(var(--white) / 0.94),
     inset -0.34dvmin -0.38dvmin 0.82dvmin hsl(var(--shadow-grey-0) / 0.15);
+
     backdrop-filter: blur(6px);
 }
 
@@ -2537,6 +2500,7 @@ span.Ripple.IsFadingOut {
 #explain_close:hover,
 #explain_close:active {
     transition-property: none;
+
     background: linear-gradient(145deg, hsl(var(--white) / 0.34), transparent 42%, hsl(var(--black) / 0.16)),
     hsl(var(--danger-red) / 0.95);
     box-shadow: -0.12dvmin -0.12dvmin 0.3dvmin hsl(var(--white) / 0.48),
@@ -2546,7 +2510,6 @@ span.Ripple.IsFadingOut {
 }
 
 #explain_close:active {
-    opacity: 0.77;
     background: linear-gradient(145deg, hsl(var(--black) / 0.2), transparent 64%, hsl(var(--white) / 0.1)),
     hsl(var(--danger-red) / 0.98);
     box-shadow: inset 0.28dvmin 0.34dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.5),
