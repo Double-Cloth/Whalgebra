@@ -117,7 +117,7 @@ WhalgebraUI.ready(() => {
             await WhalgebraUI.requestJson("/api/tools/status");
             WhalgebraUI.setStatus(status, "ready", "工具服务已连接");
         } catch {
-            WhalgebraUI.setStatus(status, "error", "工具服务不可用，请运行 npm start");
+            WhalgebraUI.setStatus(status, "error", "工具服务不可用");
             submitButton.disabled = true;
         }
     }
