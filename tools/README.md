@@ -165,6 +165,5 @@ node tools/cli/svg_compressor.js --input tmp/input --output tmp/output-css --tem
 
 1. 命令行入口放在 `tools/cli/`，浏览器入口放在 `tools/web/`。
 2. 会写文件或删除目录的工具必须使用 `tools/shared/filesystem.js` 的路径检查。
-3. Web API 只能暴露必要能力，并保持同源、JSON 和路径限制。
-4. 工具页面复用 `assets/ui/` 下的共享样式和脚本，不写内联样式或内联事件。
-5. 修改工具后运行 `npm test`，确保服务器、安全路径和页面结构测试通过。
+3. 工具页面复用 `assets/ui/` 下的共享样式和脚本，不写内联样式或内联事件。
+4. 修改工具后运行 `npm test`，确保服务器、安全路径和页面结构测试通过。
