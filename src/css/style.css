@@ -101,6 +101,65 @@ body {
 
     /* 警示红色 */
     --danger-red: 4.52 60.83% 47.06%;
+
+    /* 复用背景 */
+    --primary-action-background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.86);
+
+    --raised-action-background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
+    hsl(var(--action-green) / 0.92);
+
+    --choice-panel-background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
+
+    --setting-divider-border: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
+
+    --selection-on-background: linear-gradient(
+            155deg,
+            hsl(var(--white) / 0.6) 0%,
+            hsl(var(--white) / 0.16) 42%,
+            hsl(var(--selection-green-shadow) / 0.07) 100%
+    ),
+    hsl(var(--selection-green));
+
+    --selection-off-background: linear-gradient(
+            155deg,
+            hsl(var(--white) / 0.7) 0%,
+            hsl(var(--white) / 0.18) 44%,
+            hsl(var(--shadow-grey-0) / 0.07) 100%
+    ),
+    hsl(var(--selection-inactive));
+
+    /* 复用阴影 */
+    --primary-action-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
+    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
+    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
+    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
+    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.46);
+
+    --floating-panel-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
+    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
+    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
+    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.24),
+    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
+    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
+    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
+    inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
+
+    --selection-on-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin hsl(var(--white) / 0.68),
+    inset -0.16dvmin -0.22dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.28),
+    0 0 0 0.16dvmin hsl(var(--selection-green-shadow) / 0.68),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.66),
+    0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
+
+    --selection-off-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
+    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
+    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
+    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
+    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
+
+    --pressed-action-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
+    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
+    0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
 }
 
 p {
@@ -801,13 +860,8 @@ p {
 }
 
 .KeyboardStyleEXE {
-    background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
-    hsl(var(--action-green) / 0.86);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
-    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
-    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
-    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.46);
+    background: var(--primary-action-background);
+    box-shadow: var(--primary-action-shadow);
 }
 
 .KeyboardStyle1:active {
@@ -977,14 +1031,8 @@ p {
 
 #keyboard_top > div:not(.Ordinary, #keyboard_top_more) {
     color: hsl(var(--white) / 0.96);
-
-    background: linear-gradient(155deg, hsl(var(--white) / 0.4), transparent 44%, hsl(var(--black) / 0.18)),
-    hsl(var(--action-green) / 0.86);
-    box-shadow: -0.24dvmin -0.24dvmin 0.56dvmin hsl(var(--white) / 0.64),
-    0.28dvmin 0.46dvmin 0.82dvmin hsl(var(--action-green-shadow) / 0.42),
-    inset 0.16dvmin 0.22dvmin 0.42dvmin hsl(var(--white) / 0.5),
-    inset -0.16dvmin -0.3dvmin 0.52dvmin hsl(var(--black) / 0.23),
-    0 0 0 0.1dvmin hsl(var(--action-green-shadow) / 0.46);
+    background: var(--primary-action-background);
+    box-shadow: var(--primary-action-shadow);
 }
 
 #keyboard_top > div:not(.Ordinary):nth-child(-n+3) > p {
@@ -1451,9 +1499,8 @@ p {
     margin: 0.5dvh auto auto;
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
+    background: var(--raised-action-background);
 
-    background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
-    hsl(var(--action-green) / 0.92);
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.64),
     0.28dvmin 0.42dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.3),
     inset 0.16dvmin 0.2dvmin 0.4dvmin hsl(var(--soft-white) / 0.54),
@@ -1472,11 +1519,8 @@ p {
 #print_close:active,
 #load_cancel:active {
     transform: scale(0.975);
-
     background-color: hsl(var(--action-active-green) / 0.98);
-    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
-    0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
+    box-shadow: var(--pressed-action-shadow);
 }
 
 /* print_content 部分 */
@@ -1554,17 +1598,8 @@ p {
     padding-top: 2dvmin;
     transition: all 0.5s ease;
     border-radius: 2.5dvmin 2.5dvmin 0 0;
-
-    background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
-    box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
-    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
-    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
-    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.24),
-    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
-    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
-    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
-    inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
-
+    background: var(--choice-panel-background);
+    box-shadow: var(--floating-panel-shadow);
     gap: 0;
     grid-template-columns:
         minmax(0, 1fr)
@@ -1618,8 +1653,7 @@ p {
     transition: all 0.3s ease;
     transform: translate(-50%, -50%);
     border-radius: 2.5dvmin;
-
-    background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
+    background: var(--choice-panel-background);
     box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
     -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
     0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
@@ -1653,33 +1687,13 @@ p {
 }
 
 .Print1ChooseOn > div.ChooseOptionBG {
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.6) 0%,
-            hsl(var(--white) / 0.16) 42%,
-            hsl(var(--selection-green-shadow) / 0.07) 100%
-    ),
-    hsl(var(--selection-green));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin hsl(var(--white) / 0.68),
-    inset -0.16dvmin -0.22dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.28),
-    0 0 0 0.16dvmin hsl(var(--selection-green-shadow) / 0.68),
-    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.66),
-    0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
+    background: var(--selection-on-background);
+    box-shadow: var(--selection-on-shadow);
 }
 
 #print_content_1_choose > div:not(.Print1ChooseOn) > .ChooseOptionBG {
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.7) 0%,
-            hsl(var(--white) / 0.18) 44%,
-            hsl(var(--shadow-grey-0) / 0.07) 100%
-    ),
-    hsl(var(--selection-inactive));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
-    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
-    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
+    background: var(--selection-off-background);
+    box-shadow: var(--selection-off-shadow);
 }
 
 #print_content_1_choose > div:not(.Print1ChooseOn):hover > .ChooseOptionBG {
@@ -1785,9 +1799,7 @@ p {
     margin: auto;
     transition: all 0.15s ease;
     border-radius: 3dvmin;
-
-    background: linear-gradient(155deg, hsl(var(--white) / 0.38), transparent 44%, hsl(var(--black) / 0.18)),
-    hsl(var(--action-green) / 0.92);
+    background: var(--raised-action-background);
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.64),
     0.28dvmin 0.42dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.3),
     inset 0.16dvmin 0.2dvmin 0.4dvmin hsl(var(--soft-white) / 0.52),
@@ -1804,11 +1816,8 @@ p {
 
 #export div:active {
     transform: translateY(0.3dvmin);
-
     background-color: hsl(var(--action-active-green) / 0.94);
-    box-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
-    inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
-    0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
+    box-shadow: var(--pressed-action-shadow);
 }
 
 #export div.Failed {
@@ -2119,15 +2128,7 @@ span.Ripple.IsFadingOut {
 
 #setting:not(.SettingNotShow) {
     left: 0;
-
-    box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
-    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
-    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
-    1.18dvmin 1.46dvmin 3.2dvmin 0.48dvmin hsl(var(--shadow-grey-0) / 0.24),
-    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
-    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
-    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
-    inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
+    box-shadow: var(--floating-panel-shadow);
 }
 
 /* setting 开关部分 */
@@ -2369,26 +2370,15 @@ span.Ripple.IsFadingOut {
 
 .SelectionOn {
     width: min(59dvw, 83dvmin);
-
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.6) 0%,
-            hsl(var(--white) / 0.16) 42%,
-            hsl(var(--selection-green-shadow) / 0.07) 100%
-    ),
-    hsl(var(--selection-green));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.3dvmin hsl(var(--white) / 0.68),
-    inset -0.16dvmin -0.22dvmin 0.4dvmin hsl(var(--selection-green-shadow) / 0.28),
-    0 0 0 0.16dvmin hsl(var(--selection-green-shadow) / 0.68),
-    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.66),
-    0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
+    background: var(--selection-on-background);
+    box-shadow: var(--selection-on-shadow);
 }
 
 .SettingSelection {
     display: grid;
     overflow: hidden;
     width: min(65dvw, 90dvmin);
-    border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
+    border-bottom: var(--setting-divider-border);
     gap: 0;
     grid-template-columns: min(65dvw, 90dvmin);
 }
@@ -2406,19 +2396,8 @@ span.Ripple.IsFadingOut {
 .SettingSelection > div:not(.SelectionOn) {
     width: min(46dvw, 64.7dvmin);
     transform-origin: left center;
-
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.7) 0%,
-            hsl(var(--white) / 0.18) 44%,
-            hsl(var(--shadow-grey-0) / 0.07) 100%
-    ),
-    hsl(var(--selection-inactive));
-    box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.78),
-    inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--shadow-grey-1) / 0.2),
-    0 0 0 0.11dvmin hsl(var(--shadow-grey-1) / 0.38),
-    -0.14dvmin -0.14dvmin 0.34dvmin hsl(var(--white) / 0.7),
-    0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
+    background: var(--selection-off-background);
+    box-shadow: var(--selection-off-shadow);
 }
 
 .SettingSelection > div:not(.SelectionOn):hover {
@@ -2449,8 +2428,7 @@ span.Ripple.IsFadingOut {
     justify-content: center;
     width: min(65dvw, 90dvmin);
     height: calc(7.5dvh + 0.5dvmin);
-    border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
-
+    border-bottom: var(--setting-divider-border);
     background: linear-gradient(155deg, hsl(var(--white) / 0.68), hsl(var(--surface-base) / 0.96) 58%, hsl(var(--shadow-grey-2) / 0.14));
 }
 
