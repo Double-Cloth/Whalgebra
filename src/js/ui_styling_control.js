@@ -6352,13 +6352,20 @@
          */
         static changePrint1Ra(id, mode = 'change') {
             // 获取被选中模型元素的类名列表（用于提取图标/文本样式）
-            const model = HtmlTools.getClassList(HtmlTools.getHtml(`#${id}`));
+            const model = HtmlTools.getClassList(HtmlTools.getHtml(`#${id}`).lastElementChild);
             // 获取显示当前选中模型的容器元素
             const modelShow = HtmlTools.getHtml('#print_1_0_choose');
             let lastModel;
 
             // 更新选择框的显示内容：添加前缀图标、空格和选中模型的图标
-            HtmlTools.appendDOMs(modelShow, ['_print_1_0_choose_', '_space_', ...model, '_print_content_1_arrow_'], {mode: 'replace'});
+            HtmlTools.appendDOMs(modelShow, [
+                '_print_1_0_choose_',
+                '_space_',
+                '_y_mathit_',
+                '_equal_',
+                ...model,
+                '_print_content_1_arrow_'
+            ], {mode: 'replace'});
 
             // 遍历所有模型选项，找到之前被选中的项并移除高亮状态
             // 假设选项 ID 格式为 choose_ra_0 到 choose_ra_N

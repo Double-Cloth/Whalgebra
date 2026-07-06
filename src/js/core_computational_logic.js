@@ -198,6 +198,85 @@
         /**
          * @private
          * @static
+         * @method _pow10
+         * @description 获取 10 的指定非负整数次幂，并使用缓存避免重复计算。
+         * 该方法返回 `10 ** exp` 的 `BigInt` 结果，用于高精度整数运算中的位数判断、
+         * 舍入除数计算等场景。内部会按需扩展 `_pow10Cache`，因此多次调用相同或较小指数时
+         * 可以直接复用已有结果。
+         * @param {number} exp - 指数，必须是非负整数。
+         * @returns {bigint} `10 ** exp` 的 BigInt 结果。
+         * @throws {Error} 如果 `exp` 不是非负整数。
+         */
+        static _pow10(exp) {
+            // 指数必须是非负整数，否则 10^exp 不适合作为十进制位移因子。
+            if (!Number.isInteger(exp) || exp < 0) {
+                throw new Error('[BigNumber] Input error: exponent for pow10 must be a non-negative integer.');
+            }
+
+            // 第一次调用时初始化缓存，cache[i] 表示 10^i。
+            if (BigNumber._pow10Cache === undefined) {
+                BigNumber._pow10Cache = [1n];
+            }
+
+            const cache = BigNumber._pow10Cache;
+
+            // 按需扩展缓存，避免每次重新计算 10n ** BigInt(exp)。
+            while (cache.length <= exp) {
+                cache.push(cache[cache.length - 1] * 10n);
+            }
+
+            return cache[exp];
+        }
+
+        /**
+         * @private
+         * @static
+         * @method _decimalLengthBigInt
+         * @description 计算一个 BigInt 的十进制位数。
+         * 该方法通过比较 `n` 与 10 的幂来确定其十进制长度：若
+         * `10^(d - 1) <= n < 10^d`，则 `d` 即为十进制位数。
+         * 内部使用指数扩张寻找上界，再通过二分查找确定精确位数。
+         * @param {bigint} n - 要计算十进制位数的 BigInt 值，可以为负数。
+         * @returns {number} `n` 的十进制位数；对于 `0n` 返回 `1`。
+         */
+        static _decimalLengthBigInt(n) {
+            // 位数只和绝对值有关，先去掉负号。
+            if (n < 0n) {
+                n = -n;
+            }
+
+            // 0n 到 9n 都只有 1 位。
+            if (n < 10n) {
+                return 1;
+            }
+
+            let lo = 1;
+            let hi = 2;
+
+            // 先指数级扩大上界，直到 n < 10^hi。
+            // 这样可以避免从 1 开始逐位尝试。
+            while (n >= BigNumber._pow10(hi)) {
+                lo = hi + 1;
+                hi *= 2;
+            }
+
+            // 在 [lo, hi] 范围内二分查找最小的 d，使得 n < 10^d。
+            while (lo < hi) {
+                const mid = Math.floor((lo + hi) / 2);
+
+                if (n < BigNumber._pow10(mid)) {
+                    hi = mid;
+                } else {
+                    lo = mid + 1;
+                }
+            }
+
+            return lo;
+        }
+
+        /**
+         * @private
+         * @static
          * @method _isInvalidNumericString
          * @description 检查一个字符串是否是无效的数字格式。
          * @param {string} input - 要检查的字符串。
@@ -235,83 +314,39 @@
             let absMantissa = sign < 0n ? -mantissa : mantissa;
             let finalPower = power;
 
-            // 确定是否需要舍入。
-            const threshold = 10n ** BigInt(acc);
+            // 构造精度阈值：10^acc
+            // 当 absMantissa 大于该值时，说明尾数很可能超过目标有效位数，需要进一步计算实际位数
+            const threshold = BigNumber._pow10(acc);
 
-            // 如果当前位数超过目标精度，则需进行舍入。
             if (absMantissa > threshold) {
-                const mantissaStr = absMantissa.toString();
-                const mantissaLength = mantissaStr.length;
+                const mantissaLength = BigNumber._decimalLengthBigInt(absMantissa);
                 const digitsToShift = mantissaLength - acc;
 
-                // 设定一个性能阈值
-                if (digitsToShift < CalcConfig.MAX_INPUT_EXPONENT) {
-                    // ==========================================
-                    // 策略 A: 小位移，走原生 BigInt 数学运算
-                    // ==========================================
-                    const divisor = 10n ** BigInt(digitsToShift);
+                if (digitsToShift > 0) {
+                    const divisor = BigNumber._pow10(digitsToShift);
+
                     // 截断得到基础部分
                     let roundedMantissa = absMantissa / divisor;
+
                     // 获取被舍弃的余数部分
                     const remainder = absMantissa % divisor;
-                    // 计算阈值（除数的一半）
+
+                    // 计算阈值：除数的一半
                     const halfDivisor = divisor / 2n;
 
                     if (remainder > halfDivisor) {
-                        // 情况 A: 余数 > 0.5，绝对进位
+                        // 余数 > 0.5，进位
                         roundedMantissa++;
                     } else if (remainder === halfDivisor) {
-                        // 情况 B: 余数 = 0.5，银行家舍入（向偶数舍入）
-                        // 如果当前最后一位是奇数，则进位变成偶数；如果是偶数则不变
+                        // 银行家舍入：正好一半时向偶数舍入
                         if ((roundedMantissa & 1n) === 1n) {
                             roundedMantissa++;
                         }
                     }
-                    // 情况 C: remainder < halfDivisor，直接舍弃（不做操作）
 
-                    // 更新尾数
                     absMantissa = roundedMantissa;
-                } else {
-                    // ==========================================
-                    // 策略 B: 大位移，走字符串截断与 charCodeAt 对比
-                    // ==========================================
-                    const CHAR_CODE_0 = 48;
-                    const CHAR_CODE_5 = 53;
-
-                    const keptStr = mantissaStr.slice(0, acc);
-                    let roundedMantissa = BigInt(keptStr);
-                    const discardedStr = mantissaStr.slice(acc);
-                    const firstDigitCode = discardedStr.charCodeAt(0);
-
-                    let shouldCarry = false;
-
-                    if (firstDigitCode > CHAR_CODE_5) {
-                        shouldCarry = true;
-                    } else if (firstDigitCode === CHAR_CODE_5) {
-                        let isExactlyHalf = true;
-                        // 使用 for 循环扫描剩余字符
-                        for (let i = 1; i < discardedStr.length; i++) {
-                            if (discardedStr.charCodeAt(i) !== CHAR_CODE_0) {
-                                isExactlyHalf = false;
-                                break;
-                            }
-                        }
-
-                        if (!isExactlyHalf) {
-                            shouldCarry = true;
-                        } else if ((roundedMantissa & 1n) === 1n) {
-                            shouldCarry = true;
-                        }
-                    }
-
-                    if (shouldCarry) {
-                        roundedMantissa++;
-                    }
-                    absMantissa = roundedMantissa;
+                    finalPower += digitsToShift;
                 }
-
-                // 更新指数
-                finalPower += digitsToShift;
             }
 
             if (absMantissa === 0n) {

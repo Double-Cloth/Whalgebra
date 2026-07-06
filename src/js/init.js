@@ -237,8 +237,8 @@ document.addEventListener('click', (event) => {
         return;
     }
 
-    if (/^choose_ra_[0-6]$/.test(targetID)) {
-        return PageControlTools.changePrint1Ra(targetID);
+    if (/^choose_ra_[0-6]$/.test(parentID)) {
+        return PageControlTools.changePrint1Ra(parentID);
     }
 
     if (/^export_[0-1]$/.test(targetID)) {

@@ -190,7 +190,7 @@ p {
 .Screen234 > div > div,
 .MultipleLines > div,
 #print_content > div > div:not(.NotPrintDefault),
-#print_content_1_choose > div,
+#print_content_1_choose > div > div,
 #statistics_results_window > div > div,
 #print_content_2_head > div,
 #print_content_2_inner > div div,
@@ -313,7 +313,7 @@ p {
 
 #head {
     display: flex;
-    overflow: hidden;
+    overflow: visible;
     width: 100dvw;
     height: 6.5dvh;
     border-radius: 0 0 2.5dvmin 2.5dvmin;
@@ -602,7 +602,7 @@ p {
     left: 0;
     display: grid;
     transition: all 0.28s ease;
-    grid-gap: 0;
+    gap: 0;
     grid-template-columns: 100dvw;
     grid-template-rows: repeat(2, 11dvh);
 }
@@ -914,10 +914,7 @@ p {
     inset -0.22dvmin -0.3dvmin 0.66dvmin hsl(var(--shadow-grey-0) / 0.23);
 
     grid-template-rows: repeat(3, 7.25dvh);
-
     place-items: center;
-
-    backdrop-filter: blur(6px);
 }
 
 #sub_keyboard_ForMode1 {
@@ -947,7 +944,7 @@ p {
     z-index: 1;
     top: 49.75dvh;
     display: flex;
-    overflow: hidden;
+    overflow: visible;
     align-items: center;
     height: 6.5dvh;
     border-radius: 3dvmin;
@@ -1552,7 +1549,7 @@ p {
     width: max(99dvmin, 80dvw);
     height: calc(min(60dvh, 103dvmin) + min(8dvh, 12dvmin));
     padding-top: 2dvmin;
-    transition: all 0.3s ease;
+    transition: all 0.5s ease;
     border-radius: 2.5dvmin 2.5dvmin 0 0;
 
     background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
@@ -1565,10 +1562,14 @@ p {
     inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15),
     inset 0 -0.32dvmin 0.62dvmin hsl(var(--shadow-grey-0) / 0.21);
 
-    grid-gap: 0;
-    grid-template-columns: max(99dvmin, 80dvw);
+    gap: 0;
+    grid-template-columns:
+        minmax(0, 1fr)
+        max-content
+        max-content
+        max-content
+        minmax(0, 1fr);
     grid-template-rows: min(8dvh, 12dvmin) repeat(7, min(14dvmin, 8dvh));
-    backdrop-filter: blur(7px);
 }
 
 #print_content_1_choose.PrintContent1ChooseOff {
@@ -1580,18 +1581,75 @@ p {
 }
 
 #print_content_1_choose div {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: max(85dvmin, 68dvw);
-    height: min(12dvmin, 7dvh);
-    margin: auto;
-    border-radius: 2.5dvmin;
+    overflow: visible;
 }
 
-.Print1ChooseOn {
-    transition: all 0.45s ease;
+#print_content_1_choose > div:not(:first-child) {
+    grid-column: 1 / -1;
+    position: relative;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-items: center;
+    width: 100%;
+    height: min(12dvmin, 7dvh);
+    margin: auto;
+}
 
+#print_content_1_choose > div:first-child {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    justify-self: center;
+    width: max(85dvmin, 68dvw);
+    height: min(8dvh, 12dvmin);
+}
+
+.ChooseOptionBG {
+    position: absolute;
+    z-index: 0;
+    left: 50%;
+    top: 50%;
+    width: max(85dvmin, 68dvw);
+    height: min(12dvmin, 7dvh);
+    transform: translate(-50%, -50%);
+    border-radius: 2.5dvmin;
+    transition: all 0.33s ease;
+
+    background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
+    box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
+    -0.18dvmin -0.18dvmin 0.42dvmin hsl(var(--white) / 0.66),
+    0.52dvmin 0.68dvmin 1.24dvmin hsl(var(--shadow-grey-0) / 0.25),
+    inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.2),
+    inset 0.2dvmin 0.22dvmin 0.4dvmin hsl(var(--white) / 0.72),
+    inset -0.16dvmin -0.2dvmin 0.34dvmin hsl(var(--shadow-grey-1) / 0.15);
+}
+
+.formulaLHS,
+.formulaEQ,
+.formulaRHS {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+}
+
+.formulaLHS {
+    grid-column: 2;
+    justify-self: end;
+}
+
+.formulaEQ {
+    grid-column: 3;
+    justify-self: center;
+}
+
+.formulaRHS {
+    grid-column: 4;
+    justify-self: start;
+}
+
+.Print1ChooseOn > div.ChooseOptionBG {
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.6) 0%,
@@ -1606,12 +1664,7 @@ p {
     0.22dvmin 0.32dvmin 0.62dvmin hsl(var(--selection-green-shadow) / 0.28);
 }
 
-#print_content_1_choose > div:not(
-    :first-child,
-    .Print1ChooseOn
-) {
-    transition: all 0.25s ease;
-
+#print_content_1_choose > div:not(.Print1ChooseOn) > .ChooseOptionBG {
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.7) 0%,
@@ -1626,10 +1679,7 @@ p {
     0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
 }
 
-#print_content_1_choose > div:not(
-    :first-child,
-    .Print1ChooseOn
-):hover {
+#print_content_1_choose > div:not(.Print1ChooseOn):hover > .ChooseOptionBG {
     background: linear-gradient(
             155deg,
             hsl(var(--white) / 0.66) 0%,
@@ -1644,10 +1694,7 @@ p {
     0.22dvmin 0.3dvmin 0.56dvmin hsl(var(--shadow-grey-0) / 0.19);
 }
 
-#print_content_1_choose > div:not(
-    :first-child,
-    .Print1ChooseOn
-):active {
+#print_content_1_choose > div:not(.Print1ChooseOn):active > .ChooseOptionBG {
     background: linear-gradient(145deg, hsl(var(--black) / 0.09), hsl(var(--white) / 0.07) 70%),
     hsl(var(--selection-active-green));
     box-shadow: inset 0.3dvmin 0.38dvmin 0.8dvmin hsl(var(--shadow-grey-0) / 0.34),
@@ -1720,7 +1767,7 @@ p {
     width: 98dvw;
     height: min(13dvmin, 10dvh);
     border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2));
-    grid-gap: 0;
+    gap: 0;
     grid-template-columns: repeat(2, 49dvw);
     grid-template-rows: min(12.5dvmin, 9.5dvh);
 }
@@ -1958,7 +2005,7 @@ span.Ripple.IsFadingOut {
 #print_content_2_inner > div {
     display: grid;
     width: 98dvw;
-    grid-gap: 0.5dvmin;
+    gap: 0.5dvmin;
 }
 
 #print_content_2_head {
@@ -2030,8 +2077,6 @@ span.Ripple.IsFadingOut {
     inset 0.18dvmin 0.2dvmin 0.4dvmin hsl(var(--white) / 0.88),
     inset -0.2dvmin -0.24dvmin 0.5dvmin hsl(var(--shadow-grey-1) / 0.2),
     0 0 0 0.06dvmin hsl(var(--shadow-grey-1) / 0.16);
-
-    backdrop-filter: blur(5px);
 }
 
 #print_omit {
@@ -2340,7 +2385,7 @@ span.Ripple.IsFadingOut {
     overflow: hidden;
     width: min(65dvw, 90dvmin);
     border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
-    grid-gap: 0;
+    gap: 0;
     grid-template-columns: min(65dvw, 90dvmin);
 }
 
