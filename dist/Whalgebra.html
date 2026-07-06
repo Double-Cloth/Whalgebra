@@ -19232,36 +19232,36 @@
         }
 
         #print_content_1_choose > div:not(:first-child) {
-            grid-column: 1 / -1;
             position: relative;
             display: grid;
-            grid-template-columns: subgrid;
             align-items: center;
             width: 100%;
             height: min(12dvmin, 7dvh);
             margin: auto;
+            grid-column: 1 / -1;
+            grid-template-columns: subgrid;
         }
 
         #print_content_1_choose > div:first-child {
-            grid-column: 1 / -1;
             display: flex;
-            justify-content: center;
             align-items: center;
-            justify-self: center;
+            justify-content: center;
             width: max(85dvmin, 68dvw);
             height: min(8dvh, 12dvmin);
+            grid-column: 1 / -1;
+            justify-self: center;
         }
 
         .ChooseOptionBG {
             position: absolute;
             z-index: 0;
-            left: 50%;
             top: 50%;
+            left: 50%;
             width: max(85dvmin, 68dvw);
             height: min(12dvmin, 7dvh);
+            transition: all 0.33s ease;
             transform: translate(-50%, -50%);
             border-radius: 2.5dvmin;
-            transition: all 0.33s ease;
 
             background: linear-gradient(155deg, hsl(var(--white)) 0%, hsl(var(--setting-panel)) 42%, hsl(var(--selection-inactive)) 100%);
             box-shadow: 0 0 0 0.14dvmin hsl(var(--shadow-grey-1) / 0.44),
