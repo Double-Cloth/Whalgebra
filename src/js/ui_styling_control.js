@@ -2819,8 +2819,16 @@
                 const {index, behavior, block} = pendingScroll;
                 this.scrollToIndex(index, {behavior, block});
 
+                // _doMeasure() 内部会解绑 scroll，这里必须重新绑定
+                this._bindEvents();
+
                 if (!this._isSmoothScrolling) {
                     this._forceRender();
+                    requestAnimationFrame(() => {
+                        if (this._sm.is(VirtualScroll.State.RUNNING)) {
+                            this._forceRender();
+                        }
+                    });
                 }
 
                 return;
@@ -2833,7 +2841,18 @@
 
             this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
 
+            // _doMeasure() 内部解绑过 scroll，恢复后必须重新绑定
+            this._bindEvents();
+
+            // 立即刷一次
             this._forceRender();
+
+            // 再等一帧刷一次，解决刚恢复时布局还没稳定导致首帧不刷新的问题
+            requestAnimationFrame(() => {
+                if (this._sm.is(VirtualScroll.State.RUNNING)) {
+                    this._forceRender();
+                }
+            });
         }
 
         /* ══════════════════════════════════════════════════════════════════════
