@@ -37,7 +37,7 @@
   },
   {
     "description": [
-      "[complex:implicit-multiply-double-factorial] 覆盖小数边界写法、隐式乘法、绝对值、双阶乘和自定义函数参数解析。"
+      "[complex:implicit-multiply-factorial] 覆盖小数边界写法、隐式乘法、绝对值、双阶乘和自定义函数参数解析。"
     ],
     "coeffs": [
       ".4-4.-(sin3|6-|-3||)+sin9 cos arctan3-(arccos3)!!",

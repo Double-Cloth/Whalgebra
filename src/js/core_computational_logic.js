@@ -4962,8 +4962,11 @@
                         return statesB.negative ? MathPlus.minus(0, mid) : mid;
                     }
                 );
-                const mid = MathPlus.exp(result.axb.parameter[0]);
-                result.axb.parameter[0] = statesB.negative ? MathPlus.minus(0, mid) : mid;
+                const p0 = result.axb.parameter[0];
+                if (p0 !== 'error') {
+                    const mid = MathPlus.exp(p0);
+                    result.axb.parameter[0] = statesB.negative ? MathPlus.minus(0, mid) : mid;
+                }
             }
             result.bestModel = this._findBestModel(result, 'axb');
 
@@ -4987,18 +4990,26 @@
                         return statesB.negative ? MathPlus.minus(0, mid) : mid;
                     }
                 );
-                // 将线性化后的截距 ln(a₀) 转换回 a₀。
-                const midExp = MathPlus.exp(result.exp.parameter[0]);
-                result.exp.parameter[0] = statesB.negative ? MathPlus.minus(0, midExp) : midExp;
+                const p0 = result.exp.parameter[0];
+                if (p0 !== 'error') {
+                    // 将线性化后的截距 ln(a₀) 转换回 a₀。
+                    const midExp = MathPlus.exp(p0);
+                    result.exp.parameter[0] = statesB.negative ? MathPlus.minus(0, midExp) : midExp;
+                }
 
-                // 指数回归 y = a * b^x
-                // 这个模型可以通过 y = a₀ * e^(a₁x) 转换得到，其中 a = a₀, b = e^a₁。
-                // R² 值与 y = a₀ * e^(a₁x) 模型相同。
-                const midABX = MathPlus.exp(result.exp.parameter[1]);
-                result.abx = {
-                    parameter: [result.exp.parameter[0], midABX], // 计算 b = e^a₁
-                    R2: result.exp.R2
-                };
+                const p1 = result.exp.parameter[1];
+                if (p1 !== 'error' && p0 !== 'error') {
+                    // 指数回归 y = a * b^x
+                    // 这个模型可以通过 y = a₀ * e^(a₁x) 转换得到，其中 a = a₀, b = e^a₁。
+                    // R² 值与 y = a₀ * e^(a₁x) 模型相同。
+                    const midABX = MathPlus.exp(p1);
+                    result.abx = {
+                        parameter: [result.exp.parameter[0], midABX], // 计算 b = e^a₁
+                        R2: result.exp.R2
+                    };
+                } else {
+                    result.abx = structuredClone(errorWith2parameter);
+                }
             }
             result.bestModel = this._findBestModel(result, 'exp');
             result.bestModel = this._findBestModel(result, 'abx');

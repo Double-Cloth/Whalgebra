@@ -967,7 +967,91 @@
         ]
       ],
       "expected": {
-        "error": "[ComplexNumber] Invalid complex number format: 'error'."
+        "n": "3",
+        "averageA": "1",
+        "averageB": "2",
+        "sumA": "3",
+        "sumB": "6",
+        "sum2A": "3",
+        "sum2B": "14",
+        "totalVarianceA": "0",
+        "totalVarianceB": "0.81649658092772603273242802490196379732198249355222337614423085575032012581910500884661981103488007827286486707553806304161962181994591911387526131707909285094297091584255885708254336842363725674116",
+        "sampleVarianceA": "0",
+        "sampleVarianceB": "1",
+        "maxA": "1",
+        "maxB": "3",
+        "minA": "1",
+        "minB": "1",
+        "dotAB": "6",
+        "dotA2B": "6",
+        "totalCovariance": "0",
+        "sampleCovariance": "0",
+        "r": "error",
+        "bestModel": "linear",
+        "linear": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "linear"
+        },
+        "ln": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "ln"
+        },
+        "axb": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "axb"
+        },
+        "exp": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "exp"
+        },
+        "abx": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "abx"
+        },
+        "reciprocal": {
+          "parameter": [
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "reciprocal"
+        },
+        "square": {
+          "parameter": [
+            "error",
+            "error",
+            "error"
+          ],
+          "regressionEquation": "error",
+          "R2": "error",
+          "model": "square"
+        }
       }
     },
     {
