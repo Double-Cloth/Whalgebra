@@ -1,34 +1,5 @@
 /* ===== 全局定义 ===== */
 
-* {
-    overflow: auto;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-
-    -moz-user-select: var(--select);
-    -webkit-user-select: var(--select);
-    user-select: var(--select);
-    --select: none;
-}
-
-html, body {
-    /* 确保全屏范围内的触摸行为都被控制 */
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-}
-
-body {
-    position: absolute;
-    z-index: 0;
-    top: 0;
-    left: 0;
-    overflow: hidden;
-    width: 100dvw;
-    height: 100dvh;
-    background-color: hsl(var(--page-background));
-}
-
 :root {
     /* 强制声明页面只支持浅色模式 */
     color-scheme: light;
@@ -113,20 +84,16 @@ body {
 
     --setting-divider-border: 0.5dvmin solid hsl(var(--shadow-grey-2) / 0.85);
 
-    --selection-on-background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.6) 0%,
-            hsl(var(--white) / 0.16) 42%,
-            hsl(var(--selection-green-shadow) / 0.07) 100%
-    ),
+    --selection-on-background: linear-gradient(155deg,
+    hsl(var(--white) / 0.6) 0%,
+    hsl(var(--white) / 0.16) 42%,
+    hsl(var(--selection-green-shadow) / 0.07) 100%),
     hsl(var(--selection-green));
 
-    --selection-off-background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.7) 0%,
-            hsl(var(--white) / 0.18) 44%,
-            hsl(var(--shadow-grey-0) / 0.07) 100%
-    ),
+    --selection-off-background: linear-gradient(155deg,
+    hsl(var(--white) / 0.7) 0%,
+    hsl(var(--white) / 0.18) 44%,
+    hsl(var(--shadow-grey-0) / 0.07) 100%),
     hsl(var(--selection-inactive));
 
     /* 复用阴影 */
@@ -160,6 +127,36 @@ body {
     --pressed-action-shadow: inset 0.26dvmin 0.32dvmin 0.7dvmin hsl(var(--shadow-grey-0) / 0.42),
     inset -0.11dvmin -0.13dvmin 0.3dvmin hsl(var(--white) / 0.34),
     0 0 0 0.07dvmin hsl(var(--shadow-grey-0) / 0.22);
+}
+
+* {
+    overflow: auto;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+
+    -moz-user-select: var(--select);
+    -webkit-user-select: var(--select);
+    user-select: var(--select);
+    --select: none;
+}
+
+html,
+body {
+    /* 确保全屏范围内的触摸行为都被控制 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    width: 100dvw;
+    height: 100dvh;
+    background-color: hsl(var(--page-background));
 }
 
 p {
@@ -262,24 +259,20 @@ p {
     gap: 0.6dvmin;
 }
 
-:where(
-    .Paragraph,
+:where(.Paragraph,
     .Screen234 > div > div,
-     #print_content_2_inner > div div,
-     #grid_data > div div
-) > p:first-child {
+    #print_content_2_inner > div div,
+    #grid_data > div div) > p:first-child {
     margin-left: 0.45dvmin;
 }
 
-:where(
-    .Paragraph,
+:where(.Paragraph,
     .Screen234 > div > div,
     .MultipleLines > div,
     #print_content > div > div:not(.NotPrintDefault),
     #statistics_results_window > div > div,
     #print_content_2_inner > div div,
-    #grid_data > div div
-) > p:last-child {
+    #grid_data > div div) > p:last-child {
     margin-right: 0.45dvmin;
 }
 
@@ -520,13 +513,11 @@ p {
 
 .ScreenInputsOn,
 .GridOn {
-    background: linear-gradient(
-            180deg,
-            hsl(var(--white) / 0.56) 0%,
-            hsl(var(--white) / 0.16) 38%,
-            hsl(var(--shadow-grey-0) / 0.03) 70%,
-            hsl(var(--shadow-grey-0) / 0.075) 100%
-    ),
+    background: linear-gradient(180deg,
+    hsl(var(--white) / 0.56) 0%,
+    hsl(var(--white) / 0.16) 38%,
+    hsl(var(--shadow-grey-0) / 0.03) 70%,
+    hsl(var(--shadow-grey-0) / 0.075) 100%),
     hsl(var(--screen-selection-green));
     box-shadow: inset 0.12dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.64),
     inset -0.18dvmin -0.22dvmin 0.46dvmin hsl(var(--selection-green-shadow) / 0.24),
@@ -693,36 +684,30 @@ p {
 }
 
 .Screen234 > div:not(.ScreenInputsOn) {
-    background: linear-gradient(
-            180deg,
-            hsl(var(--white) / 0.66) 0%,
-            hsl(var(--white) / 0.18) 44%,
-            hsl(var(--shadow-grey-0) / 0.025) 72%,
-            hsl(var(--shadow-grey-0) / 0.055) 100%
-    ),
+    background: linear-gradient(180deg,
+    hsl(var(--white) / 0.66) 0%,
+    hsl(var(--white) / 0.18) 44%,
+    hsl(var(--shadow-grey-0) / 0.025) 72%,
+    hsl(var(--shadow-grey-0) / 0.055) 100%),
     hsl(var(--selection-inactive));
 }
 
 .Screen234 > div:not(.ScreenInputsOn):hover {
     transform: scale(1.006);
-    background: linear-gradient(
-            180deg,
-            hsl(var(--white) / 0.72) 0%,
-            hsl(var(--white) / 0.2) 44%,
-            hsl(var(--selection-green-shadow) / 0.025) 72%,
-            hsl(var(--selection-green-shadow) / 0.055) 100%
-    ),
+    background: linear-gradient(180deg,
+    hsl(var(--white) / 0.72) 0%,
+    hsl(var(--white) / 0.2) 44%,
+    hsl(var(--selection-green-shadow) / 0.025) 72%,
+    hsl(var(--selection-green-shadow) / 0.055) 100%),
     hsl(var(--selection-inactive-hover));
 }
 
 .Screen234 > div:not(.ScreenInputsOn):active {
-    background: linear-gradient(
-            180deg,
-            hsl(var(--white) / 0.36) 0%,
-            hsl(var(--white) / 0.08) 42%,
-            hsl(var(--shadow-grey-0) / 0.025) 72%,
-            hsl(var(--shadow-grey-0) / 0.07) 100%
-    ),
+    background: linear-gradient(180deg,
+    hsl(var(--white) / 0.36) 0%,
+    hsl(var(--white) / 0.08) 42%,
+    hsl(var(--shadow-grey-0) / 0.025) 72%,
+    hsl(var(--shadow-grey-0) / 0.07) 100%),
     hsl(var(--surface-pressed));
 }
 
@@ -806,9 +791,11 @@ p {
     0% {
         opacity: 1.0;
     }
+
     50% {
         opacity: 0.1;
     }
+
     100% {
         opacity: 1.0;
     }
@@ -828,34 +815,28 @@ p {
 
 .KeyboardStyle1 {
     /* 初始浅蓝：数字键、常量键与扩展值 */
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.68) 0%,
-            hsl(var(--white) / 0.18) 42%,
-            hsl(var(--black) / 0.075) 100%
-    ),
+    background: linear-gradient(155deg,
+    hsl(var(--white) / 0.68) 0%,
+    hsl(var(--white) / 0.18) 42%,
+    hsl(var(--black) / 0.075) 100%),
     hsl(var(--key-value) / 0.95);
 }
 
 .KeyboardStyle2 {
     /* 初始薄荷绿：删除与清除操作 */
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.64) 0%,
-            hsl(var(--white) / 0.16) 42%,
-            hsl(var(--black) / 0.08) 100%
-    ),
+    background: linear-gradient(155deg,
+    hsl(var(--white) / 0.64) 0%,
+    hsl(var(--white) / 0.16) 42%,
+    hsl(var(--black) / 0.08) 100%),
     hsl(var(--key-edit));
 }
 
 .KeyboardStyle3 {
     /* 初始海贝色：运算符与函数键 */
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.6) 0%,
-            hsl(var(--white) / 0.14) 42%,
-            hsl(var(--black) / 0.085) 100%
-    ),
+    background: linear-gradient(155deg,
+    hsl(var(--white) / 0.6) 0%,
+    hsl(var(--white) / 0.14) 42%,
+    hsl(var(--black) / 0.085) 100%),
     hsl(var(--key-operator));
 }
 
@@ -888,18 +869,14 @@ p {
     height: 43.5dvh;
 }
 
-:where(
-    #keyboard_cover,
-    #keyboard_cover_ForMode1
-):not(.KeyboardCover) {
+:where(#keyboard_cover,
+    #keyboard_cover_ForMode1):not(.KeyboardCover) {
     display: none;
 }
 
-:where(
-    #keyboard_main,
+:where(#keyboard_main,
     #sub_keyboard_ForMode1,
-    #sub_keyboard > div
-) > div {
+    #sub_keyboard > div) > div {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -916,11 +893,9 @@ p {
     0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.58);
 }
 
-:where(
-    #keyboard_main,
+:where(#keyboard_main,
     #sub_keyboard_ForMode1,
-    #sub_keyboard > div
-) > div:hover {
+    #sub_keyboard > div) > div:hover {
     box-shadow: -0.28dvmin -0.28dvmin 0.64dvmin hsl(var(--white) / 0.92),
     0.34dvmin 0.54dvmin 0.94dvmin hsl(var(--shadow-grey-0) / 0.4),
     inset 0.18dvmin 0.24dvmin 0.46dvmin hsl(var(--white) / 0.94),
@@ -929,11 +904,9 @@ p {
     filter: brightness(1.015);
 }
 
-:where(
-    #keyboard_main,
+:where(#keyboard_main,
     #sub_keyboard_ForMode1,
-    #sub_keyboard > div
-) > div:active {
+    #sub_keyboard > div) > div:active {
     transform: scale(0.99);
     box-shadow: inset 0.28dvmin 0.36dvmin 0.78dvmin hsl(var(--shadow-grey-0) / 0.42),
     inset -0.12dvmin -0.14dvmin 0.32dvmin hsl(var(--white) / 0.38),
@@ -956,12 +929,10 @@ p {
     transition: all 0.25s ease;
     border-radius: 3dvmin;
 
-    background: linear-gradient(
-            150deg,
-            hsl(var(--white) / 0.58) 0%,
-            hsl(var(--white) / 0.18) 42%,
-            hsl(var(--shadow-grey-2) / 0.17) 100%
-    ),
+    background: linear-gradient(150deg,
+    hsl(var(--white) / 0.58) 0%,
+    hsl(var(--white) / 0.18) 42%,
+    hsl(var(--shadow-grey-2) / 0.17) 100%),
     hsl(var(--sub-keyboard-panel) / 0.97);
     box-shadow: 0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.4),
     0.42dvmin 0.64dvmin 1.2dvmin hsl(var(--shadow-grey-0) / 0.4),
@@ -1162,6 +1133,7 @@ p {
 /* keyboard 媒体查询部分 */
 
 @media (max-width: 160dvh) {
+
     .KeyboardCover {
         width: 100dvw;
     }
@@ -1238,6 +1210,7 @@ p {
 }
 
 @media (min-width: 160dvh) {
+
     #keyboard_cover,
     #keyboard_top > div:where(:nth-child(2), div:nth-child(3)) {
         display: none !important;
@@ -1424,6 +1397,7 @@ p {
 }
 
 @keyframes bump {
+
     /* 关键帧动画定义 */
     from,
     42%,
@@ -1443,37 +1417,47 @@ p {
     to {
         transform: translate(0, 0);
     }
+
     44% {
         transform: translate(1.33%, 6.75%);
     }
+
     53% {
         transform: translate(-16.67%, -0.54%);
     }
+
     61% {
         transform: translate(3.66%, -2.46%);
     }
+
     69% {
         transform: translate(-0.59%, 15.27%);
     }
+
     76% {
         transform: translate(-1.92%, -4.68%);
     }
+
     83% {
         transform: translate(9.38%, 0.96%);
     }
+
     90% {
         transform: translate(-4.55%, 1.98%);
     }
 }
 
 @keyframes worm {
+
     /* 关键帧动画定义 */
     from {
         stroke-dashoffset: 10;
     }
+
     25% {
         stroke-dashoffset: 295;
     }
+
     to {
         stroke-dashoffset: 1165;
     }
@@ -1602,11 +1586,7 @@ p {
     box-shadow: var(--floating-panel-shadow);
     gap: 0;
     grid-template-columns:
-        minmax(0, 1fr)
-        max-content
-        max-content
-        max-content
-        minmax(0, 1fr);
+        minmax(0, 1fr) max-content max-content max-content minmax(0, 1fr);
     grid-template-rows: min(8dvh, 12dvmin) repeat(7, min(14dvmin, 8dvh));
 }
 
@@ -1697,12 +1677,10 @@ p {
 }
 
 #print_content_1_choose > div:not(.Print1ChooseOn):hover > .ChooseOptionBG {
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.56) 0%,
-            hsl(var(--selection-active-green) / 0.24) 46%,
-            hsl(var(--selection-green-shadow) / 0.11) 100%
-    ),
+    background: linear-gradient(155deg,
+    hsl(var(--white) / 0.56) 0%,
+    hsl(var(--selection-active-green) / 0.24) 46%,
+    hsl(var(--selection-green-shadow) / 0.11) 100%),
     hsl(var(--selection-green) / 0.5);
     box-shadow: inset 0.14dvmin 0.18dvmin 0.32dvmin hsl(var(--white) / 0.7),
     inset -0.16dvmin -0.2dvmin 0.38dvmin hsl(var(--selection-green-shadow) / 0.24),
@@ -1731,12 +1709,10 @@ p {
     border-radius: 2dvmin;
 
     background-color: hsl(var(--shadow-grey-3) / 0.56);
-    background-image: linear-gradient(
-            145deg,
-            hsl(var(--white) / 0.64),
-            transparent 44%,
-            hsl(var(--shadow-grey-0) / 0.055)
-    );
+    background-image: linear-gradient(145deg,
+    hsl(var(--white) / 0.64),
+    transparent 44%,
+    hsl(var(--shadow-grey-0) / 0.055));
     box-shadow: -0.22dvmin -0.22dvmin 0.52dvmin hsl(var(--white) / 0.82),
     0.28dvmin 0.38dvmin 0.72dvmin hsl(var(--shadow-grey-0) / 0.22),
     inset 0.15dvmin 0.17dvmin 0.34dvmin hsl(var(--white) / 0.82),
@@ -1746,12 +1722,10 @@ p {
 
 #print_1_0_choose:hover {
     background-color: hsl(var(--shadow-grey-2) / 0.68);
-    background-image: linear-gradient(
-            145deg,
-            hsl(var(--white) / 0.76),
-            hsl(var(--white) / 0.1) 42%,
-            hsl(var(--shadow-grey-0) / 0.12)
-    );
+    background-image: linear-gradient(145deg,
+    hsl(var(--white) / 0.76),
+    hsl(var(--white) / 0.1) 42%,
+    hsl(var(--shadow-grey-0) / 0.12));
     box-shadow: -0.3dvmin -0.3dvmin 0.66dvmin hsl(var(--white) / 0.92),
     0.42dvmin 0.52dvmin 0.96dvmin hsl(var(--shadow-grey-0) / 0.32),
     inset 0.16dvmin 0.18dvmin 0.38dvmin hsl(var(--white) / 0.84),
@@ -1763,11 +1737,9 @@ p {
     transform: scale(0.995);
 
     background-color: hsl(var(--shadow-grey-2) / 0.62);
-    background-image: linear-gradient(
-            145deg,
-            hsl(var(--shadow-grey-0) / 0.15),
-            hsl(var(--white) / 0.08)
-    );
+    background-image: linear-gradient(145deg,
+    hsl(var(--shadow-grey-0) / 0.15),
+    hsl(var(--white) / 0.08));
     box-shadow: inset 0.3dvmin 0.36dvmin 0.76dvmin hsl(var(--shadow-grey-0) / 0.34),
     inset -0.12dvmin -0.14dvmin 0.3dvmin hsl(var(--white) / 0.38),
     0 0.04dvmin 0.1dvmin hsl(var(--shadow-grey-0) / 0.12),
@@ -1833,11 +1805,9 @@ p {
     margin-top: 1dvmin;
 }
 
-:where(
-    #statistics_results_top.ResultX > div:not(:first-child),
+:where(#statistics_results_top.ResultX > div:not(:first-child),
     #statistics_results_top.ResultY > div:not(:nth-child(2)),
-    #statistics_results_top.ResultXY > div:not(:nth-child(3))
-):not(.Lines):hover {
+    #statistics_results_top.ResultXY > div:not(:nth-child(3))):not(.Lines):hover {
     background: linear-gradient(145deg, hsl(var(--white) / 0.46), transparent 48%, hsl(var(--shadow-grey-0) / 0.04)),
     hsl(var(--surface-soft) / 0.48);
     box-shadow: -0.1dvmin -0.1dvmin 0.24dvmin hsl(var(--white) / 0.58),
@@ -1929,6 +1899,7 @@ span.Ripple.IsFadingOut {
         opacity: 1;
         transform: scale(4);
     }
+
     100% {
         opacity: 0;
         transform: scale(4.2);
@@ -1987,10 +1958,8 @@ span.Ripple.IsFadingOut {
     display: none;
 }
 
-#print_content_2:not(.TwoFunc) :is(
-    #print_content_2_head > div:last-child,
-    #print_content_2_inner > div > div:last-child
-) {
+#print_content_2:not(.TwoFunc) :is(#print_content_2_head > div:last-child,
+    #print_content_2_inner > div > div:last-child) {
     display: none;
 }
 
@@ -2000,17 +1969,13 @@ span.Ripple.IsFadingOut {
     height: calc(85dvh - min(11dvmin, 7dvh));
 }
 
-#print_content_2.TwoFunc :is(
-    #print_content_2_head,
-    #print_content_2_inner > div
-) {
+#print_content_2.TwoFunc :is(#print_content_2_head,
+    #print_content_2_inner > div) {
     grid-template-columns: repeat(3, calc((98dvw - 1dvmin) / 3));
 }
 
-#print_content_2:not(.TwoFunc) :is(
-    #print_content_2_head,
-    #print_content_2_inner > div
-) {
+#print_content_2:not(.TwoFunc) :is(#print_content_2_head,
+    #print_content_2_inner > div) {
     grid-template-columns: calc((98dvw - 1dvmin) / 3) calc((196dvw - 0.5dvmin) / 3);
 }
 
@@ -2049,14 +2014,12 @@ span.Ripple.IsFadingOut {
 }
 
 #print_content_2_inner > div.Odd,
-#print_content_4_content_2 > div:nth-last-child(2n):not(
-    :first-child:nth-last-child(4),
+#print_content_4_content_2 > div:nth-last-child(2n):not( :first-child:nth-last-child(4),
     :first-child:nth-last-child(3),
     :first-child:nth-last-child(2),
     :first-child:last-child,
     :nth-child(2):nth-last-child(2),
-    :nth-child(3):nth-last-child(2)
-) {
+    :nth-child(3):nth-last-child(2)) {
     margin-top: 1dvmin;
     border-radius: 1.5dvmin;
     background-color: hsl(var(--print-group-background) / 0.95);
@@ -2182,11 +2145,9 @@ span.Ripple.IsFadingOut {
     border: 0;
     border-radius: var(--h);
 
-    background: linear-gradient(
-            145deg,
-            hsl(var(--shadow-grey-0) / 0.08) 0%,
-            hsl(var(--white) / 0.24) 100%
-    ),
+    background: linear-gradient(145deg,
+    hsl(var(--shadow-grey-0) / 0.08) 0%,
+    hsl(var(--white) / 0.24) 100%),
     hsl(var(--switch-track));
     box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--switch-shadow-dark) / 0.3),
     inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.7);
@@ -2219,13 +2180,11 @@ span.Ripple.IsFadingOut {
     filter 0.15s ease;
     border-radius: 50%;
 
-    background: linear-gradient(
-            145deg,
-            var(--knob-color-1) 0%,
-            var(--knob-color-2) 35%,
-            var(--knob-color-3) 72%,
-            var(--knob-color-4) 100%
-    ),
+    background: linear-gradient(145deg,
+    var(--knob-color-1) 0%,
+    var(--knob-color-2) 35%,
+    var(--knob-color-3) 72%,
+    var(--knob-color-4) 100%),
     var(--knob-base-color);
     box-shadow: /* 预留激活状态的绿色发光层 */ 0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
         /* 右下外阴影 */ calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
@@ -2351,6 +2310,7 @@ span.Ripple.IsFadingOut {
 
 /* 减少动态效果 */
 @media (prefers-reduced-motion: reduce) {
+
     #switch_container,
     #switch_knob,
     .SwitchIcon {
@@ -2403,12 +2363,10 @@ span.Ripple.IsFadingOut {
 .SettingSelection > div:not(.SelectionOn):hover {
     transform: scaleX(1.04);
 
-    background: linear-gradient(
-            155deg,
-            hsl(var(--white) / 0.66) 0%,
-            hsl(var(--white) / 0.16) 44%,
-            hsl(var(--selection-green-shadow) / 0.06) 100%
-    ),
+    background: linear-gradient(155deg,
+    hsl(var(--white) / 0.66) 0%,
+    hsl(var(--white) / 0.16) 44%,
+    hsl(var(--selection-green-shadow) / 0.06) 100%),
     hsl(var(--selection-active-green));
 }
 
