@@ -5715,6 +5715,35 @@
          */
         static async _exeMode3() {
             /**
+             * @function errorPrint
+             * @description 将所有分析结果区域重置为错误显示状态。
+             *
+             * 用于处理输入为空或 Worker 分析失败等异常情况。
+             * 单行显示区域（函数表达式和值域）直接替换为错误图标；
+             * 多行显示区域则渲染一行包含错误标识的数据，以保持统一的显示结构。
+             */
+            const errorPrint = () => {
+                // 错误处理：如果分析失败，将所有相关区域显示为错误状态
+                for (let i = 0; i < 10; i++) {
+                    switch (i) {
+                        case 0:
+                        case 1:
+                            // 单行显示区域直接替换为错误图标
+                            HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_3_content_${i}`), ['_error_'], {mode: 'replace'});
+                            break;
+                        default:
+                            // 多行显示区域渲染一个包含错误图标的行
+                            this._multipleLinesPrint(
+                                HtmlTools.getHtml(`#print_content_3_content_${i}`),
+                                [['error']],
+                                HtmlTools.appendDOMs
+                            );
+                            break;
+                    }
+                }
+            };
+
+            /**
              * @function powerFunctionTextToHtml
              * @description (内部辅助函数) 将分析结果的文本项转换为 HTML DOM 元素并插入目标容器。
              * 专门处理区间（如 `(-inf, 2)`）和点坐标（如 `(1, 5)`）的格式化显示。
@@ -5819,10 +5848,23 @@
 
             // 收集系数输入 [a, b, c, d, e]
             const list = [];
+            // 记录是否没有任何输入
+            let noInput = true;
             for (let i = 0; i < 5; i++) {
                 const screenData = PageConfig.screenData[`3${i}`];
                 // 如果输入为空，默认为 0
-                list[i] = screenData === '' ? '0' : screenData;
+                const emptyInput = screenData === '';
+                list[i] = emptyInput ? '0' : screenData;
+
+                if (noInput && !emptyInput) {
+                    noInput = false;
+                }
+            }
+
+            // 若没有输入，则提前返回
+            if (noInput) {
+                errorPrint();
+                return;
             }
 
             try {
@@ -5867,24 +5909,7 @@
                     }
                 }
             } catch {
-                // 错误处理：如果分析失败，将所有相关区域显示为错误状态
-                for (let i = 0; i < 10; i++) {
-                    switch (i) {
-                        case 0:
-                        case 1:
-                            // 单行显示区域直接替换为错误图标
-                            HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_3_content_${i}`), ['_error_'], {mode: 'replace'});
-                            break;
-                        default:
-                            // 多行显示区域渲染一个包含错误图标的行
-                            this._multipleLinesPrint(
-                                HtmlTools.getHtml(`#print_content_3_content_${i}`),
-                                [['error']],
-                                HtmlTools.appendDOMs
-                            );
-                            break;
-                    }
-                }
+                errorPrint();
             }
         }
 
