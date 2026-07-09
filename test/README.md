@@ -28,7 +28,7 @@ npm start
 
 启动后打开入口页中的“测试控制台”。测试控制台会加载 `dist/Whalgebra.html` 作为计算核心，并由 `test/browser/test_logic.js` 执行 `test/cases/` 中的 JSON 用例。
 
-`npm test` 只覆盖 Node.js 工具链和测试结构一致性，不会真实跑完浏览器端 JSON 计算用例。修改 `test/cases/` 的期望值后，至少要用本地脚本或测试控制台验证对应浏览器测试集。
+`npm test` 除了覆盖 Node.js 工具链和测试结构一致性，还会在 Node 环境里真实跑完测试控制台的“运行全部测试集”。它通过 `test/node/browser_suites.test.js` 从 `dist/Whalgebra.html` 抽取计算核心脚本，在 `vm` 沙箱中还原后调用 `test/browser/test_logic.js` 的 `test(0, ...)`，执行 `includeInAll` 为 `true` 的所有测试集（不含性能基准）。修改 `test/cases/` 的期望值后，运行 `npm test` 即可验证浏览器端 JSON 计算用例；测试控制台仍是排查单个用例和性能基准的补充手段。
 
 ## 测试集清单
 
@@ -297,3 +297,4 @@ MathPlus 函数测试默认使用 `220 / 0.9 / algebra`。不要在单条 case �
 5. MathPlus 函数测试不要使用单条 case 顶层旧字段覆盖配置；需要覆盖时使用嵌套 `calcConfig` 或 `config`。
 6. 修改 JSON 后先确认文件可被 `JSON.parse()` 解析，再运行相关浏览器测试集。
 7. 修改测试结构、测试控制台或 `test_logic.js` 后运行 `npm test`，确保 Node.js 一致性测试通过。
+8. `npm test` 会用 Node 端还原的计算核心跑完“运行全部测试集”，修改 `test/cases/` 用例或计算核心后，以它作为回归基线。
