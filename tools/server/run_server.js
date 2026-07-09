@@ -12,7 +12,7 @@ import {PROJECT_ROOT, resolveProjectPath} from "../shared/filesystem.js";
 
 export const SERVER_CONFIG = Object.freeze({
     DEFAULT_PORT: 8000,
-    MAX_PORT_RETRIES: 100,
+    MAX_PORT_RETRIES: 1000,
     DEFAULT_DIR: PROJECT_ROOT
 });
 
