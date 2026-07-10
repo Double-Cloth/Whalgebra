@@ -543,7 +543,7 @@
     };
 })();
 `;
-                    console.log(code);
+
                     return code;
                 }
 

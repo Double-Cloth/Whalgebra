@@ -8399,7 +8399,7 @@
     };
 })();
 `;
-                    console.log(code);
+
                     return code;
                 }
 
@@ -12098,6 +12098,24 @@
 
                         this._startIndex = start;
                         this._endIndex = end;
+                    } catch (error) {
+                        // 渲染失败后统一清理现有节点，并重置窗口范围，
+                        // 避免留下部分节点或让下一次渲染被 rangeUnchanged 错误跳过。
+                        this._recycleRenderedNodes();
+
+                        // 恢复为不依赖任何已渲染节点的完整占位结构，
+                        // 保证滚动高度与当前空渲染窗口保持一致。
+                        if (this._spacerTop?.isConnected && this._spacerBottom?.isConnected) {
+                            const {top, bottom} = this._heightMapper.calcSpacerHeights(
+                                0, 0, this.totalCount, this.itemHeight, 0
+                            );
+
+                            this._spacerTop.style.height = `${top}px`;
+                            this._spacerTop.style.marginTop = '0px';
+                            this._spacerBottom.style.height = `${bottom}px`;
+                        }
+
+                        throw error;
                     } finally {
                         this._rendering = false;
                     }
@@ -12148,43 +12166,53 @@
 
                     const newNodes = new Map();
 
-                    for (const i of prependIndices) {
-                        newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
-                    }
-                    for (const i of appendIndices) {
-                        newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
-                    }
-
-                    if (prependIndices.length > 0) {
-                        const anchor = this._getFirstRenderedNode() ?? this._spacerBottom;
-                        const frag = document.createDocumentFragment();
+                    try {
                         for (const i of prependIndices) {
-                            frag.appendChild(newNodes.get(i));
+                            newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
                         }
-                        this.container.insertBefore(frag, anchor);
-                    }
-
-                    if (appendIndices.length > 0) {
-                        const frag = document.createDocumentFragment();
                         for (const i of appendIndices) {
-                            frag.appendChild(newNodes.get(i));
+                            newNodes.set(i, this._nodePool.toElement(this.renderItem(i, this.data)));
                         }
-                        this.container.insertBefore(frag, this._spacerBottom);
-                    }
 
-                    const orderedMap = new Map();
-                    for (let i = newStart; i < newEnd; i++) {
-                        const el = newNodes.get(i) ?? this._renderedNodes.get(i);
-                        if (el !== undefined) {
-                            orderedMap.set(i, el);
-                        } else {
-                            console.error(
-                                `[VirtualScroll] _incrementalUpdate: missing element for index ${i}. ` +
-                                'This is an internal bug; please file an issue.'
-                            );
+                        if (prependIndices.length > 0) {
+                            const anchor = this._getFirstRenderedNode() ?? this._spacerBottom;
+                            const frag = document.createDocumentFragment();
+                            for (const i of prependIndices) {
+                                frag.appendChild(newNodes.get(i));
+                            }
+                            this.container.insertBefore(frag, anchor);
                         }
+
+                        if (appendIndices.length > 0) {
+                            const frag = document.createDocumentFragment();
+                            for (const i of appendIndices) {
+                                frag.appendChild(newNodes.get(i));
+                            }
+                            this.container.insertBefore(frag, this._spacerBottom);
+                        }
+
+                        const orderedMap = new Map();
+                        for (let i = newStart; i < newEnd; i++) {
+                            const el = newNodes.get(i) ?? this._renderedNodes.get(i);
+                            if (el !== undefined) {
+                                orderedMap.set(i, el);
+                            } else {
+                                console.error(
+                                    `[VirtualScroll] _incrementalUpdate: missing element for index ${i}. ` +
+                                    'This is an internal bug; please file an issue.'
+                                );
+                            }
+                        }
+                        this._renderedNodes = orderedMap;
+                    } catch (error) {
+                        // 新节点尚未写入 _renderedNodes，发生异常时必须单独回收，
+                        // 否则对象池会保留无法再访问的“使用中”节点引用。
+                        for (const el of newNodes.values()) {
+                            this._nodePool.recycle(el);
+                        }
+
+                        throw error;
                     }
-                    this._renderedNodes = orderedMap;
                 }
 
                 /**
@@ -12507,81 +12535,93 @@
 
                     const normalizedLength = this._normalizeLength(length, 'load');
 
-                    this._unbindScroll();
-                    this._unbindResize();
-                    this._cancelAllRAF();
-                    this._cancelSmoothScrollSilent();
-                    this._pendingScrollQueue = [];
+                    try {
+                        this._unbindScroll();
+                        this._unbindResize();
+                        this._cancelAllRAF();
+                        this._cancelSmoothScrollSilent();
+                        this._pendingScrollQueue = [];
 
-                    this._resolveContainer();
+                        this._resolveContainer();
 
-                    // ── 在 heightMapper 更新前，用旧 ratio 采集当前虚拟滚动位置 ──
-                    const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
+                        // ── 在 heightMapper 更新前，用旧 ratio 采集当前虚拟滚动位置 ──
+                        const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
 
-                    this.data = data;
-                    this.totalCount = normalizedLength;
+                        this.data = data;
+                        this.totalCount = normalizedLength;
 
-                    if (!this._measured || remeasure) {
-                        this._setupContainer();
-                        this._doMeasure();   // 内部已调用 heightMapper.update()
-                        this._measured = true;
-                    } else {
-                        this._verifyItemHeight();
-                        this._heightMapper.update(
-                            this.totalCount, this.itemHeight, this.container.clientHeight
-                        );
-                    }
+                        if (!this._measured || remeasure) {
+                            this._setupContainer();
+                            this._doMeasure();   // 内部已调用 heightMapper.update()
+                            this._measured = true;
+                        } else {
+                            this._verifyItemHeight();
+                            this._heightMapper.update(
+                                this.totalCount, this.itemHeight, this.container.clientHeight
+                            );
+                        }
 
-                    this._calcBufferSize(true);
+                        this._calcBufferSize(true);
 
-                    // ── 确保 spacer 存在 ──────────────────────────────────────────────
-                    if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
-                        this._buildDOM();  // 内部已用 start=0,end=0 初始化 spacer 高度
-                    }
+                        // ── 确保 spacer 存在 ──────────────────────────────────────────────
+                        if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
+                            this._buildDOM();  // 内部已用 start=0,end=0 初始化 spacer 高度
+                        }
 
-                    this._syncContainerSize();
+                        this._syncContainerSize();
 
-                    // ── 在写 scrollTop 之前，先把 spacer 撑到正确高度 ──────
-                    // 浏览器的 scrollTop 上限 = scrollHeight - clientHeight。
-                    // 若 spacer 还是旧高度，scrollHeight 偏小，scrollTop 会被静默截断，
-                    // 导致 _forceRender 基于错误的 scrollTop 计算出 start > 0，
-                    // spacerTop 变非零，进而引发反复抖动。
-                    //
-                    // 此时渲染窗口还未更新（_startIndex/_endIndex 是旧值或 -1），
-                    // 用 0,0 作为占位确保 spacerBottom 撑满整个 physicalHeight，
-                    // 让 scrollHeight 在 scrollTop 赋值前就达到最终值。
-                    {
-                        const hm = this._heightMapper;
-                        const {top, bottom} = hm.calcSpacerHeights(
-                            0, 0, this.totalCount, this.itemHeight
-                        );
-                        this._spacerTop.style.height = `${top}px`;    // 0px（start=0）
-                        this._spacerBottom.style.height = `${bottom}px`; // physicalHeight 全部归底部
-                    }
+                        // ── 在写 scrollTop 之前，先把 spacer 撑到正确高度 ──────
+                        // 浏览器的 scrollTop 上限 = scrollHeight - clientHeight。
+                        // 若 spacer 还是旧高度，scrollHeight 偏小，scrollTop 会被静默截断，
+                        // 导致 _forceRender 基于错误的 scrollTop 计算出 start > 0，
+                        // spacerTop 变非零，进而引发反复抖动。
+                        //
+                        // 此时渲染窗口还未更新（_startIndex/_endIndex 是旧值或 -1），
+                        // 用 0,0 作为占位确保 spacerBottom 撑满整个 physicalHeight，
+                        // 让 scrollHeight 在 scrollTop 赋值前就达到最终值。
+                        {
+                            const hm = this._heightMapper;
+                            const {top, bottom} = hm.calcSpacerHeights(
+                                0, 0, this.totalCount, this.itemHeight
+                            );
+                            this._spacerTop.style.height = `${top}px`;    // 0px（start=0）
+                            this._spacerBottom.style.height = `${bottom}px`; // physicalHeight 全部归底部
+                        }
 
-                    // ── 滚动位置处理（此时 scrollHeight 已正确，scrollTop 不会被截断）──
-                    if (resetScroll) {
-                        this.container.scrollTop = 0;
-                    } else {
-                        // 记录目标值，延迟到 _forceRender 之后赋值
-                        const clientHeight = this.container.clientHeight;
-                        const hm = this._heightMapper;
-                        const newVirtScroll = Math.min(
-                            oldVirtScroll,
-                            Math.max(0, hm.virtualHeight - clientHeight)
-                        );
-                        // scrollHeight 已撑开，此赋值不会被浏览器截断
-                        this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
-                    }
+                        // ── 滚动位置处理（此时 scrollHeight 已正确，scrollTop 不会被截断）──
+                        if (resetScroll) {
+                            this.container.scrollTop = 0;
+                        } else {
+                            // 记录目标值，延迟到 _forceRender 之后赋值
+                            const clientHeight = this.container.clientHeight;
+                            const hm = this._heightMapper;
+                            const newVirtScroll = Math.min(
+                                oldVirtScroll,
+                                Math.max(0, hm.virtualHeight - clientHeight)
+                            );
+                            // scrollHeight 已撑开，此赋值不会被浏览器截断
+                            this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
+                        }
 
-                    // scroll 监听器在 scrollTop 设置完毕后再绑定
-                    this._bindEvents();
+                        // scroll 监听器在 scrollTop 设置完毕后再绑定
+                        this._bindEvents();
 
-                    // _forceRender 将基于正确的 scrollTop 计算窗口，并最终修正 spacer 高度
-                    this._forceRender();
+                        // _forceRender 将基于正确的 scrollTop 计算窗口，并最终修正 spacer 高度
+                        this._forceRender();
 
-                    if (!this._sm.is(VirtualScroll.State.RUNNING)) {
-                        this._sm.transition(VirtualScroll.State.RUNNING);
+                        if (!this._sm.is(VirtualScroll.State.RUNNING)) {
+                            this._sm.transition(VirtualScroll.State.RUNNING);
+                        }
+                    } catch (error) {
+                        // load() 可能已经修改数据、DOM、监听器或测量状态，
+                        // 无法可靠恢复调用前现场，因此统一清理并回到可重新 load() 的 IDLE 状态。
+                        this._teardown(false);
+
+                        if (!this._sm.is(VirtualScroll.State.IDLE)) {
+                            this._sm.transition(VirtualScroll.State.IDLE);
+                        }
+
+                        throw error;
                     }
                 }
 
