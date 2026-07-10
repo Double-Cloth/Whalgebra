@@ -4209,7 +4209,7 @@
             const children = input.children;
             const len = children.length;
             // 窗口宽度
-            const range = Public.MAX_TOKEN_LENGTH + 2; // +1 for space, +1 for redundancy
+            const range = TokenConfig.MAX_TOKEN_LENGTH + 2; // +1 for space, +1 for redundancy
 
             // --- 2. 高效定位光标索引 ---
             let cursorIndex = -1;
@@ -4516,7 +4516,7 @@
                 }
 
                 // 计算扫描范围
-                const range = Public.MAX_TOKEN_LENGTH * 2 + 3; // +2 for space, +1 for redundancy
+                const range = TokenConfig.MAX_TOKEN_LENGTH * 2 + 3; // +2 for space, +1 for redundancy
                 const startIndex = Math.max(0, centerIndex - range);
                 const endIndex = Math.min(childrenArray.length - 1, centerIndex + range);
 
@@ -5543,7 +5543,7 @@
             // 如果最后一个 token 是二元函数，则删除以符合习惯
             let isMiddleFunc = true;
             while (isMiddleFunc) {
-                const lastFragment = currentInput.slice(-Public.MAX_TOKEN_LENGTH - 2);
+                const lastFragment = currentInput.slice(-TokenConfig.MAX_TOKEN_LENGTH - 2);
                 const lastToken = Public.tokenizer(lastFragment, {strictMode: false}).slice(-1)[0];
                 isMiddleFunc = Public.getTokenInfo(lastToken)?.funcPlace === 'middle';
                 if (isMiddleFunc) {

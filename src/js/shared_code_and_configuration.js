@@ -60,6 +60,16 @@
         static priorityMap = new Map();
 
         /**
+         * @static
+         * @type {number}
+         * @description 合法 token 的最大长度。
+         */
+        static MAX_TOKEN_LENGTH = Math.max(
+            1,
+            ...[...this.allSigns, ...this.htmlClassLenOneFunc].map(token => token.length)
+        );
+
+        /**
          * @constructor
          * @description TokenConfig 的构造函数。
          * 这个类被设计为静态类，不应该被实例化。
@@ -112,13 +122,6 @@
      * 它不应该被实例化，其所有方法都应静态访问。
      */
     class Public {
-        /**
-         * @static
-         * @type {number}
-         * @description 合法 token 的最大长度。
-         */
-        static MAX_TOKEN_LENGTH = 9;
-
         /**
          * @constructor
          * @description Public 的构造函数。
@@ -689,7 +692,7 @@
                 // --- 分支 2: 处理字母开头的词法单元 (函数名, 常量) --- //
                 // 从当前位置开始，提取一个可能的最大长度的子字符串。
                 // 这是一种优化，避免在每次迭代中都检查从当前位置到字符串末尾的所有可能性。
-                const temp = str.slice(i, i + Public.MAX_TOKEN_LENGTH).match(/^[a-zA-Z\[\]]*/)[0];
+                const temp = str.slice(i, i + TokenConfig.MAX_TOKEN_LENGTH).match(/^[a-zA-Z\[\]]*/)[0];
                 // 贪心算法：循环地从后向前缩短这个子字符串，以找到最长的有效匹配。
                 // 例如，对于 "sin(x)"，它会先尝试 "sin"，如果有效则匹配，而不会只匹配 "s"。
                 let matched = false;
