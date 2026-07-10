@@ -1971,6 +1971,9 @@
             /** @type {boolean} 宽度变化时是否触发重新测量。 */
             this._remeasureOnResize = config.remeasureOnResize ?? true;
 
+            /** @type {{position: string, overflowX: string, overflowY: string, overflowAnchor: string} | null} 容器原始内联样式。 */
+            this._originalContainerStyle = null;
+
             /** @type {VirtualScroll._StateMachine} 内部状态机实例。 */
             this._sm = new VirtualScroll._StateMachine(
                 VirtualScroll.State.IDLE,
@@ -2029,6 +2032,8 @@
             this._remeasureRAF = null;
             /** @type {number | null} 平滑滚动帧请求 ID（rAF）。 */
             this._smoothRAF = null;
+            /** @type {number | null} 等待暂停恢复时容器可测量的帧请求 ID（rAF）。 */
+            this._resumeRAF = null;
 
             /** @type {boolean} 行高是否已完成初次测量。 */
             this._measured = false;
@@ -2114,7 +2119,16 @@
             }
 
             // 2. 转换为数字并校验有限性
-            const num = Number(length);
+            let num;
+            try {
+                num = Number(length);
+            } catch (e) {
+                console.warn(
+                    `[VirtualScroll] ${caller}(): length "${String(length)}" cannot be converted to a number, ` +
+                    'treating as 0.'
+                );
+                return 0;
+            }
             if (!Number.isFinite(num)) {
                 console.warn(`[VirtualScroll] ${caller}(): length "${length}" is not a finite number, treating as 0.`);
                 return 0;
@@ -2196,6 +2210,15 @@
          * @returns {void}
          */
         _setupContainer() {
+            if (!this._originalContainerStyle) {
+                this._originalContainerStyle = {
+                    position: this.container.style.position,
+                    overflowX: this.container.style.overflowX,
+                    overflowY: this.container.style.overflowY,
+                    overflowAnchor: this.container.style.overflowAnchor
+                };
+            }
+
             const cs = getComputedStyle(this.container);
             if (cs.position === 'static') {
                 this.container.style.position = 'relative';
@@ -2301,76 +2324,80 @@
         _doMeasure() {
             // 1. 记录初始状态
             const inlineOverflowY = this.container.style.overflowY;
-            const computedOverflowY = getComputedStyle(this.container).overflowY;
             const clientHeight = this.container.clientHeight;
-
-            // 预判是否需要维持滚动条
-            // 若曾测量过则用虚拟高度判断，否则用 Fallback 高度预判，或看当前物理高度是否已超标
-            const expectedHeight = this._measured
-                                   ? this._heightMapper.virtualHeight
-                                   : this.totalCount * VirtualScroll._FALLBACK_HEIGHT;
-            const willHaveScrollbar = expectedHeight > clientHeight || this.container.scrollHeight > clientHeight;
-
-            // 在测量前临时冻结 overflowY 状态，避免 DOM 清空瞬间 clientWidth 变大导致文本折行不准
-            this.container.style.overflowY = willHaveScrollbar ? 'scroll' : 'hidden';
-
-            this._unbindScroll();
-            this._recycleRenderedNodes();
-            this.container.replaceChildren();
-            this._spacerTop = null;
-            this._spacerBottom = null;
-            this._nodePool.clear();
-
-            if (this.totalCount === 0) {
-                this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
-                this._heightMapper.update(0, this.itemHeight, clientHeight);
-                console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
-                // 恢复原始的 overflowY 样式
-                this.container.style.overflowY = inlineOverflowY || computedOverflowY;
-                return;
-            }
-
-            const sampleCount = Math.min(VirtualScroll._MEASURE_SAMPLES, this.totalCount);
             const tempEls = [];
 
-            for (let i = 0; i < sampleCount; i++) {
-                const result = this.renderItem(i, this.data);
-                const el = this._nodePool.toElement(result, true);
-                this.container.appendChild(el);
-                tempEls.push(el);
+            try {
+                // 预判是否需要维持滚动条
+                // 若曾测量过则用虚拟高度判断，否则用 Fallback 高度预判，或看当前物理高度是否已超标
+                const expectedHeight = this._measured
+                                       ? this._heightMapper.virtualHeight
+                                       : this.totalCount * VirtualScroll._FALLBACK_HEIGHT;
+                const willHaveScrollbar = expectedHeight > clientHeight || this.container.scrollHeight > clientHeight;
+
+                // 在测量前临时冻结 overflowY 状态，避免 DOM 清空瞬间 clientWidth 变大导致文本折行不准
+                this.container.style.overflowY = willHaveScrollbar ? 'scroll' : 'hidden';
+
+                this._unbindScroll();
+                this._recycleRenderedNodes();
+                this.container.replaceChildren();
+                this._spacerTop = null;
+                this._spacerBottom = null;
+                this._nodePool.clear();
+
+                if (this.totalCount === 0) {
+                    this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
+                    this._heightMapper.update(0, this.itemHeight, clientHeight);
+                    console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
+                    return;
+                }
+
+                const sampleCount = Math.min(VirtualScroll._MEASURE_SAMPLES, this.totalCount);
+
+                for (let i = 0; i < sampleCount; i++) {
+                    const result = this.renderItem(i, this.data);
+                    const el = this._nodePool.toElement(result, true);
+                    this.container.appendChild(el);
+                    tempEls.push(el);
+                }
+
+                // 强制同步布局
+                void this.container.offsetHeight;
+
+                const heights = tempEls.map(el => el.offsetHeight);
+                const sum = heights.reduce((s, h) => s + h, 0);
+                let measured = sum / sampleCount;
+
+                this.container.replaceChildren();
+                tempEls.length = 0;
+
+                if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
+                    console.warn(
+                        `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
+                        `clamped to ${VirtualScroll._MIN_ITEM_HEIGHT}px.`
+                    );
+                    measured = VirtualScroll._MIN_ITEM_HEIGHT;
+                }
+
+                if (measured <= 0) {
+                    console.warn('[VirtualScroll] Measured item height is 0; falling back to 50px.');
+                    measured = VirtualScroll._FALLBACK_HEIGHT;
+                }
+
+                this.itemHeight = measured;
+
+                // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
+                this.container.style.overflowY = inlineOverflowY;
+
+                // 使用最新的 clientHeight 更新，因为恢复 overflowY 后容器可视高度可能有极小微调
+                const finalClientHeight = this.container.clientHeight;
+                this._heightMapper.update(this.totalCount, this.itemHeight, finalClientHeight);
+            } finally {
+                for (const el of tempEls) {
+                    el.remove();
+                }
+                this.container.style.overflowY = inlineOverflowY;
             }
-
-            // 强制同步布局
-            void this.container.offsetHeight;
-
-            const heights = tempEls.map(el => el.offsetHeight);
-            const sum = heights.reduce((s, h) => s + h, 0);
-            let measured = sum / sampleCount;
-
-            this.container.replaceChildren();
-            tempEls.length = 0;
-
-            // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
-            this.container.style.overflowY = inlineOverflowY || computedOverflowY;
-
-            if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
-                console.warn(
-                    `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
-                    `clamped to ${VirtualScroll._MIN_ITEM_HEIGHT}px.`
-                );
-                measured = VirtualScroll._MIN_ITEM_HEIGHT;
-            }
-
-            if (measured <= 0) {
-                console.warn('[VirtualScroll] Measured item height is 0; falling back to 50px.');
-                measured = VirtualScroll._FALLBACK_HEIGHT;
-            }
-
-            this.itemHeight = measured;
-
-            // 使用最新的 clientHeight 更新，因为恢复 overflowY 后容器可视高度可能有极小微调
-            const finalClientHeight = this.container.clientHeight;
-            this._heightMapper.update(this.totalCount, this.itemHeight, finalClientHeight);
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -2759,13 +2786,11 @@
                     this._syncContainerSize();
 
                     // 自然行高恢复滚动位置：anchor 已基于自然高度存储
-                    const rs_ratio = this._heightMapper._effV > 0 ? this._heightMapper._effP / this._heightMapper._effV : 0;
-                    const rs_start = Math.max(0, savedAnchorIndex - this.bufferSize);
-                    const rs_physTop = Math.floor(rs_start * this.itemHeight * rs_ratio);
-                    const exactPhysical = rs_physTop + (savedAnchorIndex - rs_start + savedAnchorRatio) * this.itemHeight;
-                    const maxPhysical = Math.max(0, this._heightMapper.physicalHeight - clientHeight);
+                    const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
+                    const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
+                    const clampedVirt = Math.min(Math.max(0, exactVirtScroll), maxVirt);
 
-                    this.container.scrollTop = Math.min(maxPhysical, Math.max(0, exactPhysical));
+                    this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
 
                     this._bindScroll();
                     this._forceRender();
@@ -2787,6 +2812,43 @@
         _resumeWithRemeasure(pendingScroll = null) {
             this._cancelAllRAF();
             this._cancelSmoothScrollSilent();
+            this._unbindScroll();
+
+            if (this.container.clientWidth <= 0 || this.container.clientHeight <= 0) {
+                let lastWidth = -1;
+                let lastHeight = -1;
+
+                const waitForContainer = () => {
+                    this._resumeRAF = null;
+
+                    if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
+                        return;
+                    }
+
+                    if (!this.container.isConnected) {
+                        console.warn('[VirtualScroll] Container detached while waiting for resume.');
+                        this.destroy();
+                        return;
+                    }
+
+                    const width = this.container.clientWidth;
+                    const height = this.container.clientHeight;
+
+                    if (width <= 0 || height <= 0 || width !== lastWidth || height !== lastHeight) {
+                        lastWidth = width;
+                        lastHeight = height;
+                        this._resumeRAF = requestAnimationFrame(waitForContainer);
+                        return;
+                    }
+
+                    this._resumeWithRemeasure(pendingScroll);
+                };
+
+                this._resumeRAF = requestAnimationFrame(waitForContainer);
+                return;
+            }
+
+            this._pendingScrollQueue = [];
 
             // 记录重测前的逻辑锚点
             const savedAnchorIndex = this._anchorIndex;
@@ -2823,12 +2885,8 @@
                 this._bindEvents();
 
                 if (!this._isSmoothScrolling) {
-                    this._forceRender();
-                    requestAnimationFrame(() => {
-                        if (this._sm.is(VirtualScroll.State.RUNNING)) {
-                            this._forceRender();
-                        }
-                    });
+                    this._render();
+                    this._scheduleRender();
                 }
 
                 return;
@@ -2845,14 +2903,9 @@
             this._bindEvents();
 
             // 立即刷一次
-            this._forceRender();
-
+            this._render();
             // 再等一帧刷一次，解决刚恢复时布局还没稳定导致首帧不刷新的问题
-            requestAnimationFrame(() => {
-                if (this._sm.is(VirtualScroll.State.RUNNING)) {
-                    this._forceRender();
-                }
-            });
+            this._scheduleRender();
         }
 
         /* ══════════════════════════════════════════════════════════════════════
@@ -2906,6 +2959,19 @@
 
         /**
          * @private
+         * @method _cancelResumeRAF
+         * @description 用来取消 resume() 恢复过程中等待容器重新变得可测量的 requestAnimationFrame 循环。
+         * @returns {void}
+         */
+        _cancelResumeRAF() {
+            if (this._resumeRAF !== null) {
+                cancelAnimationFrame(this._resumeRAF);
+                this._resumeRAF = null;
+            }
+        }
+
+        /**
+         * @private
          * @method _cancelAllRAF
          * @description 同时取消渲染帧和重测帧。
          * @returns {void}
@@ -2913,6 +2979,7 @@
         _cancelAllRAF() {
             this._cancelRenderRAF();
             this._cancelRemeasureRAF();
+            this._cancelResumeRAF();
             this._cancelSmoothScrollSilent();
         }
 
@@ -2970,6 +3037,12 @@
                     return;
                 }
                 if (this.totalCount <= 0 || this.itemHeight <= 0) {
+                    if (this.totalCount <= 0) {
+                        this._recycleRenderedNodes();
+                        this._spacerTop.style.height = '0px';
+                        this._spacerTop.style.marginTop = '0px';
+                        this._spacerBottom.style.height = '0px';
+                    }
                     return;
                 }
 
@@ -3308,8 +3381,13 @@
 
             if (this.container) {
                 this.container.replaceChildren();
+
+                if (this._originalContainerStyle) {
+                    Object.assign(this.container.style, this._originalContainerStyle);
+                }
             }
 
+            this._originalContainerStyle = null;
             this._spacerTop = null;
             this._spacerBottom = null;
             this._startIndex = -1;
@@ -3641,7 +3719,6 @@
                 }
 
                 pendingScroll = this._pendingScrollQueue.at(-1);
-                this._pendingScrollQueue = [];
             }
 
             // 恢复时强制重测行高
@@ -3649,6 +3726,8 @@
                 this._resumeWithRemeasure(pendingScroll);
                 return;
             }
+
+            this._pendingScrollQueue = [];
 
             // 不重测时保持原逻辑
             if (pendingScroll) {
@@ -3824,6 +3903,15 @@
                 return;
             }
             if (this.itemHeight <= 0) {
+                return;
+            }
+
+            if (this._sm.is(VirtualScroll.State.PAUSED)) {
+                this._pendingScrollQueue.push({
+                    index: this.totalCount - 1,
+                    behavior,
+                    block: 'end'
+                });
                 return;
             }
 

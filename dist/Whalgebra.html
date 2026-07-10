@@ -7902,6 +7902,13 @@
                 _config = null;
 
                 /**
+                 * 首次初始化时生成的 Worker 脚本。后续重启直接复用，避免外部修改原始配置影响行为。
+                 * @type {string|null}
+                 * @private
+                 */
+                _workerCode = null;
+
+                /**
                  * 创建一个 SyncWorker 实例。
                  * @param {object} config - Worker 的配置对象。
                  * @param {object} config.callableFunctions - 一个对象，其键是函数名，值是对应的函数定义。
@@ -7910,8 +7917,16 @@
                  */
                 constructor(config) {
                     // 验证配置
-                    if (!config.callableFunctions || typeof config.callableFunctions !== 'object' || Object.keys(config.callableFunctions).length === 0) {
+                    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+                        throw new Error('[SyncWorker] config must be a non-null object.');
+                    }
+                    if (!config.callableFunctions || typeof config.callableFunctions !== 'object' || Array.isArray(config.callableFunctions) || Object.keys(config.callableFunctions).length === 0) {
                         throw new Error('[SyncWorker] callableFunctions must be a non-empty object.');
+                    }
+                    for (const [name, func] of Object.entries(config.callableFunctions)) {
+                        if (typeof func !== 'function') {
+                            throw new Error(`[SyncWorker] callableFunctions['${name}'] must be a function.`);
+                        }
                     }
                     // 保存配置
                     this._config = config;
@@ -7955,16 +7970,24 @@
                         throw new Error('[SyncWorker] dependencies must be an array.');
                     }
 
-                    // 生成包含所有函数和依赖的 Worker 脚本字符串。
-                    const workerCode = this._generateWorkerCode(callableFunctions, dependencies);
+                    // 生成包含所有函数和依赖的 Worker 脚本字符串，并在后续重启时复用。
+                    const workerCode = this._workerCode ??= this._generateWorkerCode(callableFunctions, dependencies);
                     // 将脚本字符串转换为 Blob 对象，以便可以作为文件处理。
                     const blob = new Blob([workerCode], {type: 'application/javascript'});
                     // 为 Blob 创建一个唯一的 URL，Worker 将从这个 URL 加载。
-                    this._workerUrl = URL.createObjectURL(blob);
-                    // 创建新的 Web Worker 实例。
-                    this._worker = new Worker(this._workerUrl);
-                    // 设置消息监听器以处理与 Worker 的双向通信。
-                    this._setupMessageListeners();
+                    const workerUrl = URL.createObjectURL(blob);
+
+                    try {
+                        // 创建新的 Web Worker 实例。
+                        const worker = new Worker(workerUrl);
+                        this._workerUrl = workerUrl;
+                        this._worker = worker;
+                        // 设置消息监听器以处理与 Worker 的双向通信。
+                        this._setupMessageListeners();
+                    } catch (error) {
+                        URL.revokeObjectURL(workerUrl);
+                        throw error;
+                    }
                 }
 
                 /**
@@ -7976,18 +7999,24 @@
                         return;
                     }
 
+                    const worker = this._worker;
+
                     /**
                      * 消息处理器：用于从 Worker 接收任务成功或失败的结果。
                      * @param {MessageEvent} event - 来自 Worker 的事件对象，包含 {id, result?, error?}。
                      */
-                    this._worker.onmessage = (event) => {
+                    worker.onmessage = (event) => {
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
                         const {id, result, error} = event.data;
                         if (!this._taskQueue.has(id)) {
                             return; // 任务可能已被取消或超时，直接忽略。
                         }
 
                         const {resolve, reject, timeoutId} = this._taskQueue.get(id);
-                        if (timeoutId) {
+                        if (timeoutId !== null) {
                             clearTimeout(timeoutId);
                         }
 
@@ -8006,13 +8035,45 @@
                      * 错误处理器：处理 Worker 内部发生的、无法恢复的严重错误（例如，生成的代码中存在语法错误）。
                      * @param {ErrorEvent} err - 错误事件对象。
                      */
-                    this._worker.onerror = (err) => {
+                    worker.onerror = (err) => {
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
                         const fatalError = new Error(`[SyncWorker] Worker encountered a fatal error: ${err.message} at ${err.filename}:${err.lineno}.`);
-                        this._taskQueue.forEach(({reject}) => reject(fatalError));
-                        this._taskQueue.clear();
+                        this._rejectAllTasks(fatalError);
                         // 一旦发生致命错误，Worker 将不可用，最好直接终止。
                         this.terminate();
                     };
+
+                    /**
+                     * 消息反序列化错误处理器。
+                     */
+                    worker.onmessageerror = () => {
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
+                        const messageError = new Error('[SyncWorker] Failed to deserialize a message from the Worker.');
+                        messageError.name = 'MessageError';
+                        this._rejectAllTasks(messageError);
+                        this.terminate();
+                    };
+                }
+
+                /**
+                 * 拒绝并清理所有待处理任务。
+                 * @param {Error} error - 用于拒绝任务 Promise 的错误。
+                 * @private
+                 */
+                _rejectAllTasks(error) {
+                    this._taskQueue.forEach(({reject, timeoutId}) => {
+                        if (timeoutId !== null) {
+                            clearTimeout(timeoutId);
+                        }
+                        reject(error);
+                    });
+                    this._taskQueue.clear();
                 }
 
                 /**
@@ -8026,12 +8087,13 @@
                     /**
                      * 序列化一个值，以便可以将其存储或传输。
                      * @param {*} value - 需要被序列化的值。
+                     * @param {WeakSet<object>} [seen] - 用于检测循环引用。
                      * @returns {string} - 序列化后的字符串。
                      */
-                    const serializeValue = (value) => {
+                    const serializeValue = (value, seen = new WeakSet()) => {
                         // 1. 处理函数：直接转换为字符串源码
                         if (typeof value === 'function') {
-                            return value.toString();
+                            return serializeFunction(value);
                         }
 
                         // 2. 处理 undefined
@@ -8039,13 +8101,16 @@
                             return 'undefined';
                         }
 
-                        // 3. 处理数字：保留 NaN 和 Infinity
+                        // 3. 处理数字：保留 NaN、Infinity 和 -0
                         if (typeof value === 'number') {
                             if (Number.isNaN(value)) {
                                 return 'NaN';
                             }
                             if (!Number.isFinite(value)) {
                                 return value > 0 ? 'Infinity' : '-Infinity';
+                            }
+                            if (Object.is(value, -0)) {
+                                return '-0';
                             }
                             return value.toString();
                         }
@@ -8060,140 +8125,281 @@
                             return JSON.stringify(value);
                         }
 
-                        // 6. 处理数组：递归序列化每个元素
+                        // 6. 不支持 Symbol
+                        if (typeof value === 'symbol') {
+                            throw new TypeError('Symbol values are not supported.');
+                        }
+
+                        // 7. 处理数组：递归序列化每个元素
                         if (Array.isArray(value)) {
-                            const elements = value.map(v => serializeValue(v));
-                            return `[${elements.join(',')}]`;
-                        }
-
-                        // 7. 处理对象：递归序列化每个属性
-                        if (typeof value === 'object' && value !== null) {
-                            // 注意：这里未处理循环引用和 Map/Set 等特殊对象，
-                            // 但这对于配置对象和数学常数传递通常足够了。
-                            const props = [];
-                            for (const key in value) {
-                                if (Object.prototype.hasOwnProperty.call(value, key)) {
-                                    // 键名加引号以防包含特殊字符，键值递归处理
-                                    props.push(`${JSON.stringify(key)}: ${serializeValue(value[key])}`);
-                                }
+                            if (seen.has(value)) {
+                                throw new TypeError('Circular references are not supported.');
                             }
-                            return `{${props.join(',')}}`;
+                            seen.add(value);
+                            try {
+                                const elements = [];
+                                for (let i = 0; i < value.length; i++) {
+                                    elements.push(Object.prototype.hasOwnProperty.call(value, i)
+                                                  ? serializeValue(value[i], seen)
+                                                  : '');
+                                }
+                                const trailingComma = value.length > 0 && !Object.prototype.hasOwnProperty.call(value, value.length - 1)
+                                                      ? ','
+                                                      : '';
+                                return `[${elements.join(',')}${trailingComma}]`;
+                            } finally {
+                                seen.delete(value);
+                            }
                         }
 
-                        // 8. 其他基本类型（null, boolean）：直接使用 JSON 结果
+                        // 8. 处理对象：递归序列化每个属性
+                        if (typeof value === 'object' && value !== null) {
+                            const prototype = Object.getPrototypeOf(value);
+                            const isPlainObject = prototype === null || (
+                                Object.prototype.toString.call(value) === '[object Object]' &&
+                                typeof prototype?.constructor === 'function' &&
+                                prototype.constructor.name === 'Object'
+                            );
+                            if (!isPlainObject) {
+                                throw new TypeError(`Unsupported object type '${value.constructor?.name || 'Object'}'.`);
+                            }
+                            if (seen.has(value)) {
+                                throw new TypeError('Circular references are not supported.');
+                            }
+
+                            seen.add(value);
+                            try {
+                                const props = [];
+                                for (const key of Object.keys(value)) {
+                                    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                                    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+                                        throw new TypeError(`Accessor property '${key}' is not supported.`);
+                                    }
+                                    // 使用计算属性名，避免 __proto__ 被解释为对象字面量的原型设置器
+                                    props.push(`[${JSON.stringify(key)}]: ${serializeValue(descriptor.value, seen)}`);
+                                }
+                                return `{${props.join(',')}}`;
+                            } finally {
+                                seen.delete(value);
+                            }
+                        }
+
+                        // 9. 其他基本类型（null, boolean）：直接使用 JSON 结果
                         return JSON.stringify(value);
                     };
 
-                    let code = `
-                    /* Dynamically Generated Worker Code. */
-                    "use strict";
+                    /**
+                     * 将函数转换为可嵌入 Worker 脚本的函数表达式。
+                     * @param {Function} func - 要序列化的函数。
+                     * @param {boolean} [allowClass=true] - 是否允许序列化 class。
+                     * @returns {string}
+                     */
+                    const serializeFunction = (func, allowClass = true) => {
+                        const source = Function.prototype.toString.call(func).trim();
+                        if (source.includes('[native code]')) {
+                            throw new TypeError('Native or bound functions are not supported.');
+                        }
+                        if (/^(?:get|set)\s/.test(source)) {
+                            throw new TypeError('Getter and setter functions are not supported.');
+                        }
 
-                    /* -- Dependency Injection -- */
-                    /* Inject dependencies as constants into the global scope of the Worker. */
-                `;
+                        const isFunctionExpression = /^(?:async\s+)?function(?:\s*\*)?\b/.test(source);
+                        const isArrowFunction = /^(?:async\s+)?(?:\([\s\S]*\)|[A-Za-z_$][\w$]*)\s*=>/.test(source);
+                        const isClass = /^class\b/.test(source);
+
+                        if (isClass && !allowClass) {
+                            throw new TypeError('Class constructors cannot be registered as callable functions.');
+                        }
+                        if (isFunctionExpression || isArrowFunction || isClass) {
+                            return `(${source})`;
+                        }
+
+                        // 兼容对象方法、async 对象方法和生成器对象方法。
+                        return `(Object.values({${source}})[0])`;
+                    };
+
+                    const reservedDependencyNames = new Set([
+                        'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
+                        'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export',
+                        'extends', 'false', 'finally', 'for', 'function', 'if', 'implements',
+                        'import', 'in', 'instanceof', 'interface', 'let', 'new', 'null',
+                        'package', 'private', 'protected', 'public', 'return', 'static',
+                        'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var',
+                        'void', 'while', 'with', 'yield', 'eval', 'arguments',
+                        'self', 'availableFunctions', 'runningTasks', 'normalizeError',
+                        'Object', 'Map', 'Error', 'String'
+                    ]);
+                    const dependencyNames = new Set();
+
+                    let code = `
+/* Dynamically Generated Worker Code. */
+(() => {
+    "use strict";
+    
+    /* -- Dependency Injection -- */
+    /* Inject dependencies as constants into an isolated scope of the Worker. */
+`;
                     for (const dep of deps) {
+                        if (!dep || typeof dep !== 'object' || Array.isArray(dep)) {
+                            throw new Error('[SyncWorker] Every dependency must be an object.');
+                        }
+
                         // 解构 name 和 value
                         const {name, value} = dep;
 
-                        if (!name) {
-                            throw new Error(`[SyncWorker] A dependency is missing the 'name' property.`);
+                        if (typeof name !== 'string' || !/^[$_\p{ID_Start}][$\u200C\u200D_\p{ID_Continue}]*$/u.test(name)) {
+                            throw new Error(`[SyncWorker] Invalid dependency name '${String(name)}'.`);
                         }
+                        if (reservedDependencyNames.has(name)) {
+                            throw new Error(`[SyncWorker] Dependency name '${name}' is reserved.`);
+                        }
+                        if (dependencyNames.has(name)) {
+                            throw new Error(`[SyncWorker] Duplicate dependency name '${name}'.`);
+                        }
+                        dependencyNames.add(name);
 
                         try {
-                            code += `const ${name} = ${serializeValue(value)};\n`;
+                            code += `    const ${name} = ${serializeValue(value)};\n`;
                         } catch (e) {
                             throw new Error(`[SyncWorker] Dependency '${name}' could not be serialized: ${e.message}.`);
                         }
                     }
 
                     code += `
-                    /* -- Function registration -- */
-                    /* Store all callable functions in an object inside the Worker for searching by name. */
-                    const availableFunctions = {
-                `;
+    /* -- Function registration -- */
+    /* Store all callable functions in an object inside the Worker for searching by name. */
+    const availableFunctions = Object.create(null);
+`;
                     for (const [key, func] of Object.entries(funcs)) {
-                        code += `${key}: ${func.toString()},\n`;
+                        try {
+                            code += `    availableFunctions[${JSON.stringify(key)}] = ${serializeFunction(func, false)};\n`;
+                        } catch (e) {
+                            throw new Error(`[SyncWorker] Function '${key}' could not be serialized: ${e.message}.`);
+                        }
                     }
                     code += `
-                    };
-
-                    /* -- Worker internal status -- */
-                    /* A Map used to track running tasks and their cancellation status. */
-                    const runningTasks = new Map();
-
-                    /* -- Worker message processor -- */
-                    /* This is the core logic of Worker, used to listen for and respond to messages from the main thread. */
-                    self.onmessage = async (event) => {
-                        const { type, id, functionName, args } = event.data;
-
-                        /* Processing messages of type 'cancel'. */
-                        if (type === 'cancel') {
-                            if (runningTasks.has(id)) {
-                                /* If the task is running, mark its cancellation status as true. */
-                                /* The executing function can respond to this change by checking cancellationSignal.isCancelled(). */
-                                runningTasks.get(id).cancelled = true;
-                            }
-                            return;
-                        }
-
-                        /* Only handle messages of type 'exec'. */
-                        if (type !== 'exec') {
-                            return;
-                        }
-
-                        const func = availableFunctions[functionName];
-
-                        if (func) {
-                            /* Create and store the cancellation status for new tasks. */
-                            const cancellationState = { cancelled: false };
-                            runningTasks.set(id, cancellationState);
-
-                            /* Create a cancel signal object that will be passed as the last parameter to the user function. */
-                            /* This imitates the pattern of AbortController/AbortSignal, which is a standard asynchronous cancellation pattern. */
-                            const cancellationSignal = {
-                                isCancelled: () => cancellationState.cancelled,
-                                throwIfCancelled: () => {
-                                    if (cancellationState.cancelled) {
-                                        const error = new Error('[SyncWorker] Task was cancelled.');
-                                        error.name = 'CancellationError';
-                                        throw error;
-                                    }
-                                }
-                            };
-
-                            try {
-                                /* Execute the function and inject cancellationSignal. 'await' can handle both synchronous and asynchronous functions. */
-                                const result = await func(...args, cancellationSignal);
-
-                                /* Check if the task is marked as cancelled after completion. If so, no results will be sent to avoid race conditions. */
-                                if (cancellationState.cancelled) {
-                                    return;
-                                }
-
-                                self.postMessage({ id, result });
-                            } catch (e) {
-                                /* Only send errors when the task has not been canceled to avoid overwriting the CancellationError on the main thread. */
-                                if (!cancellationState.cancelled) {
-                                    /* Send a structured error object while retaining its key attributes. */
-                                    self.postMessage({ id, error: { name: e.name, message: e.message, stack: e.stack } });
-                                }
-                            } finally {
-                                /* Regardless of success, failure, or cancellation, tasks must be cleared from the running queue to prevent memory leaks. */
-                                runningTasks.delete(id);
-                            }
-                        } else {
-                            /* If the function cannot be found, send a specific error. */
-                            self.postMessage({
-                                id,
-                                error: {
-                                    name: 'FunctionNotFoundError',
-                                    message: \`The function '\${functionName}' is not defined in the Worker.\`,
-                                    stack: (new Error()).stack
-                                }
-                            });
-                        }
-                    };
-                `;
+    /* -- Worker internal status -- */
+    /* A Map used to track running tasks and their cancellation status. */
+    const runningTasks = new Map();
+    
+    /* Normalize any thrown JavaScript value into a serializable error object. */
+    const normalizeError = (error) => {
+        let name = 'Error';
+        let message;
+        let stack = '';
+    
+        try {
+            if (typeof error?.name === 'string') {
+                name = error.name;
+            }
+        } catch {
+            // 忽略异常属性访问，继续使用默认错误名称。
+        }
+    
+        try {
+            if (typeof error?.message === 'string') {
+                message = error.message;
+            }
+        } catch {
+            // 忽略异常属性访问，稍后使用安全的字符串回退值。
+        }
+    
+        if (message === undefined) {
+            try {
+                message = String(error);
+            } catch {
+                message = 'Unknown error';
+            }
+        }
+    
+        try {
+            if (typeof error?.stack === 'string') {
+                stack = error.stack;
+            }
+        } catch {
+            // 忽略异常属性访问，继续使用空堆栈。
+        }
+    
+        return {name, message, stack};
+    };
+    
+    /* -- Worker message processor -- */
+    /* This is the core logic of Worker, used to listen for and respond to messages from the main thread. */
+    self.onmessage = async (event) => {
+        const { type, id, functionName, args } = event.data;
+    
+        /* Processing messages of type 'cancel'. */
+        if (type === 'cancel') {
+            if (runningTasks.has(id)) {
+                /* If the task is running, mark its cancellation status as true. */
+                /* The executing function can respond to this change by checking cancellationSignal.isCancelled(). */
+                runningTasks.get(id).cancelled = true;
+            }
+            return;
+        }
+    
+        /* Only handle messages of type 'exec'. */
+        if (type !== 'exec') {
+            return;
+        }
+    
+        const func = Object.prototype.hasOwnProperty.call(availableFunctions, functionName)
+            ? availableFunctions[functionName]
+            : null;
+    
+        if (typeof func === 'function') {
+            /* Create and store the cancellation status for new tasks. */
+            const cancellationState = { cancelled: false };
+            runningTasks.set(id, cancellationState);
+    
+            /* Create a cancel signal object that will be passed as the last parameter to the user function. */
+            /* This imitates the pattern of AbortController/AbortSignal, which is a standard asynchronous cancellation pattern. */
+            const cancellationSignal = {
+                isCancelled: () => cancellationState.cancelled,
+                throwIfCancelled: () => {
+                    if (cancellationState.cancelled) {
+                        const error = new Error('[SyncWorker] Task was cancelled.');
+                        error.name = 'CancellationError';
+                        throw error;
+                    }
+                }
+            };
+    
+            try {
+                /* Execute the function and inject cancellationSignal. 'await' can handle both synchronous and asynchronous functions. */
+                const result = await func(...args, cancellationSignal);
+    
+                /* Check if the task is marked as cancelled after completion. If so, no results will be sent to avoid race conditions. */
+                if (cancellationState.cancelled) {
+                    return;
+                }
+    
+                self.postMessage({ id, result });
+            } catch (e) {
+                /* Only send errors when the task has not been canceled to avoid overwriting the CancellationError on the main thread. */
+                if (!cancellationState.cancelled) {
+                    /* Send a structured error object while retaining its key attributes. */
+                    self.postMessage({ id, error: normalizeError(e) });
+                }
+            } finally {
+                /* Regardless of success, failure, or cancellation, tasks must be cleared from the running queue to prevent memory leaks. */
+                runningTasks.delete(id);
+            }
+        } else {
+            /* If the function cannot be found, send a specific error. */
+            self.postMessage({
+                id,
+                error: {
+                    name: 'FunctionNotFoundError',
+                    message: \`The function '\${functionName}' is not defined in the Worker.\`,
+                    stack: (new Error()).stack
+                }
+            });
+        }
+    };
+})();
+`;
+                    console.log(code);
                     return code;
                 }
 
@@ -8207,7 +8413,7 @@
                 _cancelTaskById(taskId, errorName = 'CancellationError', errorMessage = 'Task was cancelled.') {
                     if (this._taskQueue.has(taskId)) {
                         const task = this._taskQueue.get(taskId);
-                        if (task.timeoutId) {
+                        if (task.timeoutId !== null) {
                             clearTimeout(task.timeoutId);
                         }
 
@@ -8217,7 +8423,11 @@
 
                         this._taskQueue.delete(taskId);
                         if (this._worker) {
-                            this._worker.postMessage({type: 'cancel', id: taskId});
+                            try {
+                                this._worker.postMessage({type: 'cancel', id: taskId});
+                            } catch {
+                                // 本地任务已完成清理；Worker 无法接收取消消息时无需再次抛出。
+                            }
                         }
                     }
                 }
@@ -8247,6 +8457,18 @@
                     if (!this._worker) {
                         throw new Error('[SyncWorker] Cannot execute task: the worker has been terminated.');
                     }
+                    if (typeof functionName !== 'string' || functionName.length === 0) {
+                        throw new Error('[SyncWorker] functionName must be a non-empty string.');
+                    }
+                    if (!Array.isArray(args)) {
+                        throw new Error('[SyncWorker] options.args must be an array.');
+                    }
+                    if (!Array.isArray(transfer)) {
+                        throw new Error('[SyncWorker] options.transfer must be an array.');
+                    }
+                    if (typeof timeout !== 'number' || !Number.isFinite(timeout)) {
+                        throw new Error('[SyncWorker] options.timeout must be a finite number.');
+                    }
 
                     const id = this._nextTaskId++;
                     return new Promise((resolve, reject) => {
@@ -8260,12 +8482,20 @@
                         }
 
                         this._taskQueue.set(id, {resolve, reject, timeoutId});
-                        this._worker.postMessage({type: 'exec', id, functionName, args}, transfer);
+                        try {
+                            this._worker.postMessage({type: 'exec', id, functionName, args}, transfer);
+                        } catch (error) {
+                            if (timeoutId !== null) {
+                                clearTimeout(timeoutId);
+                            }
+                            this._taskQueue.delete(id);
+                            reject(error);
+                        }
                     });
                 }
 
                 /**
-                 * 取消所有正在执行或等待中的任务，但不会终止 Worker 实例。
+                 * @description 取消所有正在执行或等待中的任务，但不会终止 Worker 实例。
                  * Worker 在此调用后仍然可以继续接收并执行新的任务。
                  */
                 cancel() {
@@ -8277,20 +8507,24 @@
                     cancellationError.name = 'CancellationError';
 
                     this._taskQueue.forEach((task, id) => {
-                        if (task.timeoutId) {
+                        if (task.timeoutId !== null) {
                             clearTimeout(task.timeoutId);
                         }
                         task.reject(cancellationError);
-                        this._worker.postMessage({type: 'cancel', id});
+                        try {
+                            this._worker.postMessage({type: 'cancel', id});
+                        } catch {
+                            // 本地任务已完成清理；Worker 无法接收取消消息时无需再次抛出。
+                        }
                     });
 
                     this._taskQueue.clear();
                 }
 
                 /**
-                 * 立即终止 Worker 并清理所有相关资源。
-                 * 一旦被终止，该 SyncWorker 实例将无法再使用。任何待处理的任务都将被拒绝。
-                 * 这是一个破坏性操作，且不可逆。
+                 * @description 立即终止 Worker 并清理所有相关资源。
+                 * 终止后不能执行新任务，但可以通过 restart() 重新初始化该实例。
+                 * 任何待处理的任务都将被拒绝。
                  */
                 terminate() {
                     // 1. 尝试终止 Worker 线程（如果存在）
@@ -8303,13 +8537,7 @@
                     if (this._taskQueue.size > 0) {
                         const terminationError = new Error('[SyncWorker] The worker has been terminated.');
                         terminationError.name = 'TerminationError';
-                        this._taskQueue.forEach(({reject, timeoutId}) => {
-                            if (timeoutId) {
-                                clearTimeout(timeoutId);
-                            }
-                            reject(terminationError);
-                        });
-                        this._taskQueue.clear();
+                        this._rejectAllTasks(terminationError);
                     }
 
                     // 3. 撤销 URL（独立于 Worker 实例的存在进行清理）
@@ -10703,6 +10931,9 @@
                     /** @type {boolean} 宽度变化时是否触发重新测量。 */
                     this._remeasureOnResize = config.remeasureOnResize ?? true;
 
+                    /** @type {{position: string, overflowX: string, overflowY: string, overflowAnchor: string} | null} 容器原始内联样式。 */
+                    this._originalContainerStyle = null;
+
                     /** @type {VirtualScroll._StateMachine} 内部状态机实例。 */
                     this._sm = new VirtualScroll._StateMachine(
                         VirtualScroll.State.IDLE,
@@ -10761,6 +10992,8 @@
                     this._remeasureRAF = null;
                     /** @type {number | null} 平滑滚动帧请求 ID（rAF）。 */
                     this._smoothRAF = null;
+                    /** @type {number | null} 等待暂停恢复时容器可测量的帧请求 ID（rAF）。 */
+                    this._resumeRAF = null;
 
                     /** @type {boolean} 行高是否已完成初次测量。 */
                     this._measured = false;
@@ -10846,7 +11079,16 @@
                     }
 
                     // 2. 转换为数字并校验有限性
-                    const num = Number(length);
+                    let num;
+                    try {
+                        num = Number(length);
+                    } catch (e) {
+                        console.warn(
+                            `[VirtualScroll] ${caller}(): length "${String(length)}" cannot be converted to a number, ` +
+                            'treating as 0.'
+                        );
+                        return 0;
+                    }
                     if (!Number.isFinite(num)) {
                         console.warn(`[VirtualScroll] ${caller}(): length "${length}" is not a finite number, treating as 0.`);
                         return 0;
@@ -10928,6 +11170,15 @@
                  * @returns {void}
                  */
                 _setupContainer() {
+                    if (!this._originalContainerStyle) {
+                        this._originalContainerStyle = {
+                            position: this.container.style.position,
+                            overflowX: this.container.style.overflowX,
+                            overflowY: this.container.style.overflowY,
+                            overflowAnchor: this.container.style.overflowAnchor
+                        };
+                    }
+
                     const cs = getComputedStyle(this.container);
                     if (cs.position === 'static') {
                         this.container.style.position = 'relative';
@@ -11033,76 +11284,80 @@
                 _doMeasure() {
                     // 1. 记录初始状态
                     const inlineOverflowY = this.container.style.overflowY;
-                    const computedOverflowY = getComputedStyle(this.container).overflowY;
                     const clientHeight = this.container.clientHeight;
-
-                    // 预判是否需要维持滚动条
-                    // 若曾测量过则用虚拟高度判断，否则用 Fallback 高度预判，或看当前物理高度是否已超标
-                    const expectedHeight = this._measured
-                                           ? this._heightMapper.virtualHeight
-                                           : this.totalCount * VirtualScroll._FALLBACK_HEIGHT;
-                    const willHaveScrollbar = expectedHeight > clientHeight || this.container.scrollHeight > clientHeight;
-
-                    // 在测量前临时冻结 overflowY 状态，避免 DOM 清空瞬间 clientWidth 变大导致文本折行不准
-                    this.container.style.overflowY = willHaveScrollbar ? 'scroll' : 'hidden';
-
-                    this._unbindScroll();
-                    this._recycleRenderedNodes();
-                    this.container.replaceChildren();
-                    this._spacerTop = null;
-                    this._spacerBottom = null;
-                    this._nodePool.clear();
-
-                    if (this.totalCount === 0) {
-                        this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
-                        this._heightMapper.update(0, this.itemHeight, clientHeight);
-                        console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
-                        // 恢复原始的 overflowY 样式
-                        this.container.style.overflowY = inlineOverflowY || computedOverflowY;
-                        return;
-                    }
-
-                    const sampleCount = Math.min(VirtualScroll._MEASURE_SAMPLES, this.totalCount);
                     const tempEls = [];
 
-                    for (let i = 0; i < sampleCount; i++) {
-                        const result = this.renderItem(i, this.data);
-                        const el = this._nodePool.toElement(result, true);
-                        this.container.appendChild(el);
-                        tempEls.push(el);
+                    try {
+                        // 预判是否需要维持滚动条
+                        // 若曾测量过则用虚拟高度判断，否则用 Fallback 高度预判，或看当前物理高度是否已超标
+                        const expectedHeight = this._measured
+                                               ? this._heightMapper.virtualHeight
+                                               : this.totalCount * VirtualScroll._FALLBACK_HEIGHT;
+                        const willHaveScrollbar = expectedHeight > clientHeight || this.container.scrollHeight > clientHeight;
+
+                        // 在测量前临时冻结 overflowY 状态，避免 DOM 清空瞬间 clientWidth 变大导致文本折行不准
+                        this.container.style.overflowY = willHaveScrollbar ? 'scroll' : 'hidden';
+
+                        this._unbindScroll();
+                        this._recycleRenderedNodes();
+                        this.container.replaceChildren();
+                        this._spacerTop = null;
+                        this._spacerBottom = null;
+                        this._nodePool.clear();
+
+                        if (this.totalCount === 0) {
+                            this.itemHeight = VirtualScroll._FALLBACK_HEIGHT;
+                            this._heightMapper.update(0, this.itemHeight, clientHeight);
+                            console.warn('[VirtualScroll] Data is empty; item height falls back to 50px.');
+                            return;
+                        }
+
+                        const sampleCount = Math.min(VirtualScroll._MEASURE_SAMPLES, this.totalCount);
+
+                        for (let i = 0; i < sampleCount; i++) {
+                            const result = this.renderItem(i, this.data);
+                            const el = this._nodePool.toElement(result, true);
+                            this.container.appendChild(el);
+                            tempEls.push(el);
+                        }
+
+                        // 强制同步布局
+                        void this.container.offsetHeight;
+
+                        const heights = tempEls.map(el => el.offsetHeight);
+                        const sum = heights.reduce((s, h) => s + h, 0);
+                        let measured = sum / sampleCount;
+
+                        this.container.replaceChildren();
+                        tempEls.length = 0;
+
+                        if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
+                            console.warn(
+                                `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
+                                `clamped to ${VirtualScroll._MIN_ITEM_HEIGHT}px.`
+                            );
+                            measured = VirtualScroll._MIN_ITEM_HEIGHT;
+                        }
+
+                        if (measured <= 0) {
+                            console.warn('[VirtualScroll] Measured item height is 0; falling back to 50px.');
+                            measured = VirtualScroll._FALLBACK_HEIGHT;
+                        }
+
+                        this.itemHeight = measured;
+
+                        // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
+                        this.container.style.overflowY = inlineOverflowY;
+
+                        // 使用最新的 clientHeight 更新，因为恢复 overflowY 后容器可视高度可能有极小微调
+                        const finalClientHeight = this.container.clientHeight;
+                        this._heightMapper.update(this.totalCount, this.itemHeight, finalClientHeight);
+                    } finally {
+                        for (const el of tempEls) {
+                            el.remove();
+                        }
+                        this.container.style.overflowY = inlineOverflowY;
                     }
-
-                    // 强制同步布局
-                    void this.container.offsetHeight;
-
-                    const heights = tempEls.map(el => el.offsetHeight);
-                    const sum = heights.reduce((s, h) => s + h, 0);
-                    let measured = sum / sampleCount;
-
-                    this.container.replaceChildren();
-                    tempEls.length = 0;
-
-                    // 测量完成后，立刻恢复原始的 overflowY 样式（即 'auto'）
-                    this.container.style.overflowY = inlineOverflowY || computedOverflowY;
-
-                    if (measured > 0 && measured < VirtualScroll._MIN_ITEM_HEIGHT) {
-                        console.warn(
-                            `[VirtualScroll] Measured item height ${measured}px is suspiciously small; ` +
-                            `clamped to ${VirtualScroll._MIN_ITEM_HEIGHT}px.`
-                        );
-                        measured = VirtualScroll._MIN_ITEM_HEIGHT;
-                    }
-
-                    if (measured <= 0) {
-                        console.warn('[VirtualScroll] Measured item height is 0; falling back to 50px.');
-                        measured = VirtualScroll._FALLBACK_HEIGHT;
-                    }
-
-                    this.itemHeight = measured;
-
-                    // 使用最新的 clientHeight 更新，因为恢复 overflowY 后容器可视高度可能有极小微调
-                    const finalClientHeight = this.container.clientHeight;
-                    this._heightMapper.update(this.totalCount, this.itemHeight, finalClientHeight);
                 }
 
                 /* ══════════════════════════════════════════════════════════════════════
@@ -11491,13 +11746,11 @@
                             this._syncContainerSize();
 
                             // 自然行高恢复滚动位置：anchor 已基于自然高度存储
-                            const rs_ratio = this._heightMapper._effV > 0 ? this._heightMapper._effP / this._heightMapper._effV : 0;
-                            const rs_start = Math.max(0, savedAnchorIndex - this.bufferSize);
-                            const rs_physTop = Math.floor(rs_start * this.itemHeight * rs_ratio);
-                            const exactPhysical = rs_physTop + (savedAnchorIndex - rs_start + savedAnchorRatio) * this.itemHeight;
-                            const maxPhysical = Math.max(0, this._heightMapper.physicalHeight - clientHeight);
+                            const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
+                            const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
+                            const clampedVirt = Math.min(Math.max(0, exactVirtScroll), maxVirt);
 
-                            this.container.scrollTop = Math.min(maxPhysical, Math.max(0, exactPhysical));
+                            this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
 
                             this._bindScroll();
                             this._forceRender();
@@ -11519,6 +11772,43 @@
                 _resumeWithRemeasure(pendingScroll = null) {
                     this._cancelAllRAF();
                     this._cancelSmoothScrollSilent();
+                    this._unbindScroll();
+
+                    if (this.container.clientWidth <= 0 || this.container.clientHeight <= 0) {
+                        let lastWidth = -1;
+                        let lastHeight = -1;
+
+                        const waitForContainer = () => {
+                            this._resumeRAF = null;
+
+                            if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
+                                return;
+                            }
+
+                            if (!this.container.isConnected) {
+                                console.warn('[VirtualScroll] Container detached while waiting for resume.');
+                                this.destroy();
+                                return;
+                            }
+
+                            const width = this.container.clientWidth;
+                            const height = this.container.clientHeight;
+
+                            if (width <= 0 || height <= 0 || width !== lastWidth || height !== lastHeight) {
+                                lastWidth = width;
+                                lastHeight = height;
+                                this._resumeRAF = requestAnimationFrame(waitForContainer);
+                                return;
+                            }
+
+                            this._resumeWithRemeasure(pendingScroll);
+                        };
+
+                        this._resumeRAF = requestAnimationFrame(waitForContainer);
+                        return;
+                    }
+
+                    this._pendingScrollQueue = [];
 
                     // 记录重测前的逻辑锚点
                     const savedAnchorIndex = this._anchorIndex;
@@ -11555,12 +11845,8 @@
                         this._bindEvents();
 
                         if (!this._isSmoothScrolling) {
-                            this._forceRender();
-                            requestAnimationFrame(() => {
-                                if (this._sm.is(VirtualScroll.State.RUNNING)) {
-                                    this._forceRender();
-                                }
-                            });
+                            this._render();
+                            this._scheduleRender();
                         }
 
                         return;
@@ -11577,14 +11863,9 @@
                     this._bindEvents();
 
                     // 立即刷一次
-                    this._forceRender();
-
+                    this._render();
                     // 再等一帧刷一次，解决刚恢复时布局还没稳定导致首帧不刷新的问题
-                    requestAnimationFrame(() => {
-                        if (this._sm.is(VirtualScroll.State.RUNNING)) {
-                            this._forceRender();
-                        }
-                    });
+                    this._scheduleRender();
                 }
 
                 /* ══════════════════════════════════════════════════════════════════════
@@ -11638,6 +11919,19 @@
 
                 /**
                  * @private
+                 * @method _cancelResumeRAF
+                 * @description 用来取消 resume() 恢复过程中等待容器重新变得可测量的 requestAnimationFrame 循环。
+                 * @returns {void}
+                 */
+                _cancelResumeRAF() {
+                    if (this._resumeRAF !== null) {
+                        cancelAnimationFrame(this._resumeRAF);
+                        this._resumeRAF = null;
+                    }
+                }
+
+                /**
+                 * @private
                  * @method _cancelAllRAF
                  * @description 同时取消渲染帧和重测帧。
                  * @returns {void}
@@ -11645,6 +11939,7 @@
                 _cancelAllRAF() {
                     this._cancelRenderRAF();
                     this._cancelRemeasureRAF();
+                    this._cancelResumeRAF();
                     this._cancelSmoothScrollSilent();
                 }
 
@@ -11702,6 +11997,12 @@
                             return;
                         }
                         if (this.totalCount <= 0 || this.itemHeight <= 0) {
+                            if (this.totalCount <= 0) {
+                                this._recycleRenderedNodes();
+                                this._spacerTop.style.height = '0px';
+                                this._spacerTop.style.marginTop = '0px';
+                                this._spacerBottom.style.height = '0px';
+                            }
                             return;
                         }
 
@@ -12040,8 +12341,13 @@
 
                     if (this.container) {
                         this.container.replaceChildren();
+
+                        if (this._originalContainerStyle) {
+                            Object.assign(this.container.style, this._originalContainerStyle);
+                        }
                     }
 
+                    this._originalContainerStyle = null;
                     this._spacerTop = null;
                     this._spacerBottom = null;
                     this._startIndex = -1;
@@ -12373,7 +12679,6 @@
                         }
 
                         pendingScroll = this._pendingScrollQueue.at(-1);
-                        this._pendingScrollQueue = [];
                     }
 
                     // 恢复时强制重测行高
@@ -12381,6 +12686,8 @@
                         this._resumeWithRemeasure(pendingScroll);
                         return;
                     }
+
+                    this._pendingScrollQueue = [];
 
                     // 不重测时保持原逻辑
                     if (pendingScroll) {
@@ -12556,6 +12863,15 @@
                         return;
                     }
                     if (this.itemHeight <= 0) {
+                        return;
+                    }
+
+                    if (this._sm.is(VirtualScroll.State.PAUSED)) {
+                        this._pendingScrollQueue.push({
+                            index: this.totalCount - 1,
+                            behavior,
+                            block: 'end'
+                        });
                         return;
                     }
 
