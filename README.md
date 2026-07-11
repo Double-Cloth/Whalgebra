@@ -51,14 +51,14 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 环境要求：Git、Node.js 20+、Chrome 109+
 
-2.2.1. 克隆仓库并进入项目目录
+1. 克隆仓库并进入项目目录
 
 ```powershell
 git clone https://github.com/Double-Cloth/Whalgebra.git
 cd ./Whalgebra
 ```
 
-2.2.2. 启动本地服务
+2. 启动本地服务
 
 ```powershell
 npm start
@@ -83,15 +83,15 @@ npm run compress-svg
 
 ### 2.3. 安装发行版（Android）
 
-2.3.1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2.3.2. 下载最新 `.apk` 文件
-2.3.3. 安装并启动应用
+1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
+2. 下载最新 `.apk` 文件
+3. 安装并启动应用
 
 ### 2.4. 安装发行版（Windows x64）
 
-2.4.1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2.4.2. 下载最新 `win-x64` 发行包或 `.exe` 文件
-2.4.3. 解压并运行 `.exe` 或双击启动应用
+1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
+2. 下载最新 `win-x64` 发行包或 `.exe` 文件
+3. 解压并运行 `.exe` 或双击启动应用
 
 ## 3. 使用说明
 
