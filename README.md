@@ -81,17 +81,11 @@ npm run compress-svg
 
 通过网页执行工具时，逆向构建的输出目录限制在 `src` 或 `tmp` 内，SVG 压缩的输入、输出和临时目录限制在 `tmp` 内。
 
-### 2.3. 安装发行版（Android）
+### 2.3. 安装发行版
 
 1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `.apk` 文件
-3. 安装并启动应用
-
-### 2.4. 安装发行版（Windows x64）
-
-1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `win-x64` 发行包或 `.exe` 文件
-3. 解压并运行 `.exe` 或双击启动应用
+2. 下载对应平台的最新发行版
+3. 安装或解压后启动应用
 
 ## 3. 使用说明
 
