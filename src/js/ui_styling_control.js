@@ -469,8 +469,9 @@
             }
 
             // 根据所选模式，从预定义的配置对象中获取精度设置，并更新全局计算配置。
-            CalcConfig.globalCalcAccuracy = this[`ACC_MODE_${mode}`].globalCalcAccuracy;
-            CalcConfig.outputAccuracy = this[`ACC_MODE_${mode}`].outputAccuracy;
+            const accMode = mode === 0 ? this.ACC_MODE_0 : this.ACC_MODE_1;
+            CalcConfig.globalCalcAccuracy = accMode.globalCalcAccuracy;
+            CalcConfig.outputAccuracy = accMode.outputAccuracy;
 
             // 切换 UI 中精度开关的视觉状态。
             if (mode !== PageConfig._calcAccMode) {
@@ -5272,16 +5273,6 @@
          * @description Worker 是否正在计算 mode0ShowOnScreen 发送的任务。
          */
         static mode0ScreenInCalc = false;
-
-        /**
-         * @static
-         * @type {object|string}
-         * @description 存储模式 1 (统计回归) 的计算结果。
-         * - 如果计算成功，它是一个包含各种回归模型结果的对象 (例如 linear, square, ln 等)。
-         * - 如果计算出错，它将被设置为字符串 'error'。
-         * 此属性用于在用户点击导出按钮时，获取当前选定回归模型的方程字符串。
-         */
-        static mode1Results;
 
         /**
          * @static

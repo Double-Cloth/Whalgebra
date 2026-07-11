@@ -736,7 +736,6 @@
          * @readonly
          * @type {number}
          * @description 存储最大全局精度（有效数字位数），其值在运行时不应被修改。
-         * 这是一个私有静态字段，只能在 CalcConfig 类内部访问。
          * 其值与下面的常量精度有关。
          */
         static MAX_GLOBAL_CALC_ACCURACY = 220;
@@ -749,7 +748,7 @@
          * 这是一个关键的安全措施，用于防止正则表达式拒绝服务（ReDoS）攻击
          * 以及在处理超长数字字符串时可能发生的内存溢出问题。
          */
-        static MAX_INPUT_STRING_LENGTH = 120_415;
+        static MAX_INPUT_STRING_LENGTH = 120_459;
 
         /**
          * @static
@@ -758,7 +757,7 @@
          * @description BigNumber 中 `toString()` 方法生成字符串时所允许的最大字符数。
          * 此设置可防止因数字的绝对值过大或过小而生成一个可能耗尽系统内存的超长字符串。
          */
-        static MAX_TO_STRING_LENGTH = 120_416;
+        static MAX_TO_STRING_LENGTH = 120_459;
 
         /**
          * @static
