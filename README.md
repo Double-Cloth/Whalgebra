@@ -1,11 +1,11 @@
-# **Whalgebra**
+# Whalgebra
 
 <div align="center">
   <img src="./assets/images/icons/logo.png" alt="Whalgebra Logo" width="128" height="128" />
   <h3>基于原生 Web 技术的代数计算工具</h3>
 </div>
 
-**项目简介**
+项目简介：
 
 **Whalgebra**（前身 D-Calculator）是一个基于原生 Web 技术栈构建的代数计算器。项目经历了从 Python 脚本原型到单文件 HTML，再到模块化前端工程的演进过程。
 
@@ -18,7 +18,7 @@
 - **复数域全维度支持**：全面支持复数域内的四则运算与各种常用函数的计算。
 - **任意精度数值运算**：突破 JavaScript 标准浮点数（IEEE 754）16 位有效数字的精度限制，支持用户自定义精度的数值运算。
 - **纯客户端架构设计**：所有计算逻辑均在客户端浏览器本地执行，零后端依赖，确保存储数据的隐私安全性及离线环境下的可用性。
-- **单文件集成**：采用 “单文件 Web 应用” 结构，将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成在一个 .html 文件中，便于分发和使用。
+- **单文件集成**：采用 “单文件 Web 应用” 结构，将 HTML 结构、CSS 样式和 JavaScript 逻辑全部集成在一个 .HTML 文件中，便于分发和使用。
 
 ### 1.2. 数学函数库
 
@@ -51,14 +51,14 @@ Whalgebra 内置了完备的数学函数库，涵盖以下主要计算类别：
 
 环境要求：Git、Node.js 20+、Chrome 109+
 
-1. 克隆仓库并进入项目目录
+（1）克隆仓库并进入项目目录
 
 ```powershell
 git clone https://github.com/Double-Cloth/Whalgebra.git
 cd ./Whalgebra
 ```
 
-2. 启动本地服务
+（2）启动本地服务
 
 ```powershell
 npm start
@@ -83,15 +83,15 @@ npm run compress-svg
 
 ### 2.3. 安装发行版（Android）
 
-1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `.apk` 文件
-3. 安装并启动应用
+（1）打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
+（2）下载最新 `.apk` 文件
+（3）安装并启动应用
 
 ### 2.4. 安装发行版（Windows x64）
 
-1. 打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
-2. 下载最新 `win-x64` 发行包或 `.exe` 文件
-3. 解压并运行 `.exe` 或双击启动应用
+（1）打开 [Releases 页面](https://github.com/Double-Cloth/Whalgebra/releases)
+（2）下载最新 `win-x64` 发行包或 `.exe` 文件
+（3）解压并运行 `.exe` 或双击启动应用
 
 ## 3. 使用说明
 
@@ -142,7 +142,7 @@ console.log(res3.toString());
 
 ### 4.2. 目录结构
 
-```
+```text
 Whalgebra/
 ├── index.html                    # 本地工作台入口，集中跳转发行版、测试页与工具页
 ├── package.json                  # Node.js 脚本、项目版本与运行环境声明
