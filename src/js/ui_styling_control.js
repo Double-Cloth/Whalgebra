@@ -5202,7 +5202,7 @@
          * @description 定义了在用户输入时，用于防抖（debounce）UI更新（如模式0下的实时计算结果显示）的延迟时间（以毫秒为单位）。
          * 这可以防止在用户快速连续输入时过于频繁地触发计算和DOM更新，从而提高性能和用户体验。
          */
-        static _DELAY_TIME = 170;
+        static _DELAY_TIME = 164;
 
         /**
          * @private
@@ -5211,7 +5211,7 @@
          * @type {number}
          * @description 定义了在用户输入时，用于防抖（debounce）UI更新（如模式0下的实时计算结果显示）的最长延迟时间（以毫秒为单位）。
          */
-        static _MAX_DELAY_TIME = 1700;
+        static _MAX_DELAY_TIME = 1640;
 
         /**
          * @static

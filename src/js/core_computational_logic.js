@@ -4511,6 +4511,7 @@
             if (listA.length !== listB.length) {
                 throw new Error('[StatisticsTools] Data mismatch.');
             }
+
             // n 是数据点的数量。
             const n = listA.length;
             // 'constants' 数组将构成正规方程组 Ax = b 中的向量 b。
@@ -4632,7 +4633,10 @@
             statisticsResult.min = Public.idealizationToString(maxAndMin.min);
 
             // 返回一个包含统计结果和平方列表的对象，以便调用者可以复用这些计算。
-            return {statisticsResult: statisticsResult, squareList: list2};
+            return {
+                statisticsResult: statisticsResult,
+                squareList: list2
+            };
         }
 
         /**
@@ -5167,6 +5171,7 @@
         static _solveLinear(list) {
             // 从列表中提取系数 a, b。
             const a = list[0], b = list[1];
+
             // 根据公式 x = -b / a 计算解。
             // MathPlus.minus(0, b) 计算 -b。
             // MathPlus.divide(...) 计算 (-b) / a。
@@ -5190,7 +5195,10 @@
          */
         static _solveQuadratic(list) {
             // 从列表中提取系数 a, b, c。
-            const a = list[0], b = list[1], c = list[2];
+            const
+                a = list[0],
+                b = list[1],
+                c = list[2];
 
             // 计算判别式 delta = b² - 4ac。
             // 使用 zeroCorrect 修正潜在的浮点计算误差，以确保对 delta 是否为零的判断准确无误。
@@ -5252,7 +5260,11 @@
          */
         static _solveCubic(list) {
             // 从列表中提取系数 a, b, c, d。
-            const a = list[0], b = list[1], c = list[2], d = list[3];
+            const
+                a = list[0],
+                b = list[1],
+                c = list[2],
+                d = list[3];
 
             // 根据盛金公式，计算中间判别式 A, B, C。
             // A = b² - 3ac
@@ -5416,7 +5428,12 @@
          */
         static _solveQuartic(list) {
             // 从列表中提取系数 a, b, c, d, e。
-            const a = list[0], b = list[1], c = list[2], d = list[3], e = list[4];
+            const
+                a = list[0],
+                b = list[1],
+                c = list[2],
+                d = list[3],
+                e = list[4];
 
             // D = 3b² - 8ac
             const D = Public.zeroCorrect(MathPlus.minus(

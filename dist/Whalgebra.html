@@ -2,7 +2,7 @@
 <html dir="ltr" lang="zh-CN">
 
 <head>
-    <!-- Whalgebra Version: v3.1.2 | Updated: 2026-07-11 -->
+    <!-- Whalgebra Version: v3.1.2 | Updated: 2026-07-12 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -118,7 +118,6 @@
                         ['*', '/', 'mod'], // l6
                         ['+', '-'] // l7
                     ];
-
                     levels.forEach((levelTokens, index) => {
                         levelTokens.forEach(token => {
                             this.priorityMap.set(token, index);
@@ -715,7 +714,7 @@
                             const tokenInfo = Public.getTokenInfo(subTemp);
                             if (tokenInfo.class !== 'illegal' || (tokenInfo.isHtmlClassLenOne && !strictMode)) {
                                 result.push(subTemp);
-                                i += len - 1; // 跳过已匹配的字符（保留当前i供主循环++使用，所以减1）
+                                i += len - 1; // 跳过已匹配的字符（保留当前 i 供主循环++使用，所以减 1）
                                 matched = true;
                                 break;
                             }
@@ -1281,7 +1280,6 @@
                                     Object.defineProperty(lanczosObj, 'p', {
                                         get: () => {
                                             // 首次访问时，利用 map 瞬间将所有 16 进制字符串转为 BigInt 元组。
-                                            // 这样生成的数组在 V8 中是内存连续的 HOLEY_ELEMENTS，速度最快。
                                             const pArray = raw.p.map(parseTuple);
 
                                             // 自覆盖法：将 p 属性重写为原生的纯静态数组
@@ -1304,7 +1302,7 @@
                                 }
 
                                 // 3. 顶层属性的自覆盖法
-                                // 将 target[key] 的 Getter 彻底替换为已经计算好的 val
+                                // 将 target[key] 的 Getter 替换为已经计算好的 val
                                 Object.defineProperty(target, key, {
                                     value: val,
                                     writable: false,
@@ -6070,6 +6068,7 @@
                     if (listA.length !== listB.length) {
                         throw new Error('[StatisticsTools] Data mismatch.');
                     }
+
                     // n 是数据点的数量。
                     const n = listA.length;
                     // 'constants' 数组将构成正规方程组 Ax = b 中的向量 b。
@@ -6191,7 +6190,10 @@
                     statisticsResult.min = Public.idealizationToString(maxAndMin.min);
 
                     // 返回一个包含统计结果和平方列表的对象，以便调用者可以复用这些计算。
-                    return {statisticsResult: statisticsResult, squareList: list2};
+                    return {
+                        statisticsResult: statisticsResult,
+                        squareList: list2
+                    };
                 }
 
                 /**
@@ -6726,6 +6728,7 @@
                 static _solveLinear(list) {
                     // 从列表中提取系数 a, b。
                     const a = list[0], b = list[1];
+
                     // 根据公式 x = -b / a 计算解。
                     // MathPlus.minus(0, b) 计算 -b。
                     // MathPlus.divide(...) 计算 (-b) / a。
@@ -6749,7 +6752,10 @@
                  */
                 static _solveQuadratic(list) {
                     // 从列表中提取系数 a, b, c。
-                    const a = list[0], b = list[1], c = list[2];
+                    const
+                        a = list[0],
+                        b = list[1],
+                        c = list[2];
 
                     // 计算判别式 delta = b² - 4ac。
                     // 使用 zeroCorrect 修正潜在的浮点计算误差，以确保对 delta 是否为零的判断准确无误。
@@ -6811,7 +6817,11 @@
                  */
                 static _solveCubic(list) {
                     // 从列表中提取系数 a, b, c, d。
-                    const a = list[0], b = list[1], c = list[2], d = list[3];
+                    const
+                        a = list[0],
+                        b = list[1],
+                        c = list[2],
+                        d = list[3];
 
                     // 根据盛金公式，计算中间判别式 A, B, C。
                     // A = b² - 3ac
@@ -6975,7 +6985,12 @@
                  */
                 static _solveQuartic(list) {
                     // 从列表中提取系数 a, b, c, d, e。
-                    const a = list[0], b = list[1], c = list[2], d = list[3], e = list[4];
+                    const
+                        a = list[0],
+                        b = list[1],
+                        c = list[2],
+                        d = list[3],
+                        e = list[4];
 
                     // D = 3b² - 8ac
                     const D = Public.zeroCorrect(MathPlus.minus(
@@ -14164,7 +14179,7 @@
                  * @description 定义了在用户输入时，用于防抖（debounce）UI更新（如模式0下的实时计算结果显示）的延迟时间（以毫秒为单位）。
                  * 这可以防止在用户快速连续输入时过于频繁地触发计算和DOM更新，从而提高性能和用户体验。
                  */
-                static _DELAY_TIME = 170;
+                static _DELAY_TIME = 164;
 
                 /**
                  * @private
@@ -14173,7 +14188,7 @@
                  * @type {number}
                  * @description 定义了在用户输入时，用于防抖（debounce）UI更新（如模式0下的实时计算结果显示）的最长延迟时间（以毫秒为单位）。
                  */
-                static _MAX_DELAY_TIME = 1700;
+                static _MAX_DELAY_TIME = 1640;
 
                 /**
                  * @static

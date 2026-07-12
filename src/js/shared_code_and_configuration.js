@@ -107,7 +107,6 @@
                 ['*', '/', 'mod'], // l6
                 ['+', '-'] // l7
             ];
-
             levels.forEach((levelTokens, index) => {
                 levelTokens.forEach(token => {
                     this.priorityMap.set(token, index);
@@ -704,7 +703,7 @@
                     const tokenInfo = Public.getTokenInfo(subTemp);
                     if (tokenInfo.class !== 'illegal' || (tokenInfo.isHtmlClassLenOne && !strictMode)) {
                         result.push(subTemp);
-                        i += len - 1; // 跳过已匹配的字符（保留当前i供主循环++使用，所以减1）
+                        i += len - 1; // 跳过已匹配的字符（保留当前 i 供主循环++使用，所以减 1）
                         matched = true;
                         break;
                     }
@@ -1270,7 +1269,6 @@
                             Object.defineProperty(lanczosObj, 'p', {
                                 get: () => {
                                     // 首次访问时，利用 map 瞬间将所有 16 进制字符串转为 BigInt 元组。
-                                    // 这样生成的数组在 V8 中是内存连续的 HOLEY_ELEMENTS，速度最快。
                                     const pArray = raw.p.map(parseTuple);
 
                                     // 自覆盖法：将 p 属性重写为原生的纯静态数组
@@ -1293,7 +1291,7 @@
                         }
 
                         // 3. 顶层属性的自覆盖法
-                        // 将 target[key] 的 Getter 彻底替换为已经计算好的 val
+                        // 将 target[key] 的 Getter 替换为已经计算好的 val
                         Object.defineProperty(target, key, {
                             value: val,
                             writable: false,
