@@ -4,6 +4,20 @@
     /* 强制声明页面只支持浅色模式 */
     color-scheme: light;
 
+    /* 复用样式 */
+    --layout-bar-height: 6.5dvh;
+    --layout-screen-height: calc(36.5dvh - min(8dvh, 13.5dvmin));
+    --layout-action-height: min(12dvmin, 7dvh);
+    --layout-print-content-width: 99dvw;
+    --layout-print-row-width: 98dvw;
+    --layout-print-content-height: calc(92.5dvh - var(--layout-action-height));
+    --layout-content-row-height: min(7.5dvh, 9dvmin);
+    --layout-print-header-height: 7dvh;
+    --layout-setting-width: min(65dvw, 90dvmin);
+    --layout-explain-width: min(90dvw, 100dvmin);
+    --layout-explain-half-width: min(45dvw, 50dvmin);
+    --layout-explain-bar-height: 7dvh;
+
     /* 基础中性色 */
     --white: 0 0% 100%;
     --black: 0 0% 0%;
@@ -336,7 +350,7 @@ p {
     align-items: center;
     justify-content: center;
     width: max(7dvw, 10dvmin);
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     transition: background 0.13s ease-out,
     box-shadow 0.13s ease-out;
     border-radius: 2.5dvmin;
@@ -367,7 +381,7 @@ p {
     display: flex;
     overflow: visible;
     width: 100dvw;
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     border-radius: 0 0 2.5dvmin 2.5dvmin;
 
     background: linear-gradient(145deg, hsl(var(--white) / 0.46), hsl(var(--white) / 0.1) 42%, hsl(var(--black) / 0.07)),
@@ -387,7 +401,7 @@ p {
     align-items: center;
     justify-content: center;
     width: calc(100dvw - max(14dvw, 20dvmin));
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     transition: all 0.24s ease;
 }
 
@@ -397,7 +411,7 @@ p {
 
 #head_inputs {
     width: calc(99.4dvw - max(14dvw, 20dvmin));
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     margin-left: 0.6dvw;
 }
 
@@ -413,7 +427,7 @@ p {
 
 #screen_title {
     width: 100dvw;
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     border-bottom: 0.5dvmin solid hsl(var(--line-teal));
     background-color: transparent;
 }
@@ -443,7 +457,7 @@ p {
     align-items: center;
     justify-content: right;
     width: calc(min(7.5dvh, 12dvmin) + 0.55dvw);
-    height: calc(6.5dvh - 0.5dvmin);
+    height: calc(var(--layout-bar-height) - 0.5dvmin);
 }
 
 #back_btn {
@@ -497,7 +511,7 @@ p {
 
 .ScreenMain {
     width: 100dvw;
-    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
+    height: var(--layout-screen-height);
 
     background-color: hsl(var(--page-background));
     box-shadow: inset 0 0 0 0.12dvmin hsl(var(--shadow-grey-1) / 0.18),
@@ -549,7 +563,7 @@ p {
 
 #screen_1 > div.Lines {
     z-index: 1;
-    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
+    height: var(--layout-screen-height);
 }
 
 #screen_1 > div.Lines:first-child {
@@ -721,7 +735,7 @@ p {
 
 #screen_2_0,
 #screen_4 {
-    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
+    height: var(--layout-screen-height);
     padding-top: calc(7.25dvh - min(4dvh, 6.75dvmin));
 }
 
@@ -735,7 +749,7 @@ p {
 
 #screen_2_1,
 #screen_3 {
-    height: calc(36.5dvh - min(8dvh, 13.5dvmin));
+    height: var(--layout-screen-height);
     padding-top: max(4dvh - 6.75dvmin, 0px);
     grid-template-rows: repeat(3, 9.5dvh);
 }
@@ -975,7 +989,7 @@ p {
     display: flex;
     overflow: visible;
     align-items: center;
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     border-radius: 3dvmin;
 
     background: radial-gradient(ellipse at 42% -18%, hsl(var(--white) / 0.78), transparent 60%),
@@ -990,7 +1004,7 @@ p {
     overflow: hidden;
     align-items: center;
     justify-content: center;
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
     transition: all 0.18s;
     border-radius: 3dvmin;
 }
@@ -1329,7 +1343,7 @@ p {
 
 #load {
     width: max(32dvw, 45dvmin);
-    height: calc(min(12dvmin, 7dvh) + 37dvmin + 2dvh);
+    height: calc(var(--layout-action-height) + 37dvmin + 2dvh);
     border-radius: 3dvmin;
 
     /* 启用背景色，使用定义的局部变量 */
@@ -1471,7 +1485,7 @@ p {
     align-items: center;
     justify-content: center;
     width: 100dvw;
-    height: 6.5dvh;
+    height: var(--layout-bar-height);
 }
 
 #print_close,
@@ -1480,7 +1494,7 @@ p {
     align-items: center;
     justify-content: center;
     width: max(25dvw, 35dvmin);
-    height: min(12dvmin, 7dvh);
+    height: var(--layout-action-height);
     margin: 0.5dvh auto auto;
     transition: all 0.2s ease;
     border-radius: 2.5dvmin;
@@ -1511,14 +1525,14 @@ p {
 /* print_content 部分 */
 
 #print_content {
-    width: 99dvw;
-    height: calc(92.5dvh - min(12dvmin, 7dvh));
+    width: var(--layout-print-content-width);
+    height: var(--layout-print-content-height);
     margin-left: 1dvw;
 }
 
 #print_content > div {
-    width: 99dvw;
-    height: calc(92.5dvh - min(12dvmin, 7dvh));
+    width: var(--layout-print-content-width);
+    height: var(--layout-print-content-height);
 }
 
 #print_content > div > div:not(.NotPrintDefault),
@@ -1526,8 +1540,8 @@ p {
     display: flex;
     align-items: center;
     justify-content: left;
-    width: 98dvw;
-    height: min(7.5dvh, 9dvmin);
+    width: var(--layout-print-row-width);
+    height: var(--layout-content-row-height);
 }
 
 #print_content > div:not(#print_content_2) div > p:first-of-type {
@@ -1539,14 +1553,14 @@ p {
 }
 
 .MultipleLines {
-    width: 98dvw;
+    width: var(--layout-print-row-width);
 }
 
 .MultipleLines > div {
     width: -moz-max-content;
     width: max-content;
 
-    height: min(7.5dvh, 9dvmin);
+    height: var(--layout-content-row-height);
 }
 
 #print_content_1 > div:nth-child(7),
@@ -1608,7 +1622,7 @@ p {
     display: grid;
     align-items: center;
     width: 100%;
-    height: min(12dvmin, 7dvh);
+    height: var(--layout-action-height);
     margin: auto;
     grid-column: 1 / -1;
     grid-template-columns: subgrid;
@@ -1630,7 +1644,7 @@ p {
     top: 50%;
     left: 50%;
     width: max(85dvmin, 68dvw);
-    height: min(12dvmin, 7dvh);
+    height: var(--layout-action-height);
     transition: all 0.3s ease;
     transform: translate(-50%, -50%);
     border-radius: 2.5dvmin;
@@ -1755,7 +1769,7 @@ p {
 
 #export {
     display: grid;
-    width: 98dvw;
+    width: var(--layout-print-row-width);
     height: min(13dvmin, 10dvh);
     border-bottom: 0.5dvmin solid hsl(var(--shadow-grey-2));
     gap: 0;
@@ -1801,7 +1815,7 @@ p {
     position: relative;
     display: flex;
     justify-content: center;
-    width: 98dvw;
+    width: var(--layout-print-row-width);
     height: min(calc(8dvh + 0.5dvmin), 11.5dvmin);
     margin-top: 1dvmin;
 }
@@ -1911,7 +1925,7 @@ span.Ripple.IsFadingOut {
 
 #statistics_results {
     overflow: hidden;
-    width: 98dvw;
+    width: var(--layout-print-row-width);
     margin-top: 1dvmin;
 }
 
@@ -1924,7 +1938,7 @@ span.Ripple.IsFadingOut {
 }
 
 #statistics_results_window > div {
-    width: 98dvw;
+    width: var(--layout-print-row-width);
 }
 
 #statistics_results_window.ResultX {
@@ -1941,8 +1955,8 @@ span.Ripple.IsFadingOut {
 
 #print_content_2 div.Lines {
     z-index: 1;
-    top: 6.5dvh;
-    height: calc(92.5dvh - min(12dvmin, 7dvh));
+    top: var(--layout-bar-height);
+    height: var(--layout-print-content-height);
     border-radius: 100dvmax;
 }
 
@@ -1967,7 +1981,7 @@ span.Ripple.IsFadingOut {
 #print_content_2:not(.TwoFunc) #print_grid_line_error {
     top: 7.5dvh;
     left: calc((199dvw - 0.5dvmin) / 3);
-    height: calc(85dvh - min(12dvmin, 7dvh));
+    height: calc(85dvh - var(--layout-action-height));
 }
 
 #print_content_2.TwoFunc :is(#print_content_2_head,
@@ -1983,13 +1997,13 @@ span.Ripple.IsFadingOut {
 #print_content_2_head,
 #print_content_2_inner > div {
     display: grid;
-    width: 98dvw;
+    width: var(--layout-print-row-width);
     gap: 0.5dvmin;
 }
 
 #print_content_2_head {
-    height: 7dvh;
-    grid-template-rows: 7dvh;
+    height: var(--layout-print-header-height);
+    grid-template-rows: var(--layout-print-header-height);
 }
 
 #print_content_2_head > div {
@@ -1997,12 +2011,12 @@ span.Ripple.IsFadingOut {
 }
 
 #print_content_2_inner {
-    width: 99dvw;
-    height: calc(85.5dvh - min(12dvmin, 7dvh));
+    width: var(--layout-print-content-width);
+    height: calc(85.5dvh - var(--layout-action-height));
 }
 
 #print_content_2_inner > div {
-    grid-template-rows: min(7.5dvh, 9dvmin);
+    grid-template-rows: var(--layout-content-row-height);
 }
 
 #print_content_2_inner > div > div {
@@ -2011,7 +2025,7 @@ span.Ripple.IsFadingOut {
 }
 
 #print_content_2_inner > div > div > div {
-    height: min(7.5dvh, 9dvmin);
+    height: var(--layout-content-row-height);
 }
 
 #print_content_2_inner > div.Odd,
@@ -2029,13 +2043,13 @@ span.Ripple.IsFadingOut {
 #print_content_2_error {
     position: absolute;
     z-index: 2;
-    top: 6.5dvh;
+    top: var(--layout-bar-height);
     left: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100dvw;
-    height: calc(92.5dvh - min(12dvmin, 7dvh));
+    height: var(--layout-print-content-height);
 }
 
 #number_table_error {
@@ -2072,9 +2086,9 @@ span.Ripple.IsFadingOut {
 #setting {
     position: absolute;
     z-index: 4;
-    top: 6.5dvh;
+    top: var(--layout-bar-height);
     overflow: hidden;
-    width: min(65dvw, 90dvmin);
+    width: var(--layout-setting-width);
     height: 93.5dvh;
     transition: all 0.3s ease;
     border-radius: 0 2.5dvmin 2.5dvmin 0;
@@ -2325,7 +2339,7 @@ span.Ripple.IsFadingOut {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(65dvw, 90dvmin);
+    width: var(--layout-setting-width);
     height: 6dvh;
 }
 
@@ -2338,10 +2352,10 @@ span.Ripple.IsFadingOut {
 .SettingSelection {
     display: grid;
     overflow: hidden;
-    width: min(65dvw, 90dvmin);
+    width: var(--layout-setting-width);
     border-bottom: var(--setting-divider-border);
     gap: 0;
-    grid-template-columns: min(65dvw, 90dvmin);
+    grid-template-columns: var(--layout-setting-width);
 }
 
 .SettingSelection > div {
@@ -2385,7 +2399,7 @@ span.Ripple.IsFadingOut {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(65dvw, 90dvmin);
+    width: var(--layout-setting-width);
     height: calc(7.5dvh + 0.5dvmin);
     border-bottom: var(--setting-divider-border);
     background: linear-gradient(155deg, hsl(var(--white) / 0.68), hsl(var(--surface-base) / 0.96) 58%, hsl(var(--shadow-grey-2) / 0.14));
@@ -2412,7 +2426,7 @@ span.Ripple.IsFadingOut {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: min(65dvw, 90dvmin);
+    width: var(--layout-setting-width);
     height: calc(7.5dvh - 1.5dvmin);
 }
 
@@ -2422,7 +2436,7 @@ span.Ripple.IsFadingOut {
     position: absolute;
     z-index: 4;
     overflow: hidden;
-    width: min(90dvw, 100dvmin);
+    width: var(--layout-explain-width);
     height: 80dvh;
     transition: all 0.5s ease;
     border-radius: 3.5dvmin;
@@ -2430,14 +2444,14 @@ span.Ripple.IsFadingOut {
 
 #explain.ExplainNotShow {
     top: -36.75dvh;
-    left: calc(calc(100dvw - max(3.5dvw, 5dvmin)) - min(45dvw, 50dvmin));
+    left: calc(calc(100dvw - max(3.5dvw, 5dvmin)) - var(--layout-explain-half-width));
     transform: scale(0);
     opacity: 0.86;
 }
 
 #explain:not(.ExplainNotShow) {
     top: 10dvh;
-    left: calc(50dvw - min(45dvw, 50dvmin));
+    left: calc(50dvw - var(--layout-explain-half-width));
 
     background: linear-gradient(145deg, hsl(var(--white) / 0.7), hsl(var(--explain-panel) / 0.94) 46%, hsl(var(--shadow-grey-3) / 0.22)),
     hsl(var(--explain-panel));
@@ -2456,8 +2470,8 @@ span.Ripple.IsFadingOut {
     display: flex;
     align-items: center;
     justify-content: left;
-    width: min(90dvw, 100dvmin);
-    height: 7dvh;
+    width: var(--layout-explain-width);
+    height: var(--layout-explain-bar-height);
 
     background: linear-gradient(155deg, hsl(var(--white) / 0.8), hsl(var(--explain-panel) / 0.72) 50%, hsl(var(--shadow-grey-2) / 0.16));
     box-shadow: inset 0.22dvmin 0.26dvmin 0.52dvmin hsl(var(--white) / 0.94),
@@ -2469,8 +2483,8 @@ span.Ripple.IsFadingOut {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: calc(min(90dvw, 100dvmin) - 8dvw);
-    height: 7dvh;
+    width: calc(var(--layout-explain-width) - 8dvw);
+    height: var(--layout-explain-bar-height);
 }
 
 #explain_close {
@@ -2478,7 +2492,7 @@ span.Ripple.IsFadingOut {
     align-items: center;
     justify-content: center;
     width: 8dvw;
-    height: 7dvh;
+    height: var(--layout-explain-bar-height);
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -2516,7 +2530,7 @@ span.Ripple.IsFadingOut {
 /* explain_content 部分 */
 
 #explain_content {
-    width: min(90dvw, 100dvmin);
+    width: var(--layout-explain-width);
     height: 73dvh;
     padding-top: 1dvmin;
     border-top: 0.5dvmin dashed hsl(var(--shadow-grey-2));
@@ -2540,7 +2554,7 @@ span.Ripple.IsFadingOut {
 
 #explain_content > div:not(.Lines) {
     justify-content: center;
-    height: min(7.5dvh, 9dvmin);
+    height: var(--layout-content-row-height);
     margin: 1dvmin auto;
 }
 
