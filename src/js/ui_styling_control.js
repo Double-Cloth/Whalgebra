@@ -6875,30 +6875,45 @@
              * @param {string|null} associativity - 运算符的结合性 ('left', 'right' 或 null)。
              */
             function funcInfoShow(target, priority, associativity) {
-                // 1. 创建优先级显示容器并填充内容 ("Priority Level X")
-                const priorityShow = document.createElement('div');
-                HtmlTools.appendDOMs(
-                    priorityShow,
-                    ['_priority_level_', '_space_', '_L_', '_e_', '_v_', '_e_', '_l_', '_space_', ...HtmlTools.textToHtmlClass(priority.toString())]
-                );
+                /**
+                 * @function addContent
+                 * @description 内部辅助函数：创建一个 div 容器，将指定内容添加到其中，
+                 * 然后将该 div 追加到目标容器。
+                 * @param {HTMLElement|DocumentFragment} target - 要追加内容的目标容器。
+                 * @param {Array} content - 要添加到新建 div 中的内容。
+                 * @returns {void}
+                 */
+                const addContent = (target, content) => {
+                    const tempDIV = document.createElement('div');
+                    HtmlTools.appendDOMs(tempDIV, content);
+                    target.appendChild(tempDIV);
+                };
 
-                // 2. 将优先级信息挂载到目标容器
-                target.appendChild(priorityShow);
+                // 1. 创建信息显示容器
+                const additionalInfoShow = document.createElement('div');
+                additionalInfoShow.classList.add('AdditionalInfo');
+                target.appendChild(additionalInfoShow);
+
+                // 2. 优先级显示
+                addContent(additionalInfoShow,
+                    ['_priority_level_', '_space_']
+                );
+                addContent(additionalInfoShow,
+                    ['_L_', '_e_', '_v_', '_e_', '_l_', '_space_', ...HtmlTools.textToHtmlClass(priority.toString())]
+                );
 
                 // 3. 检查结合性：如果为空（例如部分单目运算符），则不显示结合性信息
                 if (associativity === null) {
                     return;
                 }
 
-                // 4. 创建结合性显示容器并填充内容 ("Operator Associativity X")
-                const associativityShow = document.createElement('div');
-                HtmlTools.appendDOMs(
-                    associativityShow,
-                    ['_operator_associativity_', '_space_', `_${associativity}_associative_`]
+                // 4. 结合性显示
+                addContent(additionalInfoShow,
+                    ['_operator_associativity_', '_space_']
                 );
-
-                // 5. 将结合性信息挂载到目标容器
-                target.appendChild(associativityShow);
+                addContent(additionalInfoShow,
+                    [`_${associativity}_associative_`]
+                );
             }
 
             /**
@@ -6908,15 +6923,13 @@
              * @param {HTMLElement|DocumentFragment} target - 要追加分割线的目标容器。
              */
             function addLine(target) {
-                // 1. 创建分割线元素
                 const line = document.createElement('div');
-                // 2. 添加标准的分割线样式类
                 line.classList.add('Lines');
-                // 3. 将分割线追加到目标容器
                 target.appendChild(line);
             }
 
-            if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') || !HtmlTools.getHtml('#main').classList.contains('Input')) {
+            if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') ||
+                !HtmlTools.getHtml('#main').classList.contains('Input')) {
                 return;
             }
 
@@ -6935,7 +6948,8 @@
             // 3. 准备 UI 类名并切换顶部显示状态
             const inputClassStr = (inputStr in converterConfig ? converterConfig[inputStr] : inputStr).replace(/[\[\]]/g, '');
 
-            HtmlTools.getHtml('#head_inputs').classList.remove('NoDisplay');
+            const headInputs = HtmlTools.getHtml('#head_inputs');
+            headInputs.classList.remove('NoDisplay');
             HtmlTools.getHtml('#head_title').classList.add('NoDisplay');
             switch (inputClassStr) {
                 case '0':
@@ -6952,7 +6966,7 @@
                 case 'g':
                     const ch = ['f', 'g'].includes(inputClassStr) ? '_custom_function_ch_' : '_num_ch_';
                     HtmlTools.appendDOMs(
-                        HtmlTools.getHtml('#head_inputs'),
+                        headInputs,
                         ['_input_', '_space_', ch, '_space_', `_${inputClassStr}_`],
                         {mode: 'replace'}
                     );
@@ -6966,7 +6980,7 @@
                 default:
                     const chinese = `_${inputClassStr}_ch_`;
                     HtmlTools.appendDOMs(
-                        HtmlTools.getHtml('#head_inputs'),
+                        headInputs,
                         ['_input_', '_space_', chinese],
                         {mode: 'replace'}
                     );
@@ -6976,7 +6990,6 @@
                         {mode: 'replace'}
                     );
                     break;
-
             }
 
             // 4. 开始构建解释内容

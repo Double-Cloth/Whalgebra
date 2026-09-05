@@ -265,7 +265,8 @@ p {
 #print_content_2_head > div,
 #print_content_2_inner > div div,
 #grid_data > div div,
-#explain_content > div:not(.Lines),
+#explain_content > div:not(.Lines, .AdditionalInfo),
+#explain_content > div.AdditionalInfo > div,
 :where(#keyboard_main, #sub_keyboard > div) > div {
     display: flex;
     align-items: center;
@@ -2552,7 +2553,7 @@ span.Ripple.IsFadingOut {
     margin: 1dvmin auto 1dvmin 1.5dvmin;
 }
 
-#explain_content > div:not(.Lines) {
+#explain_content > div:not(.Lines, .AdditionalInfo) {
     justify-content: center;
     height: var(--layout-content-row-height);
     margin: 1dvmin auto;
@@ -2563,4 +2564,24 @@ span.Ripple.IsFadingOut {
     width: min(87dvw, 97dvmin);
     margin: 1dvmin auto;
     border-radius: 100dvmax;
+}
+
+#explain_content > div.AdditionalInfo {
+    display: grid;
+    justify-content: center;
+    gap: 0;
+    grid-template-columns: repeat(2, calc(var(--layout-explain-width) / 2));
+}
+
+#explain_content > div.AdditionalInfo > div {
+    height: var(--layout-content-row-height);
+    margin-top: 1dvmin;
+}
+
+#explain_content > div.AdditionalInfo > :nth-child(odd) {
+    justify-self: end;
+}
+
+#explain_content > div.AdditionalInfo > :nth-child(even) {
+    justify-self: start;
 }
