@@ -78,8 +78,9 @@
                 /**
                  * 返回数组差集 `arrA \\ arrB`。
                  *
-                 * @param {Array<*>} arrA - 源数组。
-                 * @param {Array<*>} arrB - 要排除的元素。
+                 * @param {Array<*>} arrA - 作为筛选基准的源数组；元素顺序与重复项会保留，方法不修改它。
+                 * @param {Array<*>} arrB - 排除集合；通过 `Array#includes` 的 SameValueZero 规则逐项匹配，
+                 *   因而 `NaN` 可被排除，对象则只有同一引用才匹配。方法不要求该数组去重。
                  * @returns {Array<*>} 保持 `arrA` 原顺序的新数组；包含所有未被 `arrB.includes` 严格匹配的元素，
                  *   不会修改两个输入数组，重复的保留元素也不会去重。
                  * @private
