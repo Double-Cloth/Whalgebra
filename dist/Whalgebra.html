@@ -1727,7 +1727,8 @@
                  * @private
                  * @param {string} numStr - 已通过格式校验的普通或科学记数法字符串；方法提取符号、小数位和
                  *   显式指数，返回规范化前的十进制指数与整数尾数，不负责最终精度舍入。
-                 * @returns {[number, bigint]} 一个包含指数和带符号尾数的元组。
+                 * @returns {[number, bigint]} 解析后的 `[power, mantissa]`；第 0 项已合并小数位数与科学计数
+                 *   指数，第 1 项是移除小数点后的带符号整数尾数。此阶段不附加精度，也不删除尾随零。
                  */
                 static _parseNumericString(numStr) {
                     const len = numStr.length;
@@ -1819,7 +1820,8 @@
                  * 因此它不会像原生 Number 类型那样在标准的算术运算中触发自动类型转换。
                  * 例如，`new BigNumber(2) + new BigNumber(3)` 不会因为此方法而直接得到一个数字结果，
                  * 而是会触发默认的对象到字符串的转换行为。
-                 * @returns {[number, bigint, number]} BigNumber 的内部数组表示 `[power, mantissa, accuracy]`。
+                 * @returns {[number, bigint, number]} 当前值的 `[power, mantissa, acc]` 快照；三项分别表示
+                 *   十进制指数、带符号整数尾数和有效位数。返回新数组，但其中均为原始值，可安全传给新构造器。
                  */
                 valueOf() {
                     return [this.power, this.mantissa, this.acc];
@@ -2110,8 +2112,9 @@
                 /**
                  * 返回 ComplexNumber 实例的内部嵌套数组表示。
                  * 它通过递归调用其 `re` 和 `im` 组件（它们是 BigNumber 实例）的 `valueOf` 方法来工作。
-                 * @returns {[Array, Array]} 一个嵌套数组，格式为 `[[实部数组], [虚部数组]]`，
-                 * 其中每个内部数组都是 `[power, mantissa, accuracy]` 的形式。
+                 * @returns {[[number,bigint,number], [number,bigint,number]]} `[realTuple, imagTuple]` 快照；
+                 *   两个三元组都采用 `BigNumber.valueOf()` 的 `[power, mantissa, acc]` 顺序。外层和内层均为
+                 *   新数组，可直接构造等值 `ComplexNumber` 而不会共享可变容器。
                  */
                 valueOf() {
                     return [this.re.valueOf(), this.im.valueOf()];
@@ -2244,7 +2247,8 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} angle - 以弧度表示的纯实角度；
                  *   会转换为 `ComplexNumber` 并利用周期归约，非零虚部不适用于此实数快速路径。
                  * @param {'sin'|'cos'} name - 选择需要保留的象限符号规则；只接受 `sin` 或 `cos`。
-                 * @returns {[BigNumber, bigint]} 归约后的角度与符号因子。
+                 * @returns {[BigNumber, 1n|-1n]} 二元组：第 0 项是落在 `[0, π/2]` 的纯实弧度值，
+                 *   第 1 项是依据原角度象限和 `name` 得到的符号乘子；调用方将级数结果乘以该因子复原。
                  * @throws {Error} 角度过大而无法保证精度时抛出。
                  */
                 static _toLessThanHalfPi(angle, name) {
@@ -4176,7 +4180,8 @@
                  *   只验证和规范化表达式，不应依赖其数值结果。
                  * @param {number} [options.acc=CalcConfig.globalCalcAccuracy] - 本次解析及所有嵌套运算使用的正整数
                  *   有效位数；不会改写 `CalcConfig.globalCalcAccuracy`。
-                 * @returns {[ComplexNumber, string]} 计算结果和规范化表达式。
+                 * @returns {[ComplexNumber, string]} 二元组：第 0 项是表达式值；`syntaxCheck` 模式下为指定精度
+                 *   的零占位，不能当作真实计算结果。第 1 项是解析器补全隐式结构后的内部表达式字符串。
                  * @throws {Error} 语法、词元或计算无效时抛出。
                  */
                 static calc(expr, {unknown, f, g, mode = 'calc', acc = CalcConfig.globalCalcAccuracy} = {}) {
@@ -4747,11 +4752,71 @@
                 }
             }
 
-            /**
-             * 提供统计计算和回归分析。
-             *
-             * @class StatisticsTools
-             */
+             /**
+              * 单组样本的描述性统计字段。
+              *
+              * @typedef {object} StatisticsSummary
+              * @property {string} average - 算术平均值的格式化字符串。
+              * @property {string} sum - 样本和 `Σxᵢ` 的格式化字符串。
+              * @property {string} sum2 - 平方和 `Σxᵢ²` 的格式化字符串。
+              * @property {string} totalVariance - 总体标准差 `sqrt(Σ(xᵢ-x̄)²/n)`；字段名沿用既有 UI 协议。
+              * @property {string|'error'} sampleVariance - 样本标准差；样本量为 1 时为 `error`。
+              * @property {string} max - 按实数大小比较得到的最大值。
+              * @property {string} min - 按实数大小比较得到的最小值。
+              */
+
+             /**
+              * 单个回归模型的输出结构。
+              *
+              * @typedef {object} RegressionModelResult
+              * @property {Array<string|'error'>} parameter - 按模型表达式顺序排列的参数；二参数模型为
+              *   `[a,b]`，二次模型为 `[a,b,c]`。无法求解的参数逐项使用 `error`。
+              * @property {string|'error'} regressionEquation - 可直接交给表达式解析器的回归方程字符串。
+              * @property {string|'error'} R2 - 在原始因变量量纲上计算并格式化的决定系数。
+              * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} model - 模型标识，
+              *   与统计结果对象中的属性名一致。
+              */
+
+             /**
+              * 两组配对样本的完整统计与回归结果。
+              *
+              * @typedef {object} StatisticsAnalysisResult
+              * @property {string} n - 样本对数量的十进制整数字符串。
+              * @property {string} averageA - A 组均值。
+              * @property {string} sumA - A 组样本和。
+              * @property {string} sum2A - A 组平方和。
+              * @property {string} totalVarianceA - A 组总体标准差。
+              * @property {string|'error'} sampleVarianceA - A 组样本标准差。
+              * @property {string} maxA - A 组最大值。
+              * @property {string} minA - A 组最小值。
+              * @property {string} averageB - B 组均值。
+              * @property {string} sumB - B 组样本和。
+              * @property {string} sum2B - B 组平方和。
+              * @property {string} totalVarianceB - B 组总体标准差。
+              * @property {string|'error'} sampleVarianceB - B 组样本标准差。
+              * @property {string} maxB - B 组最大值。
+              * @property {string} minB - B 组最小值。
+              * @property {string} dotAB - 点积 `ΣAᵢBᵢ`。
+              * @property {string} dotA2B - 加权点积 `ΣAᵢ²Bᵢ`。
+              * @property {string} totalCovariance - 总体协方差。
+              * @property {string|'error'} sampleCovariance - 样本协方差；样本量为 1 时为 `error`。
+              * @property {string|'error'} r - 皮尔逊相关系数；任一组方差为零时为 `error`。
+              * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} bestModel - 可计算模型中
+              *   R² 最大者；全部模型不可比较时保留 `linear` 作为 UI 缺省选择。
+              * @property {RegressionModelResult} linear - 线性模型 `y=a+bx`。
+              * @property {RegressionModelResult} square - 二次模型 `y=a+bx+cx²`。
+              * @property {RegressionModelResult} ln - 对数模型 `y=a+b ln(x)`。
+              * @property {RegressionModelResult} exp - 自然指数模型 `y=a exp(bx)`。
+              * @property {RegressionModelResult} abx - 一般指数模型 `y=a b^x`。
+              * @property {RegressionModelResult} axb - 幂模型 `y=a x^b`。
+              * @property {RegressionModelResult} reciprocal - 反比例模型 `y=a+b/x`。
+              */
+
+             /**
+              * 提供统计计算和回归分析。
+              *
+              * @class StatisticsTools
+              */
             class StatisticsTools {
                 /**
                  * 阻止实例化静态工具类。
@@ -4790,7 +4855,8 @@
                  *   否则其返回位置使用 `error`，复数按当前代数平方规则参与离差计算。
                  * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 与同一 `list` 对应的
                  *   预计算结果；传 `null` 时内部重新计算。调用方必须保证缓存未过期且没有来自另一数据集。
-                 * @returns {[ComplexNumber, ComplexNumber|string]} 总体方差与样本方差。
+                 * @returns {[ComplexNumber, ComplexNumber|'error']} `[populationVariance, sampleVariance]`；
+                 *   第 0 项分母为 `n`，第 1 项分母为 `n-1`。只有一个样本时总体方差为零、样本方差为 `error`。
                  */
                 static _variance(list, averageAndSum = null) {
                     const n = list.length;
@@ -4818,7 +4884,8 @@
                  *   `null` 表示内部计算，数值零不是缺省标记。
                  * @param {ComplexNumber|null} [options.averageB=null] - 与当前 `listB` 完全对应的算术平均值；
                  *   若只提供一个缓存，另一个仍会独立计算。
-                 * @returns {[ComplexNumber, ComplexNumber|string]} 总体协方差与样本协方差。
+                 * @returns {[ComplexNumber, ComplexNumber|'error']} `[populationCovariance, sampleCovariance]`；
+                 *   两项共享同一个离差积和，分母分别为 `n` 与 `n-1`。单个观测对的样本项为 `error`。
                  */
                 static _covariance(listA, listB, {averageA = null, averageB = null} = {}) {
                     const n = listA.length;
@@ -4990,7 +5057,8 @@
                  *   每行必须恰有 `n` 项。算法会构造增广矩阵副本，不会原地消元传入数组。
                  * @param {Array<ComplexNumber|string|number>} constants - 方程右侧的长度为 `n` 的常数向量；
                  *   与系数矩阵行按索引对应，长度不符或主元为零表示无法得到唯一解。
-                 * @returns {Array<ComplexNumber>} 唯一解向量。
+                 * @returns {Array<ComplexNumber>} 长度为 `n` 的唯一解向量；第 `i` 项对应系数矩阵第 `i` 列的
+                 *   未知量。返回的是消元后增广矩阵最后一列的新数组。
                  * @throws {Error} 矩阵不是方阵或不存在唯一解时抛出。
                  */
                 static _solveLinearEquation(coefficients, constants) {
@@ -5064,7 +5132,8 @@
                  *   至少需要 `power + 1` 个观测点才能建立满秩正规方程。
                  * @param {Array<ComplexNumber|string|number>} listB - 与 `xᵢ` 同索引的因变量样本 `yᵢ`。
                  * @param {number} power - 非负整数多项式阶数；结果包含 `power + 1` 个从常数项到最高次项的系数。
-                 * @returns {Array<ComplexNumber>} 按升幂排列的系数。
+                 * @returns {Array<ComplexNumber>} 长度为 `power + 1` 的最小二乘系数 `[a₀,a₁,…]`，
+                 *   按常数项到最高次项排列，使预测式为 `a₀ + a₁x + …`。
                  * @throws {Error} 数据不足或两组数据长度不一致时抛出。
                  */
                 static _regressionAnalysis(listA, listB, power) {
@@ -5141,7 +5210,9 @@
                  *   `null` 时计算，提供时直接信任并复用。
                  * @param {Array<ComplexNumber|string>|null} [varianceList] - 同一列表的 `[总体方差, 样本方差]`
                  *   缓存；`null` 时基于上面的均值缓存计算。
-                 * @returns {{statisticsResult: object, squareList: Array<ComplexNumber>}} 统计结果与平方值列表。
+                 * @returns {{statisticsResult: StatisticsSummary, squareList: Array<ComplexNumber>}} 中间汇总结果：
+                 *   `statisticsResult` 是已格式化的单组描述性统计；`squareList` 与输入等长，第 `i` 项为
+                 *   `list[i]²` 的高精度值，供 `dotA2B` 复用而无需再次平方。
                  */
                 static _getStatisticsInfo(list, {averageAndSum = null, varianceList = null} = {}) {
                     const statisticsResult = {};
@@ -5179,7 +5250,9 @@
                  * @param {Array<ComplexNumber|string|number>} originalListB - 未变换的实际因变量；仅用于在原始量纲上计算 R²。
                  * @param {function(ComplexNumber|string|number, Array<ComplexNumber|string|number>): ComplexNumber} func -
                  *   模型预测函数，参数依次为原始 `x` 和已求得的系数数组；返回值用于和 `originalListB` 比较。
-                 * @returns {{parameter: Array<ComplexNumber|string>, R2: ComplexNumber|string}} 模型参数和 R²。
+                 * @returns {{parameter: Array<ComplexNumber|'error'>, R2: ComplexNumber|'error'}} 尚未格式化的回归结果；
+                 *   `parameter` 含 `power + 1` 个按升幂排列的系数，求解失败时为等长 `error` 数组；`R2`
+                 *   使用 `originalListB` 独立计算，因而参数可求而 R² 仍可能为 `error`，反之不会发生。
                  */
                 static _getRegressionInfo(listA, listB, power, originalListB, func) {
                     const result = {};
@@ -5235,7 +5308,9 @@
                  *   等长。零值或负值会使部分对数/幂回归模型不可用，但不一定使全部统计失败。
                  * @param {Array<ComplexNumber|string|number>} listB - 因变量样本；必须非空且只含实数，元素按索引
                  *   与 `listA` 配对。样本数不足时高阶模型以 `error` 占位。
-                 * @returns {object} 描述性统计、相关性、各回归模型及最佳模型。
+                 * @returns {StatisticsAnalysisResult} 完整统计结果。所有直接数值字段均已转换为显示字符串；
+                 *   模型不满足定义域、样本不足或正规方程奇异时，不删除模型字段，而是在对应
+                 *   `parameter`、`regressionEquation`、`R2` 中保留 `error`，便于 UI 使用固定结构渲染。
                  * @throws {Error} 数据长度不一致、包含复数或不足以拟合时抛出。
                  */
                 static statisticsCalc(listA, listB) {
@@ -5467,11 +5542,29 @@
                 }
             }
 
-            /**
-             * 分析最高四次的实系数多项式。
-             *
-             * @class PowerFunctionTools
-             */
+             /**
+              * 多项式区间与特征点分析结果。
+              *
+              * @typedef {object} PowerFunctionAnalysisResult
+              * @property {string} equation - 按降幂规范化的多项式表达式。
+              * @property {[string, string]} range - 值域左右边界；无穷使用 `-inf`/`+inf`。
+              * @property {Array<[string, string]>} increasingInterval - 单调递增区间；不存在时为
+              *   `[['null','null']]`，无穷端点使用专用字符串。
+              * @property {Array<[string, string]>} decreasingInterval - 与上项采用相同编码的单调递减区间。
+              * @property {Array<[string, string]>} maximumPoint - 极大值点 `[x,y]` 列表；不存在时使用空点哨兵。
+              * @property {Array<[string, string]>} minimumPoint - 极小值点 `[x,y]` 列表；不存在时使用空点哨兵。
+              * @property {Array<[string, string]>} convexInterval - 凸区间列表；端点编码与单调区间一致。
+              * @property {Array<[string, string]>} concaveInterval - 凹区间列表；端点编码与单调区间一致。
+              * @property {Array<[string, string]>} inflectionPoint - 拐点 `[x,y]` 列表；不存在时使用空点哨兵。
+              * @property {Array<string>} roots - 已格式化实根/复根列表；无根为 `['null']`，恒等于零为
+              *   `['anyRealNumber']`。返回数量不超过实际多项式次数。
+              */
+
+             /**
+              * 分析最高四次的实系数多项式。
+              *
+              * @class PowerFunctionTools
+              */
             class PowerFunctionTools {
                 /**
                  * 阻止实例化静态工具类。
@@ -5489,7 +5582,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 按元素实部升序排列的数组；此方法直接调用
                  *   `Array#sort` 修改并返回同一个数组引用，复数虚部不参与次序比较。
-                 * @returns {Array} 返回排序后的数组。
+                 * @returns {Array<ComplexNumber|string|number>} 与 `list` 相同的数组引用；元素已按实部从小到大
+                 *   重排，实部相等的项由 JavaScript 稳定排序保留原相对次序。
                  */
                 static _sort(list) {
                     /**
@@ -5543,7 +5637,8 @@
                  * @private
                  * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的 `n + 1`
                  *   个系数；常数多项式返回空导数系数数组，原数组不会被修改。
-                 * @returns {Array<ComplexNumber>} 导数多项式的系数。
+                 * @returns {Array<ComplexNumber>} 仍按降幂排列的导数系数；若输入表示 n 次多项式，返回
+                 *   n 项，第 `i` 项为原系数乘以对应幂次。常数项被移除。
                  */
                 static _differentiate(list) {
                     const result = [];
@@ -5560,7 +5655,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按 `[a, b]` 传入 `ax + b = 0` 的系数；
                  *   调用方应先消除前导零，`a = 0` 不属于一次方程。
-                 * @returns {Array<ComplexNumber>} 一个包含方程唯一解的数组。
+                 * @returns {[ComplexNumber]} 仅含 `-b/a` 的单元素数组；使用数组是为了与二、三、四次
+                 *   求根器保持统一调用协议。
                  */
                 static _solveLinear(list) {
                     const a = list[0], b = list[1];
@@ -5575,7 +5671,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c]` 传入的系数；
                  *   `a` 应非零。返回根会去除精度噪声，共轭复根的标记约定供上层分析使用。
-                 * @returns {Array<ComplexNumber|null>} 根；共轭复根数组末尾附加 `null`。
+                 * @returns {Array<ComplexNumber|null>} 判别式为零时返回一个去重实根；大于零时返回两个按
+                 *   实部升序的实根；小于零时返回两个共轭复根并在末尾附加 `null`，供只分析实轴的上层识别。
                  */
                 static _solveQuadratic(list) {
                     const
@@ -5622,7 +5719,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c, d]` 传入的系数；
                  *   首项 `a` 应非零。重根会按内部近零判定合并，输入数组不被改写。
-                 * @returns {Array<ComplexNumber|null>} 去重后的根；包含共轭复根时末尾附加 `null`。
+                 * @returns {Array<ComplexNumber|null>} 按精度判定去重后的根：全实根按实部排序；一实根加一对
+                 *   共轭复根时返回三个根并追加 `null` 哨兵。上层只取次数范围内的真实根项。
                  */
                 static _solveCubic(list) {
                     const
@@ -5757,7 +5855,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c, d, e]` 传入的四次
                  *   方程系数；`a` 必须非零，每项均需可转换为 `ComplexNumber`。方法返回解析根但不修改系数数组。
-                 * @returns {Array<ComplexNumber>} 一个包含方程四个根的数组。根是 ComplexNumber 的实例。
+                 * @returns {Array<ComplexNumber>} 恰含四个解析根的数组，重根按代数重数保留；元素顺序来自
+                 *   天珩公式的四个符号组合，不承诺按实部或虚部排序。
                  */
                 static _solveQuartic(list) {
                     const
@@ -6108,7 +6207,8 @@
                  * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 最高五项、按降幂排列的
                  *   实系数 `[a, b, c, d, e]`；允许省略高次项但至少应含常数项。前导零会自动降阶，
                  *   任一非零虚部都会拒绝整次分析，输入数组不会被排序或改写。
-                 * @returns {object} 方程、值域、单调区间、极值点、凹凸区间、拐点和根。
+                 * @returns {PowerFunctionAnalysisResult} 字段固定的分析结果；低次多项式不适用的区间或点仍以
+                 *   `[['null','null']]` 保留，避免 UI 按次数猜测缺失字段。所有边界、坐标和根均为显示字符串。
                  * @throws {Error} 系数包含复数时抛出。
                  */
                 static powerFunctionAnalysis(list) {
@@ -6303,7 +6403,9 @@
                  *   构造根族，零值会自然得到零模长。
                  * @param {ComplexNumber|string|number} n - 已由上层验证的正整数根指数；该私有方法依赖此约束，
                  *   用它计算 `1 / n`、根间角距及 `k` 的有效范围。
-                 * @returns {[string, function(ComplexNumber|string|number): ComplexNumber]} 通式字符串与按 k 求根的函数。
+                 * @returns {[string, function(ComplexNumber|string|number): ComplexNumber]} 二元组：第 0 项是包含
+                 *   `[k]` 和 `[toPolar]` 内部词元的根通式；第 1 项是同步求值函数，接收根序号 `k` 并返回
+                 *   `r^(1/n) ∠ ((arg(z)+2kπ)/n)`，相差 `n` 的整数序号会得到同一个根。
                  */
                 static _generalFormula(z, n) {
                     z = new ComplexNumber(z);
@@ -6347,7 +6449,10 @@
                  *   规范化后的 `z` 字符串、通式以及按 `k` 排列的数值根。
                  * @param {ComplexNumber|string|number} n - 必须能在精度修正后成为严格正整数；`n` 个不同根中
                  *   最多展示 `CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS` 个，其余通过 `overflow` 标记。
-                 * @returns {{z:string, n:string, formula:string, kRange:[string, string], numericalResults:Array<string>, overflow:boolean}} 根分析结果。
+                 * @returns {{z:string, n:string, formula:string, kRange:[string,string], numericalResults:Array<string>, overflow:boolean}}
+                 *   固定结构的根分析结果：`z`、`n` 是规范化输入；`formula` 是含 `[k]` 的极坐标通式；
+                 *   `kRange` 恒为 `['0', String(n-1)]`；`numericalResults[i]` 对应 `k=i`；`overflow` 表示
+                 *   `n` 超过展示上限，未展示根仍可由通式计算。
                  * @throws {Error} n 不是正整数时抛出。
                  */
                 static radicalFunctionAnalysis(z, n) {
@@ -6406,7 +6511,9 @@
                  *   间距。达到最大展示数量时停止继续分配，并在结果尾部放置省略标记。
                  * @param {string|number|BigNumber|ComplexNumber|Array} end - 闭区间实数终点；仅计算按步长实际
                  *   到达且不大于它的点，不会为了包含终点而改变最后一步。
-                 * @returns {{varList: Array<string>, f: Array<string>, g: Array<string>}} 自变量及两个函数的值列表；计算失败的位置为 `error`。
+                 * @returns {{varList:Array<string>, f:Array<string>, g:Array<string>}} 三个索引对齐的显示数组：
+                 *   `varList[i]` 是采样自变量，`f[i]`、`g[i]` 是对应函数值或 `error`。超出展示上限时
+                 *   `varList` 末尾追加 `[print_content_omit]`，两个函数数组同位置追加 `[not_applicable]`。
                  * @throws {Error} 边界或步长不是有效实数时抛出。
                  */
                 static valueList(f, g, start, step, end) {
@@ -6493,7 +6600,10 @@
                  *   可供后续高精度运算使用的内部结果，调用方不可假定二者类型相同。
                  * @param {string} [options.f] - 可供表达式 `[f]` 调用的函数体；可引用 `[x]` 和 `[g]`。
                  * @param {string} [options.g] - 可供表达式 `[g]` 调用的函数体；可引用 `[x]` 和 `[f]`。
-                 * @returns {{result: string|Array, expr: string}} 结果及规范化表达式。
+                 * @returns {{result:string|[[number,bigint,number],[number,bigint,number]], expr:string}} 固定二字段对象：
+                 *   `result` 在 `outputMode='output'` 时是格式化字符串，在 `mid` 时是实部、虚部各自的
+                 *   `[power,mantissa,acc]` 元组；
+                 *   `expr` 始终是语法解析后的规范化内部表达式，可用于回显或再次计算。
                  */
                 static exec(expr, {
                     printMode = CalcConfig.globalPrintMode,
