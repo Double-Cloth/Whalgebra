@@ -18449,10 +18449,9 @@
                 <p class="_functions_"></p>
             </div>
             <div class="Ordinary" id="keyboard_top_more">
+                <!-- 两条箭头路径常驻同一 SVG，由容器状态统一翻转，避免切换时替换节点。 -->
                 <svg class="SortSvg" id="sort_svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <!-- 上箭头路径，对应扩展键盘的展开方向。 -->
                     <path class="ArrowPath ArrowTop" d="M8 9 L12 5 L16 9"/>
-                    <!-- 下箭头路径，对应扩展键盘的收起方向。 -->
                     <path class="ArrowPath ArrowBottom" d="M8 15 L12 19 L16 15"/>
                 </svg>
             </div>
@@ -19000,15 +18999,14 @@
             </div>
             <div id="switch_container_father">
                 <div id="switch_container">
+                    <!-- 两种开关图标同时保留在旋钮内，由 Active 状态交叉切换透明度与缩放。 -->
                     <div id="switch_knob">
-                        <!-- 关闭状态图标：X。 -->
                         <svg class="SwitchIcon IconOff" fill="none" id="switch_knob_off" stroke-linecap="round"
                              stroke-linejoin="round" stroke-width="3" viewBox="0 0 24 24">
                             <line x1="18" x2="6" y1="6" y2="18"></line>
                             <line x1="6" x2="18" y1="6" y2="18"></line>
                         </svg>
 
-                        <!-- 开启状态图标：对勾。 -->
                         <svg class="SwitchIcon IconOn" fill="none" id="switch_knob_on" stroke-linecap="round"
                              stroke-linejoin="round" stroke-width="3" viewBox="0 0 24 24">
                             <polyline points="20 6 9 17 4 12"></polyline>
