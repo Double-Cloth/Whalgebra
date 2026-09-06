@@ -13937,7 +13937,9 @@
         /**
          * 按点击目标的 ID、类名和父容器分发页面操作。
          *
-         * @param {MouseEvent} event - 点击事件。
+         * @param {MouseEvent} event - 冒泡到 `document` 的点击事件；分发器读取 `event.target`，若命中按钮内
+         *   的 `<p>` 会提升到父按钮，再依据 ID、类名和容器决定操作。事件坐标仅在选择波纹效果中使用，
+         *   主输入区内的 `<p>` 保留为光标定位目标。
          */
         document.addEventListener('click', (event) => {
             "use strict";
@@ -14168,7 +14170,9 @@
         /**
          * 将物理键盘输入分发到计算器操作。
          *
-         * @param {KeyboardEvent} event - 键盘事件。
+         * @param {KeyboardEvent} event - 冒泡到 `document` 的按键事件；使用标准化的 `event.key` 区分
+         *   Backspace、方向键、Enter、Escape、数字和运算符。处理过的计算器快捷键会阻止浏览器默认行为，
+         *   未映射按键继续交给页面或系统处理；组合键修饰状态由各分支按需读取。
          */
         document.addEventListener('keydown', (event) => {
             "use strict";
@@ -14260,9 +14264,12 @@
             /**
              * 恢复单项本地数据，并清除无法解析的值。
              *
-             * @param {string} dataName - `localStorage` 键名。
-             * @param {function(string): void} func - 恢复回调。
-             * @param {function(): void} [defaultFunc=null] - 缺省值回调。
+             * @param {string} dataName - 要读取、校验并在损坏时删除的精确 `localStorage` 键名；缺失键不会删除
+             *   其他状态，也不会把字符串 `null` 当作缺失值。
+             * @param {function(string): void} func - 键存在时同步执行的恢复函数；参数是存储中的原始字符串，
+             *   JSON 解析或业务校验由回调负责。回调抛错即视为该项损坏并触发清理与缺省恢复。
+             * @param {function(): void|null} [defaultFunc=null] - 键缺失或恢复失败时调用的无参初始化函数；
+             *   `null` 表示无需额外初始化。失败路径最多调用一次，不接收已损坏的原值。
              * @returns {void}
              */
             const recoverData = (dataName, func, defaultFunc = null) => {
