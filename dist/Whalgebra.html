@@ -17715,6 +17715,7 @@
             box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--switch-shadow-dark) / 0.3),
             inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.7);
 
+            /* 轨道宽度为 2h，旋钮直径为 0.8h，两侧各留 0.1h。 */
             --h: min(6dvh, 7.5dvw);
             --switch-gap: calc(var(--h) * 0.1);
             --knob-size: calc(var(--h) * 0.8);
@@ -17748,6 +17749,7 @@
             var(--knob-color-3) 72%,
             var(--knob-color-4) 100%),
             var(--knob-base-color);
+            /* 五层阴影依次表示发光、右下外阴影、左上高光、顶部内高光和底部内阴影。 */
             box-shadow: 0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
             calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
             calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.86),
@@ -17792,6 +17794,7 @@
 
         #switch_container.Active #switch_knob {
 
+            /* 可移动距离 = 2h - 0.8h - 2×0.1h = h。 */
             transform: translateX(var(--h));
 
             box-shadow: 0 0 calc(var(--h) * 0.26) hsl(var(--action-green) / 0.86),
