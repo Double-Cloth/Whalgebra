@@ -18488,6 +18488,7 @@
         }
     </style>
 
+    <!-- 页面元数据与应用图标 -->
     <meta content="light" name="color-scheme"/>
     <meta content="#f0f8ff" name="theme-color"/>
     <meta content="yes" name="mobile-web-app-capable"/>
@@ -18500,10 +18501,15 @@
 </head>
 
 <body>
+<!-- 全屏交互遮罩 -->
 <div class="NoDisplay" id="main_cover"></div>
+
+<!-- 输入页与结果页共用的横向滑动容器 -->
 <div class="Input" id="main">
+    <!-- 输入与键盘视图 -->
     <div id="main_input">
         <p class="_ship_ ShipLeft"></p>
+        <!-- 顶部导航 -->
         <div id="head">
             <div class="HeadNotMain" id="head_setting">
                 <p class="_head_setting_ Horizontal"></p>
@@ -18516,6 +18522,7 @@
                 <p class="_question_mark_"></p>
             </div>
         </div>
+        <!-- 当前计算模式标题 -->
         <div class="Paragraph" id="screen_title">
             <div id="title_mode_0">
                 <p class="_mode_title_0_"></p>
@@ -18565,6 +18572,7 @@
                 <p class="_mode_title_4_explain_"></p>
             </div>
         </div>
+        <!-- 各计算模式的输入屏幕 -->
         <div class="ScreenMain" id="screen_0">
             <div class="NoDisplay" id="screen_0_display">
                 <div class="Paragraph">
@@ -18687,10 +18695,12 @@
                 <div id="screen_input_inner_41"></div>
             </div>
         </div>
+        <!-- 当前表达式编辑区 -->
         <div class="Paragraph" id="input">
             <div id="cursor"></div>
             <p class="_input_tip_expr_ InputTip"></p>
         </div>
+        <!-- 扩展函数键盘 -->
         <div id="keyboard_cover"></div>
         <div id="sub_keyboard">
             <div class="NotShow" id="sub_keyboard_0">
@@ -18766,6 +18776,7 @@
                 </div>
             </div>
         </div>
+        <!-- 统计模式专用键盘 -->
         <div id="keyboard_cover_ForMode1"></div>
         <div class="NotShow" id="sub_keyboard_ForMode1">
             <div class="KeyboardStyle2">
@@ -18775,6 +18786,7 @@
                 <p class="_del_line_"></p>
             </div>
         </div>
+        <!-- 主键盘与快捷操作 -->
         <div id="keyboard_top">
             <div class="Ordinary">
                 <p class="_2nd_"></p>
@@ -18898,7 +18910,9 @@
             </div>
         </div>
     </div>
+    <!-- 计算结果视图 -->
     <div id="main_print">
+        <!-- 异步计算遮罩 -->
         <div class="NoDisplay" id="load_cover">
             <div id="load">
                 <div id="load_box">
@@ -18929,7 +18943,9 @@
         <div id="print_title">
             <p class="_print_title_"></p>
         </div>
+        <!-- 按计算模式切换的结果内容 -->
         <div id="print_content">
+            <!-- 标准计算结果 -->
             <div id="print_content_0">
                 <div>
                     <p class="_print_content_0_title_0_"></p>
@@ -18940,6 +18956,7 @@
                 </div>
                 <div id="print_content_0_content_1"></div>
             </div>
+            <!-- 统计与回归结果 -->
             <div class="NoDisplay" id="print_content_1">
                 <div class="NoDisplay NotPrintDefault" id="print_content_1_cover"></div>
                 <div class="PrintContent1ChooseOff NotPrintDefault" id="print_content_1_choose">
@@ -19199,6 +19216,7 @@
                     </div>
                 </div>
             </div>
+            <!-- 函数值列表 -->
             <div class="NoDisplay TwoFunc" id="print_content_2">
                 <div class="Lines NotPrintDefault" id="print_grid_line_1"></div>
                 <div class="Lines NotPrintDefault" id="print_grid_line_2"></div>
@@ -19227,6 +19245,7 @@
                     </div>
                 </div>
             </div>
+            <!-- 多项式分析结果 -->
             <div class="NoDisplay" id="print_content_3">
                 <div id="print_content_3_content_0"></div>
                 <div>
@@ -19266,6 +19285,7 @@
                 </div>
                 <div class="NotPrintDefault MultipleLines" id="print_content_3_content_9"></div>
             </div>
+            <!-- 根式分析结果 -->
             <div class="NoDisplay" id="print_content_4">
                 <div id="print_content_4_content_0"></div>
                 <div>
@@ -19286,7 +19306,9 @@
         </div>
     </div>
 </div>
+<!-- 设置与说明浮层 -->
 <div id="others">
+    <!-- 设置面板 -->
     <div class="SettingNotShow" id="setting">
         <div class="SettingTitle">
             <p class="_setting_mode_selection_"></p>
@@ -19344,6 +19366,7 @@
             <p class="_info_show_"></p>
         </div>
     </div>
+    <!-- 使用说明面板 -->
     <div class="ExplainNotShow" id="explain">
         <div id="explain_top">
             <div class="Paragraph" id="explain_title_inner">
