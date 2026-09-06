@@ -167,6 +167,8 @@
                      */
                     function _bigNumberZeroCorrect(input) {
                         const acc = input.acc;
+                        // 阈值同时保留至少 90% 的有效数字和最多 8 位保护位；取更严格者，
+                        // 只消除由中间运算产生的尾部噪声，避免把低精度下仍有意义的小量误判为零。
                         const smallNum = new ComplexNumber([-Math.max(Math.floor(0.9 * acc), acc - 8), 1n, acc]);
                         if (MathPlus.minus(smallNum, MathPlus.abs(input)).re.isPositive()) {
                             return new BigNumber([0, 0n, acc]);
@@ -1300,6 +1302,7 @@
                  * @returns {void}
                  */
                 static _syncToWorker(methodName, value) {
+                    // Worker 内没有 window；在这里返回可防止 Worker 应用配置后再次反向同步，形成消息回环。
                     if (typeof window === 'undefined') {
                         return;
                     }
