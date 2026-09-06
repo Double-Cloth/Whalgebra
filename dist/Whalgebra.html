@@ -7628,16 +7628,20 @@
                  * 此方法会处理不同主模式下子模式切换的特定 UI 逻辑（例如，高亮数据网格或切换输入区域），
                  * 并将新的子模式状态持久化到 `localStorage`。
                  *
-                 * @param {object} obj - 一个对象，其键是主模式的 ID（或特殊值 'default'，代表当前活动的主模式），
-                 * 值是新的子模式 ID。
+                 * @param {Object<string, string|Array<number|string>>} obj - 要合并的子模式补丁；键可为主模式
+                 *   `0`、`1`、`2_0`、`2_1`、`3`、`4`，或用 `default` 指代当前主模式。普通模式的值是
+                 *   已登记的子模式 ID；统计模式 `1` 使用 `[rowIndex, columnIndex]`，行列均按零基索引。
+                 *   可一次更新多个键；每项分别校验，成功项会触发对应 UI 切换并持久化当前完整状态。
                  * @throws {Error} 如果提供的子模式 ID 对于其主模式是无效的。
                  */
                 static set subModes(obj) {
                     /**
                      * 更新单个主模式的子模式、界面和持久化状态。
                      *
-                     * @param {string|Array<number|string>} name - 子模式 ID 或统计单元格坐标。
-                     * @param {string} dealMode - 主模式 ID。
+                      * @param {string|Array<number|string>} name - 目标子模式；模式 `1` 传 `[row, column]`，
+                      *   其余模式传该模式白名单中的字符串 ID。
+                      * @param {string} dealMode - 已解析的主模式 ID；`default` 在调用此函数前替换为
+                      *   `PageConfig.currentMode`，并据此选择校验规则和界面副作用。
                      * @throws {Error} 子模式无效时抛出。
                      * @private
                      */
@@ -8025,7 +8029,9 @@
                  * 更新后，新的状态会被立即持久化到 `localStorage`。
                  * 注意，可以使用参数 {'1': [x, y, val]} 来修改统计模式中指定位置上的值（x,y 为修改位置的坐标，val 为修改后的值）
                  *
-                 * @param {Object<string, (string|Array<*>)>} data - 包含要更新的屏幕数据的对象。
+                 * @param {Object<string, string|Array<*>>} data - `_screenData` 的部分补丁；未知键被忽略。
+                 *   普通模式的值是内部表达式字符串；键 `1` 通常传完整二维统计表，也可传
+                 *   `[rowIndex, columnIndex, value]` 只更新一个单元格。局部更新会保留其他行列，成功结果持久化。
                  */
                 static set screenData(data) {
 
@@ -8153,8 +8159,10 @@
                 /**
                  * 按 ID、类名或标签名查询 DOM。
                  *
-                 * @param {string} name - `#id`、`.class` 或标签名。
-                 * @param {number} [index=0] - 匹配项索引；`-1` 返回完整集合。
+                 * @param {string} name - 查询描述：`#id` 使用 `getElementById`，`.class` 使用
+                 *   `getElementsByClassName`，无前缀时按标签名查询；只接受单一简单选择器，不解析组合 CSS。
+                 * @param {number} [index=0] - 类名/标签名结果中的零基索引；`-1` 返回实时
+                 *   `HTMLCollection`。ID 查询忽略该参数并直接返回单个元素或 `null`。
                  * @returns {HTMLElement|HTMLCollection|null} 匹配元素或集合。
                  */
                 static getHtml(name, index = 0) {
@@ -8180,12 +8188,14 @@
                 /**
                  * 提取指定范围内直接子元素的类名或 ID 标识。
                  *
-                 * @param {HTMLElement} area - 父元素。
-                 * @param {object} [options={}] - 提取选项。
-                 * @param {boolean} [options.onlyP=true] - 是否只读取 `<p>` 元素。
-                 * @param {boolean} [options.ignoreSpace=false] - 是否忽略空格元素。
-                 * @param {number} [options.startIndex=0] - 起始索引（含）。
-                 * @param {number|null} [options.endIndex=null] - 结束索引（不含）。
+                 * @param {HTMLElement} area - 要读取其直接子元素的父节点；不会递归扫描后代，也不会修改 DOM。
+                 * @param {object} [options={}] - 子节点过滤及切片选项。
+                 * @param {boolean} [options.onlyP=true] - `true` 时只收集 `<p>` 子元素的首个类名；`false` 时
+                 *   其他元素也会以类名或 `[id]...` 标识加入结果。
+                 * @param {boolean} [options.ignoreSpace=false] - 是否从结果中剔除内部 `_space_` 词元；
+                 *   索引范围仍以原始 `children` 为准，而不是过滤后的数组。
+                 * @param {number} [options.startIndex=0] - 在 `area.children` 中开始读取的零基索引，包含该位置。
+                 * @param {number|null} [options.endIndex=null] - 排他的结束索引；`null` 表示读到最后一个直接子元素。
                  * @returns {string[]} 类名或 `[id]...` 标识列表。
                  */
                 static getClassList(area, {
@@ -8236,7 +8246,8 @@
                  * 并将每个单元映射到一个唯一的、用作 CSS 类名的字符串。
                  * 这使得 HTML 能够通过为每个字符或符号应用带有特定背景图像的样式来视觉上渲染数学表达式。
                  *
-                 * @param {string} text - 需要转换的原始文本或数学表达式字符串。
+                 * @param {string} text - 显示文本或内部数学表达式；已知多字符词元按配置映射成 `_..._`
+                 *   类名，单字符保留对应映射，方括号包裹的内部词元整体识别。方法不校验表达式语法。
                  * @returns {string[]} 一个包含格式化后 CSS 类名的数组。
                  */
                 static textToHtmlClass(text) {
@@ -8266,7 +8277,8 @@
                  * 将一个由 `textToHtmlClass` 方法生成的 CSS 类名数组转换回其原始的文本或数学表达式字符串。
                  * 这是 `textToHtmlClass` 的逆向操作，用于从 DOM 元素的类名中重建表达式，例如在处理用户输入或从 DOM 读取表达式时。
                  *
-                 * @param {string[]} classArray - 一个包含 CSS 类名的数组，每个类名都应符合 `_token_` 的格式。
+                 * @param {string[]} classArray - 按 DOM 顺序排列的渲染类名；支持 `_token_`、附加样式类以及
+                 *   `[id]...` 标识。转换只读取首个语义类并合并连续数字，不修改原数组。
                  * @returns {string} 重建后的原始文本字符串。
                  */
                 static htmlClassToText(classArray) {
@@ -8286,14 +8298,20 @@
                 /**
                  * 批量创建并插入子元素。
                  *
-                 * @param {HTMLElement | string | DocumentFragment} parentElement - 目标父元素或其标识符。
-                 * @param {Array<string | string[]>} nameList - 属性值数组。
-                 * @param {object} [options={}] - 配置选项。
-                 * @param {HTMLElement|null} [options.referenceNode=null] - 参照节点。
-                 * @param {number} [options.index=-1] - 无参照节点时的插入索引。
-                 * @param {'add'|'replace'} [options.mode='add'] - 追加或替换模式。
-                 * @param {string[]} [options.nameType=['class']] - 与嵌套属性值对应的属性名。
-                 * @param {string} [options.appendType='p'] - 子元素标签名。
+                 * @param {HTMLElement|string|DocumentFragment} parentElement - 接收新节点的父容器；字符串按
+                 *   `getHtml` 规则解析，`DocumentFragment` 适合先离线组装再一次挂载。
+                 * @param {Array<string|string[]>} nameList - 每个数组项创建一个子元素；字符串通常作为单个
+                 *   `class` 值，嵌套数组则按 `nameType` 的同索引依次设置多个属性。
+                 * @param {object} [options={}] - 节点类型、属性解释和插入位置选项。
+                 * @param {HTMLElement|null} [options.referenceNode=null] - 属于父容器的参照子节点；提供时优先
+                 *   在其前方插入并忽略 `index`。
+                 * @param {number} [options.index=-1] - 未提供参照节点时的零基插入位置；`-1` 或超出尾部表示追加。
+                 * @param {'add'|'replace'} [options.mode='add'] - `add` 保留现有子节点，`replace` 先以新建节点集合
+                 *   替换全部内容；两种模式都按 `nameList` 原顺序生成。
+                 * @param {string[]} [options.nameType=['class']] - 嵌套属性值对应的属性名数组，例如
+                 *   `['class', 'data-src']`；长度不足时多余属性值不会获得隐式名称。
+                 * @param {string} [options.appendType='p'] - 传给 `document.createElement` 的标签名；所有新节点
+                 *   使用同一种标签，调用方负责选择在父容器中合法的 HTML 元素。
                  */
                 static appendDOMs(parentElement, nameList, {
                     referenceNode = null,
@@ -8500,12 +8518,15 @@
                 /**
                  * 防抖函数
                  *
-                 * @param {Function} func - 要执行的函数
-                 * @param {Number} wait - 等待时间 (毫秒)
-                 * @param {Object} options - 配置对象
-                 * @param {Boolean} [options.leading=false] - 指定在延迟开始前是否调用
-                 * @param {Boolean} [options.trailing=true] - 指定在延迟结束后是否调用
-                 * @param {Number} [options.maxWait] - 设置函数允许被延迟的最大值
+                 * @param {Function} func - 被包装的目标函数；执行时保留最后一次调用的 `this` 和参数，
+                 *   返回的包装函数复用最近一次真正执行所得的返回值。
+                 * @param {number} wait - 连续调用之间的等待毫秒数；会规范化为非负数。
+                 * @param {object} [options={}] - 首尾触发和最长等待策略。
+                 * @param {boolean} [options.leading=false] - 是否在一轮等待窗口的第一次调用时立即执行。
+                 * @param {boolean} [options.trailing=true] - 是否在最后一次调用后满 `wait` 时执行；若只发生一次
+                 *   且已由 `leading` 执行，则不会无条件重复调用。
+                 * @param {number} [options.maxWait] - 持续高频调用时允许推迟执行的最长毫秒数；内部至少取
+                 *   `wait`，省略时不启用最大等待强制触发。
                  * @returns {Function} - 返回防抖处理后的函数
                  */
                 static debounce(func, wait, options = {}) {
@@ -9176,11 +9197,15 @@
                 /**
                  * 创建尚未加载数据的虚拟滚动实例。
                  *
-                 * @param {Object} config - 配置对象。
-                 * @param {string} config.container - 滚动容器选择器。
-                 * @param {(index: number, data: any) => string | HTMLElement} config.renderItem
-                 *   条目渲染函数。
-                 * @param {boolean} [config.remeasureOnResize=true] - 尺寸变化时是否重测行高。
+                 * @param {object} config - 虚拟列表的固定配置；实例会保存渲染函数及容器选择器，数据和长度
+                 *   由后续 `load()` 提供。
+                 * @param {string} config.container - 能唯一定位可滚动元素的 CSS 选择器；构造时校验格式，
+                 *   真正加载和恢复时还会确认元素存在且仍连接在文档中。
+                 * @param {(index: number, data: any) => string|HTMLElement} config.renderItem - 条目渲染函数；
+                 *   `index` 是零基逻辑索引，`data` 是最近一次 `load` 的同一数据源。应返回可作为行内容的
+                 *   HTML 字符串或单个元素；同一索引可能因回收、重测或滚动被多次调用。
+                 * @param {boolean} [config.remeasureOnResize=true] - 容器尺寸改变后是否重新采样行高；关闭可减少
+                 *   重排，但仅适合条目高度不会随宽度或字体布局变化的列表。
                  * @throws {Error} 配置无效时抛出。
                  */
                 constructor(config) {
@@ -10666,11 +10691,15 @@
                 /**
                  * 加载数据并启动或刷新虚拟滚动。
                  *
-                 * @param {any[]|{}} data - 传给 `renderItem` 的数据源。
-                 * @param {number} length - 渲染条目数。
-                 * @param {Object} [options={}] - 加载选项。
-                 * @param {boolean} [options.remeasure=false] - 是否强制重新测量行高。
-                 * @param {boolean} [options.resetScroll=true] - 是否将滚动位置重置到顶部。
+                 * @param {any[]|object} data - 原样传给每次 `renderItem(index, data)` 的数据源；实例仅保存引用，
+                 *   不复制、冻结或推断其长度，因此后续原地修改会影响再次渲染。
+                 * @param {number} length - 逻辑条目总数；有限数值会截断为非负整数，不要求等于 `data.length`，
+                 *   因而也可配合对象、稀疏数组或按需数据源。
+                 * @param {object} [options={}] - 本次加载对测量缓存和滚动位置的处理方式。
+                 * @param {boolean} [options.remeasure=false] - 即使已有有效 `itemHeight` 也重新渲染样本测量；
+                 *   数据模板、字体或行样式变化后应设为 `true`。
+                 * @param {boolean} [options.resetScroll=true] - `true` 从逻辑顶部开始；`false` 尽量保留当前虚拟
+                 *   偏移并夹紧到新内容范围，适合刷新同一列表的数据。
                  * @throws {Error} 实例或容器不可用时抛出。
                  */
                 load(data, length, {remeasure = false, resetScroll = true} = {}) {
@@ -10768,8 +10797,9 @@
                  * 对指定索引的已渲染 DOM 节点执行自定义操作。
                  * - 如果该索引当前不在渲染窗口内（未被挂载到 DOM），则跳过执行并返回 `false`。
                  *
-                 * @param {number} index - 目标条目索引。
-                 * @param {(el: HTMLElement) => void} callback - 要执行的回调函数，接收该索引对应的 DOM 节点作为参数。
+                 * @param {number} index - 要查找的零基逻辑索引；只有它当前位于渲染窗口且节点仍挂载时才命中。
+                 * @param {(el: HTMLElement) => void} callback - 命中后同步执行的操作；参数是列表持有的实际行节点。
+                 *   回调可以修改节点内容或样式，但不应移除节点、改变索引映射或把它转移到其他父元素。
                  * @returns {boolean} 若节点存在并执行了回调返回 `true`，否则返回 `false`。
                  */
                 applyToItem(index, callback) {
@@ -10905,10 +10935,13 @@
                  * - 压缩模式下 `'smooth'` 行为由内部 rAF 动画实现，而非浏览器原生滚动。
                  * - 索引会被夹紧到 `[0, totalCount - 1]`。
                  *
-                 * @param {number} index                   - 目标条目索引（自动取整并夹紧）。
-                 * @param {Object} [options={}]            - 可选参数。
-                 * @param {'auto'|'smooth'} [options.behavior='auto'] - 滚动行为；`'smooth'` 为平滑滚动。
-                 * @param {'start'|'end'|'center'|'nearest'} [options.block='nearest'] - 垂直对齐方式。
+                 * @param {number} index - 目标条目的零基逻辑索引；有限小数先取整，再夹紧到现有内容范围。
+                 *   空列表、空闲状态或无效数值不会产生可见滚动。
+                 * @param {object} [options={}] - 本次定位的动画和视口对齐策略。
+                 * @param {'auto'|'smooth'} [options.behavior='auto'] - `auto` 立即设置目标偏移；`smooth` 在普通
+                 *   范围内交给浏览器，在压缩映射范围内使用内部 `requestAnimationFrame` 动画。
+                 * @param {'start'|'end'|'center'|'nearest'} [options.block='nearest'] - 条目相对可视区的纵向位置；
+                 *   `nearest` 在已可见时不滚动，否则选择位移较小的一侧。
                  *
                  * @throws {Error} 实例已销毁时抛出。
                  * @returns {void}
@@ -11204,8 +11237,10 @@
                  * 2. 【窗口机制】只提取光标附近局部范围的文本进行拼接分析，避免处理超长输入时的性能损耗。
                  * 3. 【精准定位】通过文本长度偏移量，精确计算光标是否卡在函数名（如 "sin"）的边缘。
                  *
-                 * @param {'left'|'right'|'both'} direction - 移动方向
-                 * @param {HTMLElement} [asCursor=null] - (可选) 将此元素视为光标位置(用于点击定位)
+                 * @param {'left'|'right'|'both'} direction - 要计算的移动侧；`left`、`right` 返回对应单个步长，
+                 *   `both` 返回两侧步长数组。词元函数名视为整体，普通字符通常占一个 DOM 节点。
+                 * @param {HTMLElement|null} [asCursor=null] - 用于点击定位的临时光标参照；`null` 使用主输入区
+                 *   当前 `.InputCursor`。传入元素必须位于同一直接子节点序列中，方法不会移动真实光标。
                  * @returns {number|number[]}
                  */
                 static inputAreaMoveNum(direction, asCursor = null) {
@@ -11339,10 +11374,13 @@
                 /**
                  * 自动在数学表达式的 DOM 表示或 ClassList 数组中添加或移除空格，以提高可读性。
                  *
-                 * @param {object} [options={}] - 配置选项。
-                 * @param {HTMLElement|null} [options.area=null] - (可选) 容器。默认为 #input。
-                 * @param {Array<string>|null} [options.classList=null] - (可选) 纯数组模式。如果提供，将处理并返回新的 classList 数组，不操作 DOM。
-                 * @param {boolean} [options.rangeLimit=false] - (可选) 优化标志，限制处理范围在光标周围（仅在 DOM 模式下有效）。
+                 * @param {object} [options={}] - 选择 DOM 模式或纯数组模式，以及 DOM 扫描范围。
+                 * @param {HTMLElement|null} [options.area=null] - DOM 模式下要整理其直接子节点的容器；`null`
+                 *   使用 `#input`。传入 `classList` 时忽略该项且不访问 DOM。
+                 * @param {Array<string>|null} [options.classList=null] - 纯数组模式的渲染类名序列；方法复制后
+                 *   插入/删除 `_space_` 并返回新数组，不修改传入数组。`null` 才表示 DOM 模式。
+                 * @param {boolean} [options.rangeLimit=false] - DOM 模式下是否只重算光标附近可能受本次编辑
+                 *   影响的边界；批量载入或全量恢复后应使用 `false`，数组模式下该项无效。
                  * @returns {void|Array<string>} 如果传入 classList，则返回处理后的数组；否则无返回值（直接修改 DOM）。
                  */
                 static addSpace({area = null, classList = null, rangeLimit = false} = {}) {
@@ -11577,9 +11615,11 @@
                 /**
                  * 清除指定 DOM 区域的内容，或在未指定区域时重置主输入区域。
                  *
-                 * @param {object} [options] - (可选) 包含行数据的配置对象。
-                 * @param {HTMLElement | string} [options.acArea] - (可选) 目标 DOM 元素或其 ID 选择器。
-                 * @param {boolean} [options.forcedMode=false] - (可选) 是否强制设置为清空屏幕输入区域。
+                 * @param {object} [options={}] - 清除目标和模式覆盖选项。
+                 * @param {HTMLElement|string|null} [options.acArea=null] - 明确要清空的容器元素或 `getHtml`
+                 *   可解析的选择描述；提供时只清空该区域，不执行主输入区的模式联动。
+                 * @param {boolean} [options.forcedMode=false] - 未指定 `acArea` 时，是否跳过当前页面/遮罩状态限制，
+                 *   强制按活动子屏幕规则清空；用于模式切换和内部恢复，不应由普通点击随意设置。
                  */
                 static ac({acArea = null, forcedMode = false} = {}) {
 
@@ -11640,8 +11680,8 @@
                  * 此方法负责处理用户通过虚拟键盘或物理键盘输入时的 DOM 更新。
                  * 它会移除初始的输入提示，将新元素插入到光标位置，并确保光标保持在视图中。
                  *
-                 * @param {string[]} classArray - 一个包含 CSS 类名的字符串数组。数组中的每个类名都将被用于创建一个新的子元素（通常是 `<p>` 标签），
-                 *   该子元素的样式由其类名决定，从而在视觉上代表一个字符或符号。
+                 * @param {string[]} classArray - 按输入顺序插入的内部渲染类名；每项创建一个 `<p>` 并放在
+                 *   当前光标前。方法随后局部重排空格且不修改该数组；调用方应先完成词元到类名的转换。
                  * @returns {void}
                  */
                 static input(classArray) {
@@ -11669,8 +11709,10 @@
                 /**
                  * 按词元向指定方向删除输入内容。
                  *
-                 * @param {'left'|'right'} direction - 删除方向。
-                 * @param {boolean} [forcedMode=false] - 是否强制删除子屏幕输入区。
+                 * @param {'left'|'right'} direction - 相对光标删除的方向；函数名等多节点词元按
+                 *   `inputAreaMoveNum` 给出的完整跨度删除，不会只留下半个词元。
+                 * @param {boolean} [forcedMode=false] - 是否忽略普通输入状态限制并对当前子屏幕输入区执行删除；
+                 *   `false` 用于用户编辑主输入，`true` 只供内部同步流程使用。
                  * @returns {void}
                  */
                 static del(direction = 'left', forcedMode = false) {
@@ -11731,8 +11773,10 @@
                 /**
                  * 在指定的 DOM 区域内移动光标元素。
                  *
-                 * @param {'left'|'right'|'up'|'down'|'end'} direction - 指定光标移动的方向。
-                 * @param {boolean} [forcedMode=false] - (可选) 是否强制设置为移动屏幕输入区域。
+                 * @param {'left'|'right'|'up'|'down'|'end'} direction - 移动意图；左右按完整词元跨越，
+                 *   上下在统计表中切换行，`end` 直接定位到当前可编辑区域末尾。
+                 * @param {boolean} [forcedMode=false] - 是否在非普通输入状态下仍移动活动子屏幕的光标；
+                 *   强制模式会服从当前主/子模式边界，但跳过主输入区可编辑性检查。
                  * @returns {void}
                  */
                 static moveCursor(direction, forcedMode = false) {
@@ -11867,7 +11911,8 @@
                  * 此方法实现了“按词移动”的智能定位：如果用户点击了一个多字符 token（如函数名 "sin"）的中间，
                  * 它会将光标定位到该 token 的起始位置，而不是点击的精确字符位置。
                  *
-                 * @param {HTMLElement} target - 用户点击的 DOM 元素。
+                 * @param {HTMLElement} target - 点击命中的输入子节点或其可定位后代；必须属于当前活动输入区。
+                 *   方法用它计算最近的词元边界并重放唯一光标，不接收坐标事件本身。
                  * @returns {void}
                  */
                 static clickMoveCursor(target) {
@@ -11905,10 +11950,12 @@
                  *
                  * @private
                  *
-                 * @param {object} options - 包含行数据的配置对象。
-                 * @param {number} [options.index=0] - 当前行的索引（从 0 开始），用于生成行号。
-                 * @param {string[]} [options.inputListX=[]] - 代表 X 单元格内容的 CSS 类名数组。
-                 * @param {string[]} [options.inputListY=[]] - 代表 Y 单元格内容的 CSS 类名数组。
+                 * @param {object} options - 新行的逻辑位置与两个单元格的渲染数据。
+                 * @param {number} [options.index=0] - 零基数据行索引；显示序号在此基础上转换，且该值会写入
+                 *   行节点供虚拟滚动和点击定位使用。
+                 * @param {string[]} [options.inputListX=[]] - X 单元格的内部类名序列；空数组生成可编辑空单元格，
+                 *   输入数组只读并由 `addSpace` 的数组模式产生规范化副本。
+                 * @param {string[]} [options.inputListY=[]] - Y 单元格的内部类名序列；语义和处理方式与 X 相同。
                  * @returns {HTMLElement} 一个 `<div>` 元素，代表完整的数据网格行。
                  */
                 static _statisticsCreateLine(
@@ -11961,11 +12008,13 @@
                  * 如果未指定位置，则默认在网格末尾添加。
                  *
                  * @param {object} [options={}] - 配置选项。
-                 * @param {Array<number|string>|null} [options.location=null] - (可选) 插入新行的位置。
+                 * @param {Array<number|string>|null} [options.location=null] - 插入位置；`null` 追加到数据末尾，
+                 *   `[rowIndex, columnIndex]` 在指定行前插入并用列索引决定插入后应激活 X 还是 Y 单元格。
                  *   - 如果为 `null`，则在网格末尾添加。
                  *   - 如果为数组 `[rowIndex, colIndex]`，则在指定行之前插入。
-                 * @param {string} [options.inputX=''] - (可选) 新行中 x 值的初始数字。
-                 * @param {string} [options.inputY=''] - (可选) 新行中 y 值的初始数字。
+                 * @param {string} [options.inputX=''] - X 单元格的内部表达式字符串；会转换为渲染类名，
+                 *   空字符串表示空单元格而不是数值零。
+                 * @param {string} [options.inputY=''] - Y 单元格的内部表达式字符串；与 `inputX` 独立处理。
                  * @returns {boolean} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
                  */
                 static statisticsAddLine(
@@ -12013,7 +12062,8 @@
                  * 此方法根据指定的位置删除行。如果未指定位置，则默认删除当前高亮行。
                  * 删除行后，会更新后续行的序号，并确保如果删除的是高亮行，则重新设置高亮。
                  *
-                 * @param {Array<number>|number|null} [location=null] - (可选) 要删除的行的位置。
+                 * @param {Array<number>|number|null} [location=null] - 要删除的零基行位置；`null` 使用当前高亮
+                 *   单元格所在行，数字直接指定行，`[rowIndex, columnIndex]` 只用首项定位行并用列信息恢复高亮。
                  *   - 如果为 `null`，则删除当前高亮行。
                  *   - 如果为数组 `[rowIndex, colIndex]`，则删除指定行。
                  *   - 如果为数字，则删除指定行。
@@ -12175,10 +12225,12 @@
                  *
                  * @private
                  *
-                 * @param {HTMLElement} outputTarget - 目标容器
-                 * @param {Array<any>} list - 数据源列表
-                 * @param {(container: HTMLElement, item: any, index?: number) => void} toDomFunc - 渲染回调函数
-                 * @param {boolean} [needIndex=false] - 是否改变回调参数签名
+                 * @param {HTMLElement} outputTarget - 最终接收全部渲染节点的容器；先在 `DocumentFragment` 中
+                 *   构建，完成后一次性替换或追加到这里。
+                 * @param {Array<any>} list - 按显示顺序遍历的数据源；方法只读，不对元素排序或转换。
+                 * @param {(container: DocumentFragment, item: any, index?: number) => void} toDomFunc - 同步渲染回调；
+                 *   前两项是离线容器和当前数据，启用 `needIndex` 时第三项为零基索引。
+                 * @param {boolean} [needIndex=false] - 是否把索引作为第三个实参传给回调；不改变前两个参数顺序。
                  * @returns {void}
                  */
                 static _multipleLinesPrint(outputTarget, list, toDomFunc, needIndex = false) {
@@ -12205,7 +12257,8 @@
                  * 渲染统计结果并选择最佳回归模型。
                  *
                  * @private
-                 * @param {object|'error'} resultList - 统计结果或错误标记。
+                 * @param {object|'error'} resultList - `StatisticsTools.statisticsCalc` 的完整结果，或顶层失败标记
+                 *   `error`；对象中的单项 `error` 会按对应指标分别渲染，不等同于整页失败。
                  * @returns {void}
                  */
                 static _setMode1Results(resultList) {
@@ -12281,7 +12334,8 @@
                 /**
                  * 渲染指定回归模型的参数与决定系数。
                  *
-                 * @param {object|'error'} RaList - 回归结果或错误标记。
+                 * @param {object|'error'} RaList - 当前所选回归模型的 `{parameter, R2}` 数据，或字符串 `error`；
+                 *   参数数组顺序由模型定义，方法据此生成系数行和导出状态。
                  * @returns {void}
                  */
                 static setMode1RaResults(RaList) {
@@ -13050,8 +13104,10 @@
                  * 处理列表项的单选逻辑。
                  * 用于在设置菜单或其他选项列表中，当用户点击某一项时，更新 UI 样式（添加选中态类名）并触发相应的后续操作。
                  *
-                 * @param {HTMLElement} target - 接收操作的目标按钮元素
-                 * @param {MouseEvent} [e] - (可选) 点击事件对象，用于计算波纹起始坐标
+                 * @param {HTMLElement} target - 要成为唯一选中项的按钮；已选中或空目标直接忽略，其他同组选项
+                 *   会先清除状态。目标必须包含本控件约定的标签/图标结构。
+                 * @param {MouseEvent} [e] - 触发选择的指针事件；提供时以 `clientX/clientY` 计算波纹原点，
+                 *   省略时仍切换选择状态，但使用控件默认的视觉位置。
                  */
                 static triggerSelection(target, e) {
 
@@ -13230,8 +13286,9 @@
                  * 5. 触发结果数据的重新渲染。
                  * 6. 关闭模型选择菜单。
                  *
-                 * @param {string} id - 被选中的回归模型元素的 DOM ID (例如 'choose_ra_0')。
-                 * @param {string} [mode='change'] - 操作模式。
+                 * @param {string} id - 回归模型选择项的完整 DOM ID，例如 `choose_ra_0`；它同时作为
+                 *   `PrintManager.mode1Results` 的模型键，必须对应已渲染且已有结果的选项。
+                 * @param {'change'|'init'} [mode='change'] - 操作阶段。
                  *   - 'change': (默认) 这是一个用户交互触发的更改，需要更新显示的结果数据。
                  *   - 'init': 这是一个初始化操作（例如计算完成后自动选择最佳模型），不需要重新触发结果渲染逻辑（或者由调用者处理）。
                  * @returns {void}
@@ -13281,7 +13338,7 @@
                  * 此方法响应导出按钮的点击事件，将计算出的回归方程填充到对应的函数输入框中，
                  * 以便用户可以在函数列表模式下进一步使用该方程（例如求值或绘图）。
                  *
-                 * @param {string} func - 触发导出的按钮 ID。
+                 * @param {'export_0'|'export_1'} func - 触发导出的按钮 ID，也决定回归表达式写入哪个函数槽位。
                  *   - `'export_0'`: 导出到 f(x) (对应 DOM ID `#screen_input_inner_2_00`)。
                  *   - `'export_1'`: 导出到 g(x) (对应 DOM ID `#screen_input_inner_2_01`)。
                  * @returns {void}
@@ -13549,7 +13606,8 @@
                  * 根据输入的符号信息，动态生成并显示其详细解释、优先级和结合性。
                  * 此方法负责解析输入的符号（如运算符、函数），构建包含中文含义、优先级（Priority）和结合性（Associativity）的 DOM 结构。
                  *
-                 * @param {Array<string>} input - 包含符号样式类名的数组，用于识别和渲染当前选中的符号。
+                 * @param {Array<string>} input - 当前符号的渲染类名序列；方法先还原内部词元，再读取
+                 *   `TokenConfig` 的参数个数、优先级和结合性。空数组或未知词元只显示基础说明。
                  * @returns {void}
                  */
                 static showExplain(input) {
@@ -13754,7 +13812,8 @@
                  * 它会清除主输入区域（如果需要），从当前子屏幕区域读取内容，并将其插入到主输入区域。
                  * 对于统计模式（模式 '1'），它还处理添加新行或移动光标的逻辑。
                  *
-                 * @param {boolean} [skipEmpty=true] - 是否跳过屏幕为空的情况。
+                 * @param {boolean} [skipEmpty=true] - 当前子屏幕没有内容时，`true` 保留主输入区现状，
+                 *   `false` 仍执行清空与同步；统计模式的空行定位逻辑不完全等同于普通字符串为空。
                  * @returns {void}
                  */
                 static syncScreenToInput(skipEmpty = true) {
@@ -13790,7 +13849,8 @@
                  * 然后将格式化后的内容更新到对应的子屏幕区域。
                  * 它还处理了特定模式下的后续 UI 交互，例如在统计模式下自动添加新行或在其他模式下移动到下一个输入字段。
                  *
-                 * @param {boolean} [moveCursor=true] - 同步后是否移动光标。
+                 * @param {boolean} [moveCursor=true] - 成功写回后是否按当前模式进入下一个可编辑位置；
+                 *   `false` 只保存和重绘当前字段，常用于提交前同步而不改变用户焦点。
                  * @returns {Promise<void>} 此方法不返回任何值，其作用是直接修改 DOM。
                  */
                 static async syncInputToScreen(moveCursor = true) {
