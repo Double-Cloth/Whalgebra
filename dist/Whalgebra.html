@@ -7762,7 +7762,7 @@
                  * 此状态用于管理 UI 状态，并在 `localStorage` 中持久化，以便在会话之间保持用户的选择。
                  *
                  * @private
-                 * @type {Object<string, string|array>}
+                 * @type {{'1':[number,number],'2_0':string,'2_1':string,'3':string,'4':string}}
                  */
                 static _subModes = {
                     '1': [0, 0],
@@ -7775,7 +7775,10 @@
                 /**
                  * 获取存储每个主计算器模式下当前选定子模式的对象。
                  *
-                 * @type {Object<string, string|array>}
+                 * @type {{'1':[number,number],'2_0':string,'2_1':string,'3':string,'4':string}}
+                 * @returns {{'1':[number,number],'2_0':string,'2_1':string,'3':string,'4':string}} 活动子模式对象本身：
+                 *   `1` 保存当前统计表 `[row,column]`；`2_0`、`2_1` 保存两个函数页的输入槽；`3`、`4`
+                 *   保存多项式与根式页的活动字段。返回值不是副本，外部更新应使用 setter 以触发 UI 和持久化。
                  */
                 static get subModes() {
                     return PageConfig._subModes;
@@ -8179,7 +8182,10 @@
                  * 获取当前屏幕上所有输入区域的数据。
                  *
                  * @type {Object<string, string|Array<Array<string>>>}
-                 * @returns {Object<string, string|Array<Array<string>>>} 包含所有屏幕输入数据的对象。
+                 * @returns {Object<string, string|Array<[string,string]>>} 当前持久化状态对象本身：键 `1` 是
+                 *   统计表，每行固定为 `[xExpression,yExpression]`；`2_00`/`2_01` 是 f、g 函数体，
+                 *   `2_10`～`2_12` 是值列表边界，`30`～`34` 是四次到常数项系数，`40`/`41` 是被开方数
+                 *   与根指数。各表达式均使用内部词元字符串；返回值不是防御性副本，外部应通过 setter 更新。
                  */
                 static get screenData() {
                     return PageConfig._screenData;
@@ -8326,7 +8332,8 @@
                  *   `getElementsByClassName`，无前缀时按标签名查询；只接受单一简单选择器，不解析组合 CSS。
                  * @param {number} [index=0] - 类名/标签名结果中的零基索引；`-1` 返回实时
                  *   `HTMLCollection`。ID 查询忽略该参数并直接返回单个元素或 `null`。
-                 * @returns {HTMLElement|HTMLCollection|null} 匹配元素或集合。
+                 * @returns {HTMLElement|HTMLCollection|null|undefined} ID 查询返回元素或 `null`；类名/标签名在
+                 *   `index=-1` 时返回实时 `HTMLCollection`，其他索引返回对应元素，越界时为 `undefined`。
                  */
                 static getHtml(name, index = 0) {
                     switch (name[0]) {
@@ -8691,7 +8698,9 @@
                  *   且已由 `leading` 执行，则不会无条件重复调用。
                  * @param {number} [options.maxWait] - 持续高频调用时允许推迟执行的最长毫秒数；内部至少取
                  *   `wait`，省略时不启用最大等待强制触发。
-                 * @returns {Function} - 返回防抖处理后的函数
+                 * @returns {Function & {cancel:function():void, flush:function():*, pending:function():boolean}} 可调用的
+                 *   防抖包装器；`cancel()` 丢弃待处理调用，`flush()` 立即执行尾沿调用并返回目标函数结果，
+                 *   `pending()` 报告是否存在计时器。普通调用返回最近一次实际执行的结果或 `undefined`。
                  */
                 static debounce(func, wait, options = {}) {
                     let lastArgs,
@@ -8848,6 +8857,39 @@
                     return debounced;
                 }
             }
+
+            /**
+             * 虚拟滚动运行指标快照。
+             *
+             * @typedef {object} VirtualScrollMetrics
+             * @property {string} state - 状态机当前状态。
+             * @property {boolean} ready - 是否处于可用的 RUNNING 或 PAUSED 状态。
+             * @property {boolean} isRendering - 当前是否正在提交渲染窗口。
+             * @property {boolean} isSmoothScrolling - 内部平滑滚动动画是否运行中。
+             * @property {boolean} isRemeasurePending - 是否已登记下一次行高重测。
+             * @property {number} itemHeight - 当前统一逻辑行高（px），未测量时为 0。
+             * @property {number} containerHeight - 最近记录的容器可视高度（px）。
+             * @property {number} bufferSize - 视口上下额外渲染的条目数。
+             * @property {number} visibleCount - 按当前行高向上取整的可见条目数。
+             * @property {number} totalCount - 当前逻辑条目总数。
+             * @property {number} startIndex - 已渲染窗口起点（含）。
+             * @property {number} endIndex - 已渲染窗口终点（不含）。
+             * @property {number} renderedCount - 当前登记的行节点数。
+             * @property {number} anchorIndex - 尺寸变化时用于恢复位置的锚点索引。
+             * @property {number} anchorRatio - 锚点在行内的位置比例，保留四位小数。
+             * @property {number} scrollTop - 容器当前物理滚动位置（px）。
+             * @property {boolean} compressed - 虚拟高度是否已压缩到浏览器安全物理高度。
+             * @property {number} virtualHeight - 未压缩的完整逻辑内容高度（px）。
+             * @property {number} physicalHeight - 实际由 spacer 和节点承载的内容高度（px）。
+             * @property {number} scrollRatio - 虚拟距离到物理距离的映射比例。
+             * @property {number} poolSize - 当前可复用包装节点数。
+             * @property {number} wrapperCount - 已创建的池化包装节点总数。
+             * @property {number} userElemCount - 当前登记的用户自带 `HTMLElement` 数量。
+             * @property {number} spacerTop - 顶部 spacer 当前高度（px）。
+             * @property {number} spacerBottom - 底部 spacer 当前高度（px）。
+             * @property {ReadonlyArray<Readonly<{index:number,behavior:string,block?:string}>>} pendingScrollQueue -
+             *   暂停期间排队的滚动请求快照；队列及每个请求对象均冻结。
+             */
 
             /**
              * 虚拟滚动控制器。
@@ -9073,7 +9115,8 @@
                      * @param {number} itemHeight - 正的统一逻辑行高（px），把条目索引换算为虚拟距离。
                      * @param {number} physScrollTop - 当前实际滚动位置；与虚拟映射坐标共同校正顶部 spacer，
                      *   使压缩映射下的首行仍贴合视口而不发生跳闪。
-                     * @returns {{ top: number, bottom: number }} 上下 spacer 应设置的像素高度。
+                     * @returns {{top:number,bottom:number}} 物理占位高度：`top` 从容器顶部延伸到首个已渲染项，
+                     *   `bottom` 从排他末项延伸到内容底部；两者均为非负像素值，压缩模式下总和按物理高度缩放。
                      */
                     calcSpacerHeights(start, end, totalCount, itemHeight, physScrollTop = 0) {
                         if (totalCount <= 0 || itemHeight <= 0) {
@@ -11026,6 +11069,9 @@
                  * - 若暂停期间有排队的 `scrollToIndex()` 请求，恢复后将执行最后一条，
                  *   其余请求被丢弃（打印警告）。
                  *
+                 * @param {object} [options={}] - 恢复时的测量策略。
+                 * @param {boolean} [options.remeasure=true] - 是否在重新绑定滚动监听后测量当前行高；`true`
+                 *   会先保存最后一条排队定位请求，待测量完成后再执行，`false` 直接复用暂停前的行高。
                  * @throws {Error} 实例已销毁时抛出。
                  * @returns {void}
                  */
@@ -11198,8 +11244,10 @@
                 /**
                  * 滚动到列表顶部。
                  *
-                 * @param {Object} [options]  - 可选参数，透传给 {@link VirtualScroll#scrollToIndex}。
-                 * @param {'auto'|'smooth'} [options.behavior]  - 滚动行为。
+                 * @param {object} [options={}] - 透传给 `scrollToIndex(0, options)` 的定位选项。
+                 * @param {'auto'|'smooth'} [options.behavior='auto'] - 立即或平滑滚动到顶部。
+                 * @param {'start'|'end'|'center'|'nearest'} [options.block='start'] - 顶部条目相对视口的对齐方式；
+                 *   一般保持 `start`，其他值仍按 `scrollToIndex` 的通用规则执行。
                  * @returns {void}
                  */
                 scrollToTop({behavior = 'auto', block = 'start'} = {}) {
@@ -11211,8 +11259,9 @@
                  * - 内部计算虚拟底部偏移量后转换为物理坐标进行滚动。
                  * - 压缩模式下 `'smooth'` 使用内部动画实现。
                  *
-                 * @param {Object}          [options={}]               - 可选参数。
-                 * @param {'auto'|'smooth'} [options.behavior='auto']  - 滚动行为。
+                 * @param {object} [options={}] - 底部定位的动画选项。
+                 * @param {'auto'|'smooth'} [options.behavior='auto'] - `auto` 立即写入最大物理滚动位置；
+                 *   `smooth` 在压缩模式使用内部动画，在普通模式使用浏览器原生平滑滚动。
                  *
                  * @throws {Error} 实例已销毁时抛出。
                  * @returns {void}
@@ -11254,7 +11303,8 @@
                 /**
                  * 返回深度冻结的运行状态与性能指标。
                  *
-                 * @returns {Readonly<object>} 当前指标快照。
+                 * @returns {Readonly<VirtualScrollMetrics>} 新创建并冻结的指标快照；数值和布尔字段不会随实例
+                 *   后续滚动自动变化，`pendingScrollQueue` 也复制并逐项冻结，可安全用于调试或性能采样。
                  */
                 getMetrics() {
                     const clientHeight = this.container ? this.container.clientHeight : 0;
@@ -11352,16 +11402,18 @@
                     /**
                      * 渲染统计数据行。
                      *
-                     * @param {number} index - 行索引。
-                     * @param {Object} dataSource - 数据源。
-                     * @returns {HTMLElement} 行元素。
+                     * @param {number} index - 要渲染的零基统计行索引，同时写入返回节点的行号与定位数据。
+                     * @param {Array<[string|string[],string|string[]]>} dataSource - 最近加载的二维统计表；
+                     *   `dataSource[index][0]`、`[1]` 分别是 X、Y 的内部字符串或既有类名数组。
+                     * @returns {HTMLElement} 尚未挂载的完整行 `<div>`，含序号、X 单元格和 Y 单元格三个子区。
                      */
                     renderItem: (index, dataSource) => {
                         /**
                          * 将字符串转换为 HTML 类名列表。
                          *
-                         * @param {string|Array} input - 字符串或现有类名列表。
-                         * @returns {Array} 规范化后的类名列表。
+                         * @param {string|string[]} input - 单元格内部表达式或已转换的渲染类名；字符串会词元化，
+                         *   数组直接沿用且不复制。
+                         * @returns {string[]} 可交给 `_statisticsCreateLine` 的类名序列；输入数组时返回同一引用。
                          */
                         const toClassList = (input) => typeof input === 'string' ? HtmlTools.textToHtmlClass(input) : input;
 
@@ -11420,7 +11472,8 @@
                  *   `both` 返回两侧步长数组。词元函数名视为整体，普通字符通常占一个 DOM 节点。
                  * @param {HTMLElement|null} [asCursor=null] - 用于点击定位的临时光标参照；`null` 使用主输入区
                  *   当前 `.InputCursor`。传入元素必须位于同一直接子节点序列中，方法不会移动真实光标。
-                 * @returns {number|number[]}
+                 * @returns {number|[number,number]} `left` 或 `right` 返回该侧需要跨越的 DOM 节点数；`both`
+                 *   返回 `[leftStep,rightStep]`。若光标位于边缘，缺失方向用相反侧步长的负值编码。
                  */
                 static inputAreaMoveNum(direction, asCursor = null) {
 
@@ -11560,7 +11613,8 @@
                  *   插入/删除 `_space_` 并返回新数组，不修改传入数组。`null` 才表示 DOM 模式。
                  * @param {boolean} [options.rangeLimit=false] - DOM 模式下是否只重算光标附近可能受本次编辑
                  *   影响的边界；批量载入或全量恢复后应使用 `false`，数组模式下该项无效。
-                 * @returns {void|Array<string>} 如果传入 classList，则返回处理后的数组；否则无返回值（直接修改 DOM）。
+                 * @returns {void|string[]} DOM 模式直接重排目标子节点并返回 `undefined`；纯数组模式返回新的
+                 *   规范化类名数组。两种模式都会移除不再需要的 `_space_`，再在语义边界插入空格。
                  */
                 static addSpace({area = null, classList = null, rangeLimit = false} = {}) {
 
@@ -12194,7 +12248,8 @@
                  * @param {string} [options.inputX=''] - X 单元格的内部表达式字符串；会转换为渲染类名，
                  *   空字符串表示空单元格而不是数值零。
                  * @param {string} [options.inputY=''] - Y 单元格的内部表达式字符串；与 `inputX` 独立处理。
-                 * @returns {boolean} 如果成功添加行，则返回 `true`；如果因达到最大行数限制而失败，则返回 `false`。
+                 * @returns {boolean} 成功写入 `screenData`、刷新虚拟列表并更新活动位置时为 `true`；达到
+                 *   `MAX_STATISTICS_ROW`、位置无效或内部插入失败时为 `false`，不会留下半行数据。
                  */
                 static statisticsAddLine(
                     {
@@ -12365,7 +12420,8 @@
                 /**
                  * 一个防抖（debounced）函数，用于在标准计算模式（模式 '0'）下，在屏幕上异步显示当前输入表达式的实时计算结果。
                  *
-                 * @returns {Promise<void>} 此方法本身不直接返回任何内容，但它触发的异步计算会返回一个 Promise。
+                 * @returns {Promise<void>|undefined} 前沿或尾沿真正触发 `_mode0ShowOnScreenFunc` 时返回该异步
+                 *   Promise；仅重新安排计时器的中间调用返回上一次结果或 `undefined`，调用方通常无需等待它。
                  */
                 static mode0ShowOnScreen = HtmlTools.debounce(this._mode0ShowOnScreenFunc, this._DELAY_TIME, {
                     leading: true,
@@ -12389,7 +12445,8 @@
                  *
                  * @private
                  * @param {string} str - 需要处理的字符串，通常是计算结果或 'error'。
-                 * @returns {string[]} 一个包含 CSS 类名的字符串数组。
+                 * @returns {string[]} `str==='error'` 时固定返回 `['_error_']`；其他字符串按内部词元顺序映射为
+                 *   可交给 `HtmlTools.appendDOMs` 的渲染类名数组。
                  */
                 static _printHandleError(str) {
 
@@ -12436,7 +12493,7 @@
                  * 渲染统计结果并选择最佳回归模型。
                  *
                  * @private
-                 * @param {object|'error'} resultList - `StatisticsTools.statisticsCalc` 的完整结果，或顶层失败标记
+                 * @param {StatisticsAnalysisResult|'error'} resultList - `StatisticsTools.statisticsCalc` 的完整结果，或顶层失败标记
                  *   `error`；对象中的单项 `error` 会按对应指标分别渲染，不等同于整页失败。
                  * @returns {void}
                  */
@@ -12446,7 +12503,8 @@
                      *
                      * @param {string} modelName - `StatisticsTools` 返回的回归模型键，如 `linear`、`square`；
                      *   必须存在于本地模型到选择器 ID 的映射中，未知键不会生成可用按钮 ID。
-                     * @returns {string} 对应的 DOM ID (e.g., 'choose_ra_0').
+                     * @returns {'choose_ra_0'|'choose_ra_1'|'choose_ra_2'|'choose_ra_3'|'choose_ra_4'|'choose_ra_5'|'choose_ra_6'|undefined}
+                     *   已知模型对应的选择按钮 ID；未知模型没有分支，返回 `undefined`。
                      */
                     function modelToId(modelName) {
                         switch (modelName) {
@@ -12514,7 +12572,7 @@
                 /**
                  * 渲染指定回归模型的参数与决定系数。
                  *
-                 * @param {object|'error'} RaList - 当前所选回归模型的 `{parameter, R2}` 数据，或字符串 `error`；
+                 * @param {RegressionModelResult|'error'} RaList - 当前所选回归模型的完整结果，或字符串 `error`；
                  *   参数数组顺序由模型定义，方法据此生成系数行和导出状态。
                  * @returns {void}
                  */
