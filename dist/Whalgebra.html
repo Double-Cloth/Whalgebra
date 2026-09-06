@@ -38,6 +38,7 @@
                 static allFunc = new Set([...this._func_01_2, ...this._func_11_2, ...this._func_01_1, ...this._func_10_1]);
                 static htmlClassLenOneFunc = new Set(this._htmlClass_len_one_func);
 
+                // --- 暴露给外部的高速 Set 集合 (O(1) 查询) ---
                 static privateFunc = new Set(this._private_func);
                 static rightAssocFunc = new Set([...this._func_01_1, '^']);
                 static needParensFunc = new Set(['^', ...this._complement(this._func_01_1, ['A', 'N'])]);
@@ -125,7 +126,7 @@
                 }
 
                 /**
-                 * 是否启用网页专属功能。
+                 * 是否启用网页专属功能（如全屏切换）。
                  *
                  * @private
                  * @type {boolean}
@@ -204,8 +205,12 @@
                  * @param {*|Array<*>} x - `ComplexNumber` 可接受的值、值数组或 `error`。
                  * @param {object} [options={}] - 格式化选项。
                  * @param {number} [options.acc=CalcConfig.outputAccuracy] - 有效数字位数、精度比例或非正的原精度标记。
+                 *   - 若省略，则使用 `CalcConfig.outputAccuracy` 的当前值。
+                 *   - 若 `acc >= 1`，它代表一个绝对的有效数字位数。
+                 *   - 若 `0 < acc < 1`，它被视为一个比例，最终精度将是 `acc * CalcConfig.globalCalcAccuracy`。
+                 *   - 若 `acc <= 0`，它代表输出精度和输入一致。
                  * @param {string} [options.printMode=CalcConfig.globalPrintMode] - 输出模式。
-                 * @returns {string|string[]} 格式化结果。
+                 * @returns {string|string[]} 如果输入是单个值，则返回其字符串表示；如果输入是数组，则返回一个字符串数组。
                  */
                 static idealizationToString(x, {
                     acc = CalcConfig.outputAccuracy,
@@ -225,13 +230,17 @@
                         if (acc <= 0) {
                             return numAcc;
                         }
+
                         if (acc < 1) {
                             return Math.floor(acc * numAcc);
                         }
+
                         return Math.min(acc, numAcc);
                     };
 
+                    // 根据输入值的类型进行不同的处理。
                     switch (Public.typeOf(x)) {
+                        // 如果输入是一个数组，则递归地处理数组中的每个元素。
                         case 'array': {
                             const result = [];
                             for (let i = 0; i < x.length; i++) {
@@ -261,8 +270,16 @@
                 /**
                  * 将模型系数格式化为数学表达式。
                  *
-                 * @param {Array<*>} list - 系数列表；多项式按常数项到最高次项排列。
+                 * @param {Array<*>} list - 系数列表。
+                 *   - 对于 'powerFunc', 'lnFunc': `[a₀, a₁, ..., aₙ]` 代表 `a₀ + a₁x + ... + aₙxⁿ`。函数会将其格式化为 `aₙxⁿ + ... + a₁x + a₀` 的形式。
+                 *   - 对于其他模式: `[a, b]` 代表函数的两个主要参数。
                  * @param {'powerFunc'|'lnFunc'|'expFunc'|'abxFunc'|'axbFunc'|'reciprocalFunc'} mode - 函数模型。
+                 *   - 'powerFunc': 多项式函数, f(x) = aₙxⁿ + ... + a₀
+                 *   - 'lnFunc': 对数多项式函数, f(x) = aₙ(lnx)ⁿ + ... + a₀
+                 *   - 'expFunc': 指数函数, f(x) = a * exp(b*x)
+                 *   - 'abxFunc': 指数函数, f(x) = a * b^x
+                 *   - 'axbFunc': 幂函数, f(x) = a * x^b
+                 *   - 'reciprocalFunc': 反比例函数, f(x) = a + b/x
                  * @param {string} [asX='[x]'] - 变量词元。
                  * @returns {string} 数学表达式；输入错误时返回 `error`。
                  */
@@ -414,18 +431,31 @@
                 /**
                  * 返回词元的类别和语法属性。
                  *
-                 * @param {string} token - 待分析的词元。
-                 * @returns {object|undefined} 词元信息；未传值时返回 `undefined`。
-                 * @property {string} token - 输入的词法单元字符串。
-                 * @property {'func'|'number'|'other'|'illegal'} class - 词元类别。
-                 * @property {number} [parameters] - 参数数量。
-                 * @property {'front'|'middle'|'back'} [funcPlace] - 相对操作数的位置。
-                 * @property {'left'|'right'} [associativity] - 结合方向。
-                 * @property {boolean} [needKh] - 是否需要解析器补充括号。
-                 * @property {boolean} [isPrivate] - 是否为内部词元。
-                 * @property {boolean} isHtmlClassLenOne - 是否由单个 HTML 类名表示。
-                 * @property {'baseNumber'|'codeNumbers'} [numClass] - 数字子类别。
-                 * @property {number} priority - 优先级；非运算符为 `Infinity`。
+                 * @param {string} [token] - 待分析的词元。
+                 * @returns {{
+                 *   token: string,
+                 *   class: 'func'|'number'|'other'|'illegal',
+                 *   parameters?: number,
+                 *   funcPlace?: 'front'|'middle'|'back',
+                 *   associativity?: 'left'|'right',
+                 *   needKh?: boolean,
+                 *   isPrivate?: boolean,
+                 *   numClass?: 'baseNumber'|'codeNumbers',
+                 *   isHtmlClassLenOne?: boolean,
+                 *   priority?: number
+                 * }|undefined} 词元信息；未传值时返回 `undefined`。
+                 *
+                 * 返回对象字段说明：
+                 *   - `token`：输入的词法单元字符串。
+                 *   - `class`：词元类别。
+                 *   - `parameters`：仅限 `func` 类型，表示参数数量。
+                 *   - `funcPlace`：仅限 `func` 类型，表示函数相对操作数的位置。
+                 *   - `associativity`：仅限 `func` 类型，表示结合方向。
+                 *   - `needKh`：仅限 `func` 类型，表示是否需要解析器补充括号。
+                 *   - `isPrivate`：仅限 `func` 类型，表示是否为内部词元。
+                 *   - `numClass`：仅限 `number` 类型，表示数字子类别。
+                 *   - `isHtmlClassLenOne`：是否由单个 HTML 类名表示。
+                 *   - `priority`：优先级；非运算符为 `Infinity`。
                  */
                 static getTokenInfo(token) {
                     if (!token && token !== '') {
@@ -443,6 +473,7 @@
                         return result;
                     }
 
+                    // 检查 token 是否为函数或运算符
                     if (TokenConfig.allFunc.has(token)) {
                         result.class = 'func';
 
@@ -463,10 +494,14 @@
                         result.associativity = TokenConfig.rightAssocFunc.has(token) ? 'right' : 'left';
                         result.needKh = TokenConfig.needParensFunc.has(token);
                         result.isPrivate = TokenConfig.privateFunc.has(token);
-                    } else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+                    }
+                    // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
+                    else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
                         result.class = 'number';
                         result.numClass = TokenConfig.codeNumbers.has(token) ? 'codeNumbers' : 'baseNumber';
-                    } else if (TokenConfig.other.has(token)) {
+                    }
+                    // 检查 token 是否为其他合法符号
+                    else if (TokenConfig.other.has(token)) {
                         result.class = 'other';
                     }
 
@@ -481,8 +516,12 @@
                  * @param {string} str - 表达式。
                  * @param {object} [options={}] - 分词选项。
                  * @param {'separate'|'together'} [options.baseNumberMode='separate'] - 数字逐字符拆分或连续合并。
+                 *   - `'separate'`: 将每个数字或小数点字符视为一个独立的词法单元。例如, "123" -> ['1', '2', '3']。
+                 *   - `'together'`: 将连续的数字和单个小数点组合成一个完整的数字字符串词法单元。例如, "123.45" -> ['123.45']。
                  * @param {boolean} [options.strictMode=true] - 遇到非法字符时是否立即报错。
                  * @returns {string[]|['error', number]} 词元数组或错误位置。
+                 *   - 成功时: 返回一个包含所有词法单元的字符串数组。
+                 *   - 失败时 (仅在严格模式): 返回一个包含两个元素的数组 `['error', index]`，其中 `index` 是在原始字符串中检测到错误的字符的索引。
                  */
                 static tokenizer(str, {baseNumberMode = 'separate', strictMode = true} = {}) {
                     const result = [];
@@ -556,7 +595,7 @@
              */
             class CalcConfig {
                 /**
-                 * 全局计算精度上限。
+                 * 全局计算精度上限，其值与下面的常量精度有关。
                  *
                  * @type {number}
                  */
@@ -637,7 +676,7 @@
                     e: [-219, '1ecd49d9e3c29326029305c8f68bacfa3c6316f631eac146b2134a1e6c0b75cef869bf281f79ee8c71f281e2c884aeb87fb37c64089a0ec56be456431569d592c56ae708d6630c6ccf7af1f75d487096c3a75ad203963a6ddc1914a', 220],
                     pi: [-219, '23993e59d8f1beed1a7593d4faa8f71e7e7bfabd3bce9147f36fe49488ef48e00256540fb0bed3a804f57ca4ae2a25415b67d6bfc0a4b0052eebd7de00d229188a05edd25b4921fa0718579873598ff6e2f639b2ca5cb0a930b4c86', 220],
 
-                    // 三角函数范围缩减常量使用更高精度，以减小累计误差。
+                    // `1/(2*pi)` 用于三角函数的周期性计算。
                     invTwoPi: [-440, '7fb8e2cfa572366dac69f800d8ea4a71dec50a009caf878c5a967130e4d2dc7099d5db874d0390b8b540fafae08078229c44539acf4e25efb46ba78b8941b6725e93e7d9700720e4cbafef059ccf263028f519e3ec8defa7424ffb0bf026259cc4f88003d435b98bcf2e0406f9effdb81a5a46340909994465cf71fdc630153a6f51f44ab249beaf7daf8ec4ab820e393fdf4a18a2e16f47f1009414efe0eb850747b99448819486378e7e2ff4e8f829eb599570c017e', 440],
 
                     ln_10: [-219, '1a176bae18c7780dbb8d48b8882691c90a86e72d72de2f768182d52f07d96dbb38aa172b3c124babac9116cabbf5455a8886de7468c185b63a2b557dd589b14e85802b87b72bd8d0eb7d86d273bd8ca8fdd8384034f38977b89d16e', 220],
@@ -645,8 +684,12 @@
                     ln_1_2: [-220, '14a8d935f98be97b04624e3a7e3ae0617137ebf4346878d6338c45f0a167b2dd07c6c4b8c01f39378cc7816de8f6825aca7f00bef7c13790b9238ba6b373b5c18ae1f1364de093c6c002937af1bf247e88d0ca62944fa60c5f5afab', 220],
 
                     /**
-                     * 伽玛函数按目标精度选用的 Lanczos 系数集。
-                     * 每组包含精度 `acc`、参数 `g` 和系数数组 `p`。
+                     * 伽玛函数的 Lanczos Approximation 系数。
+                     * 提供了多个不同精度等级的系数集。`fact` 函数会根据目标精度自动选择最合适的系数集。
+                     * 每个系数集包含：
+                     *   - acc: 该系数集设计时所针对的精度。
+                     *   - g: 兰佐斯公式中使用的任意常数 g。
+                     *   - p: 兰佐斯公式中级数求和部分的一系列预计算系数 p₀, p₁, p₂, ...。
                      */
                     lanczos_n20: {
                         acc: 100,
@@ -1106,7 +1149,9 @@
                 }
 
                 /**
-                 * 复数的默认输出模式。
+                 * 复数的默认输出模式：
+                 *   - 'algebra' 表示代数形式 (a+bi)
+                 *   - 'polar' 表示极坐标形式 (r∠θ)
                  *
                  * @private
                  * @type {string}
@@ -1160,7 +1205,7 @@
                 /**
                  * 设置全局计算精度并同步到 Worker。
                  *
-                 * @param {number|undefined} acc - 1 到上限之间的整数；`undefined` 重置为上限。
+                 * @param {number|undefined} acc - 1 到上限（`_MAX_GLOBAL_CALC_ACCURACY`）之间的整数；`undefined` 重置为上限。
                  * @returns {void}
                  * @throws {Error} 精度无效时抛出。
                  */
@@ -1215,7 +1260,10 @@
                 /**
                  * 设置输出精度并同步到 Worker。
                  *
-                 * @param {number|undefined} acc - `(0, 1)` 为比例，正整数为位数，`undefined` 重置为计算精度。
+                 * @param {number|undefined} acc - 要设置的新输出精度。
+                 *   - 比例模式: 如果 `acc` 是一个 (0, 1) 之间的浮点数，它将被解释为相对于 `globalCalcAccuracy` 的比例。例如，如果 `globalCalcAccuracy` 是 100，`acc` 是 0.9，则实际输出精度将是 90 位。
+                 *   - 绝对模式: 如果 `acc` 是一个大于等于 1 的整数，它将直接被用作输出的有效数字位数。
+                 *   - 重置: 如果 `acc` 为 `undefined`，输出精度将被重置为当前的 `globalCalcAccuracy` 值。
                  * @returns {void}
                  * @throws {Error} 输出精度无效时抛出。
                  */
@@ -1248,7 +1296,7 @@
                  * 将主线程配置同步到已就绪的 Worker。
                  *
                  * @private
-                 * @param {string} methodName - `WorkerTools` 方法名。
+                 * @param {string} methodName - 要调用的 `WorkerTools` 中的静态方法名。
                  * @param {number|string} value - 新配置值。
                  * @returns {void}
                  */
