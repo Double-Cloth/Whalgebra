@@ -7585,7 +7585,7 @@
                 /**
                  * 存储当前计算器的操作模式。
                  * 这是一个私有静态字段，应通过 `currentMode` 的 getter 和 setter 进行访问和修改。
-                 * 值的例子: '0' (标准计算), '1' (函数列表), '2_0' (统计), 等。
+                 * 值的例子：`0` 为标准计算，`1` 为统计回归，`2_0` 为函数值列表。
                  *
                  * @private
                  * @type {string}
@@ -7988,6 +7988,7 @@
 
                     const escape = /** 转义正则表达式元字符。 */s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
+                    // 配置符号作为首选分支，后续才回退到 `[token]` 和单字符，避免数学词元被拆散。
                     const symbolPattern = Object.keys(PageConfig.classNameConverterConfig)
                         .map(escape)
                         .join('|');
@@ -8683,6 +8684,7 @@
 
                             this._effV = Math.max(0, rawEffV);
                             this._effP = rawEffP;
+                            // 以“可滚动范围”而非总高度计算比率，保证列表顶部和底部在两套坐标中精确对齐。
                             this.scrollRatio = this.compressed ? this._effV / this._effP : 1;
                         }
                     }
@@ -8888,6 +8890,7 @@
                             this._wrapperSet.add(wrapper);
                         }
 
+                        // contextualFragment 可按当前位置的 HTML 语境解析多个根节点，再统一装入池化包装元素。
                         const frag = document.createRange().createContextualFragment(result);
 
                         wrapper.appendChild(frag);
@@ -11178,6 +11181,7 @@
                     const isAtLeftEdge = (cursorIndex === 0) && !asCursor;
                     const isAtRightEdge = (cursorIndex === len - 1) && !asCursor;
 
+                    // 负步长表示指定方向已到边界，调用方应改为处理光标另一侧的完整词元。
                     if (direction === 'left') {
 
                         return isAtLeftEdge ? -rightStep : leftStep;
@@ -12187,6 +12191,7 @@
 
                     let currentInput = HtmlTools.htmlClassToText(HtmlTools.getClassList(HtmlTools.getHtml('#input'), {ignoreSpace: true}));
 
+                    // 实时预览允许输入尚未完成；去掉末尾连续中缀运算符后再计算最近的有效前缀。
                     let isMiddleFunc = true;
                     while (isMiddleFunc) {
                         const lastFragment = currentInput.slice(-TokenConfig.MAX_TOKEN_LENGTH - 2);
@@ -13668,6 +13673,7 @@
                         expr = HtmlTools.textToHtmlClass(syntaxResult.expr);
                     } catch (e) {
 
+                        // 保留原输入并加错误前缀，后续 DOM 渲染据此显示语法错误而不丢失用户内容。
                         expr = ['_syntax_error_', ...currentInputArray];
                     }
 
