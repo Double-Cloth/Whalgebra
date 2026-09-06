@@ -1363,13 +1363,18 @@
                 /**
                  * 从数值、字符串、同类对象或内部元组创建高精度十进制数。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array|object} x - 输入值；数组格式为 `[power, mantissa, acc?]`。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array|object} x - 要转换为高精度十进制数的值。
+                 *   字符串可使用普通或科学记数法；`number` 会先按其可见十进制值解析；`bigint` 保持整数精度。
+                 *   `BigNumber` 会按目标精度复制；纯实 `ComplexNumber` 取其实部，非零虚部会被拒绝。
+                 *   数组/对象应提供内部 `[power, mantissa, acc?]` 信息，其中尾数必须是整数且指数必须安全可表示。
                  * @param {{
                  *   acc?: number,
                  *   pow?: number
                  * }} [options={}] - 构造选项。
-                 * @param {number} [options.acc=CalcConfig.globalCalcAccuracy] - 有效数字位数。
-                 * @param {number} [options.pow=0] - 额外的十进制指数。
+                 * @param {number} [options.acc=CalcConfig.globalCalcAccuracy] - 结果保留的有效数字位数；必须为正整数，
+                 *   省略时取当前全局计算精度。输入精度更低时不会凭空补充有效信息。
+                 * @param {number} [options.pow=0] - 在解析后的十进制指数上额外增加的安全整数，等价于将输入
+                 *   整体乘以 `10 ** pow`；它不改变 `acc`，常用于构造科学记数法的中间值。
                  * @throws {Error} 输入格式、长度、数值范围或指数无效时抛出。
                  */
                 constructor(x, {acc, pow = 0} = {}) {
@@ -1805,9 +1810,11 @@
 
                 /**
                  * 将 BigNumber 实例转换为其标准的十进制字符串表示形式。
-                 * @param {object} [options={}] - 格式化选项。
-                 * @param {number} [options.acc=this.acc] - 输出字符串的精度（有效数字位数）。默认为实例自身的精度。
-                 * @param {string} [options.mode='auto'] - 输出模式。
+                 * @param {object} [options={}] - 只影响返回字符串的格式化选项，不改变当前不可变实例。
+                 * @param {number} [options.acc=this.acc] - 要显示的正整数有效位数；最多使用实例已有精度，
+                 *   较小值会按有效数字舍入，省略时完整使用 `this.acc`。
+                 * @param {'auto'|'normal'|'scientific'} [options.mode='auto'] - `normal` 强制普通十进制，
+                 *   `scientific` 强制科学记数法，`auto` 根据指数和最大字符串长度选择更紧凑的形式。
                  * - 'auto': 根据 `CalcConfig.AUTOMATIC_SWITCH_LENGTH` 自动选择 'normal' 或 'scientific'。
                  * - 'normal': 标准十进制表示 (例如, "123.45" 或 "0.001")。
                  * - 'scientific': 科学记数法表示 (例如, "1.2345E+2")。
@@ -1899,10 +1906,14 @@
                 /**
                  * 从代数字符串、实数、同类对象或内部数组创建复数。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array|object} x - 输入值；数组可为 `[real, imag]` 或 `[power, mantissa, acc]`。
-                 * @param {object} [options={}] - 构造选项。
-                 * @param {number} [options.acc=CalcConfig.getAccuracy()] - 计算精度。
-                 * @param {number} [options.pow=0] - 整体附加的十进制指数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array|object} x - 要转换的实数或复数。
+                 *   字符串支持代数形式 `a+bi`；二元数组表示 `[real, imag]`，三元数值数组表示
+                 *   `[power, mantissa, acc]`；已有实例按指定精度复制。含歧义或多个虚数单位的字符串会被拒绝。
+                 * @param {object} [options={}] - 构造精度与缩放选项；对象本身不会被修改。
+                 * @param {number} [options.acc=CalcConfig.getAccuracy()] - 实部和虚部共同采用的正整数计算精度；
+                 *   省略时读取当前计算上下文精度，而不是固定的类常量。
+                 * @param {number} [options.pow=0] - 同时施加于实部、虚部的十进制指数偏移，等价于整体乘以
+                 *   `10 ** pow`；必须满足底层 `BigNumber` 的安全指数约束。
                  * @throws {Error} 输入类型或格式无效时抛出。
                  */
                 constructor(x, {acc, pow = 0} = {}) {
@@ -2090,10 +2101,13 @@
 
                 /**
                  * 将 ComplexNumber 实例转换为其标准的字符串表示形式。
-                 * @param {object} [options={}] - 一个包含格式化选项的配置对象。
-                 * @param {number} [options.acc=this.acc] - 输出字符串的精度（有效数字位数）。
-                 * @param {string} [options.printMode='algebra'] - 输出形式 ('algebra', 'polar')。
-                 * @param {string} [options.mode='auto'] - 输出模式 ('auto', 'normal', 'scientific')。
+                 * @param {object} [options={}] - 仅作用于此次字符串转换的选项，不会改变复数的实部、虚部或精度。
+                 * @param {number} [options.acc=this.acc] - 实部、虚部以及极坐标分量共用的正整数有效位数；
+                 *   不能超过实例精度，省略时使用实部与虚部中的较低精度。
+                 * @param {'algebra'|'polar'} [options.printMode='algebra'] - `algebra` 输出 `a+bi`，并省略零分量；
+                 *   `polar` 输出模和主辐角。该选项只选择复数表示法，不选择数值记数法。
+                 * @param {'auto'|'normal'|'scientific'} [options.mode='auto'] - 传给两个 `BigNumber` 分量的记数法；
+                 *   `auto` 可分别为分量选择普通或科学记数法。
                  * @returns {string} - 复数的标准代数形式字符串 (a + bi) 或极坐标形式 (r∠θ)。
                  */
                 toString({acc = this.acc, printMode = CalcConfig.globalPrintMode, mode = 'auto'} = {}) {
@@ -2165,7 +2179,8 @@
                  * (内部辅助方法) 计算一个 BigNumber 或 ComplexNumber 的相反数。
                  *
                  * @private
-                 * @param {BigNumber|ComplexNumber|string|number} x - 需要取反的输入值。
+                 * @param {BigNumber|ComplexNumber|string|number} x - 需要取反的值；`BigNumber` 返回同类型新实例，
+                 *   其余可转换输入统一返回 `ComplexNumber`，传入对象本身不会被修改。
                  * @returns {BigNumber|ComplexNumber} 输入值的相反数。
                  */
                 static _oppositeNumber(x) {
@@ -2187,10 +2202,12 @@
                  * 计算用户定义的 f(x) 或 g(x)，并保留相互引用的上下文。
                  *
                  * @private
-                 * @param {'f'|'g'} token - 要计算的函数名。
-                 * @param {{f: string, g: string}} funcs - 两个函数的表达式。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} unknown - x 的值。
-                 * @param {number} acc - 计算精度。
+                 * @param {'f'|'g'} token - 本次要进入的自定义函数名；用于选择表达式并保留另一函数的引用。
+                 * @param {{f: string, g: string}} funcs - `f`、`g` 的内部表达式字符串；被调用函数可引用另一项，
+                 *   缺失当前 `token` 对应表达式时视为未定义函数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} unknown - 代入表达式中 `[x]` 的值；
+                 *   复数和高精度表示原样进入递归计算上下文。
+                 * @param {number} acc - 递归求值使用的正整数有效位数；沿用外层计算精度，避免嵌套调用降精度。
                  * @returns {ComplexNumber} 函数值。
                  */
                 static _customFunc(token, funcs, unknown, acc) {
@@ -2206,8 +2223,9 @@
                  * 利用周期和对称性将角度归约到 [0, π/2]，同时记录符号。
                  *
                  * @private
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} angle - 原始角度。
-                 * @param {'sin'|'cos'} name - 三角函数类型。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} angle - 以弧度表示的纯实角度；
+                 *   会转换为 `ComplexNumber` 并利用周期归约，非零虚部不适用于此实数快速路径。
+                 * @param {'sin'|'cos'} name - 选择需要保留的象限符号规则；只接受 `sin` 或 `cos`。
                  * @returns {[BigNumber, bigint]} 归约后的角度与符号因子。
                  * @throws {Error} 角度过大而无法保证精度时抛出。
                  */
@@ -2270,7 +2288,8 @@
                 /**
                  * 提取复数的实部。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 可由 `ComplexNumber` 构造的输入；
+                 *   返回值复制其实部并将虚部置零，不修改原实例。
                  * @returns {ComplexNumber} 以纯实数表示的实部。
                  */
                 static re(x) {
@@ -2281,7 +2300,8 @@
                 /**
                  * 提取复数的虚部。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 可由 `ComplexNumber` 构造的输入；
+                 *   返回值把原虚部作为纯实数保存，而不是返回带虚数单位的分量。
                  * @returns {ComplexNumber} 以纯实数表示的虚部。
                  */
                 static im(x) {
@@ -2292,7 +2312,8 @@
                 /**
                  * 计算复数在 (-π, π] 内的辐角，等价于 atan2(im, re)。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 非零实数或复数；结果采用
+                 *   `(-π, π]` 内的主辐角。零值没有唯一辐角，调用方不应依赖其结果。
                  * @returns {ComplexNumber} 以弧度表示的辐角。
                  */
                 static arg(x) {
@@ -2345,8 +2366,10 @@
                 /**
                  * 将极坐标 (r, θ) 转换为笛卡尔坐标下的复数 (x + yi)。
                  * - 计算公式为：r * (cos(θ) + i * sin(θ))。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 极坐标的模长 (r, a non-negative real number)。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 极坐标的辐角 (θ, in radians)。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 极坐标模长 `r`；应为非负实数，
+                 *   其精度参与最终实部、虚部的有效位数计算。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 以弧度表示的辐角 `θ`；应为实数，
+                 *   可超出一个周期，三角函数会自行归约。
                  * @returns {ComplexNumber} 代表转换后笛卡尔坐标的 ComplexNumber 实例。
                  * @example
                  * // r=2, θ=π/3 -> 2 * (cos(π/3) + i*sin(π/3)) -> 1 + i*sqrt(3)
@@ -2495,8 +2518,10 @@
 
                 /**
                  * 计算两个数的商 (a / b)。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被除数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 除数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被除数，可为实数或复数；
+                 *   结果精度由两个操作数的可用精度共同限制。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 非零除数；复数分支通过共轭有理化，
+                 *   实数零和复数零都会在执行除法前被拒绝。
                  * @returns {ComplexNumber} 代表两个数之商的 ComplexNumber 实例。
                  * @throws {Error} 如果除数为零。
                  * @example
@@ -2553,8 +2578,10 @@
                  *
                  * 实数分支提取公共十进制指数，以便在 BigInt 范围内完成运算。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被除数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 模数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被取模值；实数分支精确对齐十进制
+                 *   指数，复数分支按统一定义计算，因此返回值不保证与 JavaScript `%` 的负数符号规则相同。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 非零模数；其符号参与
+                 *   `floor(a / b)`，传入零值会在任何余数计算前抛错。
                  * @returns {ComplexNumber} a mod b。
                  * @throws {Error} b 为零时抛出。
                  */
@@ -2647,8 +2674,10 @@
                  * - 该函数能够处理实数和复数作为底数和指数。
                  * - 核心原理：a^b = exp(b * ln(a))。
                  * - 对于复数 z = r(cosθ + isinθ), z^b = r^b * (cos(bθ) + isin(bθ))。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 底数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 指数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 实数或复数底数；负实数配非整数
+                 *   指数时按复对数主值求幂，零底数仅允许正指数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 实数或复数指数；整数指数优先走
+                 *   精确的快速幂路径，其他情况按 `exp(b * ln(a))` 返回主值。
                  * @returns {ComplexNumber} 代表 a^b 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果出现数学上未定义的情况 (例如 0^0)。
                  * @throws {Error} 如果结果的位数估算值过大，可能导致内存溢出。
@@ -2896,8 +2925,9 @@
 
                 /**
                  * 计算 a 乘以 10 的 b 次方 (a * 10^b)。这常用于处理科学记数法。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 系数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 指数 (exponent)。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被缩放的实数或复数系数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 以 10 为底的缩放指数；必须能
+                 *   修正为纯实整数，否则无法作为内部十进制 `power` 使用。
                  * @returns {ComplexNumber} 代表 a * 10^b 结果的 ComplexNumber 实例。
                  * @example
                  * // 1.23 * 10³ -> 1230
@@ -2915,7 +2945,8 @@
 
                 /**
                  * 计算 x 的平方根 (√x)，并返回主值。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 被开方数；非负实数走牛顿迭代，
+                 *   负实数及一般复数按主辐角返回主平方根，输入零精确返回零。
                  * @returns {ComplexNumber} 代表 √x 结果的 ComplexNumber 实例。
                  */
                 static sqrt(x) {
@@ -2992,7 +3023,8 @@
                 /**
                  * 计算主立方根；实数使用牛顿迭代，复数使用幂运算。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 被开方数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 被开方数；纯实数返回保持实数符号的
+                 *   实立方根，一般复数返回主立方根，二者在负实数上的分支约定不同。
                  * @returns {ComplexNumber} 主立方根。
                  */
                 static cbrt(x) {
@@ -3063,8 +3095,10 @@
                  * 计算 a 的 b 次方根 (ᵇ√a)。
                  * - 该方法通过计算 a 的 1/b 次方来实现，即 `a^(1/b)`。
                  * - 它能够自动处理实数和复数作为底数和根指数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被开方数（radicand）。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 根指数（index）。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被开方数；可为实数或复数，
+                 *   方法只返回由 `a ** (1 / b)` 确定的一个主值，不枚举全部复根。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 非零根指数；可为复数，
+                 *   但零会使倒数不存在。需要全部正整数次根时应使用 `RadicalFunctionTools`。
                  * @returns {ComplexNumber} 代表 a 的 b 次方根主值的结果。
                  * @example
                  * // 64 的 3 次方根 -> 4
@@ -3083,7 +3117,8 @@
 
                 /**
                  * 计算 e 的 x 次方 (e^x)。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 指数，可以是实数或复数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数指数；实部控制模长、
+                 *   虚部控制旋转。过大的实部可能触发结果规模保护，迭代精度取自输入计算上下文。
                  * @returns {ComplexNumber} 代表 e^x 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果泰勒级数未能收敛。
                  */
@@ -3160,7 +3195,8 @@
 
                 /**
                  * 计算 x 的自然对数 (ln(x))。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值，可以是实数或复数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 非零实数或复数；正实数返回实对数，
+                 *   负实数与一般复数按主辐角返回主值，零因对数发散而抛错。
                  * @returns {ComplexNumber} 代表 ln(x) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果输入为 0，或者内部计算未能收敛。
                  */
@@ -3264,8 +3300,10 @@
                  * 计算以 a 为底，b 的对数 (logₐ(b))。
                  * - 该方法基于对数换底公式：logₐ(b) = ln(b) / ln(a)。
                  * - 它能够自动处理实数和复数作为底数和真数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 对数的底数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 对数的真数。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 非零且不为一的对数底；允许复数，
+                 *   因此结果遵循主复对数的换底分支，而不局限于实数对数域。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 非零真数；允许负实数或复数，
+                 *   这类输入返回复数主值，零会在计算 `ln(b)` 时抛错。
                  * @returns {ComplexNumber} 代表 logₐ(b) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果 a=1，或者 a,b 的某些组合导致 ln(a) 或 ln(b) 未定义（例如 ln(0)）。
                  * @example
@@ -4086,12 +4124,19 @@
                 /**
                  * 使用调度场算法解析并计算高精度实数或复数表达式。
                  *
-                 * @param {string|number|BigInt|ComplexNumber|BigNumber} expr - 数学表达式。
-                 * @param {object} [options={}] - 解析选项。
-                 * @param {string|number|BigInt|ComplexNumber|BigNumber} [options.unknown] - x 的值。
-                 * @param {string} [options.f] - f(x) 表达式。
-                 * @param {string} [options.g] - g(x) 表达式。
-                 * @param {'calc'|'syntaxCheck'} [options.mode='calc'] - 计算或语法检查模式。
+                 * @param {string|number|bigint|ComplexNumber|BigNumber} expr - 要解析的内部数学表达式；非字符串数值
+                 *   会先转换为等价词元。表达式可包含 `[x]`、`[f]`、`[g]` 以及 `TokenConfig` 注册的函数。
+                 * @param {object} [options={}] - 本次解析上下文；仅在递归求值中传递，不修改全局函数定义。
+                 * @param {string|number|bigint|ComplexNumber|BigNumber} [options.unknown] - 代入 `[x]` 的值；
+                 *   表达式实际引用 `[x]` 而该项缺失时会按未定义变量处理。
+                 * @param {string} [options.f] - `[f]` 的函数体，可包含 `[x]` 并调用 `[g]`；只提供 `g` 时
+                 *   `[f]` 仍保持未定义。
+                 * @param {string} [options.g] - `[g]` 的函数体，可包含 `[x]` 并调用 `[f]`；与 `f` 一同传入时
+                 *   支持有限的相互引用，由解析器负责检测非法递归路径。
+                 * @param {'calc'|'syntaxCheck'} [options.mode='calc'] - `calc` 执行运算并返回数值；`syntaxCheck`
+                 *   只验证和规范化表达式，不应依赖其数值结果。
+                 * @param {number} [options.acc=CalcConfig.globalCalcAccuracy] - 本次解析及所有嵌套运算使用的正整数
+                 *   有效位数；不会改写 `CalcConfig.globalCalcAccuracy`。
                  * @returns {[ComplexNumber, string]} 计算结果和规范化表达式。
                  * @throws {Error} 语法、词元或计算无效时抛出。
                  */
@@ -4682,7 +4727,8 @@
                  * 计算一个数值列表的总和与平均值。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 需要计算的数值数组。数组中的元素可以是任何可以被 ComplexNumber 构造函数接受的类型。
+                 * @param {Array<ComplexNumber|string|number>} list - 非空数值样本；每项会转换为新的
+                 *   `ComplexNumber` 后累加，原数组及其中的实例均不修改。空数组没有可定义的平均值。
                  * @returns {{sum: ComplexNumber, average: ComplexNumber}} 一个包含总和 (`sum`) 与平均值 (`average`) 的对象，两者均为 ComplexNumber 实例。
                  */
                 static _averageAndSum(list) {
@@ -4701,8 +4747,10 @@
                  * 总体方差为 `Σ(xᵢ-x̄)²/n`，样本方差使用无偏估计 `Σ(xᵢ-x̄)²/(n-1)`。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 数据列表。
-                 * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 可复用的总和与均值。
+                 * @param {Array<ComplexNumber|string|number>} list - 非空总体样本；样本方差要求至少两个元素，
+                 *   否则其返回位置使用 `error`，复数按当前代数平方规则参与离差计算。
+                 * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 与同一 `list` 对应的
+                 *   预计算结果；传 `null` 时内部重新计算。调用方必须保证缓存未过期且没有来自另一数据集。
                  * @returns {[ComplexNumber, ComplexNumber|string]} 总体方差与样本方差。
                  */
                 static _variance(list, averageAndSum = null) {
@@ -4724,11 +4772,13 @@
                  * 两者共享离差积和 `Σ(xᵢ-x̄)(yᵢ-ȳ)`，分母分别为 `n` 和 `n-1`。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 第一组数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 第二组数据。
-                 * @param {object} [options={}] - 可复用的均值。
-                 * @param {ComplexNumber} [options.averageA=null] - listA 的均值。
-                 * @param {ComplexNumber} [options.averageB=null] - listB 的均值。
+                 * @param {Array<ComplexNumber|string|number>} listA - 第一维样本；必须与 `listB` 等长且非空。
+                 * @param {Array<ComplexNumber|string|number>} listB - 第二维样本；相同索引与 `listA` 组成一个观测对。
+                 * @param {object} [options={}] - 可选的均值缓存，用于避免统计汇总阶段重复遍历数据。
+                 * @param {ComplexNumber|null} [options.averageA=null] - 与当前 `listA` 完全对应的算术平均值；
+                 *   `null` 表示内部计算，数值零不是缺省标记。
+                 * @param {ComplexNumber|null} [options.averageB=null] - 与当前 `listB` 完全对应的算术平均值；
+                 *   若只提供一个缓存，另一个仍会独立计算。
                  * @returns {[ComplexNumber, ComplexNumber|string]} 总体协方差与样本协方差。
                  */
                 static _covariance(listA, listB, {averageA = null, averageB = null} = {}) {
@@ -4756,12 +4806,15 @@
                  * 使用 `r = Cov(X,Y) / sqrt(Var(X)Var(Y))`；任一方差为零时结果不可定义。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 第一组数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 第二组数据。
-                 * @param {object} [options={}] - 可复用的统计量。
-                 * @param {Array<ComplexNumber|string>} [options.varianceA=null] - listA 的方差。
-                 * @param {Array<ComplexNumber|string>} [options.varianceB=null] - listB 的方差。
-                 * @param {Array<ComplexNumber|string>} [options.covariance=null] - 两组数据的协方差。
+                 * @param {Array<ComplexNumber|string|number>} listA - 第一组等长配对样本；零方差时相关系数不可定义。
+                 * @param {Array<ComplexNumber|string|number>} listB - 第二组等长配对样本；元素顺序必须与 `listA` 对齐。
+                 * @param {object} [options={}] - 可复用的统计量缓存；各数组均采用 `[总体值, 样本值]` 顺序。
+                 * @param {Array<ComplexNumber|string>|null} [options.varianceA=null] - `listA` 的总体/样本方差；
+                 *   `null` 时从原始列表计算，缓存中的 `error` 会自然传播。
+                 * @param {Array<ComplexNumber|string>|null} [options.varianceB=null] - `listB` 的总体/样本方差，
+                 *   必须与 `varianceA` 使用同一种总体或样本口径。
+                 * @param {Array<ComplexNumber|string>|null} [options.covariance=null] - 两组数据的总体/样本协方差；
+                 *   传入缓存可避免第三次离差遍历，但调用方负责保证它与两个列表匹配。
                  * @returns {ComplexNumber|string} 相关系数；无法计算时为 `error`。
                  */
                 static _correlationCoefficient(listA, listB, {
@@ -4789,8 +4842,9 @@
                  * 点积的计算方式为对应元素相乘后再求和。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 第一个向量。
-                 * @param {Array<ComplexNumber|string|number>} listB - 第二个向量。假定其长度与 listA 相同。
+                 * @param {Array<ComplexNumber|string|number>} listA - 第一个向量；元素按索引与 `listB` 配对。
+                 * @param {Array<ComplexNumber|string|number>} listB - 第二个等长向量；本私有方法不补零也不做
+                 *   长度校验，调用方必须先保证长度一致。
                  * @returns {ComplexNumber} 两个向量的点积，以 ComplexNumber 实例形式返回。
                  */
                 static _dotProduct(listA, listB) {
@@ -4806,8 +4860,9 @@
                  * 此方法的功能类似于数组的 `map` 方法，但确保结果是 ComplexNumber 实例的数组。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 需要进行变换的数值数组。
-                 * @param {function(any): ComplexNumber} func - 一个回调函数，它接收列表中的单个元素作为参数，并返回一个变换后的 ComplexNumber 实例。
+                 * @param {Array<ComplexNumber|string|number>} list - 要遍历的源数组；保持元素顺序且不原地修改。
+                 * @param {function(ComplexNumber|string|number, number, Array): ComplexNumber} func - 同步变换函数；
+                 *   按 `Array#map` 的 `(item, index, list)` 语义调用，返回值应能作为 `ComplexNumber` 使用。
                  * @returns {Array<ComplexNumber>} 一个包含变换后结果的新数组，其中每个元素都是 ComplexNumber 实例。
                  */
                 static _changeInner(list, func) {
@@ -4892,8 +4947,10 @@
                  * 使用带部分主元的高斯-若尔当消元法求解 Ax=b。
                  *
                  * @private
-                 * @param {Array<Array<ComplexNumber|string|number>>} coefficients - n×n 系数矩阵。
-                 * @param {Array<ComplexNumber|string|number>} constants - 常数向量。
+                 * @param {Array<Array<ComplexNumber|string|number>>} coefficients - 方程左侧的 `n × n` 系数矩阵；
+                 *   每行必须恰有 `n` 项。算法会构造增广矩阵副本，不会原地消元传入数组。
+                 * @param {Array<ComplexNumber|string|number>} constants - 方程右侧的长度为 `n` 的常数向量；
+                 *   与系数矩阵行按索引对应，长度不符或主元为零表示无法得到唯一解。
                  * @returns {Array<ComplexNumber>} 唯一解向量。
                  * @throws {Error} 矩阵不是方阵或不存在唯一解时抛出。
                  */
@@ -4964,9 +5021,10 @@
                  * 构造并求解正规方程，得到指定阶数的最小二乘多项式。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 自变量数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 因变量数据。
-                 * @param {number} power - 拟合阶数。
+                 * @param {Array<ComplexNumber|string|number>} listA - 自变量样本 `xᵢ`；与 `listB` 等长，
+                 *   至少需要 `power + 1` 个观测点才能建立满秩正规方程。
+                 * @param {Array<ComplexNumber|string|number>} listB - 与 `xᵢ` 同索引的因变量样本 `yᵢ`。
+                 * @param {number} power - 非负整数多项式阶数；结果包含 `power + 1` 个从常数项到最高次项的系数。
                  * @returns {Array<ComplexNumber>} 按升幂排列的系数。
                  * @throws {Error} 数据不足或两组数据长度不一致时抛出。
                  */
@@ -5008,9 +5066,10 @@
                  * 按 `1 - SS_res / SS_tot` 计算回归模型的决定系数 R²。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 自变量数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 实际因变量数据。
-                 * @param {function(ComplexNumber|string|number): ComplexNumber} func - 预测函数。
+                 * @param {Array<ComplexNumber|string|number>} listA - 传入预测函数的自变量样本。
+                 * @param {Array<ComplexNumber|string|number>} listB - 与 `listA` 等长的真实观测值，用于计算残差平方和。
+                 * @param {function(ComplexNumber|string|number): ComplexNumber} func - 同步预测函数；对每个 `xᵢ`
+                 *   返回对应 `ŷᵢ`。常量数据导致 `SS_tot = 0` 时，R² 不可定义。
                  * @returns {ComplexNumber} 决定系数。
                  */
                 static _calcR2(listA, listB, func) {
@@ -5038,9 +5097,11 @@
                  * 汇总列表的均值、总和、平方和、方差及极值。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 数据列表。
-                 * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 可复用的总和与均值。
-                 * @param {Array<ComplexNumber|string>|null} [varianceList] - 可复用的方差。
+                 * @param {Array<ComplexNumber|string|number>} list - 要汇总的非空样本；返回结果中的极值按实部比较。
+                 * @param {{sum: ComplexNumber, average: ComplexNumber}|null} [averageAndSum] - 同一列表的总和与均值缓存；
+                 *   `null` 时计算，提供时直接信任并复用。
+                 * @param {Array<ComplexNumber|string>|null} [varianceList] - 同一列表的 `[总体方差, 样本方差]`
+                 *   缓存；`null` 时基于上面的均值缓存计算。
                  * @returns {{statisticsResult: object, squareList: Array<ComplexNumber>}} 统计结果与平方值列表。
                  */
                 static _getStatisticsInfo(list, {averageAndSum = null, varianceList = null} = {}) {
@@ -5073,11 +5134,12 @@
                  * 求解指定回归模型的参数和决定系数；失败项以 `error` 表示。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} listA - 自变量数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 可经过变换的因变量数据。
-                 * @param {number} power - 拟合阶数。
-                 * @param {Array<ComplexNumber|string|number>} originalListB - 计算 R² 使用的原始因变量。
-                 * @param {function(ComplexNumber|string|number, Array<ComplexNumber|string|number>): ComplexNumber} func - 由参数计算预测值的模型函数。
+                 * @param {Array<ComplexNumber|string|number>} listA - 送入回归求解器的自变量；可为原值或模型要求的变换值。
+                 * @param {Array<ComplexNumber|string|number>} listB - 送入正规方程的因变量；对数/指数模型中可能已变换。
+                 * @param {number} power - 传给多项式回归的非负整数阶数，也决定失败时生成的参数占位数。
+                 * @param {Array<ComplexNumber|string|number>} originalListB - 未变换的实际因变量；仅用于在原始量纲上计算 R²。
+                 * @param {function(ComplexNumber|string|number, Array<ComplexNumber|string|number>): ComplexNumber} func -
+                 *   模型预测函数，参数依次为原始 `x` 和已求得的系数数组；返回值用于和 `originalListB` 比较。
                  * @returns {{parameter: Array<ComplexNumber|string>, R2: ComplexNumber|string}} 模型参数和 R²。
                  */
                 static _getRegressionInfo(listA, listB, power, originalListB, func) {
@@ -5130,8 +5192,10 @@
                 /**
                  * 计算两组数据的统计指标，并比较多种回归模型的拟合度。
                  *
-                 * @param {Array<ComplexNumber|string|number>} listA - 自变量数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 因变量数据。
+                 * @param {Array<ComplexNumber|string|number>} listA - 自变量样本；必须非空、只含实数并与 `listB`
+                 *   等长。零值或负值会使部分对数/幂回归模型不可用，但不一定使全部统计失败。
+                 * @param {Array<ComplexNumber|string|number>} listB - 因变量样本；必须非空且只含实数，元素按索引
+                 *   与 `listA` 配对。样本数不足时高阶模型以 `error` 占位。
                  * @returns {object} 描述性统计、相关性、各回归模型及最佳模型。
                  * @throws {Error} 数据长度不一致、包含复数或不足以拟合时抛出。
                  */
@@ -5384,15 +5448,16 @@
                  * 注意：此排序主要基于数值的实部进行比较。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 需要排序的数组。该数组将被直接修改。
+                 * @param {Array<ComplexNumber|string|number>} list - 按元素实部升序排列的数组；此方法直接调用
+                 *   `Array#sort` 修改并返回同一个数组引用，复数虚部不参与次序比较。
                  * @returns {Array} 返回排序后的数组。
                  */
                 static _sort(list) {
                     /**
                      * 按实部比较两个数值。
                      *
-                     * @param {*} a - 左值。
-                     * @param {*} b - 右值。
+                      * @param {*} a - 当前比较的左值；必须能由 `ComplexNumber` 构造。
+                      * @param {*} b - 当前比较的右值；只比较与 `a` 的实部差，虚部差异视为相等。
                      * @returns {-1|0|1} 排序结果。
                      */
                     list.sort((a, b) => {
@@ -5413,8 +5478,10 @@
                  * 使用霍纳法计算多项式在 x 处的值。
                  *
                  * @private
-                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的系数。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber} x - 自变量值。
+                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 非空、按最高次项到常数项
+                 *   排列的系数；允许零系数且不要求先去除前导零，方法不会改变该数组。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber} x - 代入多项式的实数或复数自变量；
+                 *   霍纳迭代沿用其高精度表示，避免显式构造各次幂。
                  * @returns {ComplexNumber} 多项式值。
                  */
                 static _getPowerFunctionValue(list, x) {
@@ -5435,7 +5502,8 @@
                  * 按幂法则计算多项式导数。
                  *
                  * @private
-                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的系数。
+                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的 `n + 1`
+                 *   个系数；常数多项式返回空导数系数数组，原数组不会被修改。
                  * @returns {Array<ComplexNumber>} 导数多项式的系数。
                  */
                 static _differentiate(list) {
@@ -5451,7 +5519,8 @@
                  * 求解一次方程 ax + b = 0。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 包含两个系数 [a, b] 的数组。
+                 * @param {Array<ComplexNumber|string|number>} list - 严格按 `[a, b]` 传入 `ax + b = 0` 的系数；
+                 *   调用方应先消除前导零，`a = 0` 不属于一次方程。
                  * @returns {Array<ComplexNumber>} 一个包含方程唯一解的数组。
                  */
                 static _solveLinear(list) {
@@ -5465,7 +5534,8 @@
                  * 使用求根公式求解二次方程。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 系数 `[a, b, c]`。
+                 * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c]` 传入的系数；
+                 *   `a` 应非零。返回根会去除精度噪声，共轭复根的标记约定供上层分析使用。
                  * @returns {Array<ComplexNumber|null>} 根；共轭复根数组末尾附加 `null`。
                  */
                 static _solveQuadratic(list) {
@@ -5511,7 +5581,8 @@
                  * 使用盛金公式求解三次方程。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 系数 `[a, b, c, d]`。
+                 * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c, d]` 传入的系数；
+                 *   首项 `a` 应非零。重根会按内部近零判定合并，输入数组不被改写。
                  * @returns {Array<ComplexNumber|null>} 去重后的根；包含共轭复根时末尾附加 `null`。
                  */
                 static _solveCubic(list) {
@@ -5645,7 +5716,8 @@
                  * 该方法通过引入一个预解三次方程来降次，能够处理所有情况，包括四个实数根、两对共轭复数根、一对共轭复数根和两个实数根，以及各种重根的情况。
                  *
                  * @private
-                 * @param {Array<ComplexNumber|string|number>} list - 包含五个系数 [a, b, c, d, e] 的数组。这些系数可以是数字或与 MathPlus 库兼容的对象。
+                 * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c, d, e]` 传入的四次
+                 *   方程系数；`a` 必须非零，每项均需可转换为 `ComplexNumber`。方法返回解析根但不修改系数数组。
                  * @returns {Array<ComplexNumber>} 一个包含方程四个根的数组。根是 ComplexNumber 的实例。
                  */
                 static _solveQuartic(list) {
@@ -5994,7 +6066,9 @@
                 /**
                  * 分析四次及以下实系数多项式的区间、极值、拐点和根。
                  *
-                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的系数。
+                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 最高五项、按降幂排列的
+                 *   实系数 `[a, b, c, d, e]`；允许省略高次项但至少应含常数项。前导零会自动降阶，
+                 *   任一非零虚部都会拒绝整次分析，输入数组不会被排序或改写。
                  * @returns {object} 方程、值域、单调区间、极值点、凹凸区间、拐点和根。
                  * @throws {Error} 系数包含复数时抛出。
                  */
@@ -6186,8 +6260,10 @@
                  * 根据极坐标形式生成复数 n 次方根的通式和求值函数。
                  *
                  * @private
-                 * @param {ComplexNumber|string|number} z - 被开方数。
-                 * @param {ComplexNumber|string|number} n - 根指数。
+                 * @param {ComplexNumber|string|number} z - 任意实数或复数被开方数；转换后使用它的模和主辐角
+                 *   构造根族，零值会自然得到零模长。
+                 * @param {ComplexNumber|string|number} n - 已由上层验证的正整数根指数；该私有方法依赖此约束，
+                 *   用它计算 `1 / n`、根间角距及 `k` 的有效范围。
                  * @returns {[string, function(ComplexNumber|string|number): ComplexNumber]} 通式字符串与按 k 求根的函数。
                  */
                 static _generalFormula(z, n) {
@@ -6228,8 +6304,10 @@
                 /**
                  * 计算复数的 n 次方根通式、索引范围和有限数量的数值解。
                  *
-                 * @param {ComplexNumber|string|number} z - 被开方数。
-                 * @param {ComplexNumber|string|number} n - 正整数根指数。
+                 * @param {ComplexNumber|string|number} z - 可解析为实数或复数的被开方数；结果对象同时保留
+                 *   规范化后的 `z` 字符串、通式以及按 `k` 排列的数值根。
+                 * @param {ComplexNumber|string|number} n - 必须能在精度修正后成为严格正整数；`n` 个不同根中
+                 *   最多展示 `CalcConfig.RADICAL_FUNCTION_MAX_SHOW_RESULTS` 个，其余通过 `overflow` 标记。
                  * @returns {{z:string, n:string, formula:string, kRange:[string, string], numericalResults:Array<string>, overflow:boolean}} 根分析结果。
                  * @throws {Error} n 不是正整数时抛出。
                  */
@@ -6279,11 +6357,16 @@
                 /**
                  * 在实数闭区间内生成可能相互引用的 f(x) 和 g(x) 值列表。
                  *
-                 * @param {string} f - f(x) 表达式，可调用 g(x)。
-                 * @param {string} g - g(x) 表达式，可调用 f(x)。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} start - 区间起点。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 正实数步长。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 区间终点。
+                 * @param {string} f - 使用内部词元书写的 `f(x)` 函数体；可通过 `[g]` 调用 `g`，单点求值
+                 *   失败只在 `f` 结果的同一位置写入 `error`。
+                 * @param {string} g - 使用内部词元书写的 `g(x)` 函数体；可通过 `[f]` 调用 `f`，其失败位置
+                 *   与 `f` 独立记录。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} start - 闭区间实数起点；表达式求值、
+                 *   近零修正后不得带非零虚部，且不得大于 `end`。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格大于零的纯实步长；决定显示点
+                 *   间距。达到最大展示数量时停止继续分配，并在结果尾部放置省略标记。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 闭区间实数终点；仅计算按步长实际
+                 *   到达且不大于它的点，不会为了包含终点而改变最后一步。
                  * @returns {{varList: Array<string>, f: Array<string>, g: Array<string>}} 自变量及两个函数的值列表；计算失败的位置为 `error`。
                  * @throws {Error} 边界或步长不是有效实数时抛出。
                  */
@@ -6356,15 +6439,21 @@
                 /**
                  * 使用独立的计算与输出精度计算表达式；这些选项只作用于本次调用。
                  *
-                 * @param {string} expr - 数学表达式。
-                 * @param {object} [options={}] - 单次计算选项。
-                 * @param {'algebra'|'polar'} [options.printMode=CalcConfig.globalPrintMode] - 复数输出形式。
-                 * @param {number} [options.calcAcc=CalcConfig.globalCalcAccuracy] - 计算精度。
-                 * @param {number} [options.outputAcc=CalcConfig.outputAccuracy] - 输出精度。
-                 * @param {'calc'|'syntaxCheck'} [options.calcMode='calc'] - 计算或语法检查模式。
-                 * @param {'output'|'mid'} [options.outputMode='output'] - 格式化或内部值输出模式。
-                 * @param {string} [options.f] - f(x) 表达式。
-                 * @param {string} [options.g] - g(x) 表达式。
+                 * @param {string} expr - 使用内部数学词元书写的表达式；规范化后的表达式会与结果一并返回。
+                 * @param {object} [options={}] - 只覆盖本次调用的计算、格式化和自定义函数上下文；不会修改
+                 *   `CalcConfig`，适合并发 Worker 任务使用。
+                 * @param {'algebra'|'polar'} [options.printMode=CalcConfig.globalPrintMode] - 最终字符串中的复数表示法；
+                 *   `outputMode='mid'` 返回内部值时不进行这一步格式化。
+                 * @param {number} [options.calcAcc=CalcConfig.globalCalcAccuracy] - 本次解析和中间运算使用的正整数
+                 *   有效位数；应不超过配置允许的计算上限。
+                 * @param {number} [options.outputAcc=CalcConfig.outputAccuracy] - 最终显示精度；支持绝对位数、
+                 *   `(0, 1)` 比例以及非正的“保持计算精度”语义。
+                 * @param {'calc'|'syntaxCheck'} [options.calcMode='calc'] - `calc` 计算表达式，`syntaxCheck` 仅执行
+                 *   词法、语法和规范化流程，用于输入校验。
+                 * @param {'output'|'mid'} [options.outputMode='output'] - `output` 返回格式化字符串；`mid` 返回
+                 *   可供后续高精度运算使用的内部结果，调用方不可假定二者类型相同。
+                 * @param {string} [options.f] - 可供表达式 `[f]` 调用的函数体；可引用 `[x]` 和 `[g]`。
+                 * @param {string} [options.g] - 可供表达式 `[g]` 调用的函数体；可引用 `[x]` 和 `[f]`。
                  * @returns {{result: string|Array, expr: string}} 结果及规范化表达式。
                  */
                 static exec(expr, {
