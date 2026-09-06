@@ -7249,6 +7249,7 @@
                 /**
                  * 异步调用已注册的 Worker 函数。
                  *
+                 * @template T
                  * @param {string} functionName - `config.callableFunctions` 中注册的精确键名；名称在发送前校验，
                  *   不允许借此访问 Worker 全局作用域中的其他函数。
                  * @param {object} [options={}] - 单次任务的消息、所有权转移和截止时间配置；不会改变后续任务。
@@ -7257,7 +7258,8 @@
                  * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象；发送后主线程中的对应资源会被分离。
                  * @param {number} [options.timeout=0] - 从消息成功发出起计算的有限毫秒数；正数到期后拒绝
                  *   Promise 并通知 Worker 取消该任务，`0` 或负数表示不建立计时器。
-                 * @returns {Promise<any>} Worker 函数的返回值。
+                 * @returns {Promise<T>} 以目标函数的可结构化克隆返回值兑现；Worker 抛出的错误会重建
+                 *   `name`、`message`、`stack` 后拒绝，主动取消和超时分别使用可区分的错误名称。
                  * @throws {Error} Worker 不可用或选项无效时抛出。
                  */
                 exec(functionName, {args = [], transfer = [], timeout = 0} = {}) {
@@ -7452,10 +7454,12 @@
                  * 分发 Worker 任务，并在意外失败后恢复 Worker 状态。
                  *
                  * @private
+                 * @template T
                  * @param {string} funcName - 数学 Worker 已注册的公开函数名；意外崩溃重启后会以同一名称重试。
                  * @param {Array} args - 可结构化克隆的位置参数；本方法会整体传给 `SyncWorker.exec`，不会改动
                  *   数组内容。每次分发统一使用 `_WORKER_TIMEOUT` 作为最长执行时间。
-                 * @returns {Promise<any>} 任务结果。
+                 * @returns {Promise<T>} 目标 Worker 方法的原始结果；仅 Worker 意外终止类故障会触发重启，
+                 *   业务计算错误、取消和超时保持原拒绝原因，不被包装成成功值。
                  */
                 static async _dispatch(funcName, args = []) {
                     try {
@@ -7540,7 +7544,7 @@
                  *
                  * @param {number} [acc] - 1 到 Worker 支持上限之间的正整数有效位数；省略时由 Worker 端恢复
                  *   预设计算精度。设置会保留到 Worker 重启后的状态恢复流程中。
-                 * @returns {Promise<number>} 生效后的精度。
+                 * @returns {Promise<number>} Worker 校验后实际保存的正整数计算精度；省略参数时返回预设值。
                  */
                 static setCalcAccuracy(acc) {
                     return this._dispatch('setCalcAccuracy', [acc]);
@@ -7549,7 +7553,7 @@
                 /**
                  * 获取 Worker 的默认计算精度。
                  *
-                 * @returns {Promise<number>} 当前计算精度。
+                 * @returns {Promise<number>} Worker 当前上下文中的正整数有效位数，不读取主线程缓存。
                  */
                 static getCalcAccuracy() {
                     return this._dispatch('getCalcAccuracy');
@@ -7560,7 +7564,7 @@
                  *
                  * @param {number} [acc] - 输出精度策略：大于等于 1 表示绝对有效位数，`(0, 1)` 表示相对
                  *   计算精度的比例，非正值表示保留计算精度；省略时由 Worker 端采用其预设值。
-                 * @returns {Promise<number>} 生效后的输出精度。
+                 * @returns {Promise<number>} Worker 规范化并保存的输出精度策略值；绝对位数可能受计算精度限制。
                  */
                 static setOutputAccuracy(acc) {
                     return this._dispatch('setOutputAccuracy', [acc]);
@@ -7569,7 +7573,7 @@
                 /**
                  * 获取 Worker 的默认输出精度。
                  *
-                 * @returns {Promise<number>} 当前输出精度。
+                 * @returns {Promise<number>} Worker 当前输出精度策略的原始数值，可能是绝对位数、比例或非正值。
                  */
                 static getOutputAccuracy() {
                     return this._dispatch('getOutputAccuracy');
@@ -7580,7 +7584,7 @@
                  *
                  * @param {'algebra'|'polar'} mode - 后续格式化任务采用的复数形式；`algebra` 输出实部/虚部，
                  *   `polar` 输出模/辐角。无效值由 Worker 的 `CalcConfig` 校验并拒绝。
-                 * @returns {Promise<string>} 生效后的输出模式。
+                 * @returns {Promise<'algebra'|'polar'>} Worker 校验后实际保存的复数输出模式。
                  */
                 static setPrintMode(mode) {
                     return this._dispatch('setPrintMode', [mode]);
@@ -7589,7 +7593,7 @@
                 /**
                  * 获取 Worker 的复数输出模式。
                  *
-                 * @returns {Promise<string>} 当前输出模式。
+                 * @returns {Promise<'algebra'|'polar'>} Worker 当前复数输出模式，不读取主线程缓存。
                  */
                 static getPrintMode() {
                     return this._dispatch('getPrintMode');
@@ -7600,7 +7604,8 @@
                  *
                  * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 最多五个、按降幂排列的
                  *   实系数；参数通过结构化克隆传入 Worker，调用期间不会修改主线程数组。
-                 * @returns {Promise<object>} 多项式分析结果。
+                 * @returns {Promise<PowerFunctionAnalysisResult>} 与同步分析器完全同构的结果；区间、点和根均已
+                 *   格式化为字符串，哨兵值的含义见 `PowerFunctionAnalysisResult`。
                  */
                 static powerFunctionAnalysis(list) {
                     return this._dispatch('powerFunctionAnalysis', [list]);
@@ -7613,7 +7618,8 @@
                  *   相同索引组成一个观测点。
                  * @param {Array<ComplexNumber|string|number>} listB - 非空实数因变量样本；样本数量决定可拟合的
                  *   回归阶数，传输后主线程中的数组仍保持可用。
-                 * @returns {Promise<object>} 统计与回归结果。
+                 * @returns {Promise<StatisticsAnalysisResult>} 与同步统计器完全同构的固定字段对象；所有七种
+                 *   回归模型即使不可计算也保留各自的 `RegressionModelResult` 占位结构。
                  */
                 static statisticsCalc(listA, listB) {
                     return this._dispatch('statisticsCalc', [listA, listB]);
@@ -7625,7 +7631,8 @@
                  * @param {ComplexNumber|string|number|bigint|BigNumber|Array} z - 任意可解析的实数或复数被开方数。
                  * @param {ComplexNumber|string|number|bigint|BigNumber|Array} n - 经精度修正后必须为纯实正整数；
                  *   过大的 `n` 仍计算通式，但数值解只返回配置允许的前若干项。
-                 * @returns {Promise<object>} 通项公式、索引范围和数值解。
+                 * @returns {Promise<{z:string,n:string,formula:string,kRange:[string,string],numericalResults:Array<string>,overflow:boolean}>}
+                 *   规范化输入、含 `[k]` 的根通式、完整序号范围、受展示上限约束的数值根以及截断标记。
                  */
                 static radicalFunctionAnalysis(z, n) {
                     return this._dispatch('radicalFunctionAnalysis', [z, n]);
@@ -7639,7 +7646,8 @@
                  * @param {string|number|BigNumber|ComplexNumber|Array} start - 纯实闭区间起点，必须不大于 `end`。
                  * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格为正的纯实增量；不会为命中终点而调整。
                  * @param {string|number|BigNumber|ComplexNumber|Array} end - 纯实闭区间终点；结果数超过上限时截断并标记省略。
-                 * @returns {Promise<object>} 自变量及两个函数的值列表。
+                 * @returns {Promise<{varList:Array<string>,f:Array<string>,g:Array<string>}>} 三个索引对齐的数组；
+                 *   单点错误和超出展示上限时使用的尾部哨兵与同步 `FuncValueListTools.valueList` 一致。
                  */
                 static valueList(f, g, start, step, end) {
                     return this._dispatch('valueList', [f, g, start, step, end]);
@@ -7657,7 +7665,8 @@
                  *   计算的内部表示；后者的结果类型不能按普通字符串消费。
                  * @param {string} [options.f] - 本任务中 `[f]` 对应的函数体，可引用 `[x]`、`[g]`。
                  * @param {string} [options.g] - 本任务中 `[g]` 对应的函数体，可引用 `[x]`、`[f]`。
-                 * @returns {Promise<{result: string|Array, expr: string}>} 结果及规范化表达式。
+                 * @returns {Promise<{result:string|[[number,bigint,number],[number,bigint,number]],expr:string}>}
+                 *   `result` 的形态由 `outputMode` 决定：显示字符串或复数内部二元组；`expr` 始终为规范化表达式。
                  */
                 static exec(expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) {
                     return this._dispatch('exec', [expr, {calcAcc, outputAcc, calcMode, outputMode, f, g}]);
