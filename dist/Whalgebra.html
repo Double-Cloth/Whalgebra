@@ -4673,6 +4673,7 @@
 
                 /**
                  * 计算列表的总体方差和样本方差。
+                 * 总体方差为 `Σ(xᵢ-x̄)²/n`，样本方差使用无偏估计 `Σ(xᵢ-x̄)²/(n-1)`。
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 数据列表。
@@ -4695,6 +4696,7 @@
 
                 /**
                  * 计算两个列表的总体协方差和样本协方差。
+                 * 两者共享离差积和 `Σ(xᵢ-x̄)(yᵢ-ȳ)`，分母分别为 `n` 和 `n-1`。
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} listA - 第一组数据。
@@ -4726,6 +4728,7 @@
 
                 /**
                  * 计算两个列表的皮尔逊相关系数。
+                 * 使用 `r = Cov(X,Y) / sqrt(Var(X)Var(Y))`；任一方差为零时结果不可定义。
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} listA - 第一组数据。
