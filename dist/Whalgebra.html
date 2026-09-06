@@ -6414,6 +6414,7 @@
 
                 /**
                  * 下一个任务 ID。
+                 * 使用 BigInt 避免长时间运行后超过 Number 安全整数范围而复用 ID。
                  * @type {bigint}
                  * @private
                  */
@@ -6524,6 +6525,7 @@
                      * @param {MessageEvent} event - 包含任务 ID、结果或错误的消息事件。
                      */
                     worker.onmessage = (event) => {
+                        // 重启后旧 Worker 仍可能排出迟到消息；实例校验防止它污染新 Worker 的任务队列。
                         if (this._worker !== worker) {
                             return;
                         }
@@ -6689,6 +6691,7 @@
                                 const props = [];
                                 for (const key of Object.keys(value)) {
                                     const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                                    // 只读取数据描述符，避免序列化过程意外执行 getter 及其副作用。
                                     if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
                                         throw new TypeError(`Accessor property '${key}' is not supported.`);
                                     }
@@ -6941,6 +6944,7 @@
 
                         this._taskQueue.delete(taskId);
                         if (this._worker) {
+                            // 取消是协作式的：主线程立即拒绝 Promise，Worker 只能在重新获得事件循环后读取取消消息。
                             try {
                                 this._worker.postMessage({type: 'cancel', id: taskId});
                             } catch {
@@ -6966,7 +6970,7 @@
                  * @param {string} functionName - 已注册的函数名。
                  * @param {object} [options={}] - 调用选项。
                  * @param {Array} [options.args=[]] - 可结构化克隆的参数。
-                 * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象。
+                 * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象；发送后主线程中的对应资源会被分离。
                  * @param {number} [options.timeout=0] - 超时毫秒数；非正数表示不超时。
                  * @returns {Promise<any>} Worker 函数的返回值。
                  * @throws {Error} Worker 不可用或选项无效时抛出。
@@ -7031,6 +7035,7 @@
                             clearTimeout(task.timeoutId);
                         }
                         task.reject(cancellationError);
+                        // 即使同步密集任务暂时无法响应，稍后返回的结果也会因队列已清空而被丢弃。
                         try {
                             this._worker.postMessage({type: 'cancel', id});
                         } catch {
