@@ -6715,7 +6715,9 @@
                  * @param {object} config - 创建脚本所需的完整配置；构造器会保存它以供 `restart()` 重用，
                  *   因此调用后不应再原地修改其中的函数表或依赖数组。
                  * @param {Object<string, Function>} config.callableFunctions - 暴露给主线程调用的函数映射；键是
-                 *   `exec()` 使用的公开名称，值必须是可序列化的函数。Worker 会在原参数末尾追加取消信号对象。
+                 *   `exec()` 使用的公开名称，值必须是可序列化的函数。Worker 会在原位置参数末尾追加
+                 *   `{isCancelled:function():boolean, throwIfCancelled:function():void}`：前者查询任务取消状态，
+                 *   后者在已取消时抛出 `CancellationError`，长循环可在安全检查点主动调用。
                  * @param {Array<{name: string, value: *}>} [config.dependencies=[]] - 按顺序注入 Worker 顶层作用域的
                  *   依赖；`name` 必须是合法且不冲突的 JavaScript 标识符，`value` 可为受支持的类、函数、
                  *   BigInt、数组或普通对象，但不能包含循环引用、DOM 节点或闭包捕获的外部状态。
@@ -7268,7 +7270,8 @@
                  * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象；发送后主线程中的对应资源会被分离。
                  * @param {number} [options.timeout=0] - 从消息成功发出起计算的有限毫秒数；正数到期后拒绝
                  *   Promise 并通知 Worker 取消该任务，`0` 或负数表示不建立计时器。
-                 * @returns {Promise<T>} 以目标函数的可结构化克隆返回值兑现；Worker 抛出的错误会重建
+                 * @returns {Promise<T>} 以目标函数的可结构化克隆返回值兑现；`undefined`、数组、普通对象和
+                 *   可克隆平台对象保持自身结构。Worker 抛出的错误会重建
                  *   `name`、`message`、`stack` 后拒绝，主动取消和超时分别使用可区分的错误名称。
                  * @throws {Error} Worker 不可用或选项无效时抛出。
                  */
