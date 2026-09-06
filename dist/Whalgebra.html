@@ -495,14 +495,12 @@
                         result.associativity = TokenConfig.rightAssocFunc.has(token) ? 'right' : 'left';
                         result.needKh = TokenConfig.needParensFunc.has(token);
                         result.isPrivate = TokenConfig.privateFunc.has(token);
-                    }
-                    // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
-                    else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+                    } else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+                        // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
                         result.class = 'number';
                         result.numClass = TokenConfig.codeNumbers.has(token) ? 'codeNumbers' : 'baseNumber';
-                    }
-                    // 检查 token 是否为其他合法符号
-                    else if (TokenConfig.other.has(token)) {
+                    } else if (TokenConfig.other.has(token)) {
+                        // 检查 token 是否为其他合法符号
                         result.class = 'other';
                     }
 
