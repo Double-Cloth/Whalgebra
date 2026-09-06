@@ -2356,6 +2356,7 @@
                     const inputB = new ComplexNumber(b);
 
                     if (inputA.onlyReal && inputB.onlyReal) {
+                        // 纯实数直接在 BigNumber 的尾数上运算；复数分支则分别合并实部和虚部。
                         const reA = inputA.re;
                         const reB = inputB.re;
 
@@ -2372,6 +2373,7 @@
                          */
                         const bigIntAbs = (num) => num < 0n ? -num : num;
                         const guardAcc = resultAcc + 5;
+                        // 数量级差超过有效精度与保护位时，较小的加数不会影响舍入结果，可直接返回较大值。
                         if (powerDifference > guardAcc) {
                             const diff = bigIntAbs(mantissaB) - bigIntAbs(mantissaA);
                             if (diff > -10n) {
@@ -2385,6 +2387,7 @@
                         }
 
                         if (powerDifference < 0) {
+                            // 对齐到较小的十进制指数后再相加尾数，保持 `mantissa * 10^power` 表示一致。
                             mantissaA *= 10n ** BigInt(-powerDifference);
                         } else if (powerDifference > 0) {
                             mantissaB *= 10n ** BigInt(powerDifference);
@@ -2439,6 +2442,7 @@
                     const inputB = new ComplexNumber(b);
 
                     if (inputA.onlyReal && inputB.onlyReal) {
+                        // (m1 * 10^p1)(m2 * 10^p2) = (m1m2) * 10^(p1+p2)。
                         const reA = inputA.re;
                         const reB = inputB.re;
 
@@ -2455,6 +2459,7 @@
                     const ad = MathPlus.times(inputA.re, inputB.im);
                     const bc = MathPlus.times(inputA.im, inputB.re);
 
+                    // (a+bi)(c+di) = (ac-bd) + (ad+bc)i。
                     const realPart = MathPlus.minus(ac, bd);
                     const imagPart = MathPlus.plus(ad, bc);
 
@@ -2491,7 +2496,7 @@
                         const lenA = (reA.isNegative() ? -reA.mantissa : reA.mantissa).toString().length;
                         const lenB = (reB.isNegative() ? -reB.mantissa : reB.mantissa).toString().length;
 
-                        // 预留保护位，减少中间计算的舍入误差。
+                        // BigInt 除法会截断，因此先按目标精度、尾数位数差和保护位放大被除数。
                         const scalingDigits = resultAcc + lenB - lenA + 4;
 
                         const finalScalingDigits = Math.max(0, scalingDigits);
@@ -2505,6 +2510,7 @@
                     }
 
                     const conjB = MathPlus.conj(inputB);
+                    // 复数除法乘以分母的共轭：a/b = a·conj(b)/|b|²，使分母化为实数。
                     const numerator = MathPlus.times(inputA, conjB);
 
                     const denominator = MathPlus.times(inputB, conjB);
@@ -2538,6 +2544,7 @@
                         const reB = inputB.re;
 
                         const resultAcc = Math.min(reA.acc, reB.acc);
+                        // 提取公共指数 m，把取模转换为整数尾数上的运算，最后再乘回 10^m。
                         const m = Math.min(reA.power, reB.power);
 
                         const isNegativeA = reA.mantissa < 0;
@@ -2549,6 +2556,7 @@
                         const powOfA = reA.power - m;
                         const powOfB = reB.power - m;
                         if (powOfA > CalcConfig.MAX_INPUT_EXPONENT) {
+                            // 指数过大时用平方-乘模计算 10^powOfA mod calcB，避免构造巨型 BigInt。
                             const modAB = calcA % calcB;
 
                             let modOfPow = 1n;
@@ -2582,6 +2590,7 @@
                         }
 
                         if (modResult !== 0n) {
+                            // 按 `a - b * floor(a / b)` 的定义修正不同符号组合，而非沿用 `%` 的截断语义。
                             if (isNegativeA && isNegativeB) {
                                 modResult = -modResult;
                             } else if (isNegativeA && !isNegativeB) {
@@ -2710,6 +2719,7 @@
                         /** 判断实部是否等于常量 e。 */
                         inputA.re.valueOf().every((val, index) => val === CalcConfig.constants.e[index])
                     ) {
+                        // e 的复数幂由 exp 专用实现计算，避免经通用 ln/pow 路径损失精度。
                         return MathPlus.exp(inputB);
                     }
 
@@ -2736,6 +2746,7 @@
                         }
 
                         if (reB.power >= 0) {
+                            // 整数指数使用原生 BigInt 幂或平方-乘快速幂；负指数在末尾取倒数。
                             let isExponentNegative = false;
                             let absB = reB;
                             if (reB.isNegative()) {
@@ -2772,6 +2783,7 @@
                         }
 
                         if (reA.isPositive()) {
+                            // 正底数小数幂采用 a^b = exp(b·ln(a))，平方根走专用牛顿迭代。
                             if (reB.power === -1 && reB.mantissa === 5n) {
                                 return MathPlus.sqrt(reA);
                             }
@@ -2788,6 +2800,7 @@
                         }
 
                         let result = MathPlus.pow(MathPlus._oppositeNumber(inputA), absB);
+                        // 负底数小数幂按 (-a)^b = |a|^b(cos(bπ)+i·sin(bπ)) 选择实根或主值。
                         if (absB.power === -1 && absB.mantissa === 5n) {
                             const zero = new BigNumber([0, 0n, resultAcc]);
                             result = new ComplexNumber([zero, result.re]);
@@ -2816,6 +2829,7 @@
                     }
 
                     if (inputB.onlyReal) {
+                        // 复底数、实指数：z^b = |z|^b(cos(b·arg z)+i·sin(b·arg z))。
                         const module = MathPlus.pow(MathPlus.abs(inputA), inputB);
                         const angle = MathPlus.times(inputB, MathPlus.arg(inputA));
                         const cosAngle = MathPlus.cos(angle);
@@ -2829,6 +2843,7 @@
 
                     const c = inputB.re;
                     const d = inputB.im;
+                    // 通用复数幂由 exp(b·Log(a)) 展开；模为 r^c·e^(-dθ)，辐角为 d·ln(r)+cθ。
                     const r = MathPlus.abs(inputA);
                     const angle = MathPlus.arg(inputA);
                     const resultAngle = MathPlus.plus(
@@ -2894,7 +2909,7 @@
                             absInput = MathPlus._oppositeNumber(re);
                         }
 
-                        // 使用牛顿迭代；收敛过慢时回退到 ln/exp。
+                        // 牛顿迭代 x_(n+1) = (x_n + N/x_n)/2；收敛过慢时回退到 exp(ln(N)/2)。
 
                         const lowAccuracyRe = new BigNumber(absInput, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
@@ -2973,7 +2988,7 @@
                         if (!useAlternative) {
                             result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
 
-                            // 使用立方根的牛顿迭代公式。
+                            // 立方根的牛顿迭代：x_(n+1) = (2x_n + N/x_n²)/3。
 
                             let i = 0;
                             const max = CalcConfig.globalCalcAccuracy + 5;
@@ -3056,7 +3071,7 @@
                             return MathPlus.pow(CalcConfig.constants.e, input);
                         }
 
-                        // 将 x 拆为整数和小数部分，分别计算后相乘。
+                        // 将 x 拆为整数和小数部分：e^x = e^floor(x) · e^(x-floor(x))。
 
                         let resultMid, iterationMantissa;
                         const pow = -re.power;
@@ -3072,7 +3087,7 @@
 
                         const iteration = new ComplexNumber([re.power - 1, iterationMantissa, acc]);
 
-                        // 用泰勒级数计算小数部分。
+                        // 先计算更小参数的泰勒级数 e^t = Σ(t^n/n!)，随后取十次幂还原小数部分。
 
                         const max = CalcConfig.globalCalcAccuracy + 5;
 
@@ -3102,6 +3117,7 @@
 
                     const module = MathPlus.exp(input.re);
 
+                    // 欧拉公式：e^(a+bi) = e^a(cos b + i·sin b)。
                     const cosAngle = MathPlus.cos(input.im);
                     const sinAngle = MathPlus.sin(input.im);
 
@@ -3131,7 +3147,8 @@
                             return new ComplexNumber([0, 0n, acc]);
                         }
 
-                        // 先缩减范围，再用 artanh 泰勒级数计算。
+                        // 先用 10 和 1.2 缩放到 0.9～1.1，再计算 y=(x-1)/(x+1)。
+                        // ln(x) = 2·(y + y³/3 + y⁵/5 + ...)，最后补回缩放产生的 ln(10) 与 ln(1.2)。
 
                         const mantissaLen = re.mantissa.toString().length;
                         const mantissaChangedBy10 = mantissaLen + re.power;
@@ -3187,6 +3204,7 @@
 
                     const absValue = MathPlus.abs(input);
 
+                    // 复对数主值：Log(z) = ln|z| + i·arg(z)。
                     const lnAbsValue = MathPlus.ln(absValue);
 
                     const argValue = MathPlus.arg(input);
@@ -3257,6 +3275,7 @@
                         }
 
                         let divideBy3 = 0;
+                        // 继续除以 3 可加快级数收敛，计算后用 sin(3x)=3sin(x)-4sin³(x) 逐层还原。
                         for (; !MathPlus.plus(re, [-1, -1n, acc]).re.isNegative() && divideBy3 < 4; divideBy3++) {
                             re = MathPlus.divide(re, [0, 3n, acc]).re;
                         }
@@ -3272,6 +3291,7 @@
                         let result = mid;
                         let i = 1;
 
+                        // sin(x)=x-x³/3!+x⁵/5!-...，相邻项递推可避免重复计算幂和阶乘。
                         for (; mid.re.power > minPower && !mid.isZero() && i < max; i++) {
                             mid = MathPlus.divide(
                                 MathPlus.times(mid, squareOfRe),
@@ -3384,6 +3404,7 @@
                         }
 
                         let divideBy4 = 0;
+                        // 继续除以 4 可加快级数收敛，计算后用 cos(4x)=8cos⁴(x)-8cos²(x)+1 还原。
                         for (; !MathPlus.plus(re, [-1, -1n, acc]).re.isNegative() && divideBy4 < 3; divideBy4++) {
                             re = MathPlus.divide(re, [0, 4n, acc]).re;
                         }
@@ -3399,6 +3420,7 @@
                         let result = new ComplexNumber([0, 0n, acc]);
                         let i = 0;
 
+                        // cos(x)=1-x²/2!+x⁴/4!-...，使用相邻项递推累计。
                         for (; mid.re.power > minPower && !mid.isZero() && i < max; i++) {
                             result = MathPlus[i % 2 === 0 ? 'plus' : 'minus'](result, mid);
                             mid = MathPlus.divide(
@@ -3494,7 +3516,7 @@
                             reciprocal = true;
                         }
 
-                        // 反复使用半角公式缩减到 0.1 以内。
+                        // 反复使用 tan(θ/2)=tanθ/(1+sqrt(1+tan²θ))，把参数缩减到 0.1 以内。
                         let j = 0;
                         for (; MathPlus.plus(re, [-1, -1n, acc]).re.isPositive() && j < 4; j++) {
                             re = MathPlus.divide(
@@ -3516,6 +3538,7 @@
                         let result = new ComplexNumber([0, 0n, acc]);
                         let i = 0;
 
+                        // arctan(x)=x-x³/3+x⁵/5-...；级数结果乘 2^j 后还原半角缩减。
                         for (; mid.power > minPower && !mid.isZero() && i < max; i++) {
                             result = MathPlus[i % 2 === 0 ? 'plus' : 'minus'](result, mid);
 
@@ -3781,6 +3804,7 @@
                     // 非整数、负数和复数阶乘使用兰佐斯近似计算 Γ(x+1)。
 
                     let option;
+                    // 按目标精度选择最小够用的 Lanczos 系数集，避免无谓的大精度运算。
                     if (acc <= 40) {
                         option = 'lanczos_n20';
                     } else if (acc <= 75) {
@@ -3804,11 +3828,13 @@
 
                     let reflection = false;
                     if (calcNum.re.isNegative()) {
+                        // 先在正半平面计算，再由 Γ(z)Γ(1-z)=π/sin(πz) 反射回原参数。
                         calcNum = MathPlus._oppositeNumber(calcNum);
                         reflection = true;
                     }
 
                     let mid = p[0];
+                    // Lanczos 级数 A_g(z)=p0+Σ(pk/(z+k))。
                     for (let i = 1; i < p.length; i++) {
                         mid = MathPlus.plus(
                             mid,
@@ -4181,6 +4207,7 @@
 
                     expr = expr.replaceAll('[cdot]', '').replaceAll('**', '^').replace(/\s/g, '');
 
+                    // 第一阶段：分词并补齐隐式乘法、绝对值括号以及一元正负号。
                     let [output, input] = [[], Public.tokenizer(expr, {baseNumberMode: 'together'})];
                     if (input[0] === 'error') {
                         throw new Error(`[MathPlus] syntax error: Illegal input (${input[1]}).`);
@@ -4236,6 +4263,7 @@
                         }
 
                         if (lastTokenInfo.class === 'number' && tokenInfo.class === 'number') {
+                            // 数字/常量、后缀函数和括号相邻时插入内部隐式乘法词元 `&`。
                             output.push('&');
                         } else if (
                             tokenInfo.funcPlace === 'front' &&
@@ -4264,10 +4292,12 @@
                                 lastTokenInfo.token === ')'
                             )
                         ) {
+                            // 缺少左操作数的 `-` 转为内部一元负号 `N`；一元 `+` 可直接忽略。
                             currentPush = currentPush === '-' ? 'N' : '';
                         }
 
                         if (currentPush === '|') {
+                            // `|...|` 转换为内部绝对值函数 `A(...)`，栈记录嵌套括号以识别闭合竖线。
                             currentPush = '(';
                             if (
                                 absKhStack.length !== 0 &&
@@ -4375,7 +4405,8 @@
                         kh -= 1;
                     }
 
-                    // 临时标记区分一元前缀函数与幂运算，并记录是否已有完整括号。
+                    // 第二阶段：按优先级为省略括号的一元函数和幂运算确定操作数边界。
+                    // `#`、`:` 分别标记函数和幂，`@` 表示边界已确定，最终都会被移除。
                     [output, input] = [[], output];
                     let absAdd = false;
                     const orderOfSin = Public.getTokenInfo('sin').priority;
@@ -4522,6 +4553,7 @@
                     const valueStack = [];
                     const operatorStack = [];
 
+                    // 第三阶段：调度场算法用运算符栈处理优先级，并即时执行弹出的逆波兰表达式。
                     for (let i = 0; i < input.length; i++) {
                         const currentToken = input[i];
                         const tokenInfo = Public.getTokenInfo(currentToken);
@@ -4835,6 +4867,7 @@
                     const n = coefficients.length;
 
                     const augmentedMatrix = [];
+                    // 复制系数并附加常数列，构造增广矩阵，避免修改调用方传入的数组。
                     for (let i = 0; i < n; i++) {
                         if (coefficients[i].length !== n) {
                             throw new Error('[StatisticsTools] The coefficient matrix must be a square matrix.');
@@ -4848,7 +4881,7 @@
                     }
 
                     for (let i = 0; i < n; i++) {
-                        // 使用部分主元法提高数值稳定性。
+                        // 每列选取绝对值最大的主元并换行，减少除以极小数造成的误差放大。
 
                         let maxRow = i;
                         for (let k = i + 1; k < n; k++) {
@@ -4862,9 +4895,11 @@
                         const pivot = augmentedMatrix[i][i];
 
                         if (pivot.re.isZero()) {
+                            // 主元为零表示矩阵奇异，方程组没有唯一解。
                             throw new Error('[StatisticsTools] The system of equations has no unique solution.');
                         }
 
+                        // 主元行归一化，再消去该列的其他元素；结束时左侧矩阵成为单位矩阵。
                         for (let j = i; j < n + 1; j++) {
                             augmentedMatrix[i][j] = MathPlus.divide(augmentedMatrix[i][j], pivot);
                         }
@@ -4910,6 +4945,7 @@
                     }
 
                     const n = listA.length;
+                    // 正规方程中 b_i=Σ(x^i·y)，A_ij=Σ(x^(i+j))；预先计算各次幂和以复用结果。
                     const constants = [StatisticsTools._averageAndSum(listB).sum];
                     const coefficientsList = [new ComplexNumber(n)];
                     const coefficients = [];
@@ -4946,6 +4982,7 @@
                 static _calcR2(listA, listB, func) {
                     let n = listA.length;
                     const averageB = StatisticsTools._averageAndSum(listB).average;
+                    // 分母为总平方和 SS_tot，分子为残差平方和 SS_res。
                     let denominator = new ComplexNumber(0);
                     let numerator = new ComplexNumber(0);
                     for (let i = 0; i < n; i++) {
@@ -5124,6 +5161,7 @@
                     result.r = Public.idealizationToString(correlationCoefficient);
 
                     result.bestModel = 'linear';
+                    // 各回归模型有不同定义域；先记录两组数据是否包含正数、负数和零。
                     const statesA = this._getListInfo(listA);
                     const statesB = this._getListInfo(listB);
                     const absListB = this._getAbsList(listB);
@@ -5199,6 +5237,7 @@
                     );
                     result.bestModel = this._findBestModel(result, 'square');
 
+                    // 对数模型 y=a+b·ln(x) 要求所有 x>0。
                     if (statesA.negative || statesA.zero) {
                         result.ln = structuredClone(errorWith2parameter);
                     } else {
@@ -5209,6 +5248,7 @@
                     }
                     result.bestModel = this._findBestModel(result, 'ln');
 
+                    // 幂模型 y=a·x^b 线性化为 ln|y|=ln|a|+b·ln(x)，要求 x>0 且 y 非零同号。
                     if (statesA.negative || statesA.zero || statesB.zero || (statesB.positive && statesB.negative)) {
                         result.axb = structuredClone(errorWith2parameter);
                     } else {
@@ -5227,6 +5267,7 @@
                     }
                     result.bestModel = this._findBestModel(result, 'axb');
 
+                    // 指数模型 y=a·e^(bx) 同样在 ln|y| 空间拟合，要求 y 非零同号。
                     if (statesB.zero || (statesB.positive && statesB.negative)) {
                         result.exp = structuredClone(errorWith2parameter);
                         result.abx = structuredClone(errorWith2parameter);
@@ -5261,6 +5302,7 @@
                     result.bestModel = this._findBestModel(result, 'exp');
                     result.bestModel = this._findBestModel(result, 'abx');
 
+                    // 倒数模型 y=a+b/x 通过把自变量替换为 1/x 转成线性回归，故 x 不能为零。
                     if (statesA.zero) {
                         result.reciprocal = structuredClone(errorWith2parameter);
                     } else {
@@ -5342,6 +5384,7 @@
                  * @returns {ComplexNumber} 多项式值。
                  */
                 static _getPowerFunctionValue(list, x) {
+                    // 霍纳法把 a_nx^n+...+a_0 改写为 (...(a_nx+a_(n-1))x+...)x+a_0。
                     let result = new ComplexNumber(list[0]);
                     const input = new ComplexNumber(x);
 
@@ -5401,6 +5444,7 @@
                         MathPlus.times(b, b),
                         MathPlus.times(MathPlus.times(a, c), 4)
                     )).re;
+                    // Δ=b²-4ac 的符号分别对应重实根、两个实根或一对共轭复根。
                     const deltaSign = delta.mantissa;
 
                     const mid1 = MathPlus.divide(
@@ -5463,6 +5507,7 @@
                         MathPlus.times(MathPlus.times(A, C), 4)
                     )).re;
 
+                    // 盛金公式以 A=b²-3ac、B=bc-9ad、C=c²-3bd 和 Δ=B²-4AC 分类根的性质。
                     if (A.isZero() && B.isZero()) {
                         return [MathPlus.divide(
                             b,
@@ -5471,6 +5516,7 @@
                     }
 
                     if (delta.isPositive()) {
+                        // Δ>0：一个实根与一对共轭复根。
                         const mid1 = MathPlus.times(a, '1.5');
                         const mid2 = MathPlus.minus(
                             MathPlus.times(A, b),
@@ -5501,6 +5547,7 @@
                     }
 
                     if (delta.isZero()) {
+                        // Δ=0：至少两个实根重合；函数值符号用于维持“重根在前”的返回约定。
                         const k = MathPlus.divide(B, A);
                         const root1 = MathPlus.minus(k, MathPlus.divide(b, a));
                         const root2 = MathPlus.divide(k, -2);
@@ -5516,6 +5563,7 @@
                     }
 
                     const absA = MathPlus.abs(A);
+                    // Δ<0 为不可约情形，使用三角形式得到三个互异实根。
                     const T = MathPlus.divide(
                         MathPlus.minus(
                             MathPlus.times(MathPlus.times(absA, b), 2),
@@ -5635,7 +5683,9 @@
                         MathPlus.times(MathPlus.times(A, C), 4)
                     )).re;
 
+                    // 天珩公式以 D、E、F 及其导出判别式 A、B、C、Δ 区分重根和实/复根组合。
                     if (D.isZero() && E.isZero() && F.isZero()) {
+                        // D=E=F=0：四重实根。
                         return [MathPlus.divide(b, MathPlus.times(a, -4))];
                     }
 
@@ -5643,6 +5693,7 @@
                         !D.isZero() && !E.isZero() && !F.isZero() &&
                         A.isZero() && B.isZero() && C.isZero()
                     ) {
+                        // D、E、F 非零且 A=B=C=0：一个三重实根和一个单实根。
                         const mid0 = MathPlus.times(MathPlus.times(a, D), -4);
                         const mid1 = MathPlus.divide(
                             MathPlus.times(b, D),
@@ -5661,6 +5712,7 @@
                     }
 
                     if (!D.isZero() && E.isZero() && F.isZero()) {
+                        // E=F=0、D≠0：两对二重根，D 的符号决定实根或复根。
                         const mid0 = MathPlus.times(a, -4);
                         const mid1 = MathPlus.divide(b, mid0);
                         const mid2 = MathPlus.divide(MathPlus.sqrt(D), mid0);
@@ -5674,6 +5726,7 @@
                         !A.isZero() && !B.isZero() && !C.isZero() &&
                         delta.isZero()
                     ) {
+                        // A、B、C 非零且 Δ=0：一对二重实根，另两根由 A、B 的符号决定。
                         const mid0 = MathPlus.divide(
                             b,
                             MathPlus.times(a, -4)
@@ -5695,6 +5748,7 @@
                     }
 
                     if (delta.isPositive()) {
+                        // Δ>0：两个互异实根和一对共轭复根。
                         const mid1 = MathPlus.minus(
                             MathPlus.times(A, D),
                             MathPlus.times(B, '1.5')
@@ -5757,6 +5811,7 @@
                     }
 
                     if (E.isZero() && F.isPositive() && !D.isZero()) {
+                        // E=0、F>0：按 D 与 F 的组合直接构造四个根。
                         const mid0 = MathPlus.times(MathPlus.sqrt(F), 2);
                         const mid1 = MathPlus.sqrt(MathPlus.plus(D, mid0));
                         const mid2 = MathPlus.sqrt(MathPlus.minus(D, mid0));
@@ -5781,6 +5836,7 @@
                     }
 
                     if (E.isZero() && F.isNegative()) {
+                        // E=0、F<0：得到两对共轭复根。
                         const mid0 = MathPlus.divide(
                             b,
                             MathPlus.times(a, -4)
@@ -5815,6 +5871,7 @@
                     }
 
                     const mid0 = MathPlus.sqrt(A);
+                    // 其余 Δ<0 情形通过预解三次方程的三角解构造 y1、y2、y3。
                     const T = MathPlus.divide(
                         MathPlus.minus(
                             MathPlus.times(B, 3),
@@ -5853,6 +5910,7 @@
                     ));
 
                     if (!E.isZero() && F.isPositive() && D.isPositive()) {
+                        // D、F 均为正时四根均为实数；否则下方组合给出两对共轭复根。
                         const mid1 = MathPlus.plus(y2, y3);
                         const mid2 = MathPlus.minus(y2, y3);
                         const mid3 = MathPlus.minus(
@@ -5926,6 +5984,7 @@
                     result.equation = Public.funcToString([e, d, c, b, a], 'powerFunc');
 
                     if (!a.isZero()) {
+                        // 四次函数：一阶导数的实根划分单调区间，二阶导数的实根划分凹凸区间。
                         list = [a, b, c, d, e];
                         const diff1 = PowerFunctionTools._differentiate(list);
                         const diff1Roots = PowerFunctionTools._solveCubic(diff1);
@@ -5984,6 +6043,7 @@
                     }
 
                     if (!b.isZero()) {
+                        // 三次函数：一阶导数决定极值，唯一的二阶导数根给出拐点。
                         list = [b, c, d, e];
                         const diff1 = PowerFunctionTools._differentiate(list);
                         const diff1Roots = PowerFunctionTools._solveQuadratic(diff1);
@@ -6020,6 +6080,7 @@
                     }
 
                     if (!c.isZero()) {
+                        // 二次函数：顶点决定值域与单调性，二阶导数符号决定全区间凹凸性。
                         list = [c, d, e];
                         const diff1 = PowerFunctionTools._differentiate(list);
                         const diff1Roots = PowerFunctionTools._solveLinear(diff1);
@@ -6044,6 +6105,7 @@
                     }
 
                     if (!d.isZero()) {
+                        // 一次函数由斜率符号决定全区间单调性，不存在有限极值或拐点。
                         list = [d, e];
                         result.range = ['-inf', '+inf'];
                         result[d.isPositive() ? 'increasingInterval' : 'decreasingInterval'] = [['-inf', '+inf']];
@@ -6098,6 +6160,7 @@
                     z = new ComplexNumber(z);
                     n = new ComplexNumber(n);
 
+                    // 若 z=r·e^(iθ)，则第 k 个 n 次方根为 r^(1/n)·e^(i(θ+2kπ)/n)。
                     const realPow = MathPlus.divide(1, n);
                     const r = MathPlus.abs(z);
                     const arg = MathPlus.arg(z);
