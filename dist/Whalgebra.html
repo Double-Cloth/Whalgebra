@@ -6553,9 +6553,13 @@
 
                 /**
                  * 创建并初始化 Worker。
-                 * @param {object} config - Worker 的配置对象。
-                 * @param {object} config.callableFunctions - 以名称为键的可调用函数。
-                 * @param {Array<{name: string, value: *}>} [config.dependencies=[]] - 注入 Worker 的依赖项。
+                 * @param {object} config - 创建脚本所需的完整配置；构造器会保存它以供 `restart()` 重用，
+                 *   因此调用后不应再原地修改其中的函数表或依赖数组。
+                 * @param {Object<string, Function>} config.callableFunctions - 暴露给主线程调用的函数映射；键是
+                 *   `exec()` 使用的公开名称，值必须是可序列化的函数。Worker 会在原参数末尾追加取消信号对象。
+                 * @param {Array<{name: string, value: *}>} [config.dependencies=[]] - 按顺序注入 Worker 顶层作用域的
+                 *   依赖；`name` 必须是合法且不冲突的 JavaScript 标识符，`value` 可为受支持的类、函数、
+                 *   BigInt、数组或普通对象，但不能包含循环引用、DOM 节点或闭包捕获的外部状态。
                  * @throws {Error} 配置或函数定义无效时抛出。
                  */
                 constructor(config) {
@@ -6639,7 +6643,8 @@
                     /**
                      * 处理 Worker 返回的任务结果。
                      *
-                     * @param {MessageEvent} event - 包含任务 ID、结果或错误的消息事件。
+                      * @param {MessageEvent} event - Worker 返回的消息事件；`event.data.id` 必须对应待处理任务，
+                      *   `result` 是可结构化克隆的返回值，`error` 则是已序列化的名称、消息和堆栈。
                      */
                     worker.onmessage = (event) => {
                         // 重启后旧 Worker 仍可能排出迟到消息；实例校验防止它污染新 Worker 的任务队列。
@@ -6672,7 +6677,8 @@
                     /**
                      * 处理 Worker 的致命运行错误。
                      *
-                     * @param {ErrorEvent} err - 错误事件对象。
+                      * @param {ErrorEvent} err - 无法归属到单个任务的 Worker 运行错误；其消息用于拒绝全部
+                      *   待处理 Promise，随后实例进入已终止状态。
                      */
                     worker.onerror = (err) => {
                         if (this._worker !== worker) {
@@ -6702,7 +6708,8 @@
                 /**
                  * 拒绝并清空所有待处理任务。
                  *
-                 * @param {Error} error - 用于拒绝任务 Promise 的错误。
+                 * @param {Error} error - 同一个拒绝原因会传给当前全部待处理 Promise；方法同时清除每个任务的
+                 *   超时计时器和登记项，但不会自行终止 Worker。
                  * @private
                  */
                 _rejectAllTasks(error) {
@@ -6719,8 +6726,10 @@
                 /**
                  * 将函数和依赖项序列化为 Worker 脚本。
                  *
-                 * @param {object} funcs - 可调用函数的对象。
-                 * @param {Array<{name: string, value: *}>} deps - 注入的依赖项。
+                 * @param {Object<string, Function>} funcs - 名称到函数实现的映射；名称成为 Worker 消息协议中的
+                 *   `functionName`，实现会被转换为源码，不能依赖未列入 `deps` 的词法闭包。
+                 * @param {Array<{name: string, value: *}>} deps - 顶层依赖声明，按数组顺序生成源码；后项可引用
+                 *   已生成的前项。名称重复、非法或值不可序列化时应在创建 Worker 前失败。
                  * @returns {string} 可执行的 Worker 脚本。
                  * @private
                  */
@@ -6728,8 +6737,10 @@
                     /**
                      * 将支持的值序列化为 JavaScript 源码。
                      *
-                     * @param {*} value - 待序列化值。
-                     * @param {WeakSet<object>} [seen] - 用于检测循环引用。
+                      * @param {*} value - 要嵌入脚本的依赖值；支持原始值、BigInt、普通数组/对象、函数和类。
+                      *   `undefined`、`NaN`、无穷值等需生成等价源码；平台对象和不可还原的原型实例不受支持。
+                      * @param {WeakSet<object>} [seen] - 当前递归路径上的对象集合；内部调用传递同一集合以检测
+                      *   真正的循环引用，调用入口可省略，方法不会把它暴露到生成脚本中。
                      * @returns {string} 序列化结果。
                      */
                     const serializeValue = (value, seen = new WeakSet()) => {
@@ -6827,8 +6838,10 @@
                     /**
                      * 将函数转换为可嵌入 Worker 的表达式。
                      *
-                     * @param {Function} func - 要序列化的函数。
-                     * @param {boolean} [allowClass=true] - 是否允许序列化 class。
+                      * @param {Function} func - 要转换为独立表达式源码的函数或类；其源码必须能在 Worker 的
+                      *   严格模式下重新求值，原函数对象和闭包环境都不会被传输。
+                      * @param {boolean} [allowClass=true] - 是否接受 `class` 声明；序列化普通可调用函数时可设为
+                      *   `false`，从而避免把类误当作能直接调用的任务函数。
                      * @returns {string} 函数表达式源码。
                      */
                     const serializeFunction = (func, allowClass = true) => {
@@ -7043,9 +7056,12 @@
                 /**
                  * 按 ID 取消单个任务。
                  *
-                 * @param {bigint} taskId - 任务 ID。
-                 * @param {string} [errorName='CancellationError'] - 用于拒绝 Promise 的错误类型名称。
-                 * @param {string} [errorMessage='Task was cancelled.'] - 用于拒绝 Promise 的错误消息。
+                 * @param {bigint} taskId - `_pendingTasks` 中的精确任务键；未知或已经完成的 ID 会被忽略，
+                 *   避免重复拒绝 Promise。
+                 * @param {string} [errorName='CancellationError'] - 创建拒绝错误时写入 `Error.name` 的稳定名称；
+                 *   超时调用使用 `TimeoutError`，主动取消使用默认名称，便于调用方分类处理。
+                 * @param {string} [errorMessage='Task was cancelled.'] - 面向调用方的错误消息；只用于本地 Promise，
+                 *   Worker 端收到的取消消息仍通过同一 `taskId` 关联正在运行的任务。
                  * @private
                  */
                 _cancelTaskById(taskId, errorName = 'CancellationError', errorMessage = 'Task was cancelled.') {
@@ -7084,11 +7100,14 @@
                 /**
                  * 异步调用已注册的 Worker 函数。
                  *
-                 * @param {string} functionName - 已注册的函数名。
-                 * @param {object} [options={}] - 调用选项。
-                 * @param {Array} [options.args=[]] - 可结构化克隆的参数。
+                 * @param {string} functionName - `config.callableFunctions` 中注册的精确键名；名称在发送前校验，
+                 *   不允许借此访问 Worker 全局作用域中的其他函数。
+                 * @param {object} [options={}] - 单次任务的消息、所有权转移和截止时间配置；不会改变后续任务。
+                 * @param {Array} [options.args=[]] - 按原顺序传给目标函数的位置参数；每项必须可由结构化克隆
+                 *   算法处理。取消信号由 Worker 在末尾自动追加，不应由调用方放入该数组。
                  * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象；发送后主线程中的对应资源会被分离。
-                 * @param {number} [options.timeout=0] - 超时毫秒数；非正数表示不超时。
+                 * @param {number} [options.timeout=0] - 从消息成功发出起计算的有限毫秒数；正数到期后拒绝
+                 *   Promise 并通知 Worker 取消该任务，`0` 或负数表示不建立计时器。
                  * @returns {Promise<any>} Worker 函数的返回值。
                  * @throws {Error} Worker 不可用或选项无效时抛出。
                  */
@@ -7284,8 +7303,9 @@
                  * 分发 Worker 任务，并在意外失败后恢复 Worker 状态。
                  *
                  * @private
-                 * @param {string} funcName - Worker 函数名。
-                 * @param {Array} args - 参数数组。
+                 * @param {string} funcName - 数学 Worker 已注册的公开函数名；意外崩溃重启后会以同一名称重试。
+                 * @param {Array} args - 可结构化克隆的位置参数；本方法会整体传给 `SyncWorker.exec`，不会改动
+                 *   数组内容。每次分发统一使用 `_WORKER_TIMEOUT` 作为最长执行时间。
                  * @returns {Promise<any>} 任务结果。
                  */
                 static async _dispatch(funcName, args = []) {
@@ -7369,7 +7389,8 @@
                 /**
                  * 设置 Worker 的默认计算精度。
                  *
-                 * @param {number} [acc] - 精度；省略时使用预设值。
+                 * @param {number} [acc] - 1 到 Worker 支持上限之间的正整数有效位数；省略时由 Worker 端恢复
+                 *   预设计算精度。设置会保留到 Worker 重启后的状态恢复流程中。
                  * @returns {Promise<number>} 生效后的精度。
                  */
                 static setCalcAccuracy(acc) {
@@ -7388,7 +7409,8 @@
                 /**
                  * 设置 Worker 的默认输出精度。
                  *
-                 * @param {number} [acc] - 有效位数或计算精度比例；省略时跟随计算精度。
+                 * @param {number} [acc] - 输出精度策略：大于等于 1 表示绝对有效位数，`(0, 1)` 表示相对
+                 *   计算精度的比例，非正值表示保留计算精度；省略时由 Worker 端采用其预设值。
                  * @returns {Promise<number>} 生效后的输出精度。
                  */
                 static setOutputAccuracy(acc) {
@@ -7407,7 +7429,8 @@
                 /**
                  * 设置 Worker 的复数输出模式。
                  *
-                 * @param {'algebra'|'polar'} mode - 代数或极坐标模式。
+                 * @param {'algebra'|'polar'} mode - 后续格式化任务采用的复数形式；`algebra` 输出实部/虚部，
+                 *   `polar` 输出模/辐角。无效值由 Worker 的 `CalcConfig` 校验并拒绝。
                  * @returns {Promise<string>} 生效后的输出模式。
                  */
                 static setPrintMode(mode) {
@@ -7426,7 +7449,8 @@
                 /**
                  * 分析四次及以下多项式的区间、极值、拐点和根。
                  *
-                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的系数。
+                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 最多五个、按降幂排列的
+                 *   实系数；参数通过结构化克隆传入 Worker，调用期间不会修改主线程数组。
                  * @returns {Promise<object>} 多项式分析结果。
                  */
                 static powerFunctionAnalysis(list) {
@@ -7436,8 +7460,10 @@
                 /**
                  * 计算两组数据的统计指标与回归模型。
                  *
-                 * @param {Array<ComplexNumber|string|number>} listA - 自变量数据。
-                 * @param {Array<ComplexNumber|string|number>} listB - 因变量数据。
+                 * @param {Array<ComplexNumber|string|number>} listA - 非空实数自变量样本；必须和 `listB` 等长，
+                 *   相同索引组成一个观测点。
+                 * @param {Array<ComplexNumber|string|number>} listB - 非空实数因变量样本；样本数量决定可拟合的
+                 *   回归阶数，传输后主线程中的数组仍保持可用。
                  * @returns {Promise<object>} 统计与回归结果。
                  */
                 static statisticsCalc(listA, listB) {
@@ -7447,8 +7473,9 @@
                 /**
                  * 计算复数的 n 次方根。
                  *
-                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} z - 被开方数。
-                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} n - 正整数根指数。
+                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} z - 任意可解析的实数或复数被开方数。
+                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} n - 经精度修正后必须为纯实正整数；
+                 *   过大的 `n` 仍计算通式，但数值解只返回配置允许的前若干项。
                  * @returns {Promise<object>} 通项公式、索引范围和数值解。
                  */
                 static radicalFunctionAnalysis(z, n) {
@@ -7458,11 +7485,11 @@
                 /**
                  * 按范围和步长生成 f(x)、g(x) 的函数值列表。
                  *
-                 * @param {string} f - f(x) 表达式，可调用 g(x)。
-                 * @param {string} g - g(x) 表达式，可调用 f(x)。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} start - 区间的起始值。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 区间内每一步的增量。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 区间结束值。
+                 * @param {string} f - 内部词元格式的 `f(x)` 表达式；可以引用 `g(x)`，逐点错误单独返回。
+                 * @param {string} g - 内部词元格式的 `g(x)` 表达式；可以引用 `f(x)`，与 `f` 共享自变量区间。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} start - 纯实闭区间起点，必须不大于 `end`。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格为正的纯实增量；不会为命中终点而调整。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 纯实闭区间终点；结果数超过上限时截断并标记省略。
                  * @returns {Promise<object>} 自变量及两个函数的值列表。
                  */
                 static valueList(f, g, start, step, end) {
@@ -7472,14 +7499,15 @@
                 /**
                  * 在 Worker 中计算数学表达式。
                  *
-                 * @param {string} expr - 数学表达式。
-                 * @param {object} [options={}] - 单次计算选项。
-                 * @param {number} [options.calcAcc] - 计算精度。
-                 * @param {number} [options.outputAcc] - 输出精度。
+                 * @param {string} expr - 内部数学词元表达式；在 Worker 中解析，返回值包含其规范化形式。
+                 * @param {object} [options={}] - 仅覆盖本任务的计算上下文；省略字段时使用 Worker 当前默认配置。
+                 * @param {number} [options.calcAcc] - 本任务及其嵌套函数调用使用的正整数有效位数；不持久化。
+                 * @param {number} [options.outputAcc] - 本任务的最终显示精度，可用绝对位数、比例或非正跟随值。
                  * @param {'calc'|'syntaxCheck'} [options.calcMode='calc'] - 计算或语法检查模式。
-                 * @param {'output'|'mid'} [options.outputMode='output'] - 格式化或内部值输出模式。
-                 * @param {string} [options.f] - f(x) 表达式。
-                 * @param {string} [options.g] - g(x) 表达式。
+                 * @param {'output'|'mid'} [options.outputMode='output'] - `output` 返回显示字符串，`mid` 保留可继续
+                 *   计算的内部表示；后者的结果类型不能按普通字符串消费。
+                 * @param {string} [options.f] - 本任务中 `[f]` 对应的函数体，可引用 `[x]`、`[g]`。
+                 * @param {string} [options.g] - 本任务中 `[g]` 对应的函数体，可引用 `[x]`、`[f]`。
                  * @returns {Promise<{result: string|Array, expr: string}>} 结果及规范化表达式。
                  */
                 static exec(expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) {
