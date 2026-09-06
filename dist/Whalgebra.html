@@ -7602,6 +7602,7 @@
                     PageControlTools.changeTitle(mode);
                     PageControlTools.changeScreen(mode);
 
+                    // 模式切换同时维护输入区、结果区、虚拟列表、键盘提示和持久化状态。
                     HtmlTools.getHtml(`#mode_${PageConfig._currentMode[0]}`).classList.remove('SelectionOn');
 
                     HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.add('NoDisplay');
@@ -8483,6 +8484,7 @@
                             }
 
                             if (maxing) {
+                                // 持续高频调用时由 maxWait 强制执行，随后重新开始普通等待周期。
                                 clearTimeout(timerId);
                                 timerId = startTimer(timerExpired, wait);
                                 return invokeFunc(time);
@@ -9477,6 +9479,7 @@
                         VirtualScroll._BUFFER_MAX,
                         Math.max(VirtualScroll._BUFFER_MIN, Math.ceil(visible * VirtualScroll._BUFFER_RATIO))
                     );
+                    // 迟滞阈值避免容器高度在边界附近轻微波动时反复改变缓冲区大小。
                     if (force || Math.abs(next - this.bufferSize) >= VirtualScroll._BUFFER_HYSTERESIS) {
                         this.bufferSize = next;
                     }
@@ -10120,6 +10123,7 @@
                         const prevEnd = this._endIndex;
                         const noOverlap = prevStart < 0 || end <= prevStart || start >= prevEnd;
 
+                        // 大跨度跳转全量换窗；窗口相交时只回收和补充差集中的节点。
                         if (noOverlap || force) {
                             this._recycleAllAndRender(start, end);
                         } else {
@@ -11113,6 +11117,7 @@
                     }
 
                     const splitPoint = leftText.replace(/\[[a-zA-Z0-9_]+]/g, '1').length;
+                    // 词元文本长度与 DOM 节点数并不总相同，分词后按显示长度定位光标所在词元。
                     const tokens = Public.tokenizer(fullText, {strictMode: false});
 
                     let leftToken = null;
