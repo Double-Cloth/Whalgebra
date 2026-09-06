@@ -1655,6 +1655,7 @@
                         return {mantissa: 0n, power: 0};
                     }
 
+                    // 移除尾数末尾的零并补偿指数，使同一个数尽量只有一种内部表示，便于比较和后续运算。
                     while (absMantissa % 10n === 0n) {
                         absMantissa /= 10n;
                         finalPower++;
@@ -2689,12 +2690,14 @@
                             return new ComplexNumber([0, 1n, CalcConfig.globalCalcAccuracy]);
                         }
 
+                        // 连续平方会累积舍入误差，额外 10 位仅作为中间保护位，最终结果仍按调用精度截断。
                         let b = new ComplexNumber(base, {acc: currentAcc + 10});
 
                         const acc = b.acc;
 
                         let result = new ComplexNumber([0, 1n, acc]);
 
+                        // 二进制平方-乘：指数每次减半，只在当前二进制位为 1 时乘入结果。
                         while (exponent > 0n) {
                             if ((exponent & 1n) === 1n) {
                                 result = MathPlus.times(result, b);
@@ -2912,6 +2915,7 @@
 
                         // 牛顿迭代 x_(n+1) = (x_n + N/x_n)/2；收敛过慢时回退到 exp(ln(N)/2)。
 
+                        // 原生 Math.sqrt 只生成牛顿法初值；后续高精度迭代决定最终有效数字。
                         const lowAccuracyRe = new BigNumber(absInput, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
 
@@ -2979,6 +2983,7 @@
                             return new ComplexNumber([0, 0n, acc]);
                         }
 
+                        // 原生 Math.cbrt 只生成牛顿法初值；后续运算仍全部使用高精度类型。
                         const lowAccuracyRe = new BigNumber(re, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
 
@@ -6278,6 +6283,8 @@
                     }
 
                     if (varList.length === CalcConfig.VALUE_LIST_MAX_SHOW_RESULTS && !MathPlus.minus(i, end).re.isPositive()) {
+                        // 用半步后的临时终点让两个函数值列表恰好计算到最后一个已显示自变量，
+                        // 再以专用词元表示仍有结果被省略，避免创建超长数组。
                         overflow = true;
                         end = MathPlus.minus(i, MathPlus.divide(step, 2n));
                         varList.push('[print_content_omit]');
@@ -6304,7 +6311,7 @@
             }
 
             /**
-             * 在临时精度配置下调用计算核心，并在结束后恢复全局配置。
+             * 使用单次调用参数封装计算核心，不修改全局精度配置。
              *
              * @class CalcTools
              */
@@ -6319,7 +6326,7 @@
                 }
 
                 /**
-                 * 使用临时精度配置计算表达式，并在结束后恢复全局配置。
+                 * 使用独立的计算与输出精度计算表达式；这些选项只作用于本次调用。
                  *
                  * @param {string} expr - 数学表达式。
                  * @param {object} [options={}] - 单次计算选项。
