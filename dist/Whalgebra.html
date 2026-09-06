@@ -15718,6 +15718,7 @@
         }
 
         * {
+            /* 默认允许组件形成滚动区域；页面级容器再显式设为 hidden，避免内容溢出视口。 */
             overflow: auto;
             box-sizing: border-box;
             margin: 0;
@@ -15821,6 +15822,7 @@
         /* 通用可见性与内容排列工具类 */
 
         .NoDisplay {
+            /* 完全移出布局；需要保留切换动画的输入屏幕改用下方的 .ScreenNoDisplay。 */
             display: none !important;
         }
 
@@ -16100,6 +16102,7 @@
         }
 
         .ScreenNoDisplay {
+            /* 保留元素布局和过渡状态，以缩放与透明度完成屏幕切换。 */
             transform: scale(0);
             opacity: 0;
         }
@@ -16728,6 +16731,7 @@
 
         /* 键盘响应式布局 */
 
+        /* 以视口宽高比 1.6 为分界：窄屏叠放键盘，宽屏并排展示主、副键盘。 */
         @media (max-width: 160dvh) {
             /* 较窄视口使用全宽五列键盘。 */
             .KeyboardCover {
@@ -17507,6 +17511,7 @@
         #statistics_results_window {
             position: relative;
             display: flex;
+            /* 3 个 98dvw 面板加 2 个 1dvw 间隙，总宽度为 296dvw。 */
             width: 296dvw;
             transition: transform 0.3s ease;
             gap: 1dvw;
@@ -17873,6 +17878,7 @@
         /* 减少动态效果 */
         @media (prefers-reduced-motion: reduce) {
 
+            /* 保留近零时长而不移除 transition，维持各状态共用的样式路径。 */
             #switch_container,
             #switch_knob,
             .SwitchIcon {
