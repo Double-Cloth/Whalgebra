@@ -80,7 +80,8 @@
                  *
                  * @param {Array<*>} arrA - 源数组。
                  * @param {Array<*>} arrB - 要排除的元素。
-                 * @returns {Array<*>} 差集数组。
+                 * @returns {Array<*>} 保持 `arrA` 原顺序的新数组；包含所有未被 `arrB.includes` 严格匹配的元素，
+                 *   不会修改两个输入数组，重复的保留元素也不会去重。
                  * @private
                  */
                 static _complement(arrA, arrB) {
@@ -421,7 +422,8 @@
                  *   大于零。虚部虽可被构造器接受，但区间终止判断只依据实部，业务调用应传正实数。
                  * @param {string|number|BigNumber|ComplexNumber} end - 闭区间终点；最后一个不大于它的采样点
                  *   会被计算，步长不能整除区间时不会额外补算终点。
-                 * @returns {Array<ComplexNumber|string>} 各采样点的函数值；求值失败的项为 `"error"`。
+                 * @returns {Array<ComplexNumber|'error'>} 与实际采样点一一对应的结果数组；第 `i` 项对应
+                 *   `start + i * step`。单点回调抛错时仅该项为 `error`，数组中不另行保存自变量。
                  * @throws {Error} 当步长的实部不是正数时抛出异常。
                  */
                 static functionValueList(func, start, step, end) {
@@ -536,7 +538,9 @@
                  *   - `'together'`: 将连续的数字和单个小数点组合成一个完整的数字字符串词法单元。例如, "123.45" -> ['123.45']。
                  * @param {boolean} [options.strictMode=true] - `true` 时遇到第一个非法字符立即返回
                  *   `['error', index]`；`false` 时保留可识别词元并跳过非法字符，适合宽松的输入预处理。
-                 * @returns {string[]|['error', number]} 词元数组或错误位置。
+                 * @returns {string[]|['error', number]} 成功时返回按原表达式顺序排列的内部词元数组；
+                 *   `baseNumberMode='together'` 时连续数字可能占一个元素。严格模式失败时返回二元组，
+                 *   第 0 项固定为 `error`，第 1 项是原字符串中首个非法字符的零基索引。
                  *   - 成功时: 返回一个包含所有词法单元的字符串数组。
                  *   - 失败时 (仅在严格模式): 返回一个包含两个元素的数组 `['error', index]`，其中 `index` 是在原始字符串中检测到错误的字符的索引。
                  */
@@ -1056,7 +1060,10 @@
                 /**
                  * 延迟解析并缓存高精度常量。
                  *
-                 * @returns {Object} 基础常量和 Lanczos 系数集。
+                 * @returns {Object<string, [number, bigint, number]|{acc:number, g:[number, bigint, number], p:Array<[number, bigint, number]>}>}
+                 *   惰性解析且缓存的只读常量表。`e`、`pi`、`invTwoPi` 等基础项直接是
+                 *   `[power, mantissa, acc]`；`lanczos_n20`、`lanczos_n40`、`lanczos_n82`、`lanczos_n164`
+                 *   则返回 `{acc, g, p}`，其中 `acc` 是适用精度上限，`g` 是参数元组，`p` 是系数元组数组。
                  */
                 static get constants() {
                     if (this._constantsCache) {
@@ -1071,7 +1078,8 @@
                      * @param {[number, string, number]} rawTuple - 常量表中的 `[power, mantissa, acc]`：
                      *   `power` 为十进制指数，`mantissa` 是避免脚本解析损失的十进制整数字符串，
                      *   `acc` 是该常量可用的有效位数。返回值会将尾数转换为 `bigint`。
-                     * @returns {[number, bigint, number]} 可供数字构造器使用的元组。
+                     * @returns {[number, bigint, number]} 可直接传给 `BigNumber` 的
+                     *   `[power, mantissa, acc]`：十进制指数、带符号整数尾数和有效位数；返回新数组。
                      */
                     const parseTuple = (rawTuple) => {
                         const hexStr = rawTuple[1];
@@ -1092,7 +1100,9 @@
                             /**
                              * 解析并缓存当前顶层常量。
                              *
-                             * @returns {Array|Object} 已解析的常量。
+                             * @returns {[number, bigint, number]|{acc:number, g:[number, bigint, number], p:Array<[number, bigint, number]>}}
+                             *   当前 `key` 对应的基础数值元组或 Lanczos 参数对象；首次访问后 getter 会被同一
+                             *   不可写值替换，后续访问保持对象身份。
                              */
                             get: () => {
                                 const raw = this._rawConstants[key];
@@ -1106,7 +1116,8 @@
                                         /**
                                          * 解析并缓存 Lanczos 参数 `g`。
                                          *
-                                         * @returns {[number, bigint, number]} 已解析的参数。
+                                         * @returns {[number, bigint, number]} Lanczos 参数 `g` 的
+                                         *   `[power, mantissa, acc]` 元组；首次读取时解析并固定在当前参数对象上。
                                          */
                                         get: () => {
                                             const gVal = parseTuple(raw.g);
@@ -1127,7 +1138,8 @@
                                         /**
                                          * 解析并缓存 Lanczos 系数数组 `p`。
                                          *
-                                         * @returns {Array<[number, bigint, number]>} 已解析的系数。
+                                         * @returns {Array<[number, bigint, number]>} 按近似公式求和顺序排列的系数
+                                         *   `p₀, p₁, …`；每项均为 `[power, mantissa, acc]`，整个数组只解析一次。
                                          */
                                         get: () => {
                                             const pArray = raw.p.map(parseTuple);
