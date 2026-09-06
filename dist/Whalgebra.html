@@ -13730,6 +13730,7 @@
             const parent = target.parentNode;
             const parentID = parent?.id || '';
 
+            // 第一层按目标 ID 精确分发，处理全局唯一控件。
             switch (targetID) {
                 case 'head_setting':
 
@@ -13782,6 +13783,7 @@
 
             const showMoreFunc = /** 打开更多键盘选项。 */() => PageControlTools.changeSubKeyboard('SortSvg');
 
+            // 第二层按父容器分组，同一控件内部的图标和文字共享处理逻辑。
             switch (parentID) {
                 case 'setting_acc_control':
                 case 'switch_knob_on':
@@ -13821,6 +13823,7 @@
                 }
             }
 
+            // 第三层处理带规则命名的动态元素，避免为每个模式、单元格或按键逐一注册监听器。
             if (parentID.startsWith('screen_input_')) {
 
                 PageControlTools.hideExplain();
@@ -14051,6 +14054,7 @@
                 }
             };
 
+            // 恢复顺序不可交换：模式先建立页面上下文，输入数据随后决定子模式的合法范围，最后恢复显示选项。
             recoverData('currentMode', /** 恢复当前页面模式。 */(data) => {
                 PageConfig.currentMode = data;
             });
@@ -14065,6 +14069,7 @@
                     } else {
 
                         const lastItem = inner.at(-1);
+                        // 统计表始终保留一个空白末行供继续输入，同时限制恢复数据的最大行数。
                         if (lastItem[0].length !== 0 || lastItem[1].length !== 0) {
                             inner.push(['', '']);
                         }
