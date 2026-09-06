@@ -12450,7 +12450,11 @@
                     // 使用请求 ID 忽略过期结果。
                     const requestId = Date.now();
                     if (this.mode0ScreenInCalc) {
-                        WorkerTools.restart();
+                        // 取消之前积压的计算任务，优先响应当前输入
+                        await WorkerTools.restart();
+
+                        // 也可以使用软取消（性能更好）
+                        // WorkerTools.cancelWorker();
                     }
                     this.mode0ScreenInCalc = true;
                     this._currentRequestId = requestId;
@@ -12526,7 +12530,7 @@
                         this.mode0ShowOnScreen.cancel();
                         screenDisplay.classList.add('NoDisplay');
                         if (this.mode0ScreenInCalc) {
-                            WorkerTools.restart();
+                            await WorkerTools.restart();
                         }
 
                         this.mode0ScreenInCalc = false;
@@ -13561,21 +13565,27 @@
                  */
                 static closePrint() {
                     HtmlTools.getHtml('#main').classList.add('Input');
+
                     switch (PageConfig.currentMode) {
                         case '0':
                             PrintManager.mode0ShowOnScreen.cancel();
+
                             if (PrintManager.mode0ScreenInCalc) {
                                 WorkerTools.restart();
+                                PrintManager.mode0ScreenInCalc = false;
                             }
+
                             InputManager.ac({acArea: HtmlTools.getHtml('#print_content_0_content_0')});
                             InputManager.ac({acArea: HtmlTools.getHtml('#print_content_0_content_1')});
                             return;
+
                         case '1':
                             if (InputManager.statisticsRenderer.isPaused()) {
                                 InputManager.statisticsRenderer.resume();
                             }
                             PageControlTools._exportRaRecover();
                             return HtmlTools.scrollToView();
+
                         case '2_1':
                             PrintManager.printListRenderer.clear();
                             return HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
@@ -13589,10 +13599,10 @@
                  * @returns {void}
                  */
                 static cancelPrint() {
-                    PageControlTools.closePrint();
-
                     WorkerTools.restart();
+                    PrintManager.mode0ScreenInCalc = false;
 
+                    PageControlTools.closePrint();
                     HtmlTools.getHtml('#load_cover').classList.add('NoDisplay');
                 }
 
