@@ -6445,6 +6445,7 @@
                         }
                     }
                     this._config = config;
+                    // 保存原始配置，使同一实例可以在终止后重新生成等价 Worker。
                     this._init();
                 }
 
@@ -6482,6 +6483,7 @@
 
                     // 缓存脚本，避免重启时受外部配置变更影响。
                     const workerCode = this._workerCode ??= this._generateWorkerCode(callableFunctions, dependencies);
+                    // Blob URL 把动态生成的源码交给 Worker；创建失败或终止时必须撤销 URL。
                     const blob = new Blob([workerCode], {type: 'application/javascript'});
                     const workerUrl = URL.createObjectURL(blob);
 
@@ -6519,6 +6521,7 @@
                         }
 
                         const {id, result, error} = event.data;
+                        // 任务 ID 将乱序返回的消息关联到对应 Promise；已取消或超时的迟到消息会被忽略。
                         if (!this._taskQueue.has(id)) {
                             return; // 任务可能已被取消或超时，直接忽略。
                         }
@@ -6603,6 +6606,7 @@
                      * @returns {string} 序列化结果。
                      */
                     const serializeValue = (value, seen = new WeakSet()) => {
+                        // 序列化目标是可执行 JavaScript 源码，而非 JSON；需保留函数、BigInt、NaN、Infinity 和 -0。
                         if (typeof value === 'function') {
                             return serializeFunction(value);
                         }
@@ -6637,6 +6641,7 @@
                         }
 
                         if (Array.isArray(value)) {
+                            // WeakSet 仅跟踪当前递归路径，既能拒绝循环引用，也允许不同位置复用同一对象。
                             if (seen.has(value)) {
                                 throw new TypeError('Circular references are not supported.');
                             }
@@ -6718,6 +6723,7 @@
                             return `(${source})`;
                         }
 
+                        // 对象方法源码缺少 `function` 前缀，借助临时对象字面量把它还原为函数值。
                         return `(Object.values({${source}})[0])`;
                     };
 
@@ -6734,6 +6740,7 @@
                     ]);
                     const dependencyNames = new Set();
 
+                    // 生成的脚本依次注入依赖、注册可调用函数，并安装基于消息的执行/取消协议。
                     let code = `
 /* Dynamically Generated Worker Code. */
 (() => {
@@ -6985,6 +6992,7 @@
                             }, timeout);
                         }
 
+                        // 先登记队列再发送消息，避免 Worker 极快返回时查不到对应 Promise。
                         this._taskQueue.set(id, {resolve, reject, timeoutId});
                         try {
                             this._worker.postMessage({type: 'exec', id, functionName, args}, transfer);
@@ -7170,6 +7178,7 @@
 
                         WorkerTools._isRestarting = true;
                         try {
+                            // 意外错误会重建 Worker 并恢复配置；失败的当前请求不自动重放，防止副作用重复。
                             if (this._mathWorker) {
                                 this._mathWorker.terminate();
                                 this._mathWorker.restart();
