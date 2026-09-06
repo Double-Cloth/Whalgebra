@@ -19,7 +19,6 @@
              * @class TokenConfig
              */
             class TokenConfig {
-
                 // 二元前缀运算符。
                 static _func_01_2 = ['log', 'nroot'];
                 // `&` 是隐式乘法的内部词元。
@@ -483,9 +482,7 @@
                     }
 
                     const result = {token: token, class: 'illegal'};
-
                     result.isHtmlClassLenOne = TokenConfig.htmlClassLenOneFunc.has(token);
-
                     const firstChar = token.length > 0 ? token[0] : null;
 
                     if (!TokenConfig.allSigns.has(token) && !TokenConfig.baseNumbers.has(firstChar)) {
@@ -588,7 +585,6 @@
                         let matched = false;
                         for (let len = temp.length; len > 0; len--) {
                             const subTemp = temp.slice(0, len);
-
                             const tokenInfo = Public.getTokenInfo(subTemp);
                             if (tokenInfo.class !== 'illegal' || (tokenInfo.isHtmlClassLenOne && !strictMode)) {
                                 result.push(subTemp);
@@ -1109,7 +1105,6 @@
                                 let val;
 
                                 if (raw.p && Array.isArray(raw.p)) {
-
                                     const lanczosObj = {acc: raw.acc};
 
                                     Object.defineProperty(lanczosObj, 'g', {
@@ -1427,13 +1422,11 @@
                             }
 
                             const finalAcc = acc ?? x.acc;
-
                             let realNum;
 
                             if (finalAcc === x.acc) {
                                 realNum = {mantissa: x.mantissa, power: x.power};
                             } else {
-
                                 realNum = BigNumber._roundAndNormalize(x.mantissa, x.power, finalAcc);
                             }
 
@@ -1561,7 +1554,6 @@
                  * @throws {Error} 如果 `exp` 不是非负整数。
                  */
                 static _pow10(exp) {
-
                     if (!Number.isInteger(exp) || exp < 0) {
                         throw new Error('[BigNumber] Input error: exponent for pow10 must be a non-negative integer.');
                     }
@@ -1699,7 +1691,6 @@
                     }
 
                     if (absMantissa === 0n) {
-
                         return {mantissa: 0n, power: 0};
                     }
 
@@ -2503,7 +2494,6 @@
 
                         const resultMantissa = reA.mantissa * reB.mantissa;
                         const resultPower = reA.power + reB.power;
-
                         const resultAcc = Math.min(reA.acc, reB.acc);
 
                         return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
@@ -2549,11 +2539,8 @@
 
                         // BigInt 除法会截断，因此先按目标精度、尾数位数差和保护位放大被除数。
                         const scalingDigits = resultAcc + lenB - lenA + 4;
-
                         const finalScalingDigits = Math.max(0, scalingDigits);
-
                         const scaledMantissaA = reA.mantissa * (10n ** BigInt(finalScalingDigits));
-
                         const resultMantissa = scaledMantissaA / reB.mantissa;
                         const resultPower = reA.power - reB.power - finalScalingDigits;
 
@@ -2563,7 +2550,6 @@
                     const conjB = MathPlus.conj(inputB);
                     // 复数除法乘以分母的共轭：a/b = a·conj(b)/|b|²，使分母化为实数。
                     const numerator = MathPlus.times(inputA, conjB);
-
                     const denominator = MathPlus.times(inputB, conjB);
 
                     const resultRe = MathPlus.divide(numerator.re, denominator.re);
@@ -2724,9 +2710,7 @@
                         const aHeadNum = Number(aHeadStr);
 
                         const log10a = Math.log10(aHeadNum) + (numDigitsInA - aHeadStr.length);
-
                         const bAsNumber = Number(b);
-
                         const log10Result = bAsNumber * log10a;
 
                         return Math.floor(log10Result) + 1;
@@ -2748,9 +2732,7 @@
 
                         // 连续平方会累积舍入误差，额外 10 位仅作为中间保护位，最终结果仍按调用精度截断。
                         let b = new ComplexNumber(base, {acc: currentAcc + 10});
-
                         const acc = b.acc;
-
                         let result = new ComplexNumber([0, 1n, acc]);
 
                         // 二进制平方-乘：指数每次减半，只在当前二进制位为 1 时乘入结果。
@@ -3221,7 +3203,6 @@
 
                         // 先用 10 和 1.2 缩放到 0.9～1.1，再计算 y=(x-1)/(x+1)。
                         // ln(x) = 2·(y + y³/3 + y⁵/5 + ...)，最后补回缩放产生的 ln(10) 与 ln(1.2)。
-
                         // 将 x 标准化到 (0, 1] 范围内
                         const mantissaLen = re.mantissa.toString().length;
                         const mantissaChangedBy10 = mantissaLen + re.power;
@@ -3337,7 +3318,6 @@
                             re = MathPlus.divide(re, [0, 3n, acc]).re;
                         }
                         if (divideBy3 === 4) {
-
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: sin. Input: ${input.toString()}`);
                         }
 
@@ -3475,7 +3455,6 @@
                             re = MathPlus.divide(re, [0, 4n, acc]).re;
                         }
                         if (divideBy4 === 3) {
-
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                         }
 
@@ -3864,7 +3843,6 @@
                     }
 
                     // 非整数、负数和复数阶乘使用兰佐斯近似计算 Γ(x+1)。
-
                     let option;
                     // 按目标精度选择最小够用的 Lanczos 系数集，避免无谓的大精度运算。
                     if (acc <= 40) {
@@ -4294,7 +4272,6 @@
                             throw new Error(`[MathPlus] syntax error: Illegal input (${position}).`);
                         }
                         if (lastTokenInfo.parameters === 2 && lastTokenInfo.funcPlace === 'front' && currentPush !== '(') {
-
                             let position = 0;
                             for (let j = 0; j < i; j++) {
                                 position += input[j].length;
@@ -4415,7 +4392,6 @@
                                     addKh === 0
                                 ) {
                                     if (tokenInfoJ.priority <= orderOfTimes && currentTokenJ !== '*') {
-
                                         output.splice(j + 1, 0, '[');
                                     }
                                     break;
@@ -5066,7 +5042,6 @@
 
                     for (let i = 0; i < n; i++) {
                         // 每列选取绝对值最大的主元并换行，减少除以极小数造成的误差放大。
-
                         let maxRow = i;
                         for (let k = i + 1; k < n; k++) {
                             if (MathPlus.minus(MathPlus.abs(augmentedMatrix[k][i]), MathPlus.abs(augmentedMatrix[maxRow][i])).re.isPositive()) {
@@ -5251,7 +5226,6 @@
                     }
 
                     try {
-
                         // R² 使用未变换的原始 y 值。
                         result.R2 = StatisticsTools._calcR2(listA, originalListB,
                             // 使用已求得的参数计算预测值
@@ -6592,7 +6566,6 @@
                     f,
                     g
                 } = {}) {
-
                     let effectiveOutputAcc = outputAcc;
                     if (effectiveOutputAcc > 1 && effectiveOutputAcc > calcAcc) {
                         effectiveOutputAcc = calcAcc;
@@ -7791,7 +7764,6 @@
                      * @private
                      */
                     function _changeSubModes(name, dealMode) {
-
                         if (dealMode === '0') {
                             return;
                         }
@@ -7832,7 +7804,6 @@
                                 });
                             }
                         } else {
-
                             const modeValidations = {
                                 '2_0': ['0', '1'],
                                 '2_1': ['0', '1', '2'],
@@ -7847,7 +7818,6 @@
                             }
 
                             HtmlTools.getHtml(`#screen_input_${dealMode}${PageConfig._subModes[dealMode]}`).classList.remove('ScreenInputsOn');
-
                             HtmlTools.getHtml(`#screen_input_${dealMode}${name}`).classList.add('ScreenInputsOn');
                         }
 
@@ -7859,7 +7829,6 @@
                         } catch {
                             console.warn('[PageConfig] "subModes" storage failed');
                         }
-
                     }
 
                     if (!obj) {
@@ -7910,7 +7879,6 @@
 
                     // 模式切换同时维护输入区、结果区、虚拟列表、键盘提示和持久化状态。
                     HtmlTools.getHtml(`#mode_${PageConfig._currentMode[0]}`).classList.remove('SelectionOn');
-
                     HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.add('NoDisplay');
                     PageConfig._currentMode = mode;
                     if (mode === '1') {
@@ -7930,9 +7898,7 @@
                     }
 
                     HtmlTools.getHtml(`#mode_${PageConfig._currentMode[0]}`).classList.add('SelectionOn');
-
                     HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.remove('NoDisplay');
-
                     PageControlTools.keyboardFuncBecomeX();
                     PageControlTools.changeInputTip();
                     PageControlTools.changeSubKeyboard('allNotShow');
@@ -7973,7 +7939,6 @@
                  * @throws {Error} 如果提供的模式不受支持，则抛出错误。
                  */
                 static set printMode(mode) {
-
                     if (!['0', '1'].includes(mode)) {
                         throw new Error('[PageConfig] Unsupported mode');
                     }
@@ -8061,7 +8026,6 @@
                     }
 
                     PageConfig._keyboardType = type;
-
                     PageControlTools.keyboardFuncBecomeX();
                     try {
                         localStorage.setItem('keyboardType', type.toString());
@@ -8103,7 +8067,6 @@
                  * @throws {Error} 如果提供的 `mode` 不是 `0` 或 `1`，则抛出错误。
                  */
                 static set calcAccMode(mode) {
-
                     if (![0, 1].includes(mode)) {
                         throw new Error('[PageConfig] Unsupported mode');
                     }
@@ -8178,7 +8141,6 @@
                  *   `[rowIndex, columnIndex, value]` 只更新一个单元格。局部更新会保留其他行列，成功结果持久化。
                  */
                 static set screenData(data) {
-
                     if (!data || typeof data !== 'object') {
                         return;
                     }
@@ -8229,7 +8191,6 @@
                  * @returns {void}
                  */
                 static syncScreenData(area = null) {
-
                     const currentMode = PageConfig.currentMode;
 
                     let name;
@@ -8274,7 +8235,6 @@
                  * @const {RegExp} _tokenizerRegex
                  */
                 static _tokenizerRegex = (() => {
-
                     const escape = (s) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
                     // 配置符号作为首选分支，后续才回退到 `[token]` 和单字符，避免数学词元被拆散。
@@ -8306,7 +8266,6 @@
                  */
                 static getHtml(name, index = 0) {
                     switch (name[0]) {
-
                         case '#':
                             return document.getElementById(name.slice(1));
 
@@ -8454,7 +8413,6 @@
                     appendType = 'p',
                     nameType = ['class']
                 } = {}) {
-
                     const targetParent = typeof parentElement === 'string'
                                          ? HtmlTools.getHtml(parentElement)
                                          : parentElement;
@@ -8474,7 +8432,6 @@
                     const fragment = document.createDocumentFragment();
 
                     for (const name of nameList) {
-
                         if (!name) {
                             continue;
                         }
@@ -8525,7 +8482,6 @@
                  * @returns {string|string[]} 清理后的字符串或数组，其中已移除了所有与 `cdot` 相关的标记。
                  */
                 static deleteIllegal(expr) {
-
                     const deleteStrList = ['cdot', 'syntax_error'];
 
                     if (typeof expr === 'string') {
@@ -8582,7 +8538,6 @@
                  * @returns {void}
                  */
                 static scrollToView() {
-
                     const input = HtmlTools.getHtml('#input');
                     const cursor = HtmlTools.getHtml('#cursor');
 
@@ -8594,10 +8549,8 @@
                     const isAtEnd = !cursor.nextElementSibling;
 
                     if (isAtStart || isAtEnd) {
-
                         cursor.scrollIntoView({inline: 'nearest'});
                     } else {
-
                         let [leftNum, rightNum] = InputManager.inputAreaMoveNum('both');
 
                         // 最多检查相邻 5 个元素。
@@ -8788,7 +8741,6 @@
                         lastCallTime = time;
 
                         if (isInvoking) {
-
                             if (timerId === undefined) {
                                 return leadingEdge(time);
                             }
@@ -8857,14 +8809,12 @@
              * - 通过 ResizeObserver（或 window.resize 降级）自动响应容器尺寸变化。
              */
             class VirtualScroll {
-
                 /**
                  * 有限状态机（FSM）辅助类。
                  * - 通过转换表约束合法的状态跳转，非法跳转将抛出异常。
                  * - 支持可选的转换回调，便于外部监听状态变化。
                  */
                 static _StateMachine = class {
-
                     /**
                      * 创建有限状态机。
                      *
@@ -8943,7 +8893,6 @@
                  * - 不压缩时，虚拟坐标与物理坐标完全相同（ratio = 1）。
                  */
                 static _HeightMapper = class {
-
                     /**
                      * 浏览器单个元素允许的最大像素高度（约 12,000,000 px）。
                      * 超过此值将触发压缩模式。
@@ -8962,13 +8911,9 @@
                      * @returns {void}
                      */
                     reset() {
-
                         this.virtualHeight = 0;
-
                         this.physicalHeight = 0;
-
                         this.scrollRatio = 1;
-
                         this.compressed = false;
 
                         /**
@@ -9008,12 +8953,10 @@
                         const rawEffP = this.physicalHeight - clientHeight;
 
                         if (rawEffP <= 0) {
-
                             this._effV = 0;
                             this._effP = 0;
                             this.scrollRatio = 1;         // 无滚动范围时以 1 作为安全比率。
                         } else {
-
                             this._effV = Math.max(0, rawEffV);
                             this._effP = rawEffP;
                             // 以“可滚动范围”而非总高度计算比率，保证列表顶部和底部在两套坐标中精确对齐。
@@ -9034,7 +8977,6 @@
                             return Math.max(0, physicalScroll);
                         }
                         if (this._effP <= 0) {
-
                             return 0;
                         }
                         const clamped = Math.max(0, Math.min(physicalScroll, this._effP));
@@ -9055,7 +8997,6 @@
                             return Math.max(0, virtualOffset);
                         }
                         if (this._effV <= 0) {
-
                             return 0;
                         }
 
@@ -9095,7 +9036,6 @@
                         let physBottom = this.physicalHeight - physTop - itemsH;
 
                         // 吸收微小负值，避免滚动条因浮点误差抖动。
-
                         if (physBottom < 0 && physBottom > -5) {
                             physTop += physBottom;
                             physBottom = 0;
@@ -9117,7 +9057,6 @@
                  * - 池容量上限由构造参数 `limit` 控制。
                  */
                 static _NodePool = class {
-
                     /**
                      * 创建指定容量的节点池。
                      *
@@ -9125,13 +9064,9 @@
                      *   节点直接释放，用户自行返回的元素不作为普通池节点缓存。
                      */
                     constructor(limit) {
-
                         this._limit = limit;
-
                         this._pool = [];
-
                         this._wrapperSet = new Set();
-
                         this._userRefCnt = new Map();
                     }
 
@@ -9190,7 +9125,6 @@
 
                         if (result instanceof HTMLElement) {
                             // 测量时克隆节点，避免移动正在显示的实例。
-
                             if (measureOnly) {
                                 return result.cloneNode(true);
                             }
@@ -9209,7 +9143,6 @@
 
                         let wrapper;
                         if (measureOnly) {
-
                             wrapper = document.createElement('div');
                         } else {
                             wrapper = this._pool.pop() ?? document.createElement('div');
@@ -9263,7 +9196,6 @@
                         if (this._wrapperSet.has(el)) {
                             this._wrapperSet.delete(el);
                             if (this._pool.length < this._limit) {
-
                                 el.replaceChildren();
 
                                 for (const {name} of Array.from(el.attributes)) {
@@ -9515,7 +9447,6 @@
                  * @returns {number} 规范化后的非负整数。
                  */
                 _normalizeLength(length, caller) {
-
                     if (length == null) {
                         console.warn(`[VirtualScroll] ${caller}(): length is ${length}, treating as 0.`);
                         return 0;
@@ -9711,7 +9642,6 @@
                  * @returns {void}
                  */
                 _doMeasure() {
-
                     const inlineOverflowY = this.container.style.overflowY;
                     const clientHeight = this.container.clientHeight;
                     const tempEls = [];
@@ -9901,7 +9831,6 @@
                     }
 
                     this._handleUserInterrupt = () => {
-
                         if (this._isSmoothScrolling) {
                             this._cancelSmoothScroll();
                         }
@@ -10151,7 +10080,6 @@
                             const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
                             const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
                             const clampedVirt = Math.min(Math.max(0, exactVirtScroll), maxVirt);
-
                             this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
 
                             this._bindScroll();
@@ -10216,7 +10144,6 @@
                     const savedAnchorRatio = this._anchorRatio;
 
                     this._heightMapper.reset();
-
                     this._doMeasure();
                     this._measured = true;
 
@@ -10254,7 +10181,6 @@
                     const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
                     const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
                     const clampedVirt = Math.min(Math.max(0, exactVirtScroll), maxVirt);
-
                     this.container.scrollTop = this._heightMapper.virtualToPhysical(clampedVirt);
 
                     // `_doMeasure()` 会解绑滚动监听，恢复后需重新绑定。
@@ -10420,9 +10346,7 @@
                         // 钳制物理位置，兼容 macOS 和 iOS 的弹性滚动。
                         const maxPhysScroll = Math.max(0, hm.physicalHeight - clientHeight);
                         const clampedPhysScrollTop = Math.max(0, Math.min(physScrollTop, maxPhysScroll));
-
                         const virtScrollTop = hm.physicalToVirtual(clampedPhysScrollTop);
-
                         let visibleStart = Math.floor(virtScrollTop / this.itemHeight);
                         let start = Math.max(0, visibleStart - this.bufferSize);
 
@@ -10430,11 +10354,9 @@
 
                         let visibleEnd = visibleStart + Math.ceil(clientHeight / this.itemHeight);
                         let end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
-
                         const rangeUnchanged = start === this._startIndex && end === this._endIndex;
 
                         // 渲染范围不变时也要更新 spacer，以同步滚动视差。
-
                         const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
                             start, end, this.totalCount, this.itemHeight, clampedPhysScrollTop
                         );
@@ -10467,7 +10389,6 @@
                         this._endIndex = end;
                     } catch (error) {
                         // 渲染失败后清理节点和窗口范围，避免残留状态。
-
                         this._recycleRenderedNodes();
 
                         if (this._spacerTop?.isConnected && this._spacerBottom?.isConnected) {
@@ -10513,7 +10434,6 @@
                     }
 
                     // 此处只处理仍有交集的渲染窗口。
-
                     for (let i = newStart; i < Math.min(prevStart, newEnd); i++) {
                         prependIndices.push(i);
                     }
@@ -10567,7 +10487,6 @@
                         this._renderedNodes = orderedMap;
                     } catch (error) {
                         // 异常时单独回收尚未登记的新节点，避免对象池泄漏。
-
                         for (const el of newNodes.values()) {
                             this._nodePool.recycle(el);
                         }
@@ -10633,7 +10552,6 @@
                     // 钳制锚点，避免弹性滚动越过数据范围。
                     const maxPhysScroll = Math.max(0, hm.physicalHeight - this.container.clientHeight);
                     const clampedPhysScrollTop = Math.max(0, Math.min(physScrollTop, maxPhysScroll));
-
                     const virtScrollTop = hm.physicalToVirtual(clampedPhysScrollTop);
                     const exactIdx = virtScrollTop / this.itemHeight;
                     this._anchorIndex = Math.floor(exactIdx);
@@ -10898,7 +10816,6 @@
                         this._syncContainerSize();
 
                         // 先撑开完整占位高度，避免浏览器钳制随后设置的 `scrollTop`。
-
                         {
                             const hm = this._heightMapper;
                             const {top, bottom} = hm.calcSpacerHeights(
@@ -10911,7 +10828,6 @@
                         if (resetScroll) {
                             this.container.scrollTop = 0;
                         } else {
-
                             const clientHeight = this.container.clientHeight;
                             const hm = this._heightMapper;
                             const newVirtScroll = Math.min(
@@ -11238,7 +11154,6 @@
                     const hm = this._heightMapper;
 
                     return Object.freeze({
-
                         state: this.state,
                         ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
 
@@ -11377,7 +11292,6 @@
 
                     const tokenInfo = Public.getTokenInfo(token);
                     if (tokenInfo.class === 'func' && !tokenInfo.isHtmlClassLenOne) {
-
                         return token.length;
                     }
 
@@ -11399,17 +11313,13 @@
                  *   返回 `[leftStep,rightStep]`。若光标位于边缘，缺失方向用相反侧步长的负值编码。
                  */
                 static inputAreaMoveNum(direction, asCursor = null) {
-
                     const input = HtmlTools.getHtml('#input');
                     const children = input.children;
                     const len = children.length;
-
                     const range = TokenConfig.MAX_TOKEN_LENGTH + 2;
-
                     let cursorIndex = -1;
 
                     if (!asCursor) {
-
                         for (let i = 0; i < len; i++) {
                             if (children[i].id === 'cursor') {
                                 cursorIndex = i;
@@ -11417,7 +11327,6 @@
                             }
                         }
                     } else {
-
                         let targetIndex = -1;
                         let realCursorIndex = -1;
 
@@ -11450,7 +11359,6 @@
                     }
 
                     // 仅提取光标附近的文本窗口。
-
                     const startIndex = Math.max(0, cursorIndex - range);
                     const endIndex = Math.min(len - 1, cursorIndex + range);
                     const classList = HtmlTools.getClassList(input, {
@@ -11518,10 +11426,8 @@
 
                     // 负步长表示指定方向已到边界，调用方应改为处理光标另一侧的完整词元。
                     if (direction === 'left') {
-
                         return isAtLeftEdge ? -rightStep : leftStep;
                     } else {
-
                         return isAtRightEdge ? -leftStep : rightStep;
                     }
                 }
@@ -11540,7 +11446,6 @@
                  *   规范化类名数组。两种模式都会移除不再需要的 `_space_`，再在语义边界插入空格。
                  */
                 static addSpace({area = null, classList = null, rangeLimit = false} = {}) {
-
                     const REGEX_ALPHA = /[a-zA-Z]/;
 
                     const specialCharacters = '_syntax_error_';
@@ -11585,7 +11490,6 @@
                      * @private
                      */
                     const getUnlimitedAddIndex = (classList) => {
-
                         const clonedList = [...classList];
 
                         let haveSpecialCharacters = false;
@@ -11599,7 +11503,6 @@
                         const addIndex = [];
 
                         if (tokens && tokens.length > 0) {
-
                             let pointer = this._getTokenLen(tokens[0]);
 
                             for (let i = 1; i < tokens.length; i++) {
@@ -11625,7 +11528,6 @@
                     };
 
                     if (classList) {
-
                         const pureClassList = classList.filter((c) => c !== space);
                         if (pureClassList.length === 0) {
                             return pureClassList;
@@ -11641,7 +11543,6 @@
                     }
 
                     if (!area && HtmlTools.getHtml('.InputTip')) {
-
                         return;
                     }
 
@@ -11654,7 +11555,6 @@
 
                     let addIndex = [];
                     if (rangeLimit) {
-
                         const childrenArray = Array.from(children);
                         const centerIndex = childrenArray.indexOf(cursor);
 
@@ -11777,9 +11677,7 @@
                  *   强制按活动子屏幕规则清空；用于模式切换和内部恢复，不应由普通点击随意设置。
                  */
                 static ac({acArea = null, forcedMode = false} = {}) {
-
                     if (acArea) {
-
                         const target = typeof acArea === 'string' ? HtmlTools.getHtml(acArea) : acArea;
 
                         if (target) {
@@ -11855,9 +11753,7 @@
                     }
 
                     HtmlTools.appendDOMs(inputArea, classArray, {referenceNode: cursor});
-
                     this.addSpace({rangeLimit: true});
-
                     HtmlTools.scrollToView();
                 }
 
@@ -11880,7 +11776,6 @@
                             const current = PageConfig.subModes['1'];
                             const brotherTarget = PageConfig.screenData['1'][current[0]][1 - current[1]];
                             if (brotherTarget.length === 0) {
-
                                 InputManager.statisticsDelLine();
                             } else {
                                 // 统计单元格更新格式为 `[行, 列, 值]`。
@@ -11919,7 +11814,6 @@
                     }
 
                     this.addSpace({rangeLimit: true});
-
                     HtmlTools.scrollToView();
                 }
 
@@ -12020,23 +11914,19 @@
 
                         this.addSpace();
                     } else {
-
                         const moveNum = this.inputAreaMoveNum(direction);
 
                         if (moveNum < 0) {
                             if (direction === 'left') {
-
                                 // 移动现有节点以保留引用和属性。
                                 targetArea.appendChild(cursor);
                             } else {
-
                                 targetArea.insertBefore(cursor, targetArea.children[0]);
                             }
                         } else {
                             let targetNode = cursor;
 
                             if (direction === 'left') {
-
                                 for (let i = 0; i < moveNum && targetNode.previousElementSibling; i++) {
                                     targetNode = targetNode.previousElementSibling;
                                 }
@@ -12044,7 +11934,6 @@
                                 // 目标位置未变时，`insertBefore` 不会改变节点。
                                 targetArea.insertBefore(cursor, targetNode);
                             } else {
-
                                 for (let i = 0; i < moveNum && targetNode.nextElementSibling; i++) {
                                     targetNode = targetNode.nextElementSibling;
                                 }
@@ -12084,15 +11973,12 @@
                     }
 
                     const offsetToStart = this.inputAreaMoveNum('left', target);
-
                     const finalIndex = targetIndex - offsetToStart;
 
                     // 先移除光标，避免旧位置影响插入索引。
                     const refNode = contentChildren[finalIndex] || null;
                     input.insertBefore(cursor, refNode);
-
                     this.addSpace();
-
                     HtmlTools.scrollToView();
                 }
 
@@ -12119,7 +12005,6 @@
                 ) {
                     const insert = document.createElement('div');
                     const currentMode = PageConfig.subModes['1'];
-
                     const isCurrent = index === currentMode[0];
 
                     const serialNumberGrandfather = document.createElement('div');
@@ -12196,7 +12081,6 @@
                     ];
 
                     try {
-
                         gridData.splice(position + 1, 0, ...newItems);
                         PageConfig.screenData = {'1': gridData};
 
@@ -12221,7 +12105,6 @@
                  * @returns {void}
                  */
                 static statisticsDelLine(location = null) {
-
                     let target, position;
                     const gridData = PageConfig.screenData['1'];
                     const len = gridData.length;
@@ -12250,7 +12133,6 @@
                     }
 
                     if (position === PageConfig.subModes['1'][0]) {
-
                         PageControlTools.syncScreenToInput(false);
                     }
 
@@ -12302,7 +12184,6 @@
                      *   次函数，错误和省略哨兵已转换为对应渲染类。
                      */
                     renderItem(index, dataSource) {
-
                         const {result, onlyFuncG} = dataSource;
 
                         const sources = onlyFuncG ?
@@ -12314,11 +12195,8 @@
                         sources.forEach((dataItem) => {
                             const subWrapper = document.createElement('div');
                             const subContent = document.createElement('div');
-
                             const formattedNodes = PrintManager._printHandleError(dataItem);
-
                             HtmlTools.appendDOMs(subContent, formattedNodes);
-
                             subWrapper.appendChild(subContent);
                             currentDiv.appendChild(subWrapper);
                         });
@@ -12370,7 +12248,6 @@
                  *   可交给 `HtmlTools.appendDOMs` 的渲染类名数组。
                  */
                 static _printHandleError(str) {
-
                     if (str !== 'error') {
                         return HtmlTools.textToHtmlClass(str);
                     }
@@ -12391,16 +12268,13 @@
                  * @returns {void}
                  */
                 static _multipleLinesPrint(outputTarget, list, toDomFunc, needIndex = false) {
-
                     const fragment = document.createDocumentFragment();
 
                     for (let i = 0; i < list.length; i++) {
-
                         const div = document.createElement('div');
                         if (list[i].includes('error') || list[i].includes('_error_')) {
                             HtmlTools.appendDOMs(div, ['_error_']);
                         } else {
-
                             needIndex ? toDomFunc(div, list[i], i) : toDomFunc(div, list[i]);
                         }
 
@@ -12447,7 +12321,6 @@
                     }
 
                     if (resultList === 'error') {
-
                         PrintManager.setMode1RaResults('error');
 
                         for (let i = 2; i < 22; i++) {
@@ -12482,7 +12355,6 @@
                     };
 
                     this.setMode1RaResults(resultList[resultList.bestModel]);
-
                     PageControlTools.changePrint1Ra(modelToId(resultList.bestModel), 'init');
 
                     Object.entries(resultsToOutputArea).forEach(([key, value]) => {
@@ -12498,7 +12370,6 @@
                  * @returns {void}
                  */
                 static setMode1RaResults(RaList) {
-
                     const content0 = HtmlTools.getHtml('#print_content_1_content_0');
 
                     if ([RaList, RaList.regressionEquation].includes('error')) {
@@ -12537,9 +12408,7 @@
                     // 使用请求 ID 忽略过期结果。
                     const requestId = Date.now();
                     if (this.mode0ScreenInCalc) {
-
                         WorkerTools.restart();
-
                     }
                     this.mode0ScreenInCalc = true;
                     this._currentRequestId = requestId;
@@ -12581,7 +12450,6 @@
                             screen0Display.classList.add('NoDisplay');
                         }
                     } finally {
-
                         // 较新的请求负责管理计算状态。
                         if (this._currentRequestId === requestId) {
                             this.mode0ScreenInCalc = false;
@@ -12660,7 +12528,6 @@
 
                     if (result[0] !== '_error_' && screenDisplay.classList.contains('NoDisplay')) {
                         if (PageConfig.calcAccMode === 0) {
-
                             const screenDisplayInner = HtmlTools.getHtml('#screen_0_display_inner');
                             screenDisplay.classList.remove('NoDisplay');
                             HtmlTools.appendDOMs(screenDisplayInner, result, {mode: 'replace'});
@@ -12692,7 +12559,6 @@
                     PageControlTools.switchStatisticsResults('x');
 
                     for (let i = 0; i < screenData.length; i++) {
-
                         let currentPushA = screenData[i][0];
                         let currentPushB = screenData[i][1];
 
@@ -12706,11 +12572,9 @@
                         if (currentPushA.length === 0 && currentPushB.length === 0) {
                             continue;
                         } else if (currentPushA.length === 0) {
-
                             PageConfig.screenData = {'1': [i, 0, '0']};
                             currentPushA = '0';
                         } else if (currentPushB.length === 0) {
-
                             PageConfig.screenData = {'1': [i, 1, '0']};
                             currentPushB = '0';
                         }
@@ -12722,7 +12586,6 @@
                     PageConfig.syncScreenData();
 
                     try {
-
                         const resultList = await WorkerTools.statisticsCalc(listA, listB);
 
                         this._setMode1Results(resultList);
@@ -12737,7 +12600,6 @@
                             'choose_ra_6': resultList.reciprocal
                         };
                     } catch {
-
                         this._setMode1Results('error');
                         this.mode1Results = 'error';
                     }
@@ -12754,11 +12616,8 @@
                  * @returns {Promise<void>} 此方法没有返回值，其主要作用是通过DOM操作来更新页面内容。
                  */
                 static async _exeMode2() {
-
                     const headInit = HtmlTools.getHtml('#print_content_2_head').children[1].children[0];
-
                     HtmlTools.getHtml('#print_content_2').classList.add('TwoFunc');
-
                     headInit.classList.add('_f_');
                     headInit.classList.remove('_g_');
 
@@ -12781,7 +12640,6 @@
 
                             HtmlTools.getHtml('#print_content_2').classList.remove('TwoFunc');
                         } else if (fx === '') {
-
                             HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
                             return;
                         }
@@ -12821,16 +12679,13 @@
                      * 多行显示区域则渲染一行包含错误标识的数据，以保持统一的显示结构。
                      */
                     const errorPrint = () => {
-
                         for (let i = 0; i < 10; i++) {
                             switch (i) {
                                 case 0:
                                 case 1:
-
                                     HtmlTools.appendDOMs(HtmlTools.getHtml(`#print_content_3_content_${i}`), ['_error_'], {mode: 'replace'});
                                     break;
                                 default:
-
                                     this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
                                         [['error']],
@@ -12920,7 +12775,6 @@
                      *   任意实数解，其他值按普通数学表达式词元渲染。
                      */
                     const powerFunctionRootToHtml = (target, text) => {
-
                         if (text === 'null') {
                             HtmlTools.appendDOMs(target, ['_null_'], {mode: 'replace'});
                             return;
@@ -12946,7 +12800,6 @@
                     };
 
                     const list = [];
-
                     let noInput = true;
                     for (let i = 0; i < 5; i++) {
                         const screenData = PageConfig.screenData[`3${i}`];
@@ -12970,7 +12823,6 @@
                         for (let i = 0; i < 10; i++) {
                             switch (i) {
                                 case 0:
-
                                     HtmlTools.appendDOMs(
                                         HtmlTools.getHtml('#print_content_3_content_0'),
                                         result.equation === 'error' ?
@@ -12980,11 +12832,9 @@
                                     );
                                     break;
                                 case 1:
-
                                     powerFunctionTextToHtml(HtmlTools.getHtml('#print_content_3_content_1'), result.range, true);
                                     break;
                                 case 9:
-
                                     this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
                                         result[outputList[i]],
@@ -12992,7 +12842,6 @@
                                     );
                                     break;
                                 default:
-
                                     this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
                                         result[outputList[i]],
@@ -13027,7 +12876,6 @@
                      * @param {number} i - 当前解的索引 k。
                      */
                     const indexingNumericalResults = (target, text, i) => {
-
                         HtmlTools.appendDOMs(
                             target,
                             ['_z_mathit_', '_underline_', ...HtmlTools.textToHtmlClass(i.toString()), '_space_', '_equal_', '_space_'],
@@ -13044,13 +12892,11 @@
                     const content41 = HtmlTools.getHtml('#print_content_4_content_1');
                     const content42 = HtmlTools.getHtml('#print_content_4_content_2');
                     try {
-
                         const result = await WorkerTools.radicalFunctionAnalysis(z, n);
 
                         if ([result.z, result.n].includes('error')) {
                             HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
                         } else {
-
                             HtmlTools.appendDOMs(
                                 content40,
                                 [...HtmlTools.textToHtmlClass(result.z), '_space_', '_de_'],
@@ -13065,7 +12911,6 @@
                                     HtmlTools.appendDOMs(content40, ['_cbrt_ch_']);
                                     break;
                                 default:
-
                                     HtmlTools.appendDOMs(
                                         content40,
                                         ['_space_', ...HtmlTools.textToHtmlClass(result.n), '_space_', '_print_4_root_']
@@ -13077,7 +12922,6 @@
                         if (result.kRange.includes('error') || result.formula === 'error') {
                             HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
                         } else {
-
                             HtmlTools.appendDOMs(
                                 content41,
                                 ['_z_mathit_', '_underline_', '_k_mathit_', '_space_', '_equal_', '_space_'],
@@ -13108,7 +12952,6 @@
 
                         HtmlTools.getHtml('#print_omit').classList[result.overflow ? 'remove' : 'add']('NoDisplay');
                     } catch {
-
                         HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
                         HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
                         this._multipleLinesPrint(
@@ -13135,14 +12978,12 @@
                     }
 
                     if (currentMode === '2_0') {
-
                         PageConfig.currentMode = '2_1';
 
                         return;
                     }
 
                     HtmlTools.getHtml('#load_cover').classList.remove('NoDisplay');
-
                     HtmlTools.getHtml('#main').classList.remove('Input');
                     switch (currentMode) {
                         case '0':
@@ -13205,7 +13046,6 @@
                  * @returns {void}
                  */
                 static _changePrintContent1Choose(mode) {
-
                     HtmlTools.getHtml('#print_content_1_choose').classList[mode === undefined ? 'toggle' : mode]('PrintContent1ChooseOff');
                 }
 
@@ -13223,7 +13063,6 @@
                         export1 = HtmlTools.getHtml('#export_1');
 
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#export_0'), ['_export_fx_'], {mode: 'replace'});
-
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#export_1'), ['_export_gx_'], {mode: 'replace'});
 
                     export0.classList.remove('Failed');
@@ -13261,7 +13100,6 @@
                  *   省略时仍切换选择状态，但使用控件默认的视觉位置。
                  */
                 static triggerSelection(target, e) {
-
                     if (!target || target.classList.contains('IsSelected')) {
                         return;
                     }
@@ -13330,7 +13168,6 @@
                  * @returns {void}
                  */
                 static moveShip() {
-
                     HtmlTools.getHtml('._ship_').classList.toggle('ShipLeft');
                 }
 
@@ -13487,13 +13324,11 @@
 
                     // 忽略已成功导出的重复点击。
                     if (!clickArea.children[0].classList.contains('_success_')) {
-
                         const exportTarget = func === 'export_0' ? '2_00' : '2_01';
 
                         const exportContent = PrintManager.mode1Results;
 
                         if (exportContent === 'error' || exportContent[this._currentRaModel].regressionEquation === 'error') {
-
                             HtmlTools.appendDOMs(clickArea, ['_failed_'], {mode: 'replace'});
                             clickArea.classList.add('Failed');
                             return;
@@ -13524,7 +13359,6 @@
                     const nextNoDisplayStr = ['0', '1'].includes(mode) ? 'NoDisplay' : 'ScreenNoDisplay';
 
                     HtmlTools.getHtml('#screen_' + currentMode).classList.add(currentNoDisplayStr);
-
                     HtmlTools.getHtml('#screen_' + mode).classList.remove(nextNoDisplayStr);
                 }
 
@@ -13560,16 +13394,12 @@
                     };
 
                     const currentMode = PageConfig.currentMode;
-
                     const currentTipList = modeTips[currentMode];
-
                     let currentTipStr;
 
                     if (currentTipList[0] === 0) {
-
                         currentTipStr = currentTipList[1];
                     } else {
-
                         currentTipStr = currentTipList[1 + Number(PageConfig.subModes[currentMode])];
                     }
 
@@ -13597,16 +13427,12 @@
                     const children = HtmlTools.getHtml('#keyboard_top').children;
 
                     if (className === 'allNotShow') {
-
                         HtmlTools.getHtml('#keyboard_cover_ForMode1').classList.remove('KeyboardCover');
                         HtmlTools.getHtml('#keyboard_cover').classList.remove('KeyboardCover');
 
                         for (let i = 1; i < 4; i++) {
-
                             const dealSubKeyboard = `#sub_keyboard_${i < 3 ? i - 1 : 'ForMode1'}`;
-
                             HtmlTools.getHtml(dealSubKeyboard).classList.add('NotShow');
-
                             children[i].classList.add('Ordinary');
                         }
                         return;
@@ -13623,18 +13449,14 @@
 
                     for (let i = 1; i < 4; i++) {
                         if (i !== place) {
-
                             const dealSubKeyboard = `#sub_keyboard_${i < 3 ? i - 1 : 'ForMode1'}`;
                             HtmlTools.getHtml(dealSubKeyboard).classList.add('NotShow');
-
                             children[i].classList.add('Ordinary');
                         }
                     }
 
                     const dealSubKeyboard = HtmlTools.getHtml(`#sub_keyboard_${place < 3 ? place - 1 : 'ForMode1'}`);
-
                     dealSubKeyboard.classList.toggle('NotShow');
-
                     HtmlTools.getHtml('#keyboard_cover_ForMode1').classList.remove('KeyboardCover');
                     HtmlTools.getHtml('#keyboard_cover').classList.remove('KeyboardCover');
 
@@ -13653,20 +13475,16 @@
                  * @returns {void}
                  */
                 static keyboardFuncBecomeX() {
-
                     const dealArea = HtmlTools.getHtml('.BecomeX').firstElementChild;
 
                     if (PageConfig.currentMode !== '2_0') {
-
                         dealArea.className = PageConfig.keyboardType === 0 ? '_f_' : '_g_';
                         return;
                     }
 
                     if (PageConfig.keyboardType === 0) {
-
                         dealArea.className = '_x_mathit_';
                     } else if (PageConfig.keyboardType === 1) {
-
                         dealArea.className = PageConfig.subModes['2_0'] === '1' ? '_f_' : '_g_';
                     }
                 }
@@ -13680,7 +13498,6 @@
                  * @returns {void}
                  */
                 static closePrint() {
-
                     HtmlTools.getHtml('#main').classList.add('Input');
                     switch (PageConfig.currentMode) {
                         case '0':
@@ -13710,7 +13527,6 @@
                  * @returns {void}
                  */
                 static cancelPrint() {
-
                     PageControlTools.closePrint();
 
                     WorkerTools.restart();
@@ -13733,7 +13549,6 @@
                     HtmlTools.getHtml('#head_title').classList.remove('NoDisplay');
 
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_title_inner'), ['_basic_explain_title_'], {mode: 'replace'});
-
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_content'), ['_basic_explain_content_'], {mode: 'replace'});
                 }
 
@@ -13929,11 +13744,9 @@
                                 break;
 
                             default:
-
                                 funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
                         }
                     } else if (inputStr === '|') {
-
                         addLine(fragment);
                         funcInfoShow(fragment, 1, null);
                     }
@@ -13957,9 +13770,7 @@
                         const current = PageConfig.subModes['1'];
                         classList = HtmlTools.textToHtmlClass(PageConfig.screenData['1'][current[0]][current[1]]);
                     } else {
-
                         const target = HtmlTools.getCurrentSubscreenArea();
-
                         classList = HtmlTools.getClassList(target, {ignoreSpace: true});
                     }
                     if (skipEmpty && classList.length === 0) {
@@ -13989,7 +13800,6 @@
                  * @returns {Promise<void>} 此方法不返回任何值，其作用是直接修改 DOM。
                  */
                 static async syncInputToScreen(moveCursor = true) {
-
                     const currentMode = PageConfig.currentMode;
 
                     if (currentMode === '0') {
@@ -13997,13 +13807,11 @@
                     }
 
                     const inputEl = HtmlTools.getHtml('#input');
-
                     const currentInputArray = HtmlTools.getClassList(inputEl, {ignoreSpace: true});
                     const currentInput = HtmlTools.htmlClassToText(currentInputArray);
                     let expr;
 
                     try {
-
                         const syntaxResult = await WorkerTools.exec(currentInput, {
                             calcMode: 'syntaxCheck',
                             f: HtmlTools.deleteIllegal(PageConfig.screenData['2_00']),
@@ -14012,13 +13820,11 @@
 
                         expr = HtmlTools.textToHtmlClass(syntaxResult.expr);
                     } catch (e) {
-
                         // 保留原输入并加错误前缀，后续 DOM 渲染据此显示语法错误而不丢失用户内容。
                         expr = ['_syntax_error_', ...currentInputArray];
                     }
 
                     if (currentMode === '1') {
-
                         const current = PageConfig.subModes['1'];
                         PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
 
@@ -14036,16 +13842,13 @@
 
                         InputManager.ac();
                     } else {
-
                         const target = HtmlTools.getCurrentSubscreenArea();
                         if (!target) {
                             throw new Error('[PageControlTools] There is no active area on the current screen.');
                         }
 
                         HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
-
                         InputManager.addSpace({area: target});
-
                         PageConfig.syncScreenData();
 
                         if (moveCursor && HtmlTools.getHtml(`#screen_${currentMode}`).children.length !== Number(PageConfig.subModes[currentMode]) + 1) {
@@ -14095,7 +13898,6 @@
             // 第一层按目标 ID 精确分发，处理全局唯一控件。
             switch (targetID) {
                 case 'head_setting':
-
                     PageControlTools.hideExplain();
                     return PageControlTools.headChangeModes();
 
@@ -14113,7 +13915,6 @@
                     return PageControlTools.headChangeExplain();
 
                 case 'input':
-
                     PageControlTools.hideExplain();
                     if (HtmlTools.isScrolledToRight(HtmlTools.getHtml('#input'))) {
                         InputManager.moveCursor('end');
@@ -14161,7 +13962,6 @@
                     return showMoreFunc();
 
                 case 'keyboard_top': {
-
                     const handlers = {
                         '_2nd_': () => PageConfig.keyboardType = 1 - PageConfig.keyboardType,
                         '_trigonometry_': () => PageControlTools.changeSubKeyboard('_trigonometry_'),
@@ -14173,7 +13973,6 @@
                     } else if (targetID === 'keyboard_top_more') {
                         showMoreFunc();
                     } else {
-
                         PageControlTools.hideExplain();
 
                         const direction = firstChildClass.slice(13).toLowerCase();
@@ -14187,7 +13986,6 @@
 
             // 第三层处理带规则命名的动态元素，避免为每个模式、单元格或按键逐一注册监听器。
             if (parentID.startsWith('screen_input_')) {
-
                 PageControlTools.hideExplain();
                 const modeIndex = parentID.slice(-1);
                 PageConfig.subModes = {'default': modeIndex};
@@ -14196,7 +13994,6 @@
             }
 
             if (parentID === 'input' && targetID === '') {
-
                 PageControlTools.hideExplain();
                 return InputManager.clickMoveCursor(target);
             }
@@ -14214,7 +14011,6 @@
             }
 
             if (/Data[XY]/.test(targetClass)) {
-
                 PageControlTools.hideExplain();
 
                 const children = target.parentElement.children;
@@ -14235,7 +14031,6 @@
             }
 
             if (/KeyboardStyle(?:[123]|EXE)/.test(targetClass)) {
-
                 PageControlTools.hideExplain();
                 switch (firstChildClass) {
                     case '_exe_':
@@ -14284,7 +14079,6 @@
                 }
 
                 if (document.fullscreenElement) {
-
                     document.exitFullscreen();
                 } else {
                     document.documentElement.requestFullscreen();
@@ -14341,7 +14135,6 @@
                     return InputManager.moveCursor(key.slice(5).toLowerCase(), event.shiftKey);
 
                 case 'Enter':
-
                     event.preventDefault();
 
                     // Enter 按 UI 层级处理：先关闭模态遮罩，再退出/取消结果页，最后才提交当前表达式。
@@ -14368,7 +14161,6 @@
                     InputManager.input(input);
                     PageControlTools.showExplain(input);
                 } else {
-
                     const input = [`_${key}_`];
                     InputManager.input(input);
                     PageControlTools.showExplain(input);
@@ -14411,10 +14203,8 @@
 
                 try {
                     if (currentData !== null) {
-
                         func(currentData);
                     } else if (defaultFunc) {
-
                         defaultFunc();
                     }
                 } catch (e) {
@@ -14436,7 +14226,6 @@
                         const place = HtmlTools.getHtml(`#screen_input_inner_${key}`);
                         HtmlTools.appendDOMs(place, HtmlTools.textToHtmlClass(inner), {mode: 'replace'});
                     } else {
-
                         const lastItem = inner.at(-1);
                         // 统计表始终保留一个空白末行供继续输入，同时限制恢复数据的最大行数。
                         if (lastItem[0].length !== 0 || lastItem[1].length !== 0) {
@@ -16759,7 +16548,6 @@
         /* 键盘 */
 
         .KeyboardStyle1 {
-
             background: linear-gradient(155deg,
             hsl(var(--white) / 0.68) 0%,
             hsl(var(--white) / 0.18) 42%,
@@ -16768,7 +16556,6 @@
         }
 
         .KeyboardStyle2 {
-
             background: linear-gradient(155deg,
             hsl(var(--white) / 0.64) 0%,
             hsl(var(--white) / 0.16) 42%,
@@ -16777,7 +16564,6 @@
         }
 
         .KeyboardStyle3 {
-
             background: linear-gradient(155deg,
             hsl(var(--white) / 0.6) 0%,
             hsl(var(--white) / 0.14) 42%,
@@ -17304,10 +17090,8 @@
         }
 
         #load_box {
-
             display: flex;
             align-items: center;
-
             justify-content: center;
             width: 25dvmin;
             height: 25dvmin;
@@ -17315,13 +17099,11 @@
 
         .pl,
         .plWorm {
-
             animation-duration: 3s;
             animation-iteration-count: infinite;
         }
 
         .pl {
-
             width: 60%;
             height: 60%;
             animation-name: bump;
@@ -17329,19 +17111,16 @@
         }
 
         .plRing {
-
             transition: stroke 0.3s;
             stroke: hsl(var(--loading-ring-color) / 0.1);
         }
 
         .plWorm {
-
             animation-name: worm;
             animation-timing-function: cubic-bezier(0.42, 0.17, 0.75, 0.83);
         }
 
         @keyframes bump {
-
             from,
             42%,
             46%,
@@ -17391,7 +17170,6 @@
         }
 
         @keyframes worm {
-
             from {
                 stroke-dashoffset: 10;
             }
@@ -18070,7 +17848,6 @@
         }
 
         #switch_container {
-
             position: relative;
             overflow: hidden;
 
@@ -18096,12 +17873,10 @@
         }
 
         #switch_knob {
-
             position: absolute;
             top: var(--switch-gap);
             left: var(--switch-gap);
             display: flex;
-
             align-items: center;
             justify-content: center;
             width: var(--knob-size);
@@ -18132,7 +17907,6 @@
             --knob-color-1: hsl(var(--white));
             --knob-color-2: hsl(var(--soft-white));
             --knob-color-3: hsl(var(--switch-track));
-
             --knob-color-4: hsl(var(--switch-shadow));
             --knob-base-color: transparent;
         }
@@ -18167,7 +17941,6 @@
         }
 
         #switch_container.Active #switch_knob {
-
             /* 可移动距离 = 2h - 0.8h - 2×0.1h = h。 */
             transform: translateX(var(--h));
 
@@ -18179,7 +17952,6 @@
             --knob-color-1: hsl(var(--white) / 0.22);
             --knob-color-2: hsl(var(--white) / 0.07);
             --knob-color-3: hsl(var(--black) / 0.035);
-
             --knob-color-4: hsl(var(--black) / 0.13);
             --knob-base-color: hsl(var(--action-green) / 0.82);
         }
@@ -18222,7 +17994,6 @@
 
         /* 减少动态效果 */
         @media (prefers-reduced-motion: reduce) {
-
             /* 保留近零时长而不移除 transition，维持各状态共用的样式路径。 */
             #switch_container,
             #switch_knob,
@@ -19303,6 +19074,7 @@
         </div>
     </div>
 </div>
+
 <!-- 设置与说明浮层 -->
 <div id="others">
     <!-- 设置面板 -->
@@ -19380,5 +19152,4 @@
     </div>
 </div>
 </body>
-
 </html>
