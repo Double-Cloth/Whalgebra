@@ -9,7 +9,7 @@
 
     <!-- 共享配置 -->
     <script id="shared_code_and_configuration" type="text/javascript">
-        /** 初始化并导出词元、通用工具和计算配置。 */
+        /** 初始化并导出 token、通用工具和计算配置。 */
         (function () {
             "use strict";
 
@@ -33,6 +33,7 @@
                 static _private_func = ['A', 'N', '&'];
                 // 在 HTML 中以单个类名表示的词元。
                 static _htmlClass_len_one_func = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
+
                 static _baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
                 static _codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
                 static _other = ['|', ',', '(', ')'];
@@ -62,8 +63,7 @@
                  */
                 static MAX_TOKEN_LENGTH = Math.max(
                     1,
-                    /** 返回词元的字符数。 */
-                    ...[...this.allSigns, ...this.htmlClassLenOneFunc].map(token => token.length)
+                    ...[...this.allSigns, ...this.htmlClassLenOneFunc].map((token) => token.length)
                 );
 
                 /**
@@ -88,7 +88,7 @@
                 static _complement(arrA, arrB) {
                     const setB = new Set(arrB);
                     /** 判断元素是否不在排除集合中。 */
-                    return arrA.filter(item => !setB.has(item));
+                    return arrA.filter((item) => !setB.has(item));
                 }
 
                 // 数字越小表示优先级越高。
@@ -106,7 +106,7 @@
                     /** 将同一优先级的词元写入映射。 */
                     levels.forEach((levelTokens, index) => {
                         /** 记录当前词元的优先级。 */
-                        levelTokens.forEach(token => {
+                        levelTokens.forEach((token) => {
                             this.priorityMap.set(token, index);
                         });
                     });
@@ -152,7 +152,7 @@
                  *   因而数组、包装对象以及 `BigNumber`/`ComplexNumber` 实例不会被统一归为 `object`。
                  * @returns {string} 例如 `array`、`object` 或 `bignumber`。
                  */
-                static typeOf = value => Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+                static typeOf = (value) => Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
 
                 /**
                  * 将精度范围内接近零的实部和虚部归零。
@@ -172,7 +172,7 @@
                      */
                     function _bigNumberZeroCorrect(input) {
                         const acc = input.acc;
-                        // 阈值同时保留至少 90% 的有效数字和最多 8 位保护位；取更严格者，
+                        // 阈值同时保留至少 90% 的有效数字和最多 8 位保护位；取更严格者
                         // 只消除由中间运算产生的尾部噪声，避免把低精度下仍有意义的小量误判为零。
                         const smallNum = new ComplexNumber([-Math.max(Math.floor(0.9 * acc), acc - 8), 1n, acc]);
                         if (MathPlus.minus(smallNum, MathPlus.abs(input)).re.isPositive()) {
@@ -482,14 +482,13 @@
                         return;
                     }
 
-                    const result = {token: token};
+                    const result = {token: token, class: 'illegal'};
 
                     result.isHtmlClassLenOne = TokenConfig.htmlClassLenOneFunc.has(token);
 
                     const firstChar = token.length > 0 ? token[0] : null;
 
                     if (!TokenConfig.allSigns.has(token) && !TokenConfig.baseNumbers.has(firstChar)) {
-                        result.class = 'illegal';
                         return result;
                     }
 
@@ -1238,9 +1237,9 @@
                 /**
                  * 设置全局计算精度并同步到 Worker。
                  *
-                 * @param {number|undefined} acc - 计算使用的有效数字位数，必须是 1 到
-                 *   `_MAX_GLOBAL_CALC_ACCURACY`（含）之间的整数；`undefined` 重置为上限。成功设置后会同步
-                 *   Worker，且会重新解析随精度变化的常量与 Lanczos 系数。
+                 * @param {number|undefined} acc - 计算使用的有效数字位数
+                 *   必须是 1 到 `_MAX_GLOBAL_CALC_ACCURACY`（含）之间的整数；`undefined` 重置为上限。
+                 *   成功设置后会同步 Worker，且会重新解析随精度变化的常量与 Lanczos 系数。
                  * @returns {void}
                  * @throws {Error} 精度无效时抛出。
                  */
@@ -1789,7 +1788,7 @@
 
                 /**
                  * 判断当前 BigNumber 实例的值是否等于零。
-                 * 该方法通过检查内部的尾数（mantissa）是否为 `0n` 来实现。
+                 * 该方法通过检查内部的尾数是否为 `0n` 来实现。
                  * 在高精度计算中，这是判断数值是否为绝对零的最快方式。
                  * @returns {boolean} 如果值为零返回 `true`，否则返回 `false`。
                  */
@@ -1863,58 +1862,61 @@
                     if (mode === 'auto') {
                         mode = Math.abs(mantissaLength + finalPower) > CalcConfig.TO_STRING_AUTOMATIC_SWITCH_LENGTH ? 'scientific' : 'normal';
                     }
-                    if (mode === 'normal') {
-                        if (finalMantissa === 0n) {
-                            return '0';
-                        }
 
-                        if (finalPower >= 0) {
-                            if (mantissaLength + finalPower > CalcConfig.MAX_TO_STRING_LENGTH) {
-                                throw new Error('[BigNumber] Range error: Number is too large to be represented as a string.');
+                    switch (mode) {
+                        case 'normal':
+                            if (finalMantissa === 0n) {
+                                return '0';
                             }
-                            resultString = mantissaStr + '0'.repeat(finalPower);
-                        } else {
-                            const absPower = -finalPower;
-                            if (mantissaLength > absPower) {
-                                // 小数点位于尾数内部
-                                if (mantissaLength > CalcConfig.MAX_TO_STRING_LENGTH) {
+
+                            if (finalPower >= 0) {
+                                if (mantissaLength + finalPower > CalcConfig.MAX_TO_STRING_LENGTH) {
                                     throw new Error('[BigNumber] Range error: Number is too large to be represented as a string.');
                                 }
-                                const decimalPosition = mantissaLength - absPower;
-                                resultString = mantissaStr.slice(0, decimalPosition) + '.' + mantissaStr.slice(decimalPosition);
+                                resultString = mantissaStr + '0'.repeat(finalPower);
                             } else {
-                                // 数字小于 1；前置 "0." 和引导零
-                                const leadingZeros = absPower - mantissaLength;
-                                if (2 + leadingZeros + mantissaLength > CalcConfig.MAX_TO_STRING_LENGTH) {
-                                    throw new Error('[BigNumber] Range error: Number is too small to be represented as a string.');
+                                const absPower = -finalPower;
+                                if (mantissaLength > absPower) {
+                                    // 小数点位于尾数内部
+                                    if (mantissaLength > CalcConfig.MAX_TO_STRING_LENGTH) {
+                                        throw new Error('[BigNumber] Range error: Number is too large to be represented as a string.');
+                                    }
+                                    const decimalPosition = mantissaLength - absPower;
+                                    resultString = mantissaStr.slice(0, decimalPosition) + '.' + mantissaStr.slice(decimalPosition);
+                                } else {
+                                    // 数字小于 1；前置 "0." 和引导零
+                                    const leadingZeros = absPower - mantissaLength;
+                                    if (2 + leadingZeros + mantissaLength > CalcConfig.MAX_TO_STRING_LENGTH) {
+                                        throw new Error('[BigNumber] Range error: Number is too small to be represented as a string.');
+                                    }
+                                    resultString = '0.' + '0'.repeat(leadingZeros) + mantissaStr;
                                 }
-                                resultString = '0.' + '0'.repeat(leadingZeros) + mantissaStr;
                             }
-                        }
 
-                        if (isNegative) {
-                            return '-' + resultString;
-                        }
-                        return resultString;
-                    }
-                    if (mode === 'scientific') {
-                        if (finalMantissa === 0n) {
-                            return '0E+0';
-                        }
+                            if (isNegative) {
+                                return '-' + resultString;
+                            }
+                            return resultString;
 
-                        const midString = mantissaStr.slice(1);
-                        const midLength = midString.length;
-                        const scientificPower = BigInt(midLength === 0 ? finalPower : (finalPower + midLength)).toString();
-                        if (midLength === 0) {
-                            resultString = `${mantissaStr}${scientificPower < 0 ? 'E' : 'E+'}${scientificPower}`;
-                        } else {
-                            resultString = `${mantissaStr[0]}.${midString}${scientificPower < 0 ? 'E' : 'E+'}${scientificPower}`;
-                        }
+                        case 'scientific': {
+                            if (finalMantissa === 0n) {
+                                return '0E+0';
+                            }
 
-                        if (isNegative) {
-                            return '-' + resultString;
+                            const midString = mantissaStr.slice(1);
+                            const midLength = midString.length;
+                            const scientificPower = BigInt(midLength === 0 ? finalPower : (finalPower + midLength)).toString();
+                            if (midLength === 0) {
+                                resultString = `${mantissaStr}${scientificPower < 0 ? 'E' : 'E+'}${scientificPower}`;
+                            } else {
+                                resultString = `${mantissaStr[0]}.${midString}${scientificPower < 0 ? 'E' : 'E+'}${scientificPower}`;
+                            }
+
+                            if (isNegative) {
+                                return '-' + resultString;
+                            }
+                            return resultString;
                         }
-                        return resultString;
                     }
                 }
             }
@@ -2022,12 +2024,12 @@
                 /**
                  * 一个健壮的复数解析器，能从字符串中提取实部和虚部。
                  * 此方法设计用于处理多种常见的复数格式，包括：
-                 * - 标准代数形式: "a+bi", "a-bi", "a + bi"
-                 * - 纯实数或纯虚数: "a", "bi", "-bi"
-                 * - 科学记数法: "-1.23e-4 + 5.67e+8i"
-                 * - J/j 作为虚数单位: "3+4j"
-                 * - 乘号和顺序变化: "3+i*4", "i*4+3"
-                 * - 隐式系数为 1: "a+i", "a-i", "i", "-i"
+                 *   - 标准代数形式: "a+bi", "a-bi", "a + bi"
+                 *   - 纯实数或纯虚数: "a", "bi", "-bi"
+                 *   - 科学记数法: "-1.23e-4 + 5.67e+8i"
+                 *   - J/j 作为虚数单位: "3+4j"
+                 *   - 乘号和顺序变化: "3+i*4", "i*4+3"
+                 *   - 隐式系数为 1: "a+i", "a-i", "i", "-i"
                  *
                  * @private
                  *
@@ -2061,7 +2063,7 @@
                     const termRegex = /([+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)?[*]?i)|([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)/g;
                     const allMatches = [...sanitizedStr.matchAll(termRegex)];
                     /** 保留非空的正则匹配项。 */
-                    const validTerms = allMatches.filter(match => match[0] !== '');
+                    const validTerms = allMatches.filter((match) => match[0] !== '');
 
                     // 验证匹配结果的完整性和合法性：
                     //   检查所有匹配到的项的长度之和是否等于净化后字符串的总长度。
@@ -2118,8 +2120,8 @@
                  * 返回 ComplexNumber 实例的内部嵌套数组表示。
                  * 它通过递归调用其 `re` 和 `im` 组件（它们是 BigNumber 实例）的 `valueOf` 方法来工作。
                  * @returns {[[number,bigint,number], [number,bigint,number]]} `[realTuple, imagTuple]` 快照；
-                 *   两个三元组都采用 `BigNumber.valueOf()` 的 `[power, mantissa, acc]` 顺序。外层和内层均为
-                 *   新数组，可直接构造等值 `ComplexNumber` 而不会共享可变容器。
+                 *   两个三元组都采用 `BigNumber.valueOf()` 的 `[power, mantissa, acc]` 顺序。外层和内层均为新数组，
+                 *   可直接构造等值 `ComplexNumber` 而不会共享可变容器。
                  */
                 valueOf() {
                     return [this.re.valueOf(), this.im.valueOf()];
@@ -2141,47 +2143,51 @@
                         return this.re.toString({acc: acc, mode: mode});
                     }
 
-                    if (printMode === 'algebra') {
-                        const reStr = this.re.toString({acc: acc, mode: mode});
-                        let imStr = this.im.toString({acc: acc, mode: mode});
-                        if (imStr.includes('E')) {
-                            imStr += '*';
+                    switch (printMode) {
+                        case 'algebra': {
+                            const reStr = this.re.toString({acc: acc, mode: mode});
+                            let imStr = this.im.toString({acc: acc, mode: mode});
+                            if (imStr.includes('E')) {
+                                imStr += '*';
+                            }
+
+                            // 纯虚数
+                            if (['0', '0E+0'].includes(reStr)) {
+                                if (['1', '1E+0'].includes(imStr)) {
+                                    return '[i]';
+                                }
+                                if (['-1', '-1E+0'].includes(imStr)) {
+                                    return '-[i]';
+                                }
+                                return imStr + '[i]';
+                            }
+
+                            if (this.im.isNegative()) {
+                                if (['-1', '-1E+0'].includes(imStr)) {
+                                    return `${reStr}-[i]`;
+                                }
+                                return `${reStr}${imStr}[i]`;
+                            } else {
+                                if (['1', '1E+0'].includes(imStr)) {
+                                    return `${reStr}+[i]`;
+                                }
+                                return `${reStr}+${imStr}[i]`;
+                            }
                         }
 
-                        // 纯虚数
-                        if (['0', '0E+0'].includes(reStr)) {
-                            if (['1', '1E+0'].includes(imStr)) {
-                                return '[i]';
+                        case 'polar': {
+                            // 计算模长和辐角
+                            const modulus = MathPlus.abs(this).re.toString({acc: acc, mode: mode});
+                            let argument = MathPlus.arg(this).re.toString({acc: acc, mode: mode});
+                            if (argument.includes('E')) {
+                                argument = `(${argument})`;
                             }
-                            if (['-1', '-1E+0'].includes(imStr)) {
-                                return '-[i]';
-                            }
-                            return imStr + '[i]';
-                        }
 
-                        if (this.im.isNegative()) {
-                            if (['-1', '-1E+0'].includes(imStr)) {
-                                return `${reStr}-[i]`;
+                            if (['0', '0E+0'].includes(argument)) {
+                                return modulus;
                             }
-                            return `${reStr}${imStr}[i]`;
-                        } else {
-                            if (['1', '1E+0'].includes(imStr)) {
-                                return `${reStr}+[i]`;
-                            }
-                            return `${reStr}+${imStr}[i]`;
+                            return `${modulus}[toPolar]${argument}`;
                         }
-                    } else {
-                        // 计算模长和辐角
-                        const modulus = MathPlus.abs(this).re.toString({acc: acc, mode: mode});
-                        let argument = MathPlus.arg(this).re.toString({acc: acc, mode: mode});
-                        if (argument.includes('E')) {
-                            argument = `(${argument})`;
-                        }
-
-                        if (['0', '0E+0'].includes(argument)) {
-                            return modulus;
-                        }
-                        return `${modulus}[toPolar]${argument}`;
                     }
                 }
             }
@@ -2377,12 +2383,6 @@
                  * 这个实现通过复用 _oppositeNumber 辅助方法来提高代码的抽象性和可读性。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。可以是表示复数或实数的任何受支持的类型。
                  * @returns {ComplexNumber} 一个新的 ComplexNumber 实例，代表输入值的共轭复数。
-                 * @example
-                 * // 返回一个代表 3 - 4i 的 ComplexNumber
-                 * MathPlus.conj('3+4i');
-                 *
-                 * // 对于实数，共轭复数是其本身。返回 5 + 0i。
-                 * MathPlus.conj(5);
                  */
                 static conj(x) {
                     const input = new ComplexNumber(x);
@@ -2398,9 +2398,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 以弧度表示的辐角 `θ`；应为实数，
                  *   可超出一个周期，三角函数会自行归约。
                  * @returns {ComplexNumber} 代表转换后笛卡尔坐标的 ComplexNumber 实例。
-                 * @example
-                 * // r=2, θ=π/3 -> 2 * (cos(π/3) + i*sin(π/3)) -> 1 + i*sqrt(3)
-                 * MathPlus.toPolar(2, Math.PI / 3);
                  */
                 static toPolar(a, b) {
                     const inputA = new ComplexNumber(a);
@@ -2421,12 +2418,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 第一个加数。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 第二个加数。
                  * @returns {ComplexNumber} 代表两个数之和的 ComplexNumber 实例。
-                 * @example
-                 * // 复数加法: (1+2i) + (3-4i) = 4-2i
-                 * MathPlus.plus('1+2i', '3-4i');
-                 *
-                 * // 实数加法: 123 + 4.5 = 127.5
-                 * MathPlus.plus(123, 4.5);
                  */
                 static plus(a, b) {
                     const inputA = new ComplexNumber(a);
@@ -2449,6 +2440,7 @@
                          * @returns {bigint} 绝对值。
                          */
                         const bigIntAbs = (num) => num < 0n ? -num : num;
+
                         const guardAcc = resultAcc + 5;
                         // 数量级差超过有效精度与保护位时，较小的加数不会影响舍入结果，可直接返回较大值。
                         if (powerDifference > guardAcc) {
@@ -2471,11 +2463,9 @@
                         }
 
                         const resultMantissa = mantissaA + mantissaB;
-
                         const resultPower = Math.min(reA.power, reB.power);
 
                         return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
-
                     }
 
                     const resultRe = MathPlus.plus(inputA.re, inputB.re);
@@ -2491,12 +2481,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 被减数。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 减数。
                  * @returns {ComplexNumber} 代表两个数之差的 ComplexNumber 实例。
-                 * @example
-                 * // 复数减法: (1+2i) - (3-4i) = -2+6i
-                 * MathPlus.minus('1+2i', '3-4i');
-                 *
-                 * // 实数减法: 10 - 1.5 = 8.5
-                 * MathPlus.minus(10, 1.5);
                  */
                 static minus(a, b) {
                     return MathPlus.plus(a, MathPlus._oppositeNumber(b));
@@ -2507,12 +2491,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} a - 第一个乘数。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 第二个乘数。
                  * @returns {ComplexNumber} 代表两个数乘积的 ComplexNumber 实例。
-                 * @example
-                 * // 复数乘法: (1+2i) * (3-4i) = 3 - 4i + 6i - 8i^2 = 3 + 2i + 8 = 11+2i
-                 * MathPlus.times('1+2i', '3-4i');
-                 *
-                 * // 实数乘法: -1.5 * 10 = -15
-                 * MathPlus.times(-1.5, 10);
                  */
                 static times(a, b) {
                     const inputA = new ComplexNumber(a);
@@ -2551,12 +2529,6 @@
                  *   实数零和复数零都会在执行除法前被拒绝。
                  * @returns {ComplexNumber} 代表两个数之商的 ComplexNumber 实例。
                  * @throws {Error} 如果除数为零。
-                 * @example
-                 * // 复数除法: (11+2i) / (3-4i) = 1+2i
-                 * MathPlus.divide('11+2i', '3-4i');
-                 *
-                 * // 实数除法: 10 / 4 = 2.5
-                 * MathPlus.divide(10, 4);
                  */
                 static divide(a, b) {
                     const inputA = new ComplexNumber(a);
@@ -2640,6 +2612,7 @@
                             // 指数过大时用平方-乘模计算 10^powOfA mod calcB，避免构造巨型 BigInt。
                             const modAB = calcA % calcB;
 
+                            // 快速幂算法
                             let modOfPow = 1n;
                             let base = 10n % calcB;
                             let exp = powOfA;
@@ -2656,8 +2629,9 @@
                         } else if (powOfB > CalcConfig.MAX_INPUT_EXPONENT) {
                             if (reA.acc < CalcConfig.MAX_INPUT_EXPONENT) {
                                 modResult = calcA;
-                                if (isNegativeA !== isNegativeB) {
 
+                                // 此处可能存在性能问题，因此需要判断是否会在后续触发 calcB 参与修正计算
+                                if (isNegativeA !== isNegativeB) {
                                     calcB = calcB * (10n ** BigInt(powOfB));
                                 }
                             } else {
@@ -2670,6 +2644,7 @@
                             modResult = calcA % calcB;
                         }
 
+                        // 只有当余数不为 0 时，才进行符号调整补齐
                         if (modResult !== 0n) {
                             // 按 `a - b * floor(a / b)` 的定义修正不同符号组合，而非沿用 `%` 的截断语义。
                             if (isNegativeA && isNegativeB) {
@@ -2830,6 +2805,7 @@
                             return new ComplexNumber([0, 1n, resultAcc]);
                         }
 
+                        // --- 路径 1.1: 指数 b 是整数 ---
                         if (reB.power >= 0) {
                             // 整数指数使用原生 BigInt 幂或平方-乘快速幂；负指数在末尾取倒数。
                             let isExponentNegative = false;
@@ -2867,6 +2843,7 @@
                             return result;
                         }
 
+                        // --- 路径 1.2: 底数 a > 0, 指数 b 是小数 ---
                         if (reA.isPositive()) {
                             // 正底数小数幂采用 a^b = exp(b·ln(a))，平方根走专用牛顿迭代。
                             if (reB.power === -1 && reB.mantissa === 5n) {
@@ -2877,6 +2854,7 @@
                             );
                         }
 
+                        // --- 路径 1.3: 底数 a < 0, 指数 b 是小数 ---
                         let isExponentNegative = false;
                         let absB = reB;
                         if (reB.isNegative()) {
@@ -2887,15 +2865,19 @@
                         let result = MathPlus.pow(MathPlus._oppositeNumber(inputA), absB);
                         // 负底数小数幂按 (-a)^b = |a|^b(cos(bπ)+i·sin(bπ)) 选择实根或主值。
                         if (absB.power === -1 && absB.mantissa === 5n) {
+                            // 如果 b=0.5 (开平方根), 结果为 i * sqrt(|a|)
                             const zero = new BigNumber([0, 0n, resultAcc]);
                             result = new ComplexNumber([zero, result.re]);
                         } else {
                             const mid = Public.integerCorrect(
                                 MathPlus.divide([0, 1n, resultAcc], absB)
                             ).re;
+                            // 判断是否有实数解
                             if (mid.power === 0 && mid.mantissa % 2n !== 0n) {
+                                // 有实数解
                                 result = MathPlus._oppositeNumber(result);
                             } else {
+                                // 无实数解
                                 const angle = MathPlus.times(absB, CalcConfig.constants.pi);
                                 const cosAngle = MathPlus.cos(angle);
                                 const sinAngle = MathPlus.sin(angle);
@@ -2913,6 +2895,7 @@
                         return result;
                     }
 
+                    // --- 分支 2: 底数是复数, 指数是纯实数 ---
                     if (inputB.onlyReal) {
                         // 复底数、实指数：z^b = |z|^b(cos(b·arg z)+i·sin(b·arg z))。
                         const module = MathPlus.pow(MathPlus.abs(inputA), inputB);
@@ -2926,9 +2909,10 @@
                         ]);
                     }
 
+                    // --- 分支 3: 通用情况 (通常是复数指数) ---
+                    // 通用复数幂由 exp(b·Log(a)) 展开；模为 r^c·e^(-dθ)，辐角为 d·ln(r)+cθ。
                     const c = inputB.re;
                     const d = inputB.im;
-                    // 通用复数幂由 exp(b·Log(a)) 展开；模为 r^c·e^(-dθ)，辐角为 d·ln(r)+cθ。
                     const r = MathPlus.abs(inputA);
                     const angle = MathPlus.arg(inputA);
                     const resultAngle = MathPlus.plus(
@@ -2997,7 +2981,6 @@
                         }
 
                         // 牛顿迭代 x_(n+1) = (x_n + N/x_n)/2；收敛过慢时回退到 exp(ln(N)/2)。
-
                         // 原生 Math.sqrt 只生成牛顿法初值；后续高精度迭代决定最终有效数字。
                         const lowAccuracyRe = new BigNumber(absInput, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
@@ -3015,6 +2998,7 @@
                             const const_2 = new ComplexNumber([0, 2n, acc]);
                             let difference, mid;
 
+                            // 进行迭代
                             do {
                                 mid = result;
                                 result = MathPlus.divide(
@@ -3032,6 +3016,8 @@
                             }
                         }
 
+                        // 如果牛顿法收敛过慢，则使用 ln/exp 方法作为备用。
+                        // 公式: √x = x^0.5 = e^(0.5 * ln(x))
                         if (useAlternative) {
                             result = MathPlus.exp(
                                 MathPlus.times(MathPlus.ln(absInput), new ComplexNumber([-1, 5n, acc]))
@@ -3079,7 +3065,6 @@
                             result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
 
                             // 立方根的牛顿迭代：x_(n+1) = (2x_n + N/x_n²)/3。
-
                             let i = 0;
                             const max = CalcConfig.globalCalcAccuracy + 5;
                             const minPower = -2 * acc - 1;
@@ -3108,6 +3093,7 @@
                             }
                         }
 
+                        // 如果迭代法收敛过慢，则使用 pow(x, 1/3) 作为备用方法。
                         if (useAlternative) {
                             return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
                         }
@@ -3127,12 +3113,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} b - 非零根指数；可为复数，
                  *   但零会使倒数不存在。需要全部正整数次根时应使用 `RadicalFunctionTools`。
                  * @returns {ComplexNumber} 代表 a 的 b 次方根主值的结果。
-                 * @example
-                 * // 64 的 3 次方根 -> 4
-                 * MathPlus.nroot(64, 3);
-                 *
-                 * // 81 的 4 次方根 -> 3
-                 * MathPlus.nroot(81, 4);
                  */
                 static nroot(a, b) {
                     const inputA = new ComplexNumber(a);
@@ -3165,7 +3145,6 @@
                         }
 
                         // 将 x 拆为整数和小数部分：e^x = e^floor(x) · e^(x-floor(x))。
-
                         let resultMid, iterationMantissa;
                         const pow = -re.power;
                         if (re.acc < pow) {
@@ -3178,12 +3157,10 @@
                             iterationMantissa = re.mantissa - intPart * realPower;
                         }
 
+                        // 先计算更小参数的泰勒级数 e^t = Σ(t^n/n!)，随后取十次幂还原小数部分。
                         const iteration = new ComplexNumber([re.power - 1, iterationMantissa, acc]);
 
-                        // 先计算更小参数的泰勒级数 e^t = Σ(t^n/n!)，随后取十次幂还原小数部分。
-
                         const max = CalcConfig.globalCalcAccuracy + 5;
-
                         const minPower = -2 * acc - 1;
 
                         let mid = new ComplexNumber([0, 1n, acc]);
@@ -3202,6 +3179,7 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: exp. Input: ${input.toString()}`);
                         }
 
+                        // 组合最终结果：e^x = e^i * e^f
                         return MathPlus.times(
                             MathPlus.pow(result, [1, 1n, acc]),
                             resultMid
@@ -3244,10 +3222,12 @@
                         // 先用 10 和 1.2 缩放到 0.9～1.1，再计算 y=(x-1)/(x+1)。
                         // ln(x) = 2·(y + y³/3 + y⁵/5 + ...)，最后补回缩放产生的 ln(10) 与 ln(1.2)。
 
+                        // 将 x 标准化到 (0, 1] 范围内
                         const mantissaLen = re.mantissa.toString().length;
                         const mantissaChangedBy10 = mantissaLen + re.power;
                         let mid = new ComplexNumber([re.power - mantissaChangedBy10, re.mantissa, acc]);
 
+                        // 将 x 进一步标准化到 [0.9, 1.1) 范围内
                         const const_1_2 = new ComplexNumber([-1, 12n, acc]);
                         const const_1_1 = new ComplexNumber([-1, 11n, acc]);
                         const const_0_9 = new ComplexNumber([-1, 9n, acc]);
@@ -3289,6 +3269,7 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: ln. Input: ${input.toString()}`);
                         }
 
+                        // 组合所有部分得到最终结果
                         result = MathPlus.times([0, 2n, acc], result);
                         result = MathPlus.plus(result, MathPlus.times(CalcConfig.constants.ln_10, mantissaChangedBy10));
                         result = MathPlus.plus(result, MathPlus.times(CalcConfig.constants.ln_1_2, mantissaChangedBy1_2));
@@ -3296,13 +3277,10 @@
                         return result;
                     }
 
-                    const absValue = MathPlus.abs(input);
-
                     // 复对数主值：Log(z) = ln|z| + i·arg(z)。
+                    const absValue = MathPlus.abs(input);
                     const lnAbsValue = MathPlus.ln(absValue);
-
                     const argValue = MathPlus.arg(input);
-
                     return new ComplexNumber([lnAbsValue.re, argValue.re]);
                 }
 
@@ -3313,12 +3291,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 非零实数或复数；按
                  *   `ln(x) / ln(10)` 返回主值，因此负实数的结果包含由主辐角产生的虚部。
                  * @returns {ComplexNumber} 代表 lg(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // lg(100) -> 2
-                 * MathPlus.lg(100);
-                 *
-                 * // lg(0.01) -> -2
-                 * MathPlus.lg('0.01');
                  */
                 static lg(x) {
                     return MathPlus.divide(MathPlus.ln(x), CalcConfig.constants.ln_10);
@@ -3334,31 +3306,18 @@
                  *   这类输入返回复数主值，零会在计算 `ln(b)` 时抛错。
                  * @returns {ComplexNumber} 代表 logₐ(b) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果 a=1，或者 a,b 的某些组合导致 ln(a) 或 ln(b) 未定义（例如 ln(0)）。
-                 * @example
-                 * // log₂(8) -> 3
-                 * MathPlus.log(2, 8);
-                 *
-                 * // log₄(2) -> 0.5
-                 * MathPlus.log(4, 2);
                  */
                 static log(a, b) {
                     const lnA = Public.zeroCorrect(MathPlus.ln(a));
-
                     return MathPlus.divide(MathPlus.ln(b), lnA);
                 }
 
                 /**
-                 * 计算一个数的正弦 (sin(x))。
+                 * 计算一个数的正弦。
                  * - 该方法能够处理实数和复数输入，并返回主值。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
                  *   实数先按周期与象限归约以保持精度，复数按指数恒等式计算。
                  * @returns {ComplexNumber} 代表 sin(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // sin(π/2) -> 1
-                 * MathPlus.sin(MathPlus.divide(CalcConfig.constants.pi, 2));
-                 *
-                 * // sin(i) -> i * sinh(1) ≈ 1.1752i
-                 * MathPlus.sin('i');
                  */
                 static sin(x) {
                     const input = new ComplexNumber(x);
@@ -3402,6 +3361,7 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                         }
 
+                        // 反复应用三倍角公式 sin(3x) = 3sin(x) - 4sin³(x) 来还原结果
                         for (; divideBy3 !== 0; divideBy3--) {
                             const squareOfResult = MathPlus.times(result, result);
                             result = MathPlus.times(
@@ -3416,8 +3376,9 @@
                         return new ComplexNumber([result.re.power, sign * result.re.mantissa, acc]);
                     }
 
+                    // --- 输入为复数 ---
+                    // sin(z) = (e^(iz) - e^(-iz)) / (2i)
                     const mid = MathPlus.exp([MathPlus._oppositeNumber(input.im), input.re]);
-
                     return MathPlus.divide(
                         MathPlus.minus(mid, MathPlus.divide([0, 1n, acc], mid)),
                         new ComplexNumber([0n, 2n], {acc: acc})
@@ -3425,7 +3386,7 @@
                 }
 
                 /**
-                 * 计算 x 的反正弦 (arcsin(x))。
+                 * 计算 x 的反正弦。
                  * - 该函数能够处理实数和复数输入，并返回主值。
                  * - 对于实数 `x` 且 `|x| <= 1`，使用 `arcsin(x) = arg(sqrt(1 - x²) + ix)` 计算，数值稳定性好。
                  * - 对于实数 `x` 且 `|x| > 1`，结果为复数，使用基于对数的恒等式计算。
@@ -3443,6 +3404,7 @@
                         const one = new ComplexNumber([0, 1n, acc]);
                         const absInput = MathPlus.abs(input);
 
+                        // 使用恒等式 arcsin(x) = arg(sqrt(1 - x²) + ix)
                         // 该恒等式在 x 接近 ±1 时比泰勒级数稳定。
                         if (!MathPlus.minus(absInput, one).re.isPositive()) {
                             return MathPlus.arg([
@@ -3454,13 +3416,15 @@
                         const term = MathPlus.sqrt(MathPlus.minus(MathPlus.times(re, re), one));
                         const piOver2 = MathPlus.divide(CalcConfig.constants.pi, [0, 2n, acc]);
 
-                        if (re.isPositive()) {
+                        if (re.isPositive()) { // x > 1
+                            // arcsin(x) = π/2 - i * ln(x + sqrt(x² - 1))
                             const lnTerm = MathPlus.ln(MathPlus.plus(re, term));
                             return new ComplexNumber([
                                 piOver2.re,
                                 MathPlus._oppositeNumber(lnTerm).re
                             ]);
-                        } else {
+                        } else { // x < -1
+                            // arcsin(x) = -π/2 + i * ln(-x + sqrt(x² - 1))
                             const lnTerm = MathPlus.ln(MathPlus.plus(MathPlus._oppositeNumber(re), term));
                             return new ComplexNumber([
                                 MathPlus._oppositeNumber(piOver2).re,
@@ -3469,6 +3433,8 @@
                         }
                     }
 
+                    // --- 输入为复数 ---
+                    // 使用公式: arcsin(z) = -i * ln(iz + sqrt(1 - z²))
                     const i = new ComplexNumber([[0, 0n, acc], [0, 1n, acc]]);
                     const negI = new ComplexNumber([[0, 0n, acc], [0, -1n, acc]]);
                     const one = new ComplexNumber([0, 1n, acc]);
@@ -3483,7 +3449,7 @@
                 }
 
                 /**
-                 * 计算 x 的余弦 (cos(x))。
+                 * 计算 x 的余弦。
                  * - 对于实数，使用范围缩减和泰勒级数进行高精度计算，并返回主值。
                  * - 对于复数 z，使用欧拉公式 cos(z) = (e^(iz) + e^(-iz)) / 2 进行计算。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
@@ -3533,6 +3499,7 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                         }
 
+                        // 反复应用四倍角公式还原原始结果
                         for (; divideBy4 !== 0; divideBy4--) {
                             const squareOfResult = MathPlus.times(result, result);
                             result = MathPlus.plus(
@@ -3547,8 +3514,9 @@
                         return new ComplexNumber([result.re.power, sign * result.re.mantissa, acc]);
                     }
 
+                    // --- 输入为复数 ---
+                    // cos(z) = (e^(iz) + e^(-iz)) / 2
                     const mid = MathPlus.exp([MathPlus._oppositeNumber(input.im), input.re]);
-
                     return MathPlus.divide(
                         MathPlus.plus(mid, MathPlus.divide([0, 1n, acc], mid)),
                         [0, 2n, acc]
@@ -3556,7 +3524,7 @@
                 }
 
                 /**
-                 * 计算 x 的反余弦 (arccos(x))。
+                 * 计算 x 的反余弦。
                  * - 该方法利用了核心三角恒等式 arccos(x) = π/2 - arcsin(x)，并返回主值。
                  * - 它将计算完全委托给已经实现且功能完备的 `arcsin` 方法，
                  * 这种方式不仅代码简洁，而且能自动继承 `arcsin` 对实数和复数输入的处理能力。
@@ -3575,7 +3543,7 @@
                 }
 
                 /**
-                 * 计算 x 的正切 (tan(x))。
+                 * 计算 x 的正切。
                  * - 该方法通过基本三角恒等式 tan(x) = sin(x) / cos(x) 进行计算，并返回主值。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
                  *   通过 `sin(x) / cos(x)` 计算，余弦为零或数值修正后为零时函数未定义。
@@ -3592,7 +3560,7 @@
                 }
 
                 /**
-                 * 计算反正切；实数经范围缩减后使用泰勒级数，复数使用对数恒等式。
+                 * 计算 x 的反正切；实数经范围缩减后使用泰勒级数，复数使用对数恒等式。
                  *
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；实数通过倒数和倍角
                  *   归约到稳定区间，复数按主对数恒等式返回主反正切值。
@@ -3655,16 +3623,20 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: arctan. Input: ${input.toString()}`);
                         }
 
+                        // 将级数结果乘以 2^j 来补偿半角公式的应用。
                         result = MathPlus.times([0, 2n ** BigInt(j), acc], result);
 
+                        // 如果初始 x > 1，应用 arctan(x) = π/2 - arctan(1/x)。
                         result = reciprocal ? MathPlus.minus(MathPlus.divide(CalcConfig.constants.pi, [0, 2n, acc]), result) : result;
-
+                        // 如果初始 x < 0，应用 arctan(-x) = -arctan(x)。
                         if (isNegative) {
                             return MathPlus._oppositeNumber(result);
                         }
                         return result;
                     }
 
+                    // --- 输入为复数 ---
+                    // arctan(z) = (-i/2) * ln((1 + iz) / (1 - iz))
                     const mid = MathPlus.minus(
                         [[0, 0n, acc], [0, 1n, acc]],
                         input
@@ -3687,18 +3659,12 @@
                 }
 
                 /**
-                 * 计算 x 的双曲正弦 (sinh(x))。
+                 * 计算 x 的双曲正弦。
                  * - 该方法基于双曲正弦的指数定义：sinh(x) = (e^x - e^-x) / 2。
                  * - 能够自动处理实数和复数输入。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；按
                  *   `(exp(x) - exp(-x)) / 2` 计算，较大实部可能触发指数结果规模保护。
                  * @returns {ComplexNumber} 代表 sinh(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // sinh(0) -> 0
-                 * MathPlus.sh(0);
-                 *
-                 * // sinh(1) ≈ 1.1752
-                 * MathPlus.sh(1);
                  */
                 static sh(x) {
                     const input = new ComplexNumber(x);
@@ -3712,18 +3678,12 @@
                 }
 
                 /**
-                 * 计算 x 的反双曲正弦 (arsinh(x))。
+                 * 计算 x 的反双曲正弦。
                  * - 该方法基于反双曲正弦的对数定义：arsinh(x) = ln(x + sqrt(x² + 1))。
                  * - 能够自动处理实数和复数输入。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；按
                  *   `ln(x + sqrt(x² + 1))` 的主分支计算，实数输入始终得到实数结果。
                  * @returns {ComplexNumber} 代表 arsinh(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // arsinh(0) -> 0
-                 * MathPlus.arsh(0);
-                 *
-                 * // arsinh(1.1752) ≈ 1
-                 * MathPlus.arsh(1.17520119364);
                  */
                 static arsh(x) {
                     const input = new ComplexNumber(x);
@@ -3740,19 +3700,13 @@
                 }
 
                 /**
-                 * 计算 x 的双曲余弦 (cosh(x))。
+                 * 计算 x 的双曲余弦。
                  * - 该方法基于双曲余弦的指数定义：cosh(x) = (e^x + e^-x) / 2。
                  * - 能够自动处理实数和复数输入。
                  * @alias cosh
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；按
                  *   `(exp(x) + exp(-x)) / 2` 计算，结果遵循复指数的周期性。
                  * @returns {ComplexNumber} 代表 cosh(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // cosh(0) -> 1
-                 * MathPlus.ch(0);
-                 *
-                 * // cosh(1) ≈ 1.543
-                 * MathPlus.ch(1);
                  */
                 static ch(x) {
                     const input = new ComplexNumber(x);
@@ -3766,18 +3720,12 @@
                 }
 
                 /**
-                 * 计算 x 的反双曲余弦 (arcosh(x))。
+                 * 计算 x 的反双曲余弦。
                  * @alias arcosh - 该方法基于反双曲余弦的对数定义：arcosh(x) = ln(x + sqrt(x² - 1))。
                  * - 能够自动处理实数和复数输入。
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；返回
                  *   `ln(x + sqrt(x² - 1))` 的主值。实数 `x >= 1` 时结果为非负实数，其他实数可得到复数。
                  * @returns {ComplexNumber} 代表 arcosh(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // arcosh(1) -> 0
-                 * MathPlus.arch(1);
-                 *
-                 * // arcosh(1.543) ≈ 1
-                 * MathPlus.arch(1.54308063482);
                  */
                 static arch(x) {
                     const input = new ComplexNumber(x);
@@ -3795,6 +3743,7 @@
 
                 /**
                  * 计算双曲正切。
+                 * tanh(x) = (e^(2x) - 1) / (e^(2x) + 1)。
                  *
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；通过
                  *   `sinh(x) / cosh(x)` 计算，分母为零的复数点会被拒绝。
@@ -3875,6 +3824,7 @@
                                 return start;
                             }
 
+                            // 当范围很小时，直接计算，避免过多递归开销
                             if (end - start < 13n) {
                                 let res = 1n;
                                 for (let i = start; i <= end; i++) {
@@ -3886,6 +3836,7 @@
                                 throw new Error('[MathPlus] mathematical error: The factorial exceeds the range limit.');
                             }
 
+                            // 分治
                             const mid = start + (end - start) / 2n;
                             const leftProduct = rangeProduct(start, mid);
                             const rightProduct = rangeProduct(mid + 1n, end);
@@ -3937,9 +3888,9 @@
                         acc: calcAcc
                     });
 
+                    // 先在正半平面计算，再由 Γ(z)Γ(1-z)=π/sin(πz) 反射回原参数。
                     let reflection = false;
                     if (calcNum.re.isNegative()) {
-                        // 先在正半平面计算，再由 Γ(z)Γ(1-z)=π/sin(πz) 反射回原参数。
                         calcNum = MathPlus._oppositeNumber(calcNum);
                         reflection = true;
                     }
@@ -3955,6 +3906,9 @@
                         );
                     }
 
+                    // 应用完整的兰佐斯公式。
+                    // Γ(z+1) = sqrt(2π) * (z + g + 1/2)^(z + 1/2) * e^-(z + g + 1/2) * A(z)
+                    // 这里已经将 sqrt(2π) 因子包含在了系数 p 中。
                     let result = mid;
                     mid = MathPlus.plus(calcNum, [-1, 5n, acc]);
                     result = MathPlus.times(
@@ -3965,6 +3919,7 @@
                         )
                     );
 
+                    // 如果需要，应用反射公式来获得最终结果。
                     if (reflection) {
                         mid = MathPlus.times(input, CalcConfig.constants.pi);
                         result = MathPlus.divide(
@@ -3987,12 +3942,6 @@
                  *   但零和负整数是极点。实部较小时通过反射/递推移入 Lanczos 近似的稳定区域。
                  * @returns {ComplexNumber} 代表 Γ(x) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果输入为 0 或负整数，此时伽玛函数未定义。
-                 * @example
-                 * // Γ(5) = 4! = 24
-                 * MathPlus.gamma(5);
-                 *
-                 * // Γ(1.5) = sqrt(π)/2 ≈ 0.886
-                 * MathPlus.gamma(1.5);
                  */
                 static gamma(x) {
                     const input = new ComplexNumber(x);
@@ -4008,13 +3957,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 要向负无穷方向取整的值；
                  *   仅定义于纯实数，复数的非零虚部会被拒绝，整数输入保持不变。
                  * @returns {ComplexNumber} 代表向下取整结果的 ComplexNumber 实例。
-                 * @example
-                 * // 实数: floor(3.7) -> 3; floor(-3.1) -> -4
-                 * MathPlus.floor(3.7);
-                 * MathPlus.floor(-3.1);
-                 *
-                 * // 复数: floor(3.7 - 2.2i) -> 3 - 3i
-                 * MathPlus.floor('3.7-2.2i');
                  */
                 static floor(x) {
                     const input = new ComplexNumber(x);
@@ -4030,6 +3972,9 @@
                         const pow = -re.power;
                         let result = re.acc < pow ? 0n : re.mantissa / (10n ** BigInt(pow));
 
+                        // 根据 floor 函数的定义调整结果。
+                        // - 对于正数，floor(x) 等于 trunc(x)。
+                        // - 对于负数，如果存在小数部分，floor(x) = trunc(x) - 1。
                         if (result < 0n || (result === 0n && re.isNegative())) {
                             result -= 1n;
                         }
@@ -4049,13 +3994,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 要向正无穷方向取整的值；
                  *   仅定义于纯实数，复数的非零虚部会被拒绝，整数输入保持不变。
                  * @returns {ComplexNumber} 代表向上取整结果的 ComplexNumber 实例。
-                 * @example
-                 * // 实数: ceil(3.1) -> 4; ceil(-3.7) -> -3
-                 * MathPlus.ceil(3.1);
-                 * MathPlus.ceil(-3.7);
-                 *
-                 * // 复数: ceil(1.2 - 3.8i) -> 2 - 3i
-                 * MathPlus.ceil('1.2 - 3.8i');
                  */
                 static ceil(x) {
                     const input = new ComplexNumber(x);
@@ -4090,12 +4028,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；实数返回通常的
                  *   非负绝对值，复数返回 `sqrt(re² + im²)` 的非负实数模。
                  * @returns {ComplexNumber} 一个纯实数的 ComplexNumber 实例，代表输入值的绝对值。
-                 * @example
-                 * // |-5| -> 5
-                 * MathPlus.abs(-5);
-                 *
-                 * // |3 - 4i| -> sqrt(3² + (-4)²) -> 5
-                 * MathPlus.abs('3-4i');
                  */
                 static abs(x) {
                     const input = new ComplexNumber(x);
@@ -4120,15 +4052,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；零返回零，非零值
                  *   返回单位方向 `x / abs(x)`，因此复数结果位于单位圆而不只是 `±1`。
                  * @returns {ComplexNumber} 代表 sgn(x) 结果的 ComplexNumber 实例。
-                 * @example
-                 * // sgn(10) -> 1
-                 * MathPlus.sgn(10);
-                 *
-                 * // sgn(-0.5) -> -1
-                 * MathPlus.sgn(-0.5);
-                 *
-                 * // sgn(3 + 4i) -> 0.6 + 0.8i
-                 * MathPlus.sgn('3+4i');
                  */
                 static sgn(x) {
                     const input = new ComplexNumber(x);
@@ -4155,9 +4078,6 @@
                  * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以角度制表示的实数或复数值；
                  *   通过乘以 `π / 180` 转为弧度，返回值精度受输入与圆周率常量共同限制。
                  * @returns {ComplexNumber} 代表转换后弧度值的 ComplexNumber 实例。
-                 * @example
-                 * // 180° -> π ≈ 3.14159
-                 * MathPlus.degree(180);
                  */
                 static degree(x) {
                     const input = new ComplexNumber(x);
@@ -4284,14 +4204,17 @@
                     function evaluationRPN(token) {
                         let tokenInfo = Public.getTokenInfo(token);
 
+                        // --- 处理一元运算符（前缀或后缀） ---
                         if (tokenInfo.parameters === 1) {
+                            // 确保栈中至少有一个操作数。
                             if (valueStack.length < 1) {
                                 throw new Error(`[MathPlus] syntax error: Insufficient parameters for function ${token}.`);
                             }
 
                             if (mode === 'calc') {
-
+                                // 必须先从栈中弹出操作数。
                                 const operand = valueStack.pop();
+                                // 调用相应的 MathPlus 方法进行计算。
                                 let value;
                                 if (['f', 'g'].includes(token)) {
                                     const context = {f, g};
@@ -4304,20 +4227,26 @@
                                 }
                                 valueStack.push(value);
                             }
-                        } else if (tokenInfo.parameters === 2) {
+                        }
+
+                        // --- 处理二元运算符和双参数函数 ---
+                        else if (tokenInfo.parameters === 2) {
+                            // 确保栈中至少有两个操作数。
                             if (valueStack.length < 2) {
                                 throw new Error(`[MathPlus] syntax error: Insufficient parameters for function ${token}.`);
                             }
-
+                            // 第二个操作数（b）先弹出，然后是第一个操作数（a）。
                             const b = valueStack.pop();
                             if (mode === 'calc') {
                                 const a = valueStack.pop();
+                                // 调用相应的 MathPlus 方法进行计算，保持 (a, b) 的正确顺序。
                                 const value = MathPlus[symbolConversion(tokenInfo.token)](a, b);
                                 valueStack.push(value);
                             }
                         }
                     }
 
+                    // 初始验证和准备
                     const inputType = Public.typeOf(expr);
                     if (['number', 'bigint', 'complexnumber', 'bignumber'].includes(inputType)) {
                         return [new ComplexNumber(expr), expr];
@@ -4332,13 +4261,20 @@
 
                     expr = expr.replaceAll('[cdot]', '').replaceAll('**', '^').replace(/\s/g, '');
 
-                    // 第一阶段：分词并补齐隐式乘法、绝对值括号以及一元正负号。
+                    // --- 第一轮解析循环 ---
+                    // 主要工作：
+                    //   1. 插入隐式乘法运算符 ('&')。
+                    //   2. 将一元 +/- 转换成 'N' (负号)。
+                    //   3. 通过在内部将绝对值符号转换为 'A(...)'。
+                    //   4. 跟踪括号嵌套，补全缺失的括号。
+                    //   5. 添加括号消除表达式歧义，如 2/3pi -> 2/(3&pi)。
                     let [output, input] = [[], Public.tokenizer(expr, {baseNumberMode: 'together'})];
                     if (input[0] === 'error') {
                         throw new Error(`[MathPlus] syntax error: Illegal input (${input[1]}).`);
                     }
 
                     let lastTokenInfo = {};
+                    // kh 记录全局括号，minKh 记录需要添加左括号的个数，addKh 为内层循环的括号记录。
                     let kh = 0, minKh = 0, addKh = 0;
                     const orderOfTimes = Public.getTokenInfo('*').priority;
                     const orderOfInvisibleTimes = Public.getTokenInfo('&').priority;
@@ -4350,6 +4286,7 @@
                         let currentPush = currentToken;
 
                         if (tokenInfo.isPrivate) {
+                            // 像 'log' 这样的二元前缀函数后面必须跟 '('。
                             let position = 0;
                             for (let j = 0; j < i; j++) {
                                 position += input[j].length;
@@ -4365,6 +4302,7 @@
                             throw new Error(`[MathPlus] syntax error: A prefix binary function must be followed by a left parenthesis (${position}).`);
                         }
 
+                        // --- 括号信息记录 ---
                         if (currentPush === '(') {
                             kh += 1;
                             if (absKhStack.length > 0) {
@@ -4387,6 +4325,7 @@
                             }
                         }
 
+                        // --- 隐式乘法插入 ---
                         if (lastTokenInfo.class === 'number' && tokenInfo.class === 'number') {
                             // 数字/常量、后缀函数和括号相邻时插入内部隐式乘法词元 `&`。
                             output.push('&');
@@ -4409,6 +4348,7 @@
                             output.push('&');
                         }
 
+                        // --- 处理正负号 ---
                         if (
                             ['+', '-'].includes(currentPush) &&
                             !(
@@ -4421,8 +4361,10 @@
                             currentPush = currentPush === '-' ? 'N' : '';
                         }
 
+                        // --- 处理绝对值 ---
+                        // `|...|` 转换为内部绝对值函数 `A(...)`，栈记录嵌套括号以识别闭合竖线。
                         if (currentPush === '|') {
-                            // `|...|` 转换为内部绝对值函数 `A(...)`，栈记录嵌套括号以识别闭合竖线。
+                            // 默认此处表示绝对值的开始。
                             currentPush = '(';
                             if (
                                 absKhStack.length !== 0 &&
@@ -4434,7 +4376,9 @@
                                 currentPush = ')';
                                 kh -= 1;
                                 absKhStack.pop();
-                            } else if (
+                            }
+                            // 其余情况将 '|' 视为绝对值的开始
+                            else if (
                                 lastTokenInfo.class === 'number' ||
                                 lastTokenInfo.token === ')' ||
                                 lastTokenInfo.funcPlace === 'back'
@@ -4448,6 +4392,8 @@
                             }
                         }
 
+                        // --- 隐式乘法添加括号逻辑 ---
+                        // 为了消除歧义。例如，`1/2x` 应该是 `1/(2&x)`。
                         if (
                             (output[output.length - 1] === '&' || (output[output.length - 1] === 'A' && output[output.length - 2] === '&')) &&
                             !output.includes('[')
@@ -4478,21 +4424,21 @@
                             addKh = currentPush === '(' ? kh - 1 : kh;
                         }
 
-                        if (
+                        if ( // 解决为隐式乘法添加的另一半括号
                             output.includes('[') && (
                                 (
                                     tokenInfo.class === 'func' &&
                                     tokenInfo.priority > orderOfInvisibleTimes &&
                                     kh === addKh
                                 ) ||
-
+                                // 避免循环末尾需要在循环结束后重新处理
                                 i + 1 === input.length
                             )
                         ) {
                             if (tokenInfo.priority >= orderOfTimes) {
-
+                                // 目前 token 优先级低于显式乘法，需要添加括号
                                 /** 将临时左括号标记转换为普通左括号。 */
-                                output = output.map(item => item === '[' ? '(' : item);
+                                output = output.map((item) => item === '[' ? '(' : item);
                                 if (i + 1 === input.length) {
                                     output.push(currentPush);
                                     currentPush = ')';
@@ -4501,7 +4447,7 @@
                                 }
                             } else {
                                 /** 移除无需保留的临时左括号标记。 */
-                                output = output.filter(item => item !== '[');
+                                output = output.filter((item) => item !== '[');
                             }
                         }
 
@@ -4513,11 +4459,13 @@
                         output.push(currentPush);
                     }
 
+                    // 添加缺失的左括号
                     while (minKh < 0) {
                         output = ['(', ...output];
                         minKh += 1;
                         kh += 1;
                     }
+                    // 关闭任何未闭合的绝对值符号 以及 绝对值内部未闭合的括号。
                     for (let i = absKhStack.length - 1; i >= 0; i--) {
                         for (let j = 0; j < absKhStack[i]; j++) {
                             output.push(')');
@@ -4525,15 +4473,23 @@
                         output = [...output, '|', ')'];
                         kh -= absKhStack[i] + 1;
                     }
+                    // 关闭剩余未闭合的常规括号。
                     while (kh > 0) {
                         output.push(')');
                         kh -= 1;
                     }
 
-                    // 第二阶段：按优先级为省略括号的一元函数和幂运算确定操作数边界。
-                    // `#`、`:` 分别标记函数和幂，`@` 表示边界已确定，最终都会被移除。
+                    // --- 第二轮解析循环 ---
+                    // 其主要工作是为需要它的函数和运算符（如 `sin` 和 `^`）处理括号插入，
+                    // 以确保正确的运算顺序，特别是当用户省略括号时，以进一步消除歧义。
+                    // 例如 `sin x + 1` -> `sin(x) + 1`，而不是 `sin(x+1)`。
+                    // 它使用一个临时标记系统：
+                    //   - `#kh#`（一级条件）：未发现完整括号的未闭合一元前缀函数，如：sin2 -> sin(2)
+                    //   - `#kh@`（二级条件）：发现完整括号的未闭合一元前缀函数，如：sin(2)A(5) -> sin((2)A(5))，假设二元中缀运算符 'A' 的优先级比 'sin' 高。
+                    //   - `:kh#`（一级条件）：未发现完整括号的未闭合 '^'。
+                    //   - `:kh@`（二级条件）：发现完整括号的未闭合 '^'。
                     [output, input] = [[], output];
-                    let absAdd = false;
+                    let absAdd = false; // 跳过绝对值标记。
                     const orderOfSin = Public.getTokenInfo('sin').priority;
                     const orderOfPow = Public.getTokenInfo('^').priority;
 
@@ -4555,15 +4511,16 @@
 
                         if (
                             (
-                                ((funcCheck && tokenInfo.priority > orderOfSin) || tokenCheck) &&
-                                listIncludesStr(output, '#' + kh + '@')
+                                ((funcCheck && tokenInfo.priority > orderOfSin) || tokenCheck) && // for 'func_01_1'
+                                listIncludesStr(output, '#' + kh + '@') // 含有二级条件
                             ) ||
                             (
-                                ((funcCheck && tokenInfo.priority > orderOfPow) || tokenCheck) &&
-                                listIncludesStr(output, ':' + kh + '@')
+                                ((funcCheck && tokenInfo.priority > orderOfPow) || tokenCheck) && // for '^'
+                                listIncludesStr(output, ':' + kh + '@') // 含有二级条件
                             )
-                        ) {
+                        ) { // 进入此条件一定会添加括号
                             if (listIncludesStr(output, ':' + kh + '@')) {
+                                // 去除最后一个为 '^' 准备的标记，因为 2^3^4 -> 2^(3^4) 而不是 2^(3^(4))
                                 const pattern = new RegExp(`:${kh}[@#]`);
                                 for (let j = output.length - 1; j > -1; j--) {
                                     if (pattern.test(output[j])) {
@@ -4572,6 +4529,7 @@
                                     }
                                 }
                             }
+                            // 替换每个标记并添加括号。
                             const pattern = new RegExp(`[#:]${kh}[@#]`);
                             for (let j = 0; j < output.length; j++) {
                                 if (pattern.test(output[j])) {
@@ -4586,10 +4544,14 @@
                             (funcCheck || tokenCheck) &&
                             (listIncludesStr(output, '#' + kh + '#') || listIncludesStr(output, ':' + kh + '#'))
                         ) {
+                            // 进入此条件不一定会添加括号
+                            // for 'func_01_1'
                             if (listIncludesStr(output, '#' + kh + '#')) {
                                 if (tokenInfo.priority > orderOfSin) {
+                                    // 该 token 作用域到此结束，添加括号。
                                     for (let j = 0; j < output.length; j++) {
                                         if (output[j].includes('#' + kh + '#')) {
+                                            // 判断原始表达式是否自带括号。
                                             const needKh = !(output[j + 1] === '(' && output[output.length - 1] === ')');
                                             output[j] = output[j].replace('#' + kh + '#', '');
                                             if (needKh) {
@@ -4599,21 +4561,25 @@
                                         }
                                     }
                                 } else if (tokenInfo.priority < orderOfSin) {
+                                    // 该 token 作用域未结束，转换为二级条件。
                                     for (let j = 0; j < output.length; j++) {
                                         output[j] = output[j].replace('#' + kh + '#', '#' + kh + '@');
                                     }
                                 }
                             }
 
+                            // for '^'，除特殊标注外逻辑同理 for 'func_01_1'
                             if (listIncludesStr(output, ':' + kh + '#')) {
                                 if (tokenInfo.priority > orderOfPow) {
+                                    // 可能出现两级条件混杂情况。
                                     const pattern = new RegExp(`:${kh}[@#]`);
+                                    // 最后一个 '^' 不用添加括号。
                                     let theLast = true;
                                     for (let j = output.length - 1; j > -1; j--) {
                                         if (pattern.test(output[j])) {
                                             const needKh = !(output[j + 1] === '(' && output[output.length - 1] === ')');
                                             output[j] = output[j].replace(pattern, '');
-                                            if (needKh && !theLast) {
+                                            if (needKh && !theLast) { // 最后一个 '^' 不用添加括号。
                                                 output.splice(j + 1, 0, '(');
                                                 output.push(')');
                                             }
@@ -4628,17 +4594,19 @@
                             }
                         }
 
+                        // 右括号记录，移到后面防止干扰括号判断。
                         if (currentToken === ')') {
                             kh -= 1;
                         }
 
+                        // 为需要添加括号的运算符添加标记
                         if (lastTokenInfo.needKh) {
                             output[output.length - 1] += (lastTokenInfo.token === '^' ? ':' : '#') + (currentToken === '(' ? kh - 1 : kh) + '#';
                         }
 
-                        if (absAdd) {
+                        if (absAdd) { // 跳过的绝对值标记。
                             absAdd = false;
-                            output.push('|');
+                            output.push('|'); // 重新插入绝对值标记。
                         }
 
                         lastTokenInfo = tokenInfo;
@@ -4647,15 +4615,17 @@
 
                     let theLast = true;
                     const powPattern = /:\d+[@#]/;
-                    const patternNotSure = /[#:]\d+#/;
-                    const patternSure = /[#:]\d+@/;
+                    const patternNotSure = /[#:]\d+#/; // 不一定需要添加括号
+                    const patternSure = /[#:]\d+@/; // 一定需要添加括号
 
                     for (let i = output.length - 1; i > -1; i--) {
                         if (powPattern.test(output[i]) && theLast) {
+                            // 跳过最后一个 '^' 的标记
                             output[i] = output[i].replace(powPattern, '');
                             theLast = false;
                         }
                         if (patternNotSure.test(output[i])) {
+                            // 判断是否需要添加括号。
                             const needKh = !(output[i + 1] === '(' && output[output.length - 1] === ')');
                             output[i] = output[i].replace(patternNotSure, '');
                             if (needKh) {
@@ -4670,15 +4640,18 @@
                         }
                     }
 
+                    // 将 input 指向处理后的 output。
                     input = output;
 
+                    // 合成最终的 'output'，还原内部标记
                     output = output.join('');
                     output = output.replaceAll('A(', '|').replaceAll('|)', '|').replaceAll('&', '[cdot]').replaceAll('N', '-');
 
+                    // --- 第三轮解析循环 ---
+                    // 生成 RPN（逆波兰表示法） 和 RPN求值循环
                     const valueStack = [];
                     const operatorStack = [];
 
-                    // 第三阶段：调度场算法用运算符栈处理优先级，并即时执行弹出的逆波兰表达式。
                     for (let i = 0; i < input.length; i++) {
                         const currentToken = input[i];
                         const tokenInfo = Public.getTokenInfo(currentToken);
@@ -4702,19 +4675,25 @@
                                 topOfStackInfo = Public.getTokenInfo(topOfStack);
                             }
 
+                            // 循环条件：当操作符栈不为空，栈顶不是左括号，且满足以下任一条件时，就将栈顶运算符弹出
+                            //   1. 栈顶运算符的优先级高于当前运算符。
+                            //   2. 优先级相同，且当前运算符是左结合的。
                             while (
                                 topOfStack !== undefined && (
-                                    topOfStackInfo.priority < tokenInfo.priority ||
-                                    (topOfStackInfo.priority === tokenInfo.priority && tokenInfo.associativity === 'left')
-                                ) && tokenInfo.funcPlace !== 'front'
+                                    topOfStackInfo.priority < tokenInfo.priority || // 栈顶优先级更高
+                                    (topOfStackInfo.priority === tokenInfo.priority && tokenInfo.associativity === 'left') // 优先级相同且为左结合
+                                ) && tokenInfo.funcPlace !== 'front' // 防止提前出栈
                                 ) {
+                                // 使用 pop() 从栈顶弹出一个运算符，并用 evaluationRPN 更新求值栈的值。
                                 evaluationRPN(operatorStack.pop().replace('~', ''));
+                                // 更新栈顶元素以供下一次循环判断。
                                 topOfStack = operatorStack[operatorStack.length - 1];
                                 if (topOfStack !== undefined) {
                                     topOfStack = topOfStack.replace('~', '');
                                     topOfStackInfo = Public.getTokenInfo(topOfStack);
                                 }
                             }
+
                             operatorStack.push(currentToken);
                         } else if (currentToken === '(') {
                             operatorStack.push(currentToken);
@@ -4725,6 +4704,7 @@
                             if (operatorStack.length === 0) {
                                 throw new Error('[MathPlus] syntax error: The parentheses do not match.');
                             }
+                            // 弹出并丢弃左括号 '('。
                             operatorStack.pop();
                         } else if (currentToken === ',') {
                             while (operatorStack.length > 0 && operatorStack[operatorStack.length - 1] !== '(') {
@@ -4734,17 +4714,16 @@
                             if (operatorStack.length < 2 || !(subTopOfStack.funcPlace === 'front' && subTopOfStack.parameters === 2)) {
                                 throw new Error('[MathPlus] syntax error: Commas mismatch or incorrect position.');
                             }
+                            // 标记这个函数已经被一个逗号匹配。
                             operatorStack[operatorStack.length - 2] += '~';
                         }
                     }
 
                     while (operatorStack.length > 0) {
                         const operator = operatorStack.pop().replace('~', '');
-
                         if (operator === '(') {
                             throw new Error('[MathPlus] syntax error: The parentheses do not match.');
                         }
-
                         evaluationRPN(operator);
                     }
 
@@ -4757,71 +4736,71 @@
                 }
             }
 
-             /**
-              * 单组样本的描述性统计字段。
-              *
-              * @typedef {object} StatisticsSummary
-              * @property {string} average - 算术平均值的格式化字符串。
-              * @property {string} sum - 样本和 `Σxᵢ` 的格式化字符串。
-              * @property {string} sum2 - 平方和 `Σxᵢ²` 的格式化字符串。
-              * @property {string} totalVariance - 总体标准差 `sqrt(Σ(xᵢ-x̄)²/n)`；字段名沿用既有 UI 协议。
-              * @property {string|'error'} sampleVariance - 样本标准差；样本量为 1 时为 `error`。
-              * @property {string} max - 按实数大小比较得到的最大值。
-              * @property {string} min - 按实数大小比较得到的最小值。
-              */
+            /**
+             * 单组样本的描述性统计字段。
+             *
+             * @typedef {object} StatisticsSummary
+             * @property {string} average - 算术平均值的格式化字符串。
+             * @property {string} sum - 样本和 `Σxᵢ` 的格式化字符串。
+             * @property {string} sum2 - 平方和 `Σxᵢ²` 的格式化字符串。
+             * @property {string} totalVariance - 总体标准差 `sqrt(Σ(xᵢ-x̄)²/n)`；字段名沿用既有 UI 协议。
+             * @property {string|'error'} sampleVariance - 样本标准差；样本量为 1 时为 `error`。
+             * @property {string} max - 按实数大小比较得到的最大值。
+             * @property {string} min - 按实数大小比较得到的最小值。
+             */
 
-             /**
-              * 单个回归模型的输出结构。
-              *
-              * @typedef {object} RegressionModelResult
-              * @property {Array<string|'error'>} parameter - 按模型表达式顺序排列的参数；二参数模型为
-              *   `[a,b]`，二次模型为 `[a,b,c]`。无法求解的参数逐项使用 `error`。
-              * @property {string|'error'} regressionEquation - 可直接交给表达式解析器的回归方程字符串。
-              * @property {string|'error'} R2 - 在原始因变量量纲上计算并格式化的决定系数。
-              * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} model - 模型标识，
-              *   与统计结果对象中的属性名一致。
-              */
+            /**
+             * 单个回归模型的输出结构。
+             *
+             * @typedef {object} RegressionModelResult
+             * @property {Array<string|'error'>} parameter - 按模型表达式顺序排列的参数；二参数模型为
+             *   `[a,b]`，二次模型为 `[a,b,c]`。无法求解的参数逐项使用 `error`。
+             * @property {string|'error'} regressionEquation - 可直接交给表达式解析器的回归方程字符串。
+             * @property {string|'error'} R2 - 在原始因变量量纲上计算并格式化的决定系数。
+             * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} model - 模型标识，
+             *   与统计结果对象中的属性名一致。
+             */
 
-             /**
-              * 两组配对样本的完整统计与回归结果。
-              *
-              * @typedef {object} StatisticsAnalysisResult
-              * @property {string} n - 样本对数量的十进制整数字符串。
-              * @property {string} averageA - A 组均值。
-              * @property {string} sumA - A 组样本和。
-              * @property {string} sum2A - A 组平方和。
-              * @property {string} totalVarianceA - A 组总体标准差。
-              * @property {string|'error'} sampleVarianceA - A 组样本标准差。
-              * @property {string} maxA - A 组最大值。
-              * @property {string} minA - A 组最小值。
-              * @property {string} averageB - B 组均值。
-              * @property {string} sumB - B 组样本和。
-              * @property {string} sum2B - B 组平方和。
-              * @property {string} totalVarianceB - B 组总体标准差。
-              * @property {string|'error'} sampleVarianceB - B 组样本标准差。
-              * @property {string} maxB - B 组最大值。
-              * @property {string} minB - B 组最小值。
-              * @property {string} dotAB - 点积 `ΣAᵢBᵢ`。
-              * @property {string} dotA2B - 加权点积 `ΣAᵢ²Bᵢ`。
-              * @property {string} totalCovariance - 总体协方差。
-              * @property {string|'error'} sampleCovariance - 样本协方差；样本量为 1 时为 `error`。
-              * @property {string|'error'} r - 皮尔逊相关系数；任一组方差为零时为 `error`。
-              * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} bestModel - 可计算模型中
-              *   R² 最大者；全部模型不可比较时保留 `linear` 作为 UI 缺省选择。
-              * @property {RegressionModelResult} linear - 线性模型 `y=a+bx`。
-              * @property {RegressionModelResult} square - 二次模型 `y=a+bx+cx²`。
-              * @property {RegressionModelResult} ln - 对数模型 `y=a+b ln(x)`。
-              * @property {RegressionModelResult} exp - 自然指数模型 `y=a exp(bx)`。
-              * @property {RegressionModelResult} abx - 一般指数模型 `y=a b^x`。
-              * @property {RegressionModelResult} axb - 幂模型 `y=a x^b`。
-              * @property {RegressionModelResult} reciprocal - 反比例模型 `y=a+b/x`。
-              */
+            /**
+             * 两组配对样本的完整统计与回归结果。
+             *
+             * @typedef {object} StatisticsAnalysisResult
+             * @property {string} n - 样本对数量的十进制整数字符串。
+             * @property {string} averageA - A 组均值。
+             * @property {string} sumA - A 组样本和。
+             * @property {string} sum2A - A 组平方和。
+             * @property {string} totalVarianceA - A 组总体标准差。
+             * @property {string|'error'} sampleVarianceA - A 组样本标准差。
+             * @property {string} maxA - A 组最大值。
+             * @property {string} minA - A 组最小值。
+             * @property {string} averageB - B 组均值。
+             * @property {string} sumB - B 组样本和。
+             * @property {string} sum2B - B 组平方和。
+             * @property {string} totalVarianceB - B 组总体标准差。
+             * @property {string|'error'} sampleVarianceB - B 组样本标准差。
+             * @property {string} maxB - B 组最大值。
+             * @property {string} minB - B 组最小值。
+             * @property {string} dotAB - 点积 `ΣAᵢBᵢ`。
+             * @property {string} dotA2B - 加权点积 `ΣAᵢ²Bᵢ`。
+             * @property {string} totalCovariance - 总体协方差。
+             * @property {string|'error'} sampleCovariance - 样本协方差；样本量为 1 时为 `error`。
+             * @property {string|'error'} r - 皮尔逊相关系数；任一组方差为零时为 `error`。
+             * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} bestModel - 可计算模型中
+             *   R² 最大者；全部模型不可比较时保留 `linear` 作为 UI 缺省选择。
+             * @property {RegressionModelResult} linear - 线性模型 `y=a+bx`。
+             * @property {RegressionModelResult} square - 二次模型 `y=a+bx+cx²`。
+             * @property {RegressionModelResult} ln - 对数模型 `y=a+b ln(x)`。
+             * @property {RegressionModelResult} exp - 自然指数模型 `y=a exp(bx)`。
+             * @property {RegressionModelResult} abx - 一般指数模型 `y=a b^x`。
+             * @property {RegressionModelResult} axb - 幂模型 `y=a x^b`。
+             * @property {RegressionModelResult} reciprocal - 反比例模型 `y=a+b/x`。
+             */
 
-             /**
-              * 提供统计计算和回归分析。
-              *
-              * @class StatisticsTools
-              */
+            /**
+             * 提供统计计算和回归分析。
+             *
+             * @class StatisticsTools
+             */
             class StatisticsTools {
                 /**
                  * 阻止实例化静态工具类。
@@ -5011,7 +4990,7 @@
 
                 /**
                  * 计算一个数值列表中每个元素的绝对值（模）。
-                 * 此方法的功能类似于 `list.map(item => MathPlus.abs(item))`。
+                 * 此方法的功能类似于 `list.map((item) => MathPlus.abs(item))`。
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 需要计算绝对值的数值数组。
@@ -5158,12 +5137,12 @@
                     const coefficients = [];
                     for (let i = 1; i < power + 1; i++) {
                         /** 将自变量转换为当前次数的幂。 */
-                        const changedListA = StatisticsTools._changeInner(listA, x => MathPlus.pow(x, i));
+                        const changedListA = StatisticsTools._changeInner(listA, (x) => MathPlus.pow(x, i));
                         constants.push(StatisticsTools._dotProduct(changedListA, listB));
                     }
                     for (let i = 1; i < 2 * power + 1; i++) {
                         /** 将自变量转换为当前次数的幂。 */
-                        const changedListA = StatisticsTools._changeInner(listA, x => MathPlus.pow(x, i));
+                        const changedListA = StatisticsTools._changeInner(listA, (x) => MathPlus.pow(x, i));
                         coefficientsList.push(StatisticsTools._averageAndSum(changedListA).sum);
                     }
                     for (let i = 0; i < power + 1; i++) {
@@ -5229,7 +5208,7 @@
                     statisticsResult.sum = Public.idealizationToString(averageAndSum.sum);
 
                     /** 计算列表元素的平方。 */
-                    const list2 = StatisticsTools._changeInner(list, x => MathPlus.times(x, x));
+                    const list2 = StatisticsTools._changeInner(list, (x) => MathPlus.times(x, x));
 
                     statisticsResult.sum2 = Public.idealizationToString(StatisticsTools._averageAndSum(list2).sum);
 
@@ -5275,8 +5254,8 @@
 
                         // R² 使用未变换的原始 y 值。
                         result.R2 = StatisticsTools._calcR2(listA, originalListB,
-                            /** 使用已求得的参数计算预测值。 */
-                            x => func(x, result.parameter)
+                            // 使用已求得的参数计算预测值
+                            (x) => func(x, result.parameter)
                         );
                     } catch {
                         result.R2 = 'error';
@@ -5390,12 +5369,12 @@
                     let lnListA;
                     if (!statesA.zero && !statesA.negative) {
                         /** 对自变量取自然对数。 */
-                        lnListA = this._changeInner(listA, x => MathPlus.ln(x));
+                        lnListA = this._changeInner(listA, (x) => MathPlus.ln(x));
                     }
                     let lnListB;
                     if (!statesB.zero && !(statesB.positive && statesB.negative)) {
                         /** 对因变量绝对值取自然对数。 */
-                        lnListB = this._changeInner(absListB, x => MathPlus.ln(x));
+                        lnListB = this._changeInner(absListB, (x) => MathPlus.ln(x));
                     }
                     const errorWith2parameter = {
                         parameter: ['error', 'error'],
@@ -5406,7 +5385,7 @@
                     const twoParamModels = ['linear', 'ln', 'axb', 'exp', 'abx', 'reciprocal'];
                     if ((!statesA.positive && !statesA.negative && statesA.zero) || listA.length === 1) {
                         /** 将当前双参数模型标记为不可计算。 */
-                        twoParamModels.forEach(key => {
+                        twoParamModels.forEach((key) => {
                             result[key] = {
                                 parameter: ['error', 'error'],
                                 regressionEquation: 'error',
@@ -5426,7 +5405,7 @@
                     }
                     if (!statesB.positive && !statesB.negative && statesB.zero) {
                         /** 为当前双参数模型写入零函数结果。 */
-                        twoParamModels.forEach(key => {
+                        twoParamModels.forEach((key) => {
                             result[key] = {
                                 parameter: ['0', '0'],
                                 regressionEquation: '0',
@@ -5446,12 +5425,10 @@
                     }
 
                     result.linear = this._getRegressionInfo(listA, listB, 1, listB,
-                        /** 计算线性模型的预测值。 */
                         (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                     );
 
                     result.square = this._getRegressionInfo(listA, listB, 2, listB,
-                        /** 计算二次模型的预测值。 */
                         (x, coefficient) => MathPlus.plus(
                             MathPlus.times(coefficient[2], MathPlus.times(x, x)),
                             MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
@@ -5464,7 +5441,6 @@
                         result.ln = structuredClone(errorWith2parameter);
                     } else {
                         result.ln = this._getRegressionInfo(lnListA, listB, 1, listB,
-                            /** 在对数自变量空间计算预测值。 */
                             (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                         );
                     }
@@ -5475,7 +5451,6 @@
                         result.axb = structuredClone(errorWith2parameter);
                     } else {
                         result.axb = this._getRegressionInfo(lnListA, lnListB, 1, listB,
-                            /** 将对数空间预测值还原为幂函数值。 */
                             (x, coefficient) => {
                                 const mid = MathPlus.exp(MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0]));
                                 return statesB.negative ? MathPlus.minus(0, mid) : mid;
@@ -5495,7 +5470,6 @@
                         result.abx = structuredClone(errorWith2parameter);
                     } else {
                         result.exp = this._getRegressionInfo(listA, lnListB, 1, listB,
-                            /** 将对数空间预测值还原为指数函数值。 */
                             (x, coefficient) => {
                                 const mid = MathPlus.exp(MathPlus.plus(
                                     MathPlus.times(coefficient[1], x),
@@ -5529,9 +5503,8 @@
                         result.reciprocal = structuredClone(errorWith2parameter);
                     } else {
                         /** 将自变量转换为倒数。 */
-                        const reciprocalListA = this._changeInner(listA, x => MathPlus.divide(1, x));
+                        const reciprocalListA = this._changeInner(listA, (x) => MathPlus.divide(1, x));
                         result.reciprocal = this._getRegressionInfo(reciprocalListA, listB, 1, listB,
-                            /** 在倒数自变量空间计算预测值。 */
                             (x, coefficient) => MathPlus.plus(MathPlus.times(coefficient[1], x), coefficient[0])
                         );
                     }
@@ -5552,29 +5525,29 @@
                 }
             }
 
-             /**
-              * 多项式区间与特征点分析结果。
-              *
-              * @typedef {object} PowerFunctionAnalysisResult
-              * @property {string} equation - 按降幂规范化的多项式表达式。
-              * @property {[string, string]} range - 值域左右边界；无穷使用 `-inf`/`+inf`。
-              * @property {Array<[string, string]>} increasingInterval - 单调递增区间；不存在时为
-              *   `[['null','null']]`，无穷端点使用专用字符串。
-              * @property {Array<[string, string]>} decreasingInterval - 与上项采用相同编码的单调递减区间。
-              * @property {Array<[string, string]>} maximumPoint - 极大值点 `[x,y]` 列表；不存在时使用空点哨兵。
-              * @property {Array<[string, string]>} minimumPoint - 极小值点 `[x,y]` 列表；不存在时使用空点哨兵。
-              * @property {Array<[string, string]>} convexInterval - 凸区间列表；端点编码与单调区间一致。
-              * @property {Array<[string, string]>} concaveInterval - 凹区间列表；端点编码与单调区间一致。
-              * @property {Array<[string, string]>} inflectionPoint - 拐点 `[x,y]` 列表；不存在时使用空点哨兵。
-              * @property {Array<string>} roots - 已格式化实根/复根列表；无根为 `['null']`，恒等于零为
-              *   `['anyRealNumber']`。返回数量不超过实际多项式次数。
-              */
+            /**
+             * 多项式区间与特征点分析结果。
+             *
+             * @typedef {object} PowerFunctionAnalysisResult
+             * @property {string} equation - 按降幂规范化的多项式表达式。
+             * @property {[string, string]} range - 值域左右边界；无穷使用 `-inf`/`+inf`。
+             * @property {Array<[string, string]>} increasingInterval - 单调递增区间；不存在时为
+             *   `[['null','null']]`，无穷端点使用专用字符串。
+             * @property {Array<[string, string]>} decreasingInterval - 与上项采用相同编码的单调递减区间。
+             * @property {Array<[string, string]>} maximumPoint - 极大值点 `[x,y]` 列表；不存在时使用空点哨兵。
+             * @property {Array<[string, string]>} minimumPoint - 极小值点 `[x,y]` 列表；不存在时使用空点哨兵。
+             * @property {Array<[string, string]>} convexInterval - 凸区间列表；端点编码与单调区间一致。
+             * @property {Array<[string, string]>} concaveInterval - 凹区间列表；端点编码与单调区间一致。
+             * @property {Array<[string, string]>} inflectionPoint - 拐点 `[x,y]` 列表；不存在时使用空点哨兵。
+             * @property {Array<string>} roots - 已格式化实根/复根列表；无根为 `['null']`，恒等于零为
+             *   `['anyRealNumber']`。返回数量不超过实际多项式次数。
+             */
 
-             /**
-              * 分析最高四次的实系数多项式。
-              *
-              * @class PowerFunctionTools
-              */
+            /**
+             * 分析最高四次的实系数多项式。
+             *
+             * @class PowerFunctionTools
+             */
             class PowerFunctionTools {
                 /**
                  * 阻止实例化静态工具类。
@@ -5604,7 +5577,6 @@
                      * @returns {-1|0|1} 排序结果。
                      */
                     list.sort((a, b) => {
-
                         const diff = MathPlus.minus(a, b).re.mantissa;
                         if (diff > 0n) {
                             return 1;
@@ -5647,8 +5619,8 @@
                  * @private
                  * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 按降幂排列的 `n + 1`
                  *   个系数；常数多项式返回空导数系数数组，原数组不会被修改。
-                 * @returns {Array<ComplexNumber>} 仍按降幂排列的导数系数；若输入表示 n 次多项式，返回
-                 *   n 项，第 `i` 项为原系数乘以对应幂次。常数项被移除。
+                 * @returns {Array<ComplexNumber>} 仍按降幂排列的导数系数；若输入表示 n 次多项式，返回 n 项，
+                 *   第 `i` 项为原系数乘以对应幂次。常数项被移除。
                  */
                 static _differentiate(list) {
                     const result = [];
@@ -5665,8 +5637,7 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按 `[a, b]` 传入 `ax + b = 0` 的系数；
                  *   调用方应先消除前导零，`a = 0` 不属于一次方程。
-                 * @returns {[ComplexNumber]} 仅含 `-b/a` 的单元素数组；使用数组是为了与二、三、四次
-                 *   求根器保持统一调用协议。
+                 * @returns {[ComplexNumber]} 仅含 `-b/a` 的单元素数组；使用数组是为了与二、三、四次求根器保持统一调用协议。
                  */
                 static _solveLinear(list) {
                     const a = list[0], b = list[1];
@@ -5681,8 +5652,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 严格按降幂 `[a, b, c]` 传入的系数；
                  *   `a` 应非零。返回根会去除精度噪声，共轭复根的标记约定供上层分析使用。
-                 * @returns {Array<ComplexNumber|null>} 判别式为零时返回一个去重实根；大于零时返回两个按
-                 *   实部升序的实根；小于零时返回两个共轭复根并在末尾附加 `null`，供只分析实轴的上层识别。
+                 * @returns {Array<ComplexNumber|null>} 判别式为零时返回一个去重实根；大于零时返回两个按实部升序的实根；
+                 *    小于零时返回两个共轭复根并在末尾附加 `null`，供只分析实轴的上层识别。
                  */
                 static _solveQuadratic(list) {
                     const
@@ -6444,8 +6415,7 @@
 
                     return [
                         formula,
-                        /** 根据根序号计算对应的极坐标根。 */
-                            x => MathPlus.toPolar(
+                        (x) => MathPlus.toPolar(
                             length,
                             MathPlus.plus(argumentConstant, MathPlus.times(x, argumentConstantK))
                         )
@@ -6517,8 +6487,8 @@
                  *   与 `f` 独立记录。
                  * @param {string|number|BigNumber|ComplexNumber|Array} start - 闭区间实数起点；表达式求值、
                  *   近零修正后不得带非零虚部，且不得大于 `end`。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格大于零的纯实步长；决定显示点
-                 *   间距。达到最大展示数量时停止继续分配，并在结果尾部放置省略标记。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格大于零的纯实步长；决定显示点间距。
+                 *   达到最大展示数量时停止继续分配，并在结果尾部放置省略标记。
                  * @param {string|number|BigNumber|ComplexNumber|Array} end - 闭区间实数终点；仅计算按步长实际
                  *   到达且不大于它的点，不会为了包含终点而改变最后一步。
                  * @returns {{varList:Array<string>, f:Array<string>, g:Array<string>}} 三个索引对齐的显示数组：
@@ -6558,14 +6528,12 @@
                     }
 
                     const resultF = Public.idealizationToString(Public.functionValueList(
-                        /** 在当前自变量处计算函数 f。 */
-                        x => MathPlus.calc(f, {g: g, unknown: x})[0],
+                        (x) => MathPlus.calc(f, {g: g, unknown: x})[0],
                         start, step, end
                     ));
 
                     const resultG = Public.idealizationToString(Public.functionValueList(
-                        /** 在当前自变量处计算函数 g。 */
-                        x => MathPlus.calc(g, {f: f, unknown: x})[0],
+                        (x) => MathPlus.calc(g, {f: f, unknown: x})[0],
                         start, step, end
                     ));
 
@@ -7378,15 +7346,15 @@
                 static _mathWorker = new SyncWorker({
                     callableFunctions: {
                         /** 设置 Worker 的计算精度。 */
-                        setCalcAccuracy: acc => CalcConfig.globalCalcAccuracy = acc,
+                        setCalcAccuracy: (acc) => CalcConfig.globalCalcAccuracy = acc,
                         /** 获取 Worker 的计算精度。 */
                         getCalcAccuracy: () => CalcConfig.globalCalcAccuracy,
                         /** 设置 Worker 的输出精度。 */
-                        setOutputAccuracy: acc => CalcConfig.outputAccuracy = acc,
+                        setOutputAccuracy: (acc) => CalcConfig.outputAccuracy = acc,
                         /** 获取 Worker 的输出精度。 */
                         getOutputAccuracy: () => CalcConfig.outputAccuracy,
                         /** 设置 Worker 的输出模式。 */
-                        setPrintMode: mode => CalcConfig.globalPrintMode = mode,
+                        setPrintMode: (mode) => CalcConfig.globalPrintMode = mode,
                         /** 获取 Worker 的输出模式。 */
                         getPrintMode: () => CalcConfig.globalPrintMode,
                         /** 初始化 Worker 计算环境。 */
@@ -7396,7 +7364,7 @@
                             CalcConfig.globalPrintMode = printMode;
                         },
                         /** 分析多项式函数。 */
-                        powerFunctionAnalysis: list => PowerFunctionTools.powerFunctionAnalysis(list),
+                        powerFunctionAnalysis: (list) => PowerFunctionTools.powerFunctionAnalysis(list),
                         /** 计算统计结果。 */
                         statisticsCalc: (listA, listB) => StatisticsTools.statisticsCalc(listA, listB),
                         /** 分析复数根式。 */
@@ -7802,11 +7770,14 @@
                  * 此方法会处理不同主模式下子模式切换的特定 UI 逻辑（例如，高亮数据网格或切换输入区域），
                  * 并将新的子模式状态持久化到 `localStorage`。
                  *
-                 * @param {Object<string, string|Array<number|string>>} obj - 要合并的子模式补丁；键可为主模式
+                 * @param {object} obj - 要合并的子模式补丁；键可为主模式
                  *   `0`、`1`、`2_0`、`2_1`、`3`、`4`，或用 `default` 指代当前主模式。普通模式的值是
                  *   已登记的子模式 ID；统计模式 `1` 使用 `[rowIndex, columnIndex]`，行列均按零基索引。
                  *   可一次更新多个键；每项分别校验，成功项会触发对应 UI 切换并持久化当前完整状态。
                  * @throws {Error} 如果提供的子模式 ID 对于其主模式是无效的。
+                 * @example
+                 * // 将模式 '2_0' 的子模式设置为 '1'
+                 * PageConfig.subModes = { '2_0': '1' };
                  */
                 static set subModes(obj) {
                     /**
@@ -7846,18 +7817,18 @@
                              * - @param {Function} callback - 在第二帧重绘前执行的回调函数
                              */
                             const safeRaf = (callback) => {
-                                requestAnimationFrame(/** 安排回调在连续两帧后执行。 */() => requestAnimationFrame(callback));
+                                requestAnimationFrame(() => requestAnimationFrame(callback));
                             };
 
                             if (PageConfig.currentMode === '1') {
                                 const gridOn = HtmlTools.getHtml('.GridOn');
                                 if (gridOn) {
-                                    safeRaf(/** 移除旧统计单元格的高亮。 */() => gridOn.classList.remove('GridOn'));
+                                    safeRaf(() => gridOn.classList.remove('GridOn'));
                                 }
 
-                                InputManager.statisticsRenderer.applyToItem(name[0], /** 更新目标统计单元格。 */el => {
+                                InputManager.statisticsRenderer.applyToItem(name[0], (el) => {
                                     const targetEl = el.children[name[1] + 1];
-                                    safeRaf(/** 为新统计单元格添加高亮。 */() => targetEl.classList.add('GridOn'));
+                                    safeRaf(() => targetEl.classList.add('GridOn'));
                                 });
                             }
                         } else {
@@ -7881,12 +7852,9 @@
                         }
 
                         PageConfig._subModes[dealMode] = name;
-
                         PageControlTools.keyboardFuncBecomeX();
-
                         PageControlTools.changeInputTip();
                         try {
-
                             localStorage.setItem('subModes', JSON.stringify(PageConfig._subModes));
                         } catch {
                             console.warn('[PageConfig] "subModes" storage failed');
@@ -7966,15 +7934,12 @@
                     HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.remove('NoDisplay');
 
                     PageControlTools.keyboardFuncBecomeX();
-
                     PageControlTools.changeInputTip();
-
                     PageControlTools.changeSubKeyboard('allNotShow');
                     if (!HtmlTools.getHtml('.InputTip')) {
                         InputManager.ac();
                     }
                     try {
-
                         localStorage.setItem('currentMode', mode);
                     } catch {
                         console.warn('[PageConfig] "currentMode" storage failed');
@@ -8014,15 +7979,11 @@
                     }
 
                     HtmlTools.getHtml(`#print_${PageConfig._printMode}`).classList.remove('SelectionOn');
-
                     PageConfig._printMode = mode;
-
                     HtmlTools.getHtml(`#print_${PageConfig._printMode}`).classList.add('SelectionOn');
-
                     CalcConfig.globalPrintMode = mode === '0' ? 'algebra' : 'polar';
 
                     try {
-
                         localStorage.setItem('printMode', mode);
                     } catch {
                         console.warn('[PageConfig] "printMode" storage failed');
@@ -8103,7 +8064,6 @@
 
                     PageControlTools.keyboardFuncBecomeX();
                     try {
-
                         localStorage.setItem('keyboardType', type.toString());
                     } catch {
                         console.warn('[PageConfig] "keyboardType" storage failed');
@@ -8158,7 +8118,6 @@
 
                     PageConfig._calcAccMode = mode;
                     try {
-
                         localStorage.setItem('calcAccMode', mode.toString());
                     } catch {
                         console.warn('[PageConfig] "calcAccMode" storage failed');
@@ -8178,7 +8137,10 @@
                     '1': [['', '']],
                     '2_00': '',
                     '2_01': '',
-
+                    // '2_1' 模式下的子模式 '0', '1', '2' 对应的值
+                    // '2_10': 起始值
+                    // '2_11': 终止值
+                    // '2_12': 步长
                     '2_10': '',
                     '2_11': '',
                     '2_12': '',
@@ -8221,7 +8183,7 @@
                         return;
                     }
 
-                    Object.entries(data).forEach(/** 校验并写入单项屏幕数据。 */([key, value]) => {
+                    Object.entries(data).forEach(([key, value]) => {
                         // 只接受已有的自有属性，避免原型链注入。
                         if (!Object.hasOwn(PageConfig._screenData, key)) {
                             return;
@@ -8252,7 +8214,6 @@
                         }
                     });
                     try {
-
                         localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
                     } catch {
                         console.warn('[PageConfig] "screenData" storage failed');
@@ -8273,22 +8234,17 @@
 
                     let name;
                     if (area) {
-
                         name = area;
                     } else {
-
                         name = currentMode === '1' ? '1' : currentMode + PageConfig.subModes[currentMode];
                     }
 
                     if (name !== '1') {
-
                         const target = HtmlTools.getHtml(`#screen_input_inner_${name}`);
-
                         PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
                     }
 
                     try {
-
                         localStorage.setItem('screenData', JSON.stringify(PageConfig._screenData));
                     } catch {
                         console.warn('[PageConfig] "screenData" storage failed');
@@ -8319,7 +8275,7 @@
                  */
                 static _tokenizerRegex = (() => {
 
-                    const escape = /** 转义正则表达式元字符。 */s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                    const escape = (s) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
                     // 配置符号作为首选分支，后续才回退到 `[token]` 和单字符，避免数学词元被拆散。
                     const symbolPattern = Object.keys(PageConfig.classNameConverterConfig)
@@ -8412,10 +8368,8 @@
                         }
 
                         if (onlyP && child?.tagName?.toLowerCase() === 'p') {
-
                             classLists.push(className);
                         } else if (!onlyP) {
-
                             classLists.push(className === '' ? `[id]${child.id}` : className);
                         }
                     }
@@ -8442,13 +8396,10 @@
                         const [, symbolGroup, bracketGroup, charGroup] = match;
 
                         if (symbolGroup) {
-
                             output.push(`_${config[symbolGroup]}_`);
                         } else if (bracketGroup) {
-
                             output.push(`_${bracketGroup.slice(1, -1)}_`);
                         } else if (charGroup) {
-
                             output.push(`_${charGroup}_`);
                         }
                     }
@@ -8467,7 +8418,7 @@
                 static htmlClassToText(classArray) {
                     const reverseConfig = HtmlTools._classNameConverterReverseConfig;
 
-                    return classArray.map(/** 将单个 CSS 类名还原为词元。 */cls => {
+                    return classArray.map((cls) => {
                         if (!cls.startsWith('_') || !cls.endsWith('_')) {
                             return cls === '[id]cursor' ? '[cursor]' : cls;
                         }
@@ -8538,7 +8489,6 @@
                                 element.setAttribute(nameType[i], name[i]);
                             }
                         } else if (typeof name === 'string') {
-
                             if (name.startsWith('[id]')) {
                                 element.id = name.slice(4);
                             } else if (name.startsWith('[class]')) {
@@ -8582,8 +8532,8 @@
                         // 先匹配较长词元，避免短词元提前截断。
                         // 转义词元中的正则元字符。
                         const sortedEscaped = deleteStrList
-                            .sort(/** 按待删除词元的长度降序排列。 */(a, b) => b.length - a.length)
-                            .map(/** 转义待删除词元中的正则字符。 */word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+                            .sort((a, b) => b.length - a.length)
+                            .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
                         const regex = new RegExp(`\\[(${sortedEscaped.join('|')})\\]`, 'g');
 
@@ -8591,7 +8541,7 @@
                     }
 
                     const resultList = [];
-                    const deleteClassList = deleteStrList.map(/** 将待删除词元转换为 CSS 类名。 */name => `_${name}_`);
+                    const deleteClassList = deleteStrList.map((name) => `_${name}_`);
                     for (let i = 0; i < expr.length; i++) {
                         const className = expr[i];
 
@@ -8665,7 +8615,6 @@
                         }
 
                         // 依次滚动两侧边界，使上下文尽量完整可见。
-
                         if (leftTarget !== cursor) {
                             leftTarget.scrollIntoView({inline: 'nearest'});
                         }
@@ -8693,9 +8642,7 @@
                     if (!element) {
                         return false;
                     }
-
                     const {scrollLeft, scrollWidth, clientWidth} = element;
-
                     return scrollLeft + clientWidth >= scrollWidth - 1;
                 }
 
@@ -8795,11 +8742,8 @@
 
                     /** 处理防抖周期的前沿调用。 */
                     function leadingEdge(time) {
-
                         lastInvokeTime = time;
-
                         timerId = startTimer(timerExpired, wait);
-
                         return leading ? invokeFunc(time) : result;
                     }
 
@@ -8935,7 +8879,7 @@
                         this._state = initial;
                         this._table = Object.freeze(
                             Object.fromEntries(
-                                Object.entries(table).map(/** 将状态转换表的值转换为 Set。 */([k, v]) => [k, new Set(v)])
+                                Object.entries(table).map(([k, v]) => [k, new Set(v)])
                             )
                         );
                         this._onTransition = onTransition ?? null;
@@ -9434,8 +9378,8 @@
                  * @param {(index: number, data: any) => string|HTMLElement} config.renderItem - 条目渲染函数；
                  *   `index` 是零基逻辑索引，`data` 是最近一次 `load` 的同一数据源。应返回可作为行内容的
                  *   HTML 字符串或单个元素；同一索引可能因回收、重测或滚动被多次调用。
-                 * @param {boolean} [config.remeasureOnResize=true] - 容器尺寸改变后是否重新采样行高；关闭可减少
-                 *   重排，但仅适合条目高度不会随宽度或字体布局变化的列表。
+                 * @param {boolean} [config.remeasureOnResize=true] - 容器尺寸改变后是否重新采样行高；关闭可减少重排，
+                 *   但仅适合条目高度不会随宽度或字体布局变化的列表。
                  * @throws {Error} 配置无效时抛出。
                  */
                 constructor(config) {
@@ -9449,22 +9393,14 @@
                      * @type {function | HTMLElement}
                      */
                     this.renderItem = config.renderItem;
-
                     this.data = [];
-
                     this.totalCount = 0;
-
                     this.itemHeight = 0;
-
                     this.bufferSize = 0;
-
                     this._anchorIndex = 0;
                     this._anchorRatio = 0;
-
                     this._selector = config.container;
-
                     this._remeasureOnResize = config.remeasureOnResize ?? true;
-
                     this._originalContainerStyle = null;
 
                     this._sm = new VirtualScroll._StateMachine(
@@ -9489,45 +9425,25 @@
                     );
 
                     this._spacerTop = null;
-
                     this._spacerBottom = null;
-
                     this._startIndex = -1;
-
                     this._endIndex = -1;
-
                     this._renderedNodes = new Map();
-
                     this._nodePool = new VirtualScroll._NodePool(VirtualScroll._POOL_LIMIT);
-
                     this._heightMapper = new VirtualScroll._HeightMapper();
-
                     this._lastContainerHeight = 0;
-
                     this._lastContainerWidth = 0;
-
                     this._handleScroll = null;
-
                     this._handleUserInterrupt = null;
-
                     this._handleWindowResize = null;
-
                     this._ro = null;
-
                     this._renderRAF = null;
-
                     this._remeasureRAF = null;
-
                     this._smoothRAF = null;
-
                     this._resumeRAF = null;
-
                     this._measured = false;
-
                     this._remeasurePending = false;
-
                     this._isSmoothScrolling = false;
-
                     this._rendering = false;
 
                     /**
@@ -9763,8 +9679,8 @@
                     this.container.appendChild(frag);
                     void this.container.offsetHeight; // 触发布局计算后再读取 `offsetHeight`。
 
-                    const heights = els.map(/** 读取元素的实际高度。 */el => el.offsetHeight);
-                    const avg = heights.reduce(/** 累计元素高度。 */(s, h) => s + h, 0) / heights.length;
+                    const heights = els.map((el) => el.offsetHeight);
+                    const avg = heights.reduce((s, h) => s + h, 0) / heights.length;
 
                     for (const el of els) {
                         el.remove();
@@ -9801,7 +9717,6 @@
                     const tempEls = [];
 
                     try {
-
                         // 根据已有测量或回退行高预判滚动条需求。
                         const expectedHeight = this._measured
                                                ? this._heightMapper.virtualHeight
@@ -9836,8 +9751,8 @@
 
                         void this.container.offsetHeight;
 
-                        const heights = tempEls.map(/** 读取测量样本的高度。 */el => el.offsetHeight);
-                        const sum = heights.reduce(/** 累计测量样本高度。 */(s, h) => s + h, 0);
+                        const heights = tempEls.map((el) => el.offsetHeight);
+                        const sum = heights.reduce((s, h) => s + h, 0);
                         let measured = sum / sampleCount;
 
                         this.container.replaceChildren();
@@ -9926,7 +9841,7 @@
 
                     this.container.replaceChildren();
 
-                    const applySpacerStyle = /** 应用虚拟滚动占位元素样式。 */el => Object.assign(el.style, {
+                    const applySpacerStyle = (el) => Object.assign(el.style, {
                         display: 'block',
                         width: '100%',
                         height: '0px',
@@ -9985,7 +9900,7 @@
                         return;
                     }
 
-                    this._handleUserInterrupt = /** 处理用户对平滑滚动的中断。 */() => {
+                    this._handleUserInterrupt = () => {
 
                         if (this._isSmoothScrolling) {
                             this._cancelSmoothScroll();
@@ -10013,7 +9928,7 @@
                         return;
                     }
 
-                    this._handleScroll = /** 同步处理容器滚动事件。 */() => {
+                    this._handleScroll = () => {
                         if (this._isSmoothScrolling) {
                             return;
                         }
@@ -10052,7 +9967,7 @@
                             return;
                         }
 
-                        this._ro = new ResizeObserver(/** 处理虚拟列表尺寸变化。 */entries => {
+                        this._ro = new ResizeObserver((entries) => {
                             if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                                 return;
                             }
@@ -10096,7 +10011,7 @@
                         if (this._handleWindowResize) {
                             return;
                         }
-                        this._handleWindowResize = /** 处理窗口尺寸变化。 */() => {
+                        this._handleWindowResize = () => {
                             if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                                 return;
                             }
@@ -10209,7 +10124,7 @@
                     this._remeasurePending = true;
                     this._cancelRenderRAF();
 
-                    this._remeasureRAF = requestAnimationFrame(/** 在下一帧重新测量虚拟列表。 */() => {
+                    this._remeasureRAF = requestAnimationFrame(() => {
                         this._remeasureRAF = null;
 
                         if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
@@ -10218,7 +10133,6 @@
                         }
 
                         try {
-
                             const savedAnchorIndex = this._anchorIndex;
                             const savedAnchorRatio = this._anchorRatio;
 
@@ -10266,7 +10180,7 @@
                         let lastWidth = -1;
                         let lastHeight = -1;
 
-                        const waitForContainer = /** 等待容器恢复可测量状态。 */() => {
+                        const waitForContainer = () => {
                             this._resumeRAF = null;
 
                             if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
@@ -10363,7 +10277,7 @@
                     if (this._renderRAF || this._remeasurePending) {
                         return;
                     }
-                    this._renderRAF = requestAnimationFrame(/** 在下一帧渲染虚拟列表。 */() => {
+                    this._renderRAF = requestAnimationFrame(() => {
                         this._renderRAF = null;
                         this._render();
                     });
@@ -10856,11 +10770,11 @@
                     const dur = Math.min(800, Math.max(300, screens * 100));
 
                     let t0 = null;
-                    const easeInOut = /** 计算平滑滚动的缓入缓出进度。 */t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                    const easeInOut = (t) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
                     this._isSmoothScrolling = true;
 
-                    const step = /** 执行一帧平滑滚动动画。 */(ts) => {
+                    const step = (ts) => {
                         if (this._sm.is(VirtualScroll.State.DESTROYED) || !this.container) {
                             this._smoothRAF = null;
                             this._isSmoothScrolling = false;
@@ -11009,15 +10923,12 @@
                         }
 
                         this._bindEvents();
-
                         this._forceRender();
-
                         if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                             this._sm.transition(VirtualScroll.State.RUNNING);
                         }
                     } catch (error) {
                         // 加载失败后清理现场，回到可重新加载的空闲状态。
-
                         this._teardown(false);
 
                         if (!this._sm.is(VirtualScroll.State.IDLE)) {
@@ -11361,7 +11272,7 @@
                         spacerBottom: this._spacerBottom ? parseFloat(this._spacerBottom.style.height) : 0,
 
                         pendingScrollQueue: Object.freeze(
-                            this._pendingScrollQueue.map(/** 冻结待处理滚动事件的副本。 */e => Object.freeze({...e}))
+                            this._pendingScrollQueue.map((e) => Object.freeze({...e}))
                         )
                     });
                 }
@@ -11465,7 +11376,6 @@
                     }
 
                     const tokenInfo = Public.getTokenInfo(token);
-
                     if (tokenInfo.class === 'func' && !tokenInfo.isHtmlClassLenOne) {
 
                         return token.length;
@@ -11716,7 +11626,7 @@
 
                     if (classList) {
 
-                        const pureClassList = classList.filter(/** 过滤空格类名。 */c => c !== space);
+                        const pureClassList = classList.filter((c) => c !== space);
                         if (pureClassList.length === 0) {
                             return pureClassList;
                         }
@@ -11828,7 +11738,6 @@
                             totalRangeEnd = centerIndex + len0 + len1 + rightSpaceCount;
                         }
                     } else {
-
                         const classList = HtmlTools.getClassList(target, {ignoreSpace: true, onlyP: false});
                         if (classList.length === 0) {
                             return;
@@ -11995,12 +11904,10 @@
                         delNum = -delNum;
                     }
                     if (direction === 'right') {
-
                         const endPlace = Math.min(cursorPlace + delNum, input.children.length - 1);
                         range.setStartAfter(cursor);
                         range.setEndAfter(input.children[endPlace]);
                     } else if (direction === 'left') {
-
                         const startPlace = Math.max(cursorPlace - delNum, 0);
                         range.setStartBefore(input.children[startPlace]);
                         range.setEndBefore(cursor);
@@ -12049,7 +11956,7 @@
                                     case 'down':
                                         len = PageConfig.screenData['1'].length - 1;
                                         nextNum = currentSubModes[0] + (direction === 'up' ? -1 : 1);
-                                        makeValue = /** 生成统计网格的二维子模式坐标。 */nextNum => [nextNum, currentSubModes[1]];
+                                        makeValue = (nextNum) => [nextNum, currentSubModes[1]];
                                         break;
                                 }
                                 break;
@@ -12059,7 +11966,7 @@
                                 len = 4;
                                 if (['left', 'right'].includes(direction)) {
                                     nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'left' ? -1 : 1);
-                                    makeValue = /** 生成相邻子模式编号。 */nextNum => nextNum.toString();
+                                    makeValue = (nextNum) => nextNum.toString();
                                     break;
                                 }
                                 nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'up' ? -2 : 2);
@@ -12082,7 +11989,7 @@
                                     addNum = -1;
                                 }
                                 nextNum = Number(PageConfig.subModes[currentMode]) + addNum;
-                                makeValue = /** 生成循环后的子模式编号。 */nextNum => nextNum.toString();
+                                makeValue = (nextNum) => nextNum.toString();
                                 break;
                             }
                         }
@@ -12169,7 +12076,7 @@
                     const input = HtmlTools.getHtml('#input');
                     const cursor = HtmlTools.getHtml('#cursor');
 
-                    const contentChildren = [...input.children].filter(/** 过滤输入区中的光标节点。 */el => el.id !== 'cursor');
+                    const contentChildren = [...input.children].filter((el) => el.id !== 'cursor');
                     const targetIndex = contentChildren.indexOf(target);
 
                     if (targetIndex === -1) {
@@ -12181,7 +12088,6 @@
                     const finalIndex = targetIndex - offsetToStart;
 
                     // 先移除光标，避免旧位置影响插入索引。
-
                     const refNode = contentChildren[finalIndex] || null;
                     input.insertBefore(cursor, refNode);
 
@@ -12211,7 +12117,6 @@
                         inputListY = []
                     }
                 ) {
-
                     const insert = document.createElement('div');
                     const currentMode = PageConfig.subModes['1'];
 
@@ -12271,7 +12176,6 @@
                         inputY = ''
                     } = {}
                 ) {
-
                     const gridData = PageConfig.screenData['1'];
                     const len = gridData.length;
                     let position;
@@ -12407,7 +12311,7 @@
 
                         const currentDiv = document.createElement('div');
 
-                        sources.forEach(/** 渲染一组输入数据。 */dataItem => {
+                        sources.forEach((dataItem) => {
                             const subWrapper = document.createElement('div');
                             const subContent = document.createElement('div');
 
@@ -12481,7 +12385,7 @@
                  * @param {HTMLElement} outputTarget - 最终接收全部渲染节点的容器；先在 `DocumentFragment` 中
                  *   构建，完成后一次性替换或追加到这里。
                  * @param {Array<any>} list - 按显示顺序遍历的数据源；方法只读，不对元素排序或转换。
-                 * @param {(container: DocumentFragment, item: any, index?: number) => void} toDomFunc - 同步渲染回调；
+                 * @param {(container: DocumentFragment|HTMLDivElement, item: any, index?: number) => void} toDomFunc - 同步渲染回调；
                  *   前两项是离线容器和当前数据，启用 `needIndex` 时第三项为零基索引。
                  * @param {boolean} [needIndex=false] - 是否把索引作为第三个实参传给回调；不改变前两个参数顺序。
                  * @returns {void}
@@ -12581,7 +12485,7 @@
 
                     PageControlTools.changePrint1Ra(modelToId(resultList.bestModel), 'init');
 
-                    Object.entries(resultsToOutputArea).forEach(/** 将基础统计结果写入对应区域。 */([key, value]) => {
+                    Object.entries(resultsToOutputArea).forEach(([key, value]) => {
                         HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._printHandleError(resultList[key]), {mode: 'replace'});
                     });
                 }
@@ -12616,7 +12520,7 @@
                     this._multipleLinesPrint(
                         content0,
                         parameter,
-                        /** 渲染回归参数行。 */(div, str, i) => HtmlTools.appendDOMs(div, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(str)]),
+                        (div, str, i) => HtmlTools.appendDOMs(div, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(str)]),
                         true
                     );
                 }
@@ -12657,7 +12561,6 @@
                     }
 
                     try {
-
                         const result = await WorkerTools.exec(currentInput, {
                             calcAcc: PageConfig.ACC_MODE_0.globalCalcAccuracy,
                             outputAcc: PageConfig.ACC_MODE_0.outputAccuracy,
@@ -12695,7 +12598,6 @@
                  * @returns {Promise<void>} 无返回值，通过操作 DOM 副作用更新页面。
                  */
                 static async _exeMode0() {
-
                     const inputEl = HtmlTools.getHtml('#input');
                     const textDisplay = HtmlTools.getHtml('#print_content_0_content_0');
                     const resultDisplay = HtmlTools.getHtml('#print_content_0_content_1');
@@ -12723,7 +12625,6 @@
                     let expr, result;
 
                     try {
-
                         const realResult = await WorkerTools.exec(currentInput, {
                             f: HtmlTools.deleteIllegal(PageConfig.screenData['2_00']),
                             g: HtmlTools.deleteIllegal(PageConfig.screenData['2_01'])
@@ -12764,11 +12665,8 @@
                             screenDisplay.classList.remove('NoDisplay');
                             HtmlTools.appendDOMs(screenDisplayInner, result, {mode: 'replace'});
                         } else {
-
                             PrintManager.mode0ShowOnScreen();
-
                             PrintManager.mode0ShowOnScreen.flush();
-
                         }
                     }
                 }
@@ -12787,7 +12685,6 @@
                  * @returns {Promise<void>} 无返回值，通过操作 DOM 副作用更新页面。
                  */
                 static async _exeMode1() {
-
                     const screenData = PageConfig.screenData['1'];
                     const listA = [], listB = [];
 
@@ -12877,7 +12774,6 @@
 
                         if (fx === '' !== (gx === '')) {
                             if (fx === '') {
-
                                 headInit.classList.add('_g_');
                                 headInit.classList.remove('_f_');
                                 onlyFuncG = true;
@@ -12900,7 +12796,6 @@
 
                         HtmlTools.getHtml('#print_content_2_error').classList.add('NoDisplay');
                     } catch {
-
                         HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
                         HtmlTools.getHtml('#print_content_2_inner').replaceChildren();
                     }
@@ -13070,7 +12965,6 @@
                     }
 
                     try {
-
                         const result = await WorkerTools.powerFunctionAnalysis(list);
 
                         for (let i = 0; i < 10; i++) {
@@ -13349,9 +13243,9 @@
 
                     const ripples = btn.querySelectorAll('.Ripple');
 
-                    ripples.forEach(/** 触发单个涟漪的淡出。 */r => {
+                    ripples.forEach((r) => {
                         r.classList.add('IsFadingOut');
-                        setTimeout(/** 在动画结束后移除涟漪。 */() => r.remove(), 600);
+                        setTimeout(() => r.remove(), 600);
                     });
 
                     btn.classList.remove('IsSelected');
@@ -13412,7 +13306,7 @@
                     const modeClasses = ['ResultX', 'ResultY', 'ResultXY'];
                     const targetUpper = target.toUpperCase();
 
-                    [topBar, resultWindow].forEach(/** 重置顶部栏和结果区状态。 */el => {
+                    [topBar, resultWindow].forEach((el) => {
                         if (!el) {
                             return;
                         }
@@ -13423,7 +13317,7 @@
                     const indexMap = {'x': 0, 'y': 1, 'xy': 2};
                     const skipIndex = indexMap[target.toLowerCase()] ?? 3;
 
-                    Array.from(topBar.children).forEach(/** 重置未被跳过的顶部栏按钮。 */(child, index) => {
+                    Array.from(topBar.children).forEach((child, index) => {
                         if (index !== skipIndex) {
                             this._resetButton(child);
                         }
@@ -13447,11 +13341,8 @@
                  * @returns {void}
                  */
                 static clickMainCover() {
-
                     PageControlTools.headChangeModes('add');
-
                     PageControlTools.headChangeExplain('add');
-
                     HtmlTools.getHtml('#main_cover').classList.add('NoDisplay');
                 }
 
@@ -13485,11 +13376,8 @@
                  */
                 static headChangeExplain(mode) {
                     const showOrNot = mode === undefined ? 'toggle' : mode;
-
                     HtmlTools.getHtml('#explain').classList[showOrNot]('ExplainNotShow');
-
                     HtmlTools.getHtml('#head_explain').classList[showOrNot]('ExplainNotShow');
-
                     HtmlTools.getHtml('#main_cover').classList[showOrNot]('NoDisplay');
                 }
 
@@ -13502,9 +13390,7 @@
                  * @returns {void}
                  */
                 static changeTitle(mode) {
-
                     HtmlTools.getHtml('#title_mode_' + PageConfig.currentMode).classList.add('NoDisplay');
-
                     HtmlTools.getHtml('#title_mode_' + mode).classList.remove('NoDisplay');
                 }
 
@@ -13515,9 +13401,7 @@
                  * @returns {void}
                  */
                 static clickPrint1Cover() {
-
                     PageControlTools._changePrintContent1Choose('add');
-
                     HtmlTools.getHtml('#print_content_1_cover').classList.add('NoDisplay');
                 }
 
@@ -13528,9 +13412,7 @@
                  * @returns {void}
                  */
                 static clickPrint1Choose() {
-
                     PageControlTools._changePrintContent1Choose('remove');
-
                     HtmlTools.getHtml('#print_content_1_cover').classList.remove('NoDisplay');
                 }
 
@@ -13552,7 +13434,6 @@
                  * @returns {void}
                  */
                 static changePrint1Ra(id, mode = 'change') {
-
                     const model = HtmlTools.getClassList(HtmlTools.getHtml(`#${id}`).lastElementChild);
 
                     const modelShow = HtmlTools.getHtml('#print_1_0_choose');
@@ -13602,7 +13483,6 @@
                  * @returns {void}
                  */
                 static exportRa(func) {
-
                     const clickArea = HtmlTools.getHtml(`#${func}`);
 
                     // 忽略已成功导出的重复点击。
@@ -13621,9 +13501,10 @@
                         const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
 
                         PageConfig.screenData = {[exportTarget]: equation};
-
-                        HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`), HtmlTools.textToHtmlClass(equation), {mode: 'replace'});
-
+                        HtmlTools.appendDOMs(
+                            HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`),
+                            HtmlTools.textToHtmlClass(equation), {mode: 'replace'}
+                        );
                         HtmlTools.appendDOMs(clickArea, ['_success_'], {mode: 'replace'});
                     }
                 }
@@ -13638,7 +13519,6 @@
                  * @returns {void}
                  */
                 static changeScreen(mode) {
-
                     const currentMode = PageConfig.currentMode;
                     const currentNoDisplayStr = ['0', '1'].includes(currentMode) ? 'NoDisplay' : 'ScreenNoDisplay';
                     const nextNoDisplayStr = ['0', '1'].includes(mode) ? 'NoDisplay' : 'ScreenNoDisplay';
@@ -13694,9 +13574,7 @@
                     }
 
                     currentTip.classList.value = '';
-
                     currentTip.classList.add(`_input_tip_${currentTipStr}_`);
-
                     currentTip.classList.add('InputTip');
                 }
 
@@ -13716,7 +13594,6 @@
                  * @returns {void}
                  */
                 static changeSubKeyboard(className) {
-
                     const children = HtmlTools.getHtml('#keyboard_top').children;
 
                     if (className === 'allNotShow') {
@@ -13745,7 +13622,6 @@
                     }
 
                     for (let i = 1; i < 4; i++) {
-
                         if (i !== place) {
 
                             const dealSubKeyboard = `#sub_keyboard_${i < 3 ? i - 1 : 'ForMode1'}`;
@@ -14024,7 +13900,6 @@
                         const plusAndMinusAssociativity = info.associativity;
 
                         switch (inputStr) {
-
                             case '-':
                             case '+':
                                 const positiveAndNegative = Public.getTokenInfo('N');
@@ -14268,7 +14143,7 @@
                     return;
             }
 
-            const showMoreFunc = /** 打开更多键盘选项。 */() => PageControlTools.changeSubKeyboard('SortSvg');
+            const showMoreFunc = () => PageControlTools.changeSubKeyboard('SortSvg');
 
             // 第二层按父容器分组，同一控件内部的图标和文字共享处理逻辑。
             switch (parentID) {
@@ -14288,9 +14163,9 @@
                 case 'keyboard_top': {
 
                     const handlers = {
-                        '_2nd_': /** 切换第二功能键盘。 */() => PageConfig.keyboardType = 1 - PageConfig.keyboardType,
-                        '_trigonometry_': /** 切换三角函数键盘。 */() => PageControlTools.changeSubKeyboard('_trigonometry_'),
-                        '_functions_': /** 切换常用函数键盘。 */() => PageControlTools.changeSubKeyboard('_functions_')
+                        '_2nd_': () => PageConfig.keyboardType = 1 - PageConfig.keyboardType,
+                        '_trigonometry_': () => PageControlTools.changeSubKeyboard('_trigonometry_'),
+                        '_functions_': () => PageControlTools.changeSubKeyboard('_functions_')
                     };
 
                     if (handlers[firstChildClass]) {
@@ -14334,7 +14209,7 @@
                 const mode = targetID.slice(-1);
                 PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
 
-                setTimeout(/** 延迟收起页面遮罩。 */() => PageControlTools.clickMainCover(), 340);
+                setTimeout(() => PageControlTools.clickMainCover(), 340);
                 return;
             }
 
@@ -14403,7 +14278,6 @@
             }
 
             if (/title_mode_([0134]|2_0)|screen_title|print_title/.test(targetID)) {
-
                 // 嵌入式环境关闭网页专属全屏；函数值结果页的标题也不作为全屏触发区。
                 if (!Public.webMode || (targetID !== 'print_title' && PageConfig.currentMode === '2_1')) {
                     return;
@@ -14519,7 +14393,7 @@
         window.addEventListener('load', () => {
             "use strict";
 
-            const getStore = /** 读取一项本地存储数据。 */(key) => localStorage.getItem(key);
+            const getStore = (key) => localStorage.getItem(key);
 
             /**
              * 恢复单项本地数据，并清除无法解析的值。
@@ -14528,7 +14402,7 @@
              *   其他状态，也不会把字符串 `null` 当作缺失值。
              * @param {function(string): void} func - 键存在时同步执行的恢复函数；参数是存储中的原始字符串，
              *   JSON 解析或业务校验由回调负责。回调抛错即视为该项损坏并触发清理与缺省恢复。
-             * @param {function(): void|null} [defaultFunc=null] - 键缺失或恢复失败时调用的无参初始化函数；
+             * @param {function()} [defaultFunc=null] - 键缺失或恢复失败时调用的无参初始化函数；
              *   `null` 表示无需额外初始化。失败路径最多调用一次，不接收已损坏的原值。
              * @returns {void}
              */
@@ -14550,11 +14424,11 @@
             };
 
             // 恢复顺序不可交换：模式先建立页面上下文，输入数据随后决定子模式的合法范围，最后恢复显示选项。
-            recoverData('currentMode', /** 恢复当前页面模式。 */(data) => {
+            recoverData('currentMode', (data) => {
                 PageConfig.currentMode = data;
             });
 
-            recoverData('screenData', /** 恢复各输入区数据。 */(data) => {
+            recoverData('screenData', (data) => {
                 data = JSON.parse(data);
                 for (const key in data) {
                     const inner = data[key];
@@ -14577,7 +14451,7 @@
                 }
             });
 
-            recoverData('subModes', /** 恢复当前子模式。 */(data) => {
+            recoverData('subModes', (data) => {
                 data = JSON.parse(data);
                 const dataLen = PageConfig.screenData['1'].length;
                 // 存储的数据行可能已被最大行数限制截断，选中坐标必须随之回退到最后一行。
@@ -14587,18 +14461,18 @@
                 PageConfig.subModes = data;
             });
 
-            recoverData('keyboardType', /** 恢复第二功能键盘状态。 */(data) => {
+            recoverData('keyboardType', (data) => {
                 PageConfig.keyboardType = Number(data);
             });
 
-            recoverData('printMode', /** 恢复复数输出模式。 */(data) => {
+            recoverData('printMode', (data) => {
                 PageConfig.printMode = data;
             });
 
             recoverData(
                 'calcAccMode',
-                /** 恢复计算精度模式。 */(data) => PageConfig.calcAccMode = Number(data),
-                /** 应用默认计算精度模式。 */() => PageConfig.calcAccMode = 0
+                (data) => PageConfig.calcAccMode = Number(data),
+                () => PageConfig.calcAccMode = 0
             );
 
             HtmlTools.scrollToView();
@@ -17979,7 +17853,6 @@
         }
 
         /* 三组统计结果通过横向位移切换。 */
-
         #statistics_results_window {
             position: relative;
             display: flex;
