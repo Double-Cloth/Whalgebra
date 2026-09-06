@@ -1648,7 +1648,9 @@
                  * @param {number} power - 与尾数配套的十进制安全整数指数；舍入移除的位数会补偿到该指数。
                  * @param {number} acc - 舍入后最多保留的正整数有效位数；半舍情形按当前整数规则进位，
                  *   末尾十进制零随后继续并入 `power`。
-                 * @returns {{mantissa: bigint, power: number}} 一个包含舍入和规范化后的尾数和指数的对象。
+                 * @returns {{mantissa:bigint,power:number}} 规范化结果；`mantissa` 是舍入到 `acc` 位并移除
+                 *   十进制尾随零后的带符号整数，`power` 是补偿舍入位数和尾随零后对应的十进制指数。
+                 *   输入尾数为零时返回统一的 `{mantissa:0n,power:0}`。
                  */
                 static _roundAndNormalize(mantissa, power, acc) {
                     if (typeof mantissa === 'number') {
@@ -2031,7 +2033,9 @@
                  *
                  * @param {string} complexString - 代数形式的完整复数字符串；支持实数、纯虚数、`a±bi` 及
                  *   科学记数法分量。正负号只有在不属于指数时才分隔实部和虚部，多个 `i` 或空分量会抛错。
-                 * @returns {{re: string, im: string}} 一个包含实部 (`re`) 和虚部 (`im`) 字符串的对象。
+                 * @returns {{re:string,im:string}} 已分离但尚未构造高精度数的两个十进制分量；`re` 不含
+                 *   虚数单位，`im` 去除末尾 `i` 并保留正负号。纯实数补 `im:'0'`，纯虚数补 `re:'0'`，
+                 *   裸 `i`/`-i` 分别把虚部规范化为 `1`/`-1`。
                  * @throws {Error} 如果输入字符串的格式无效或不明确。
                  */
                 static _parseComplex(complexString) {
@@ -4834,7 +4838,8 @@
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 非空数值样本；每项会转换为新的
                  *   `ComplexNumber` 后累加，原数组及其中的实例均不修改。空数组没有可定义的平均值。
-                 * @returns {{sum: ComplexNumber, average: ComplexNumber}} 一个包含总和 (`sum`) 与平均值 (`average`) 的对象，两者均为 ComplexNumber 实例。
+                 * @returns {{sum:ComplexNumber,average:ComplexNumber}} 两个高精度值：`sum` 为顺序累加的样本和，
+                 *   `average` 为 `sum / list.length`；两者是独立的新实例，不引用输入元素。
                  */
                 static _averageAndSum(list) {
                     let sum = new ComplexNumber(0);
@@ -4986,7 +4991,8 @@
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 需要进行查找的数值数组。
-                 * @returns {{max: ComplexNumber, min: ComplexNumber}} 一个包含最大值 (`max`) 和最小值 (`min`) 的对象，两者均为 ComplexNumber 实例。
+                 * @returns {{max:ComplexNumber,min:ComplexNumber}} 按实部比较得到的两个新实例；`max`、`min`
+                 *   初始都复制首项，实部相等时保留先出现者，虚部不参与大小判断。
                  */
                 static _getMaxAndMin(list) {
                     const result = {};
@@ -5284,10 +5290,13 @@
                  * R² 值越高，表示模型的拟合优度越好。
                  *
                  * @private
-                 * @param {object} result - 一个包含所有回归分析结果的对象。该对象应包含一个 `bestModel` 属性，
-                 * 其值为当前最佳模型的键名，以及以模型键名作为属性的子对象，每个子对象都包含一个 `R2` 属性。
-                 * @param {string} current - 当前需要进行比较的新模型的键名 (例如, 'linear', 'square')。
-                 * @returns {string} 更新后的最佳模型的键名。
+                 * @param {{bestModel:string,[model:string]:{R2:ComplexNumber|'error'}|string}} result - 正在构建的
+                 *   统计结果；`bestModel` 指向当前胜者，模型同名属性必须含尚未格式化的 `R2` 或 `error`。
+                 *   方法只读取该对象，不直接写回 `bestModel`。
+                 * @param {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} current - 刚完成计算、准备与
+                 *   `result.bestModel` 比较的模型键。
+                 * @returns {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} R² 更大的可用模型键；当前模型
+                 *   为 `error` 或未严格胜出时返回原 `bestModel`，相等时保持先前模型。
                  */
                 static _findBestModel(result, current) {
                     const bestBefore = result.bestModel;
