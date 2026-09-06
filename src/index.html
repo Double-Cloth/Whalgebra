@@ -7,23 +7,23 @@
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
 
-    <!-- 共用代码和计算配置 -->
-    <script id="shared_code_and_configuration" src="./js/shared_code_and_configuration.js"
-            type="text/javascript"></script>
-    <!-- 核心计算逻辑代码 -->
-    <script id="core_computational_logic" src="./js/core_computational_logic.js" type="text/javascript"></script>
-    <!-- 异步逻辑代码 -->
-    <script id="asynchronous_logic" src="./js/asynchronous_logic.js" type="text/javascript"></script>
-    <!-- 样式控制、UI 交互代码 -->
-    <script id="ui_styling_control" src="./js/ui_styling_control.js" type="text/javascript"></script>
-    <!-- 初始化代码、监听器 -->
-    <script id="init" src="./js/init.js" type="text/javascript"></script>
+    <!-- 共享配置 -->
+    <script id="shared_code_and_configuration" type="text/javascript"  src="./js/shared_code_and_configuration.js"></script>
+    <!-- 核心计算 -->
+    <script id="core_computational_logic" type="text/javascript"  src="./js/core_computational_logic.js"></script>
+    <!-- 异步调度 -->
+    <script id="asynchronous_logic" type="text/javascript"  src="./js/asynchronous_logic.js"></script>
+    <!-- 页面交互 -->
+    <script id="ui_styling_control" type="text/javascript"  src="./js/ui_styling_control.js"></script>
+    <!-- 初始化 -->
+    <script id="init" type="text/javascript"  src="./js/init.js"></script>
 
-    <!-- 字体和图片 -->
-    <link href="./css/fonts_and_images.css" rel="stylesheet">
-    <!-- 主要样式表 -->
-    <link href="./css/style.css" rel="stylesheet">
+    <!-- 字体与图像资源 -->
+    <link rel="stylesheet" href="./css/fonts_and_images.css">
+    <!-- 主样式 -->
+    <link rel="stylesheet" href="./css/style.css">
 
+    <!-- 页面元数据与应用图标 -->
     <meta content="light" name="color-scheme"/>
     <meta content="#f0f8ff" name="theme-color"/>
     <meta content="yes" name="mobile-web-app-capable"/>
@@ -36,10 +36,15 @@
 </head>
 
 <body>
+<!-- 全屏交互遮罩 -->
 <div class="NoDisplay" id="main_cover"></div>
+
+<!-- 输入页与结果页共用的横向滑动容器 -->
 <div class="Input" id="main">
+    <!-- 输入与键盘视图 -->
     <div id="main_input">
         <p class="_ship_ ShipLeft"></p>
+        <!-- 顶部导航 -->
         <div id="head">
             <div class="HeadNotMain" id="head_setting">
                 <p class="_head_setting_ Horizontal"></p>
@@ -52,6 +57,7 @@
                 <p class="_question_mark_"></p>
             </div>
         </div>
+        <!-- 当前计算模式标题 -->
         <div class="Paragraph" id="screen_title">
             <div id="title_mode_0">
                 <p class="_mode_title_0_"></p>
@@ -101,6 +107,7 @@
                 <p class="_mode_title_4_explain_"></p>
             </div>
         </div>
+        <!-- 各计算模式的输入屏幕 -->
         <div class="ScreenMain" id="screen_0">
             <div class="NoDisplay" id="screen_0_display">
                 <div class="Paragraph">
@@ -125,6 +132,7 @@
             </div>
             <div id="grid_data"></div>
         </div>
+        <!-- 函数列表模式分两屏收集函数定义与取值范围，执行键负责在两屏间推进。 -->
         <div class="ScreenMain Screen234 ScreenNoDisplay" id="screen_2_0">
             <div class="ScreenInputsOn" id="screen_input_2_00">
                 <div>
@@ -223,12 +231,14 @@
                 <div id="screen_input_inner_41"></div>
             </div>
         </div>
+        <!-- 当前表达式编辑区 -->
         <div class="Paragraph" id="input">
             <div id="cursor"></div>
             <p class="_input_tip_expr_ InputTip"></p>
         </div>
+        <!-- 扩展函数键盘 -->
+        <!-- 普通子键盘与统计操作面板各自使用遮罩，避免不同层级互相截获点击。 -->
         <div id="keyboard_cover"></div>
-        <!-- sub_keyboard 部分开始 -->
         <div id="sub_keyboard">
             <div class="NotShow" id="sub_keyboard_0">
                 <div class="KeyboardStyle1 SecondaryKeyboard">
@@ -303,6 +313,7 @@
                 </div>
             </div>
         </div>
+        <!-- 统计模式专用键盘 -->
         <div id="keyboard_cover_ForMode1"></div>
         <div class="NotShow" id="sub_keyboard_ForMode1">
             <div class="KeyboardStyle2">
@@ -312,7 +323,7 @@
                 <p class="_del_line_"></p>
             </div>
         </div>
-        <!-- sub_keyboard 部分结束 -->
+        <!-- 主键盘与快捷操作 -->
         <div id="keyboard_top">
             <div class="Ordinary">
                 <p class="_2nd_"></p>
@@ -324,10 +335,9 @@
                 <p class="_functions_"></p>
             </div>
             <div class="Ordinary" id="keyboard_top_more">
+                <!-- 两条箭头路径常驻同一 SVG，由容器状态统一翻转，避免切换时替换节点。 -->
                 <svg class="SortSvg" id="sort_svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <!-- 上箭头：默认路径是 ^ -->
                     <path class="ArrowPath ArrowTop" d="M8 9 L12 5 L16 9"/>
-                    <!-- 下箭头：默认路径是 v -->
                     <path class="ArrowPath ArrowBottom" d="M8 15 L12 19 L16 15"/>
                 </svg>
             </div>
@@ -438,7 +448,9 @@
             </div>
         </div>
     </div>
+    <!-- 计算结果视图 -->
     <div id="main_print">
+        <!-- 异步计算遮罩 -->
         <div class="NoDisplay" id="load_cover">
             <div id="load">
                 <div id="load_box">
@@ -469,7 +481,9 @@
         <div id="print_title">
             <p class="_print_title_"></p>
         </div>
+        <!-- 按计算模式切换的结果内容 -->
         <div id="print_content">
+            <!-- 标准计算结果 -->
             <div id="print_content_0">
                 <div>
                     <p class="_print_content_0_title_0_"></p>
@@ -480,8 +494,10 @@
                 </div>
                 <div id="print_content_0_content_1"></div>
             </div>
+            <!-- 统计与回归结果 -->
             <div class="NoDisplay" id="print_content_1">
                 <div class="NoDisplay NotPrintDefault" id="print_content_1_cover"></div>
+                <!-- 选择项把公式拆为左式、等号和右式三列，与 CSS subgrid 共同保持纵向对齐。 -->
                 <div class="PrintContent1ChooseOff NotPrintDefault" id="print_content_1_choose">
                     <div>
                         <p class="_choose_ra_"></p>
@@ -640,6 +656,7 @@
                     <p class="_print_content_1_content_2_"></p>
                 </div>
                 <div id="print_content_1_content_2"></div>
+                <!-- X、Y、XY 三组统计量共享同一横向结果窗口，由顶部选项切换可视分组。 -->
                 <div class="NotPrintDefault ResultX" id="statistics_results_top">
                     <div class="SelectBtn" id="statistics_results_top_x">
                         <p class="_statistics_results_top_x_"></p>
@@ -739,9 +756,11 @@
                     </div>
                 </div>
             </div>
+            <!-- 函数值列表 -->
             <div class="NoDisplay TwoFunc" id="print_content_2">
                 <div class="Lines NotPrintDefault" id="print_grid_line_1"></div>
                 <div class="Lines NotPrintDefault" id="print_grid_line_2"></div>
+                <!-- 三列表头是稳定骨架；单函数模式由 TwoFunc 状态隐藏末列并重新分配列宽。 -->
                 <div class="NotPrintDefault" id="print_content_2_head">
                     <div>
                         <p class="_x_mathit_"></p>
@@ -767,6 +786,7 @@
                     </div>
                 </div>
             </div>
+            <!-- 多项式分析结果 -->
             <div class="NoDisplay" id="print_content_3">
                 <div id="print_content_3_content_0"></div>
                 <div>
@@ -806,6 +826,7 @@
                 </div>
                 <div class="NotPrintDefault MultipleLines" id="print_content_3_content_9"></div>
             </div>
+            <!-- 根式分析结果 -->
             <div class="NoDisplay" id="print_content_4">
                 <div id="print_content_4_content_0"></div>
                 <div>
@@ -826,7 +847,10 @@
         </div>
     </div>
 </div>
+
+<!-- 设置与说明浮层 -->
 <div id="others">
+    <!-- 设置面板 -->
     <div class="SettingNotShow" id="setting">
         <div class="SettingTitle">
             <p class="_setting_mode_selection_"></p>
@@ -865,15 +889,14 @@
             </div>
             <div id="switch_container_father">
                 <div id="switch_container">
+                    <!-- 两种开关图标同时保留在旋钮内，由 Active 状态交叉切换透明度与缩放。 -->
                     <div id="switch_knob">
-                        <!-- 关闭状态图标: X -->
                         <svg class="SwitchIcon IconOff" fill="none" id="switch_knob_off" stroke-linecap="round"
                              stroke-linejoin="round" stroke-width="3" viewBox="0 0 24 24">
                             <line x1="18" x2="6" y1="6" y2="18"></line>
                             <line x1="6" x2="18" y1="6" y2="18"></line>
                         </svg>
 
-                        <!-- 开启状态图标: Check -->
                         <svg class="SwitchIcon IconOn" fill="none" id="switch_knob_on" stroke-linecap="round"
                              stroke-linejoin="round" stroke-width="3" viewBox="0 0 24 24">
                             <polyline points="20 6 9 17 4 12"></polyline>
@@ -886,6 +909,7 @@
             <p class="_info_show_"></p>
         </div>
     </div>
+    <!-- 使用说明面板 -->
     <div class="ExplainNotShow" id="explain">
         <div id="explain_top">
             <div class="Paragraph" id="explain_title_inner">
@@ -901,5 +925,4 @@
     </div>
 </div>
 </body>
-
 </html>

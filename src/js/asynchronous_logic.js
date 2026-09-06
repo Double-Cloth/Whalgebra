@@ -1,381 +1,386 @@
-(function () {
-    "use strict";
+/** 初始化并导出 Worker 调度工具。 */
+        (function () {
+            "use strict";
 
-    /**
-     * @class SyncWorker
-     * @description SyncWorker 类提供了一个高级抽象层，用于简化 Web Worker 的使用。
-     * 它允许开发者动态地将一组JavaScript函数及其依赖项注入到一个新的Worker线程中执行，
-     * 而无需手动管理Worker文件、消息传递协议或资源清理。
-     */
-    class SyncWorker {
-        /**
-         * 底层的 Web Worker 实例。
-         * @type {Worker|null}
-         * @private
-         */
-        _worker = null;
+            /** 封装动态 Worker 的创建、调用、取消与资源清理。 */
+            class SyncWorker {
+                /**
+                 * 底层的 Web Worker 实例。
+                 * @type {Worker|null}
+                 * @private
+                 */
+                _worker = null;
 
-        /**
-         * 为 Worker Blob 创建的 URL。存储起来以便后续在 terminate 时进行清理。
-         * @type {string|null}
-         * @private
-         */
-        _workerUrl = null;
+                /**
+                 * Worker Blob 的临时 URL。
+                 * @type {string|null}
+                 * @private
+                 */
+                _workerUrl = null;
 
-        /**
-         * 一个用于追踪从主线程发送到 Worker 的待处理任务的 Map。
-         * 键是任务 ID (bigint)，值是一个包含 Promise 的 `resolve` 和 `reject` 函数以及超时计时器ID的对象。
-         * @type {Map<bigint, {resolve: Function, reject: Function, timeoutId: number|null}>}
-         * @private
-         */
-        _taskQueue = new Map();
+                /**
+                 * 按任务 ID 记录待处理 Promise 及其超时计时器。
+                 * @type {Map<bigint, {resolve: Function, reject: Function, timeoutId: number|null}>}
+                 * @private
+                 */
+                _taskQueue = new Map();
 
-        /**
-         * 一个简单的计数器，用于为每个任务生成唯一的 ID。
-         * 使用 BigInt 是为了支持极大量的任务，防止因数值溢出导致ID重复。
-         * @type {bigint}
-         * @private
-         */
-        _nextTaskId = 0n;
+                /**
+                 * 下一个任务 ID。
+                 * 使用 BigInt 避免长时间运行后超过 Number 安全整数范围而复用 ID。
+                 * @type {bigint}
+                 * @private
+                 */
+                _nextTaskId = 0n;
 
-        /**
-         * 保存配置用于重启。
-         * @type {object|null}
-         * @private
-         */
-        _config = null;
+                /**
+                 * 用于重启 Worker 的原始配置。
+                 * @type {object|null}
+                 * @private
+                 */
+                _config = null;
 
-        /**
-         * 首次初始化时生成的 Worker 脚本。后续重启直接复用，避免外部修改原始配置影响行为。
-         * @type {string|null}
-         * @private
-         */
-        _workerCode = null;
+                /**
+                 * 首次初始化后缓存的 Worker 脚本。
+                 * @type {string|null}
+                 * @private
+                 */
+                _workerCode = null;
 
-        /**
-         * 创建一个 SyncWorker 实例。
-         * @param {object} config - Worker 的配置对象。
-         * @param {object} config.callableFunctions - 一个对象，其键是函数名，值是对应的函数定义。
-         * @param {Array<{name: string, value: *}>} [config.dependencies=[]] - 一个数组，包含需注入的依赖项。每个元素应为 {name: '变量名', value: 变量值}。
-         * @throws {Error} 如果 `callableFunctions` 不是一个非空对象，则抛出错误。
-         */
-        constructor(config) {
-            // 验证配置
-            if (!config || typeof config !== 'object' || Array.isArray(config)) {
-                throw new Error('[SyncWorker] config must be a non-null object.');
-            }
-            if (!config.callableFunctions || typeof config.callableFunctions !== 'object' || Array.isArray(config.callableFunctions) || Object.keys(config.callableFunctions).length === 0) {
-                throw new Error('[SyncWorker] callableFunctions must be a non-empty object.');
-            }
-            for (const [name, func] of Object.entries(config.callableFunctions)) {
-                if (typeof func !== 'function') {
-                    throw new Error(`[SyncWorker] callableFunctions['${name}'] must be a function.`);
-                }
-            }
-            // 保存配置
-            this._config = config;
-            // 初始化
-            this._init();
-        }
-
-        /**
-         * @readonly
-         * @type {string}
-         * @description 自定义 `Object.prototype.toString.call()` 的返回值。
-         * 这使得 `Public.typeOf(new SyncWorker())` 能够返回 'syncWorker'。
-         */
-        get [Symbol.toStringTag]() {
-            return 'SyncWorker';
-        }
-
-        /**
-         * @readonly
-         * @type {boolean}
-         * @description 判断 Worker 是否已终止。
-         */
-        get isTerminated() {
-            return this._worker === null;
-        }
-
-        /**
-         * @private
-         * @method _init
-         * @description 初始化或重新初始化 Web Worker。
-         * 此方法负责根据提供的函数和依赖项生成 Worker 脚本，
-         * 创建一个 Blob URL，实例化 Worker，并设置用于通信的消息监听器。
-         * 它由构造函数和 restart 方法调用。
-         * @returns {void}
-         */
-        _init() {
-            // 从保存的配置中解构出可调用的函数和依赖项。
-            const {callableFunctions, dependencies = []} = this._config;
-            // 验证 dependencies 是否为数组
-            if (!Array.isArray(dependencies)) {
-                throw new Error('[SyncWorker] dependencies must be an array.');
-            }
-
-            // 生成包含所有函数和依赖的 Worker 脚本字符串，并在后续重启时复用。
-            const workerCode = this._workerCode ??= this._generateWorkerCode(callableFunctions, dependencies);
-            // 将脚本字符串转换为 Blob 对象，以便可以作为文件处理。
-            const blob = new Blob([workerCode], {type: 'application/javascript'});
-            // 为 Blob 创建一个唯一的 URL，Worker 将从这个 URL 加载。
-            const workerUrl = URL.createObjectURL(blob);
-
-            try {
-                // 创建新的 Web Worker 实例。
-                const worker = new Worker(workerUrl);
-                this._workerUrl = workerUrl;
-                this._worker = worker;
-                // 设置消息监听器以处理与 Worker 的双向通信。
-                this._setupMessageListeners();
-            } catch (error) {
-                URL.revokeObjectURL(workerUrl);
-                throw error;
-            }
-        }
-
-        /**
-         * 设置 Worker 的消息和错误监听器。
-         * @private
-         */
-        _setupMessageListeners() {
-            if (!this._worker) {
-                return;
-            }
-
-            const worker = this._worker;
-
-            /**
-             * 消息处理器：用于从 Worker 接收任务成功或失败的结果。
-             * @param {MessageEvent} event - 来自 Worker 的事件对象，包含 {id, result?, error?}。
-             */
-            worker.onmessage = (event) => {
-                if (this._worker !== worker) {
-                    return;
-                }
-
-                const {id, result, error} = event.data;
-                if (!this._taskQueue.has(id)) {
-                    return; // 任务可能已被取消或超时，直接忽略。
-                }
-
-                const {resolve, reject, timeoutId} = this._taskQueue.get(id);
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                }
-
-                if (error) {
-                    const workerError = new Error(error.message);
-                    workerError.name = error.name || 'WorkerError';
-                    workerError.stack = error.stack;
-                    reject(workerError);
-                } else {
-                    resolve(result);
-                }
-                this._taskQueue.delete(id);
-            };
-
-            /**
-             * 错误处理器：处理 Worker 内部发生的、无法恢复的严重错误（例如，生成的代码中存在语法错误）。
-             * @param {ErrorEvent} err - 错误事件对象。
-             */
-            worker.onerror = (err) => {
-                if (this._worker !== worker) {
-                    return;
-                }
-
-                const fatalError = new Error(`[SyncWorker] Worker encountered a fatal error: ${err.message} at ${err.filename}:${err.lineno}.`);
-                this._rejectAllTasks(fatalError);
-                // 一旦发生致命错误，Worker 将不可用，最好直接终止。
-                this.terminate();
-            };
-
-            /**
-             * 消息反序列化错误处理器。
-             */
-            worker.onmessageerror = () => {
-                if (this._worker !== worker) {
-                    return;
-                }
-
-                const messageError = new Error('[SyncWorker] Failed to deserialize a message from the Worker.');
-                messageError.name = 'MessageError';
-                this._rejectAllTasks(messageError);
-                this.terminate();
-            };
-        }
-
-        /**
-         * 拒绝并清理所有待处理任务。
-         * @param {Error} error - 用于拒绝任务 Promise 的错误。
-         * @private
-         */
-        _rejectAllTasks(error) {
-            this._taskQueue.forEach(({reject, timeoutId}) => {
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                }
-                reject(error);
-            });
-            this._taskQueue.clear();
-        }
-
-        /**
-         * 根据提供的函数和依赖，将 Worker 的脚本内容生成为字符串。
-         * @param {object} funcs - 可调用函数的对象。
-         * @param {Array<{name: string, value: *}>} deps - 依赖项的数组。
-         * @returns {string}
-         * @private
-         */
-        _generateWorkerCode(funcs, deps) {
-            /**
-             * 序列化一个值，以便可以将其存储或传输。
-             * @param {*} value - 需要被序列化的值。
-             * @param {WeakSet<object>} [seen] - 用于检测循环引用。
-             * @returns {string} - 序列化后的字符串。
-             */
-            const serializeValue = (value, seen = new WeakSet()) => {
-                // 1. 处理函数：直接转换为字符串源码
-                if (typeof value === 'function') {
-                    return serializeFunction(value);
-                }
-
-                // 2. 处理 undefined
-                if (value === undefined) {
-                    return 'undefined';
-                }
-
-                // 3. 处理数字：保留 NaN、Infinity 和 -0
-                if (typeof value === 'number') {
-                    if (Number.isNaN(value)) {
-                        return 'NaN';
+                /**
+                 * 创建并初始化 Worker。
+                 * @param {object} config - 创建脚本所需的完整配置；构造器会保存它以供 `restart()` 重用，
+                 *   因此调用后不应再原地修改其中的函数表或依赖数组。
+                 * @param {Object<string, Function>} config.callableFunctions - 暴露给主线程调用的函数映射；键是
+                 *   `exec()` 使用的公开名称，值必须是可序列化的函数。Worker 会在原位置参数末尾追加
+                 *   `{isCancelled:function():boolean, throwIfCancelled:function():void}`：前者查询任务取消状态，
+                 *   后者在已取消时抛出 `CancellationError`，长循环可在安全检查点主动调用。
+                 * @param {Array<{name: string, value: *}>} [config.dependencies=[]] - 按顺序注入 Worker 顶层作用域的
+                 *   依赖；`name` 必须是合法且不冲突的 JavaScript 标识符，`value` 可为受支持的类、函数、
+                 *   BigInt、数组或普通对象，但不能包含循环引用、DOM 节点或闭包捕获的外部状态。
+                 * @throws {Error} 配置或函数定义无效时抛出。
+                 */
+                constructor(config) {
+                    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+                        throw new Error('[SyncWorker] config must be a non-null object.');
                     }
-                    if (!Number.isFinite(value)) {
-                        return value > 0 ? 'Infinity' : '-Infinity';
+                    if (!config.callableFunctions || typeof config.callableFunctions !== 'object' || Array.isArray(config.callableFunctions) || Object.keys(config.callableFunctions).length === 0) {
+                        throw new Error('[SyncWorker] callableFunctions must be a non-empty object.');
                     }
-                    if (Object.is(value, -0)) {
-                        return '-0';
-                    }
-                    return value.toString();
-                }
-
-                // 4. 处理 BigInt：添加 'n' 后缀使其成为有效的 JS BigInt 字面量
-                if (typeof value === 'bigint') {
-                    return `${value.toString()}n`;
-                }
-
-                // 5. 处理字符串：使用 JSON.stringify 安全转义引号等特殊字符
-                if (typeof value === 'string') {
-                    return JSON.stringify(value);
-                }
-
-                // 6. 不支持 Symbol
-                if (typeof value === 'symbol') {
-                    throw new TypeError('Symbol values are not supported.');
-                }
-
-                // 7. 处理数组：递归序列化每个元素
-                if (Array.isArray(value)) {
-                    if (seen.has(value)) {
-                        throw new TypeError('Circular references are not supported.');
-                    }
-                    seen.add(value);
-                    try {
-                        const elements = [];
-                        for (let i = 0; i < value.length; i++) {
-                            elements.push(Object.prototype.hasOwnProperty.call(value, i)
-                                          ? serializeValue(value[i], seen)
-                                          : '');
+                    for (const [name, func] of Object.entries(config.callableFunctions)) {
+                        if (typeof func !== 'function') {
+                            throw new Error(`[SyncWorker] callableFunctions['${name}'] must be a function.`);
                         }
-                        const trailingComma = value.length > 0 && !Object.prototype.hasOwnProperty.call(value, value.length - 1)
-                                              ? ','
-                                              : '';
-                        return `[${elements.join(',')}${trailingComma}]`;
-                    } finally {
-                        seen.delete(value);
+                    }
+                    this._config = config;
+                    // 保存原始配置，使同一实例可以在终止后重新生成等价 Worker。
+                    this._init();
+                }
+
+                /**
+                 * 返回实例的类型标签。
+                 *
+                 * @readonly
+                 * @type {string}
+                 */
+                get [Symbol.toStringTag]() {
+                    return 'SyncWorker';
+                }
+
+                /**
+                 * 判断 Worker 是否已终止。
+                 *
+                 * @readonly
+                 * @type {boolean}
+                 */
+                get isTerminated() {
+                    return this._worker === null;
+                }
+
+                /**
+                 * 初始化或重新初始化 Web Worker。
+                 *
+                 * @private
+                 * @returns {void}
+                 */
+                _init() {
+                    const {callableFunctions, dependencies = []} = this._config;
+                    if (!Array.isArray(dependencies)) {
+                        throw new Error('[SyncWorker] dependencies must be an array.');
+                    }
+
+                    // 缓存脚本，避免重启时受外部配置变更影响。
+                    const workerCode = this._workerCode ??= this._generateWorkerCode(callableFunctions, dependencies);
+                    // Blob URL 把动态生成的源码交给 Worker；创建失败或终止时必须撤销 URL。
+                    const blob = new Blob([workerCode], {type: 'application/javascript'});
+                    const workerUrl = URL.createObjectURL(blob);
+
+                    try {
+                        const worker = new Worker(workerUrl);
+                        this._workerUrl = workerUrl;
+                        this._worker = worker;
+                        this._setupMessageListeners();
+                    } catch (error) {
+                        URL.revokeObjectURL(workerUrl);
+                        throw error;
                     }
                 }
 
-                // 8. 处理对象：递归序列化每个属性
-                if (typeof value === 'object' && value !== null) {
-                    const prototype = Object.getPrototypeOf(value);
-                    const isPlainObject = prototype === null || (
-                        Object.prototype.toString.call(value) === '[object Object]' &&
-                        typeof prototype?.constructor === 'function' &&
-                        prototype.constructor.name === 'Object'
-                    );
-                    if (!isPlainObject) {
-                        throw new TypeError(`Unsupported object type '${value.constructor?.name || 'Object'}'.`);
-                    }
-                    if (seen.has(value)) {
-                        throw new TypeError('Circular references are not supported.');
+                /**
+                 * 注册 Worker 的消息与错误处理器。
+                 *
+                 * @private
+                 */
+                _setupMessageListeners() {
+                    if (!this._worker) {
+                        return;
                     }
 
-                    seen.add(value);
-                    try {
-                        const props = [];
-                        for (const key of Object.keys(value)) {
-                            const descriptor = Object.getOwnPropertyDescriptor(value, key);
-                            if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
-                                throw new TypeError(`Accessor property '${key}' is not supported.`);
+                    const worker = this._worker;
+
+                    /**
+                     * 处理 Worker 返回的任务结果。
+                     *
+                     * @param {MessageEvent} event - Worker 返回的消息事件；`event.data.id` 必须对应待处理任务，
+                     *   `result` 是可结构化克隆的返回值，`error` 则是已序列化的名称、消息和堆栈。
+                     */
+                    worker.onmessage = (event) => {
+                        // 重启后旧 Worker 仍可能排出迟到消息；实例校验防止它污染新 Worker 的任务队列。
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
+                        const {id, result, error} = event.data;
+                        // 任务 ID 将乱序返回的消息关联到对应 Promise；已取消或超时的迟到消息会被忽略。
+                        if (!this._taskQueue.has(id)) {
+                            return; // 任务可能已被取消或超时，直接忽略。
+                        }
+
+                        const {resolve, reject, timeoutId} = this._taskQueue.get(id);
+                        if (timeoutId !== null) {
+                            clearTimeout(timeoutId);
+                        }
+
+                        if (error) {
+                            const workerError = new Error(error.message);
+                            workerError.name = error.name || 'WorkerError';
+                            workerError.stack = error.stack;
+                            reject(workerError);
+                        } else {
+                            resolve(result);
+                        }
+                        this._taskQueue.delete(id);
+                    };
+
+                    /**
+                     * 处理 Worker 的致命运行错误。
+                     *
+                     * @param {ErrorEvent} err - 无法归属到单个任务的 Worker 运行错误；其消息用于拒绝全部
+                     *   待处理 Promise，随后实例进入已终止状态。
+                     */
+                    worker.onerror = (err) => {
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
+                        const fatalError = new Error(`[SyncWorker] Worker encountered a fatal error: ${err.message} at ${err.filename}:${err.lineno}.`);
+                        this._rejectAllTasks(fatalError);
+                        this.terminate();
+                    };
+
+                    /**
+                     * 处理 Worker 消息的反序列化错误。
+                     */
+                    worker.onmessageerror = () => {
+                        if (this._worker !== worker) {
+                            return;
+                        }
+
+                        const messageError = new Error('[SyncWorker] Failed to deserialize a message from the Worker.');
+                        messageError.name = 'MessageError';
+                        this._rejectAllTasks(messageError);
+                        this.terminate();
+                    };
+                }
+
+                /**
+                 * 拒绝并清空所有待处理任务。
+                 *
+                 * @param {Error} error - 同一个拒绝原因会传给当前全部待处理 Promise；方法同时清除每个任务的
+                 *   超时计时器和登记项，但不会自行终止 Worker。
+                 * @private
+                 */
+                _rejectAllTasks(error) {
+                    /** 拒绝当前待处理任务并清除其超时计时器。 */
+                    this._taskQueue.forEach(({reject, timeoutId}) => {
+                        if (timeoutId !== null) {
+                            clearTimeout(timeoutId);
+                        }
+                        reject(error);
+                    });
+                    this._taskQueue.clear();
+                }
+
+                /**
+                 * 将函数和依赖项序列化为 Worker 脚本。
+                 *
+                 * @param {Object<string, Function>} funcs - 名称到函数实现的映射；名称成为 Worker 消息协议中的
+                 *   `functionName`，实现会被转换为源码，不能依赖未列入 `deps` 的词法闭包。
+                 * @param {Array<{name: string, value: *}>} deps - 顶层依赖声明，按数组顺序生成源码；后项可引用
+                 *   已生成的前项。名称重复、非法或值不可序列化时应在创建 Worker 前失败。
+                 * @returns {string} 可执行的 Worker 脚本。
+                 * @private
+                 */
+                _generateWorkerCode(funcs, deps) {
+                    /**
+                     * 将支持的值序列化为 JavaScript 源码。
+                     *
+                     * @param {*} value - 要嵌入脚本的依赖值；支持原始值、BigInt、普通数组/对象、函数和类。
+                     *   `undefined`、`NaN`、无穷值等需生成等价源码；平台对象和不可还原的原型实例不受支持。
+                     * @param {WeakSet<object>} [seen] - 当前递归路径上的对象集合；内部调用传递同一集合以检测
+                     *   真正的循环引用，调用入口可省略，方法不会把它暴露到生成脚本中。
+                     * @returns {string} 序列化结果。
+                     */
+                    const serializeValue = (value, seen = new WeakSet()) => {
+                        // 序列化目标是可执行 JavaScript 源码，而非 JSON；需保留函数、BigInt、NaN、Infinity 和 -0。
+                        if (typeof value === 'function') {
+                            return serializeFunction(value);
+                        }
+
+                        if (value === undefined) {
+                            return 'undefined';
+                        }
+
+                        if (typeof value === 'number') {
+                            if (Number.isNaN(value)) {
+                                return 'NaN';
                             }
-                            // 使用计算属性名，避免 __proto__ 被解释为对象字面量的原型设置器
-                            props.push(`[${JSON.stringify(key)}]: ${serializeValue(descriptor.value, seen)}`);
+                            if (!Number.isFinite(value)) {
+                                return value > 0 ? 'Infinity' : '-Infinity';
+                            }
+                            if (Object.is(value, -0)) {
+                                return '-0';
+                            }
+                            return value.toString();
                         }
-                        return `{${props.join(',')}}`;
-                    } finally {
-                        seen.delete(value);
-                    }
-                }
 
-                // 9. 其他基本类型（null, boolean）：直接使用 JSON 结果
-                return JSON.stringify(value);
-            };
+                        if (typeof value === 'bigint') {
+                            return `${value.toString()}n`;
+                        }
 
-            /**
-             * 将函数转换为可嵌入 Worker 脚本的函数表达式。
-             * @param {Function} func - 要序列化的函数。
-             * @param {boolean} [allowClass=true] - 是否允许序列化 class。
-             * @returns {string}
-             */
-            const serializeFunction = (func, allowClass = true) => {
-                const source = Function.prototype.toString.call(func).trim();
-                if (source.includes('[native code]')) {
-                    throw new TypeError('Native or bound functions are not supported.');
-                }
-                if (/^(?:get|set)\s/.test(source)) {
-                    throw new TypeError('Getter and setter functions are not supported.');
-                }
+                        if (typeof value === 'string') {
+                            return JSON.stringify(value);
+                        }
 
-                const isFunctionExpression = /^(?:async\s+)?function(?:\s*\*)?\b/.test(source);
-                const isArrowFunction = /^(?:async\s+)?(?:\([\s\S]*\)|[A-Za-z_$][\w$]*)\s*=>/.test(source);
-                const isClass = /^class\b/.test(source);
+                        if (typeof value === 'symbol') {
+                            throw new TypeError('Symbol values are not supported.');
+                        }
 
-                if (isClass && !allowClass) {
-                    throw new TypeError('Class constructors cannot be registered as callable functions.');
-                }
-                if (isFunctionExpression || isArrowFunction || isClass) {
-                    return `(${source})`;
-                }
+                        if (Array.isArray(value)) {
+                            // WeakSet 仅跟踪当前递归路径，既能拒绝循环引用，也允许不同位置复用同一对象。
+                            if (seen.has(value)) {
+                                throw new TypeError('Circular references are not supported.');
+                            }
+                            seen.add(value);
+                            try {
+                                const elements = [];
+                                for (let i = 0; i < value.length; i++) {
+                                    elements.push(Object.prototype.hasOwnProperty.call(value, i)
+                                                  ? serializeValue(value[i], seen)
+                                                  : '');
+                                }
+                                const trailingComma = value.length > 0 && !Object.prototype.hasOwnProperty.call(value, value.length - 1)
+                                                      ? ','
+                                                      : '';
+                                return `[${elements.join(',')}${trailingComma}]`;
+                            } finally {
+                                seen.delete(value);
+                            }
+                        }
 
-                // 兼容对象方法、async 对象方法和生成器对象方法。
-                return `(Object.values({${source}})[0])`;
-            };
+                        if (typeof value === 'object' && value !== null) {
+                            const prototype = Object.getPrototypeOf(value);
+                            const isPlainObject = prototype === null || (
+                                Object.prototype.toString.call(value) === '[object Object]' &&
+                                typeof prototype?.constructor === 'function' &&
+                                prototype.constructor.name === 'Object'
+                            );
+                            if (!isPlainObject) {
+                                throw new TypeError(`Unsupported object type '${value.constructor?.name || 'Object'}'.`);
+                            }
+                            if (seen.has(value)) {
+                                throw new TypeError('Circular references are not supported.');
+                            }
 
-            const reservedDependencyNames = new Set([
-                'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
-                'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export',
-                'extends', 'false', 'finally', 'for', 'function', 'if', 'implements',
-                'import', 'in', 'instanceof', 'interface', 'let', 'new', 'null',
-                'package', 'private', 'protected', 'public', 'return', 'static',
-                'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var',
-                'void', 'while', 'with', 'yield', 'eval', 'arguments',
-                'self', 'availableFunctions', 'runningTasks', 'normalizeError',
-                'Object', 'Map', 'Error', 'String'
-            ]);
-            const dependencyNames = new Set();
+                            seen.add(value);
+                            try {
+                                const props = [];
+                                for (const key of Object.keys(value)) {
+                                    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+                                    // 只读取数据描述符，避免序列化过程意外执行 getter 及其副作用。
+                                    if (!descriptor || !Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+                                        throw new TypeError(`Accessor property '${key}' is not supported.`);
+                                    }
+                                    // 计算属性名可避免 __proto__ 被解释为原型设置器。
+                                    props.push(`[${JSON.stringify(key)}]: ${serializeValue(descriptor.value, seen)}`);
+                                }
+                                return `{${props.join(',')}}`;
+                            } finally {
+                                seen.delete(value);
+                            }
+                        }
 
-            let code = `
+                        return JSON.stringify(value);
+                    };
+
+                    /**
+                     * 将函数转换为可嵌入 Worker 的表达式。
+                     *
+                     * @param {Function} func - 要转换为独立表达式源码的函数或类；其源码必须能在 Worker 的
+                     *   严格模式下重新求值，原函数对象和闭包环境都不会被传输。
+                     * @param {boolean} [allowClass=true] - 是否接受 `class` 声明；序列化普通可调用函数时可设为
+                     *   `false`，从而避免把类误当作能直接调用的任务函数。
+                     * @returns {string} 函数表达式源码。
+                     */
+                    const serializeFunction = (func, allowClass = true) => {
+                        const source = Function.prototype.toString.call(func).trim();
+                        if (source.includes('[native code]')) {
+                            throw new TypeError('Native or bound functions are not supported.');
+                        }
+                        if (/^(?:get|set)\s/.test(source)) {
+                            throw new TypeError('Getter and setter functions are not supported.');
+                        }
+
+                        const isFunctionExpression = /^(?:async\s+)?function(?:\s*\*)?\b/.test(source);
+                        const isArrowFunction = /^(?:async\s+)?(?:\([\s\S]*\)|[A-Za-z_$][\w$]*)\s*=>/.test(source);
+                        const isClass = /^class\b/.test(source);
+
+                        if (isClass && !allowClass) {
+                            throw new TypeError('Class constructors cannot be registered as callable functions.');
+                        }
+                        if (isFunctionExpression || isArrowFunction || isClass) {
+                            return `(${source})`;
+                        }
+
+                        // 对象方法源码缺少 `function` 前缀，借助临时对象字面量把它还原为函数值。
+                        return `(Object.values({${source}})[0])`;
+                    };
+
+                    const reservedDependencyNames = new Set([
+                        'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
+                        'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export',
+                        'extends', 'false', 'finally', 'for', 'function', 'if', 'implements',
+                        'import', 'in', 'instanceof', 'interface', 'let', 'new', 'null',
+                        'package', 'private', 'protected', 'public', 'return', 'static',
+                        'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var',
+                        'void', 'while', 'with', 'yield', 'eval', 'arguments',
+                        'self', 'availableFunctions', 'runningTasks', 'normalizeError',
+                        'Object', 'Map', 'Error', 'String'
+                    ]);
+                    const dependencyNames = new Set();
+
+                    // 生成的脚本依次注入依赖、注册可调用函数，并安装基于消息的执行/取消协议。
+                    let code = `
 /* Dynamically Generated Worker Code. */
 (() => {
     "use strict";
@@ -383,45 +388,44 @@
     /* -- Dependency Injection -- */
     /* Inject dependencies as constants into an isolated scope of the Worker. */
 `;
-            for (const dep of deps) {
-                if (!dep || typeof dep !== 'object' || Array.isArray(dep)) {
-                    throw new Error('[SyncWorker] Every dependency must be an object.');
-                }
+                    for (const dep of deps) {
+                        if (!dep || typeof dep !== 'object' || Array.isArray(dep)) {
+                            throw new Error('[SyncWorker] Every dependency must be an object.');
+                        }
 
-                // 解构 name 和 value
-                const {name, value} = dep;
+                        const {name, value} = dep;
 
-                if (typeof name !== 'string' || !/^[$_\p{ID_Start}][$\u200C\u200D_\p{ID_Continue}]*$/u.test(name)) {
-                    throw new Error(`[SyncWorker] Invalid dependency name '${String(name)}'.`);
-                }
-                if (reservedDependencyNames.has(name)) {
-                    throw new Error(`[SyncWorker] Dependency name '${name}' is reserved.`);
-                }
-                if (dependencyNames.has(name)) {
-                    throw new Error(`[SyncWorker] Duplicate dependency name '${name}'.`);
-                }
-                dependencyNames.add(name);
+                        if (typeof name !== 'string' || !/^[$_\p{ID_Start}][$\u200C\u200D_\p{ID_Continue}]*$/u.test(name)) {
+                            throw new Error(`[SyncWorker] Invalid dependency name '${String(name)}'.`);
+                        }
+                        if (reservedDependencyNames.has(name)) {
+                            throw new Error(`[SyncWorker] Dependency name '${name}' is reserved.`);
+                        }
+                        if (dependencyNames.has(name)) {
+                            throw new Error(`[SyncWorker] Duplicate dependency name '${name}'.`);
+                        }
+                        dependencyNames.add(name);
 
-                try {
-                    code += `    const ${name} = ${serializeValue(value)};\n`;
-                } catch (e) {
-                    throw new Error(`[SyncWorker] Dependency '${name}' could not be serialized: ${e.message}.`);
-                }
-            }
+                        try {
+                            code += `    const ${name} = ${serializeValue(value)};\n`;
+                        } catch (e) {
+                            throw new Error(`[SyncWorker] Dependency '${name}' could not be serialized: ${e.message}.`);
+                        }
+                    }
 
-            code += `
+                    code += `
     /* -- Function registration -- */
     /* Store all callable functions in an object inside the Worker for searching by name. */
     const availableFunctions = Object.create(null);
 `;
-            for (const [key, func] of Object.entries(funcs)) {
-                try {
-                    code += `    availableFunctions[${JSON.stringify(key)}] = ${serializeFunction(func, false)};\n`;
-                } catch (e) {
-                    throw new Error(`[SyncWorker] Function '${key}' could not be serialized: ${e.message}.`);
-                }
-            }
-            code += `
+                    for (const [key, func] of Object.entries(funcs)) {
+                        try {
+                            code += `    availableFunctions[${JSON.stringify(key)}] = ${serializeFunction(func, false)};\n`;
+                        } catch (e) {
+                            throw new Error(`[SyncWorker] Function '${key}' could not be serialized: ${e.message}.`);
+                        }
+                    }
+                    code += `
     /* -- Worker internal status -- */
     /* A Map used to track running tasks and their cancellation status. */
     const runningTasks = new Map();
@@ -544,558 +548,481 @@
 })();
 `;
 
-            return code;
-        }
-
-        /**
-         * 内部方法：用于根据ID取消单个任务。主要由超时逻辑调用。
-         * @param {bigint} taskId - 内部任务 ID。
-         * @param {string} [errorName='CancellationError'] - 用于拒绝 Promise 的错误类型名称。
-         * @param {string} [errorMessage='Task was cancelled.'] - 用于拒绝 Promise 的错误消息。
-         * @private
-         */
-        _cancelTaskById(taskId, errorName = 'CancellationError', errorMessage = 'Task was cancelled.') {
-            if (this._taskQueue.has(taskId)) {
-                const task = this._taskQueue.get(taskId);
-                if (task.timeoutId !== null) {
-                    clearTimeout(task.timeoutId);
+                    return code;
                 }
 
-                const error = new Error(errorMessage);
-                error.name = errorName;
-                task.reject(error);
+                /**
+                 * 按 ID 取消单个任务。
+                 *
+                 * @param {bigint} taskId - `_pendingTasks` 中的精确任务键；未知或已经完成的 ID 会被忽略，
+                 *   避免重复拒绝 Promise。
+                 * @param {string} [errorName='CancellationError'] - 创建拒绝错误时写入 `Error.name` 的稳定名称；
+                 *   超时调用使用 `TimeoutError`，主动取消使用默认名称，便于调用方分类处理。
+                 * @param {string} [errorMessage='Task was cancelled.'] - 面向调用方的错误消息；只用于本地 Promise，
+                 *   Worker 端收到的取消消息仍通过同一 `taskId` 关联正在运行的任务。
+                 * @private
+                 */
+                _cancelTaskById(taskId, errorName = 'CancellationError', errorMessage = 'Task was cancelled.') {
+                    if (this._taskQueue.has(taskId)) {
+                        const task = this._taskQueue.get(taskId);
+                        if (task.timeoutId !== null) {
+                            clearTimeout(task.timeoutId);
+                        }
 
-                this._taskQueue.delete(taskId);
-                if (this._worker) {
-                    try {
-                        this._worker.postMessage({type: 'cancel', id: taskId});
-                    } catch {
-                        // 本地任务已完成清理；Worker 无法接收取消消息时无需再次抛出。
+                        const error = new Error(errorMessage);
+                        error.name = errorName;
+                        task.reject(error);
+
+                        this._taskQueue.delete(taskId);
+                        if (this._worker) {
+                            // 取消是协作式的：主线程立即拒绝 Promise，Worker 只能在重新获得事件循环后读取取消消息。
+                            try {
+                                this._worker.postMessage({type: 'cancel', id: taskId});
+                            } catch {
+                                // 本地状态已清理，无需传播消息发送失败。
+                            }
+                        }
+                    }
+                }
+
+                /**
+                 * 使用原始配置重启 Worker。
+                 *
+                 * @returns {void}
+                 */
+                restart() {
+                    this.terminate(); // 清理旧资源。
+                    this._init();     // 使用保存的配置重新初始化。
+                }
+
+                /**
+                 * 异步调用已注册的 Worker 函数。
+                 *
+                 * @template T
+                 * @param {string} functionName - `config.callableFunctions` 中注册的精确键名；名称在发送前校验，
+                 *   不允许借此访问 Worker 全局作用域中的其他函数。
+                 * @param {object} [options={}] - 单次任务的消息、所有权转移和截止时间配置；不会改变后续任务。
+                 * @param {Array} [options.args=[]] - 按原顺序传给目标函数的位置参数；每项必须可由结构化克隆
+                 *   算法处理。取消信号由 Worker 在末尾自动追加，不应由调用方放入该数组。
+                 * @param {Array<Transferable>} [options.transfer=[]] - 转移所有权的对象；发送后主线程中的对应资源会被分离。
+                 * @param {number} [options.timeout=0] - 从消息成功发出起计算的有限毫秒数；正数到期后拒绝
+                 *   Promise 并通知 Worker 取消该任务，`0` 或负数表示不建立计时器。
+                 * @returns {Promise<T>} 以目标函数的可结构化克隆返回值兑现；`undefined`、数组、普通对象和
+                 *   可克隆平台对象保持自身结构。Worker 抛出的错误会重建
+                 *   `name`、`message`、`stack` 后拒绝，主动取消和超时分别使用可区分的错误名称。
+                 * @throws {Error} Worker 不可用或选项无效时抛出。
+                 */
+                exec(functionName, {args = [], transfer = [], timeout = 0} = {}) {
+                    if (!this._worker) {
+                        throw new Error('[SyncWorker] Cannot execute task: the worker has been terminated.');
+                    }
+                    if (typeof functionName !== 'string' || functionName.length === 0) {
+                        throw new Error('[SyncWorker] functionName must be a non-empty string.');
+                    }
+                    if (!Array.isArray(args)) {
+                        throw new Error('[SyncWorker] options.args must be an array.');
+                    }
+                    if (!Array.isArray(transfer)) {
+                        throw new Error('[SyncWorker] options.transfer must be an array.');
+                    }
+                    if (typeof timeout !== 'number' || !Number.isFinite(timeout)) {
+                        throw new Error('[SyncWorker] options.timeout must be a finite number.');
+                    }
+
+                    const id = this._nextTaskId++;
+                    /** 创建并登记一次 Worker 调用。 */
+                    return new Promise((resolve, reject) => {
+                        let timeoutId = null;
+
+                        if (timeout > 0) {
+                            /** 在截止时间到达时取消任务。 */
+                            timeoutId = setTimeout(() => {
+                                this._cancelTaskById(id, 'TimeoutError', `Task '${functionName}' timed out after ${timeout}ms.`);
+                            }, timeout);
+                        }
+
+                        // 先登记队列再发送消息，避免 Worker 极快返回时查不到对应 Promise。
+                        this._taskQueue.set(id, {resolve, reject, timeoutId});
+                        try {
+                            this._worker.postMessage({type: 'exec', id, functionName, args}, transfer);
+                        } catch (error) {
+                            if (timeoutId !== null) {
+                                clearTimeout(timeoutId);
+                            }
+                            this._taskQueue.delete(id);
+                            reject(error);
+                        }
+                    });
+                }
+
+                /**
+                 * 取消全部待处理任务，但保留 Worker 实例。
+                 */
+                cancel() {
+                    if (!this._worker || this._taskQueue.size === 0) {
+                        return;
+                    }
+
+                    const cancellationError = new Error('[SyncWorker] All pending tasks were cancelled by a global cancel call.');
+                    cancellationError.name = 'CancellationError';
+
+                    /** 取消当前待处理任务。 */
+                    this._taskQueue.forEach((task, id) => {
+                        if (task.timeoutId !== null) {
+                            clearTimeout(task.timeoutId);
+                        }
+                        task.reject(cancellationError);
+                        // 即使同步密集任务暂时无法响应，稍后返回的结果也会因队列已清空而被丢弃。
+                        try {
+                            this._worker.postMessage({type: 'cancel', id});
+                        } catch {
+                            // 本地状态已清理，无需传播消息发送失败。
+                        }
+                    });
+
+                    this._taskQueue.clear();
+                }
+
+                /**
+                 * 终止 Worker、拒绝待处理任务并释放 Blob URL。
+                 */
+                terminate() {
+                    if (this._worker) {
+                        this._worker.terminate();
+                        this._worker = null;
+                    }
+
+                    if (this._taskQueue.size > 0) {
+                        const terminationError = new Error('[SyncWorker] The worker has been terminated.');
+                        terminationError.name = 'TerminationError';
+                        this._rejectAllTasks(terminationError);
+                    }
+
+                    if (this._workerUrl) {
+                        URL.revokeObjectURL(this._workerUrl);
+                        this._workerUrl = null;
                     }
                 }
             }
-        }
 
-        /**
-         * @method restart
-         * @description 终止当前的 Web Worker 并立即使用原始配置初始化一个新的 Worker。
-         * 这个方法对于从一个变得无响应或已崩溃的 Worker 中恢复非常有用，它允许在不创建新的 `SyncWorker` 实例的情况下进行干净的重启。
-         * @returns {void}
-         */
-        restart() {
-            this.terminate(); // 清理旧资源
-            this._init();     // 使用保存的配置重新初始化
-        }
-
-        /**
-         * 在 Web Worker 中异步执行一个函数。
-         * @param {string} functionName - 要调用的已注册的函数名（在 `callableFunctions` 中定义的键）。
-         * @param {object} [options={}] - 一个选项对象。
-         * @param {Array} [options.args=[]] - 传递给 Worker 函数的参数数组。这些参数必须是可结构化克隆的。
-         * @param {Array<Transferable>} [options.transfer=[]] - 一个对象数组，其所有权需要转移到 Worker（例如 ArrayBuffer）。
-         * @param {number} [options.timeout=0] - 任务的超时时间（毫秒）。如果为 0 或负数，则不设置超时。
-         * @returns {Promise<any>} 一个Promise，它最终会解析为Worker函数的返回值。
-         * @throws {Error} 如果 Worker 已被终止，则抛出错误。
-         */
-        exec(functionName, {args = [], transfer = [], timeout = 0} = {}) {
-            if (!this._worker) {
-                throw new Error('[SyncWorker] Cannot execute task: the worker has been terminated.');
-            }
-            if (typeof functionName !== 'string' || functionName.length === 0) {
-                throw new Error('[SyncWorker] functionName must be a non-empty string.');
-            }
-            if (!Array.isArray(args)) {
-                throw new Error('[SyncWorker] options.args must be an array.');
-            }
-            if (!Array.isArray(transfer)) {
-                throw new Error('[SyncWorker] options.transfer must be an array.');
-            }
-            if (typeof timeout !== 'number' || !Number.isFinite(timeout)) {
-                throw new Error('[SyncWorker] options.timeout must be a finite number.');
-            }
-
-            const id = this._nextTaskId++;
-            return new Promise((resolve, reject) => {
-                let timeoutId = null;
-
-                if (timeout > 0) {
-                    timeoutId = setTimeout(() => {
-                        // 当超时发生时，调用内部的单个任务取消方法。
-                        this._cancelTaskById(id, 'TimeoutError', `Task '${functionName}' timed out after ${timeout}ms.`);
-                    }, timeout);
-                }
-
-                this._taskQueue.set(id, {resolve, reject, timeoutId});
-                try {
-                    this._worker.postMessage({type: 'exec', id, functionName, args}, transfer);
-                } catch (error) {
-                    if (timeoutId !== null) {
-                        clearTimeout(timeoutId);
-                    }
-                    this._taskQueue.delete(id);
-                    reject(error);
-                }
-            });
-        }
-
-        /**
-         * @description 取消所有正在执行或等待中的任务，但不会终止 Worker 实例。
-         * Worker 在此调用后仍然可以继续接收并执行新的任务。
-         */
-        cancel() {
-            if (!this._worker || this._taskQueue.size === 0) {
-                return;
-            }
-
-            const cancellationError = new Error('[SyncWorker] All pending tasks were cancelled by a global cancel call.');
-            cancellationError.name = 'CancellationError';
-
-            this._taskQueue.forEach((task, id) => {
-                if (task.timeoutId !== null) {
-                    clearTimeout(task.timeoutId);
-                }
-                task.reject(cancellationError);
-                try {
-                    this._worker.postMessage({type: 'cancel', id});
-                } catch {
-                    // 本地任务已完成清理；Worker 无法接收取消消息时无需再次抛出。
-                }
-            });
-
-            this._taskQueue.clear();
-        }
-
-        /**
-         * @description 立即终止 Worker 并清理所有相关资源。
-         * 终止后不能执行新任务，但可以通过 restart() 重新初始化该实例。
-         * 任何待处理的任务都将被拒绝。
-         */
-        terminate() {
-            // 1. 尝试终止 Worker 线程（如果存在）
-            if (this._worker) {
-                this._worker.terminate();
-                this._worker = null;
-            }
-
-            // 2. 拒绝任何仍在等待中的任务（无论 Worker 是否存在，任务队列都应清理）
-            if (this._taskQueue.size > 0) {
-                const terminationError = new Error('[SyncWorker] The worker has been terminated.');
-                terminationError.name = 'TerminationError';
-                this._rejectAllTasks(terminationError);
-            }
-
-            // 3. 撤销 URL（独立于 Worker 实例的存在进行清理）
-            if (this._workerUrl) {
-                URL.revokeObjectURL(this._workerUrl);
-                this._workerUrl = null;
-            }
-        }
-    }
-
-    /**
-     * @class WorkerTools
-     * @description 一个静态类，提供全局配置和方法。
-     * 它不应该被实例化，其所有属性和方法都应静态访问。
-     */
-    class WorkerTools {
-        /**
-         * @static
-         * @property {SyncWorker} _mathWorker
-         * @description 管理数学计算的 Web Worker 实例。
-         * 这个 Worker 负责处理所有核心的、可能耗时较长的计算任务，从而避免阻塞浏览器的主线程，保证用户界面的流畅响应。
-         * 它被配置了特定的可调用函数和必要的依赖项，以在隔离的环境中正确执行计算。
-         */
-        static _mathWorker = new SyncWorker({
-            // 定义需要的函数集
-            callableFunctions: {
-                setCalcAccuracy: acc => CalcConfig.globalCalcAccuracy = acc,
-                getCalcAccuracy: () => CalcConfig.globalCalcAccuracy,
-                setOutputAccuracy: acc => CalcConfig.outputAccuracy = acc,
-                getOutputAccuracy: () => CalcConfig.outputAccuracy,
-                setPrintMode: mode => CalcConfig.globalPrintMode = mode,
-                getPrintMode: () => CalcConfig.globalPrintMode,
-                initEnv: ({calcAcc, outputAcc, printMode}) => {
-                    CalcConfig.globalCalcAccuracy = calcAcc;
-                    CalcConfig.outputAccuracy = outputAcc;
-                    CalcConfig.globalPrintMode = printMode;
-                },
-                powerFunctionAnalysis: list => PowerFunctionTools.powerFunctionAnalysis(list),
-                statisticsCalc: (listA, listB) => StatisticsTools.statisticsCalc(listA, listB),
-                radicalFunctionAnalysis: (z, n) => RadicalFunctionTools.radicalFunctionAnalysis(z, n),
-                valueList: (f, g, start, step, end) => FuncValueListTools.valueList(f, g, start, step, end),
-                exec: (expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) => CalcTools.exec(expr, {
-                    calcAcc: calcAcc,
-                    outputAcc: outputAcc,
-                    calcMode: calcMode,
-                    outputMode: outputMode,
-                    f: f,
-                    g: g
-                })
-            },
-            // 提供所需依赖
-            dependencies: [
-                {name: 'TokenConfig', value: TokenConfig},
-                {name: 'Public', value: Public},
-                {name: 'CalcConfig', value: CalcConfig},
-                {name: 'BigNumber', value: BigNumber},
-                {name: 'ComplexNumber', value: ComplexNumber},
-                {name: 'MathPlus', value: MathPlus},
-                {name: 'PowerFunctionTools', value: PowerFunctionTools},
-                {name: 'StatisticsTools', value: StatisticsTools},
-                {name: 'RadicalFunctionTools', value: RadicalFunctionTools},
-                {name: 'FuncValueListTools', value: FuncValueListTools},
-                {name: 'CalcTools', value: CalcTools}
-            ]
-        });
-
-        /**
-         * @private
-         * @static
-         * @type {number}
-         * @description 存储 Web Worker 任务的默认超时时间（毫秒）。
-         * 这是一个私有静态字段。默认值为 0，表示不限制时间（无限等待）。
-         */
-        static _WORKER_TIMEOUT = 60000;
-
-        /**
-         * @private
-         * @static
-         * @type {boolean}
-         * @description Worker 是否处于重启状态。
-         */
-        static _isRestarting = false;
-
-        /**
-         * @constructor
-         * @description WorkerTools 的构造函数。
-         * 这个类被设计为静态类，不应该被实例化。
-         * 如果尝试创建 WorkerTools 的实例，构造函数会抛出一个错误。
-         * @throws {Error} 总是抛出错误，以防止实例化。
-         */
-        constructor() {
-            // 抛出错误以明确表示这是一个静态类，不应创建实例。
-            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
-            throw new Error('[WorkerTools] WorkerTools is a static class and should not be instantiated.');
-        }
-
-        /**
-         * @static
-         * @property {boolean} isReady
-         * @description 判断 Worker 是否处于可用状态。
-         * 提供给外部（如 CalcConfig）使用的安全接口，避免直接访问私有属性 _mathWorker。
-         */
-        static get isReady() {
-            // 检查 _mathWorker 实例是否存在
-            // 如果将来 SyncWorker 内部增加了 isTerminated 状态，也可以在这里通过 this._mathWorker.isTerminated 来判断
-            return this._mathWorker !== null && !this._mathWorker.isTerminated;
-        }
-
-        /**
-         * @private
-         * @static
-         * @method _dispatch
-         * @description 统一的消息分发器。负责发送任务，并在检测到 Worker 终止时自动重启。
-         * @param {string} funcName - Worker 内调用的函数名
-         * @param {Array} args - 参数数组
-         * @returns {Promise<any>} 结果
-         */
-        static async _dispatch(funcName, args = []) {
-            try {
-                // 尝试正常执行任务
-                return await this._mathWorker.exec(funcName, {
-                    args,
-                    timeout: this._WORKER_TIMEOUT
+            /** 提供数学 Worker 的静态调用接口。 */
+            class WorkerTools {
+                /**
+                 * 执行耗时数学计算的 Worker。
+                 *
+                 * @type {SyncWorker}
+                 */
+                static _mathWorker = new SyncWorker({
+                    callableFunctions: {
+                        /** 设置 Worker 的计算精度。 */
+                        setCalcAccuracy: (acc) => CalcConfig.globalCalcAccuracy = acc,
+                        /** 获取 Worker 的计算精度。 */
+                        getCalcAccuracy: () => CalcConfig.globalCalcAccuracy,
+                        /** 设置 Worker 的输出精度。 */
+                        setOutputAccuracy: (acc) => CalcConfig.outputAccuracy = acc,
+                        /** 获取 Worker 的输出精度。 */
+                        getOutputAccuracy: () => CalcConfig.outputAccuracy,
+                        /** 设置 Worker 的输出模式。 */
+                        setPrintMode: (mode) => CalcConfig.globalPrintMode = mode,
+                        /** 获取 Worker 的输出模式。 */
+                        getPrintMode: () => CalcConfig.globalPrintMode,
+                        /** 初始化 Worker 计算环境。 */
+                        initEnv: ({calcAcc, outputAcc, printMode}) => {
+                            CalcConfig.globalCalcAccuracy = calcAcc;
+                            CalcConfig.outputAccuracy = outputAcc;
+                            CalcConfig.globalPrintMode = printMode;
+                        },
+                        /** 分析多项式函数。 */
+                        powerFunctionAnalysis: (list) => PowerFunctionTools.powerFunctionAnalysis(list),
+                        /** 计算统计结果。 */
+                        statisticsCalc: (listA, listB) => StatisticsTools.statisticsCalc(listA, listB),
+                        /** 分析复数根式。 */
+                        radicalFunctionAnalysis: (z, n) => RadicalFunctionTools.radicalFunctionAnalysis(z, n),
+                        /** 生成函数值列表。 */
+                        valueList: (f, g, start, step, end) => FuncValueListTools.valueList(f, g, start, step, end),
+                        /** 执行表达式计算。 */
+                        exec: (expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) => CalcTools.exec(expr, {
+                            calcAcc: calcAcc,
+                            outputAcc: outputAcc,
+                            calcMode: calcMode,
+                            outputMode: outputMode,
+                            f: f,
+                            g: g
+                        })
+                    },
+                    dependencies: [
+                        {name: 'TokenConfig', value: TokenConfig},
+                        {name: 'Public', value: Public},
+                        {name: 'CalcConfig', value: CalcConfig},
+                        {name: 'BigNumber', value: BigNumber},
+                        {name: 'ComplexNumber', value: ComplexNumber},
+                        {name: 'MathPlus', value: MathPlus},
+                        {name: 'PowerFunctionTools', value: PowerFunctionTools},
+                        {name: 'StatisticsTools', value: StatisticsTools},
+                        {name: 'RadicalFunctionTools', value: RadicalFunctionTools},
+                        {name: 'FuncValueListTools', value: FuncValueListTools},
+                        {name: 'CalcTools', value: CalcTools}
+                    ]
                 });
-            } catch (e) {
-                // 如果错误是因为手动终止或取消引起的，直接向上抛出，不要尝试自动重启
-                if (e.name === 'TerminationError' || e.name === 'CancellationError') {
-                    throw e;
+
+                /**
+                 * Worker 任务的默认超时时间（毫秒）。
+                 *
+                 * @private
+                 * @type {number}
+                 */
+                static _WORKER_TIMEOUT = 60000;
+
+                /**
+                 * Worker 是否处于重启状态。
+                 *
+                 * @private
+                 * @type {boolean}
+                 */
+                static _isRestarting = false;
+
+                /**
+                 * 阻止实例化静态工具类。
+                 *
+                 * @throws {Error} 始终抛出。
+                 */
+                constructor() {
+                    throw new Error('[WorkerTools] WorkerTools is a static class and should not be instantiated.');
                 }
 
-                if (WorkerTools._isRestarting) {
-                    // 如果正在重启，直接抛出错误，不再触发新的重启
-                    const err = new Error('[WorkerTools] Worker is restarting, request aborted.');
-                    err.name = 'TerminationError';
-                    throw err;
+                /**
+                 * 判断 Worker 是否可用。
+                 *
+                 * @readonly
+                 * @type {boolean}
+                 */
+                static get isReady() {
+                    return this._mathWorker !== null && !this._mathWorker.isTerminated;
                 }
 
-                // 只有非人为的意外错误（如超时、内部崩溃），才执行自动重启机制
-                WorkerTools._isRestarting = true;
-                try {
-                    if (this._mathWorker) {
-                        this._mathWorker.terminate();
-                        this._mathWorker.restart();
+                /**
+                 * 分发 Worker 任务，并在意外失败后恢复 Worker 状态。
+                 *
+                 * @private
+                 * @template T
+                 * @param {string} funcName - 数学 Worker 已注册的公开函数名；意外崩溃重启后会以同一名称重试。
+                 * @param {Array} args - 可结构化克隆的位置参数；本方法会整体传给 `SyncWorker.exec`，不会改动
+                 *   数组内容。每次分发统一使用 `_WORKER_TIMEOUT` 作为最长执行时间。
+                 * @returns {Promise<T>} 目标 Worker 方法的原始结果；仅 Worker 意外终止类故障会触发重启，
+                 *   业务计算错误、取消和超时保持原拒绝原因，不被包装成成功值。
+                 */
+                static async _dispatch(funcName, args = []) {
+                    try {
+                        return await this._mathWorker.exec(funcName, {
+                            args,
+                            timeout: this._WORKER_TIMEOUT
+                        });
+                    } catch (e) {
+                        // 主动终止或取消不触发自动恢复。
+                        if (e.name === 'TerminationError' || e.name === 'CancellationError') {
+                            throw e;
+                        }
+
+                        if (WorkerTools._isRestarting) {
+                            const err = new Error('[WorkerTools] Worker is restarting, request aborted.');
+                            err.name = 'TerminationError';
+                            throw err;
+                        }
+
+                        WorkerTools._isRestarting = true;
+                        try {
+                            // 意外错误会重建 Worker 并恢复配置；失败的当前请求不自动重放，防止副作用重复。
+                            if (this._mathWorker) {
+                                this._mathWorker.terminate();
+                                this._mathWorker.restart();
+                            }
+                            await WorkerTools._restoreState();
+                        } finally {
+                            WorkerTools._isRestarting = false;
+                        }
+
+                        // 恢复 Worker 后仍向调用方报告本次失败。
+                        throw e;
                     }
-                    await WorkerTools._restoreState();
-                } finally {
-                    WorkerTools._isRestarting = false;
                 }
 
-                // 抛出错误
-                // 这样上层调用者才知道本次任务失败了，尽管 Worker 已经重启准备好处理下一次任务了。
-                throw e;
+                /**
+                 * 将主线程配置恢复到重启后的 Worker。
+                 *
+                 * @private
+                 * @returns {Promise<void>}
+                 */
+                static async _restoreState() {
+                    // 直接调用 Worker，避免恢复失败再次触发重启。
+                    await this._mathWorker.exec('initEnv', {
+                        args: [{
+                            calcAcc: CalcConfig.globalCalcAccuracy,
+                            outputAcc: CalcConfig.outputAccuracy,
+                            printMode: CalcConfig.globalPrintMode
+                        }]
+                    });
+                }
+
+                /**
+                 * 重启 Worker 并恢复配置。
+                 *
+                 * @returns {Promise<void>}
+                 */
+                static async restart() {
+                    if (this._mathWorker) {
+                        WorkerTools.cancelWorker();
+                        this._mathWorker.restart();
+                        await WorkerTools._restoreState();
+                    }
+                }
+
+                /**
+                 * 取消所有正在执行或排队的任务。
+                 *
+                 * @returns {void}
+                 */
+                static cancelWorker() {
+                    if (!this._mathWorker || this._mathWorker.isTerminated) {
+                        return;
+                    }
+
+                    this._mathWorker.cancel();
+                }
+
+                /**
+                 * 设置 Worker 的默认计算精度。
+                 *
+                 * @param {number} [acc] - 1 到 Worker 支持上限之间的正整数有效位数；省略时由 Worker 端恢复
+                 *   预设计算精度。设置会保留到 Worker 重启后的状态恢复流程中。
+                 * @returns {Promise<number>} Worker 校验后实际保存的正整数计算精度；省略参数时返回预设值。
+                 */
+                static setCalcAccuracy(acc) {
+                    return this._dispatch('setCalcAccuracy', [acc]);
+                }
+
+                /**
+                 * 获取 Worker 的默认计算精度。
+                 *
+                 * @returns {Promise<number>} Worker 当前上下文中的正整数有效位数，不读取主线程缓存。
+                 */
+                static getCalcAccuracy() {
+                    return this._dispatch('getCalcAccuracy');
+                }
+
+                /**
+                 * 设置 Worker 的默认输出精度。
+                 *
+                 * @param {number} [acc] - 输出精度策略：大于等于 1 表示绝对有效位数，`(0, 1)` 表示相对
+                 *   计算精度的比例，非正值表示保留计算精度；省略时由 Worker 端采用其预设值。
+                 * @returns {Promise<number>} Worker 规范化并保存的输出精度策略值；绝对位数可能受计算精度限制。
+                 */
+                static setOutputAccuracy(acc) {
+                    return this._dispatch('setOutputAccuracy', [acc]);
+                }
+
+                /**
+                 * 获取 Worker 的默认输出精度。
+                 *
+                 * @returns {Promise<number>} Worker 当前输出精度策略的原始数值，可能是绝对位数、比例或非正值。
+                 */
+                static getOutputAccuracy() {
+                    return this._dispatch('getOutputAccuracy');
+                }
+
+                /**
+                 * 设置 Worker 的复数输出模式。
+                 *
+                 * @param {'algebra'|'polar'} mode - 后续格式化任务采用的复数形式；`algebra` 输出实部/虚部，
+                 *   `polar` 输出模/辐角。无效值由 Worker 的 `CalcConfig` 校验并拒绝。
+                 * @returns {Promise<'algebra'|'polar'>} Worker 校验后实际保存的复数输出模式。
+                 */
+                static setPrintMode(mode) {
+                    return this._dispatch('setPrintMode', [mode]);
+                }
+
+                /**
+                 * 获取 Worker 的复数输出模式。
+                 *
+                 * @returns {Promise<'algebra'|'polar'>} Worker 当前复数输出模式，不读取主线程缓存。
+                 */
+                static getPrintMode() {
+                    return this._dispatch('getPrintMode');
+                }
+
+                /**
+                 * 分析四次及以下多项式的区间、极值、拐点和根。
+                 *
+                 * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 最多五个、按降幂排列的
+                 *   实系数；参数通过结构化克隆传入 Worker，调用期间不会修改主线程数组。
+                 * @returns {Promise<PowerFunctionAnalysisResult>} 与同步分析器完全同构的结果；区间、点和根均已
+                 *   格式化为字符串，哨兵值的含义见 `PowerFunctionAnalysisResult`。
+                 */
+                static powerFunctionAnalysis(list) {
+                    return this._dispatch('powerFunctionAnalysis', [list]);
+                }
+
+                /**
+                 * 计算两组数据的统计指标与回归模型。
+                 *
+                 * @param {Array<ComplexNumber|string|number>} listA - 非空实数自变量样本；必须和 `listB` 等长，
+                 *   相同索引组成一个观测点。
+                 * @param {Array<ComplexNumber|string|number>} listB - 非空实数因变量样本；样本数量决定可拟合的
+                 *   回归阶数，传输后主线程中的数组仍保持可用。
+                 * @returns {Promise<StatisticsAnalysisResult>} 与同步统计器完全同构的固定字段对象；所有七种
+                 *   回归模型即使不可计算也保留各自的 `RegressionModelResult` 占位结构。
+                 */
+                static statisticsCalc(listA, listB) {
+                    return this._dispatch('statisticsCalc', [listA, listB]);
+                }
+
+                /**
+                 * 计算复数的 n 次方根。
+                 *
+                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} z - 任意可解析的实数或复数被开方数。
+                 * @param {ComplexNumber|string|number|bigint|BigNumber|Array} n - 经精度修正后必须为纯实正整数；
+                 *   过大的 `n` 仍计算通式，但数值解只返回配置允许的前若干项。
+                 * @returns {Promise<{z:string,n:string,formula:string,kRange:[string,string],numericalResults:Array<string>,overflow:boolean}>}
+                 *   规范化输入、含 `[k]` 的根通式、完整序号范围、受展示上限约束的数值根以及截断标记。
+                 */
+                static radicalFunctionAnalysis(z, n) {
+                    return this._dispatch('radicalFunctionAnalysis', [z, n]);
+                }
+
+                /**
+                 * 按范围和步长生成 f(x)、g(x) 的函数值列表。
+                 *
+                 * @param {string} f - 内部词元格式的 `f(x)` 表达式；可以引用 `g(x)`，逐点错误单独返回。
+                 * @param {string} g - 内部词元格式的 `g(x)` 表达式；可以引用 `f(x)`，与 `f` 共享自变量区间。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} start - 纯实闭区间起点，必须不大于 `end`。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格为正的纯实增量；不会为命中终点而调整。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 纯实闭区间终点；结果数超过上限时截断并标记省略。
+                 * @returns {Promise<{varList:Array<string>,f:Array<string>,g:Array<string>}>} 三个索引对齐的数组；
+                 *   单点错误和超出展示上限时使用的尾部哨兵与同步 `FuncValueListTools.valueList` 一致。
+                 */
+                static valueList(f, g, start, step, end) {
+                    return this._dispatch('valueList', [f, g, start, step, end]);
+                }
+
+                /**
+                 * 在 Worker 中计算数学表达式。
+                 *
+                 * @param {string} expr - 内部数学词元表达式；在 Worker 中解析，返回值包含其规范化形式。
+                 * @param {object} [options={}] - 仅覆盖本任务的计算上下文；省略字段时使用 Worker 当前默认配置。
+                 * @param {number} [options.calcAcc] - 本任务及其嵌套函数调用使用的正整数有效位数；不持久化。
+                 * @param {number} [options.outputAcc] - 本任务的最终显示精度，可用绝对位数、比例或非正跟随值。
+                 * @param {'calc'|'syntaxCheck'} [options.calcMode='calc'] - 计算或语法检查模式。
+                 * @param {'output'|'mid'} [options.outputMode='output'] - `output` 返回显示字符串，`mid` 保留可继续
+                 *   计算的内部表示；后者的结果类型不能按普通字符串消费。
+                 * @param {string} [options.f] - 本任务中 `[f]` 对应的函数体，可引用 `[x]`、`[g]`。
+                 * @param {string} [options.g] - 本任务中 `[g]` 对应的函数体，可引用 `[x]`、`[f]`。
+                 * @returns {Promise<{result:string|[[number,bigint,number],[number,bigint,number]],expr:string}>}
+                 *   `result` 的形态由 `outputMode` 决定：显示字符串或复数内部二元组；`expr` 始终为规范化表达式。
+                 */
+                static exec(expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) {
+                    return this._dispatch('exec', [expr, {calcAcc, outputAcc, calcMode, outputMode, f, g}]);
+                }
             }
-        }
 
-        /**
-         * @private
-         * @static
-         * @method _restoreState
-         * @description Worker 重启后，恢复主线程的配置到新 Worker 中。
-         * 注意：这里直接使用 _mathWorker.exec 而不是 _dispatch，防止递归死循环。
-         */
-        static async _restoreState() {
-            // 让错误直接冒泡，如果恢复配置失败，整个重启流程应该被视为失败
-            await this._mathWorker.exec('initEnv', {
-                args: [{
-                    calcAcc: CalcConfig.globalCalcAccuracy,
-                    outputAcc: CalcConfig.outputAccuracy,
-                    printMode: CalcConfig.globalPrintMode
-                }]
-            });
-        }
-
-        /**
-         * @static
-         * @async
-         * @method restart
-         * @description 重启 worker。
-         * @returns {void} 此方法没有返回值。
-         */
-        static async restart() {
-            if (this._mathWorker) {
-                WorkerTools.cancelWorker();
-                this._mathWorker.restart();
-                await WorkerTools._restoreState();
-            }
-        }
-
-        /**
-         * @static
-         * @method cancelWorker
-         * @description 立即取消所有正在执行或排队的任务。
-         *
-         * 此方法执行“软取消”策略，旨在最大化 UI 响应速度并最小化资源消耗：
-         * 1. **逻辑取消 (UI 立即响应)**: 调用 `SyncWorker.cancelPrint()`。这会立即清空主线程的任务队列，并以 `CancellationError` 拒绝所有等待中的 Promise。前端 UI 可以立刻停止加载动画，无需等待后台计算实际结束。
-         * 2. **消息丢弃 (资源管理)**: 向 Worker 发送取消信号。如果 Worker 正在进行密集的同步计算，它可能无法立即中断，但当它最终完成并返回结果时，主线程的 `SyncWorker` 会因为任务 ID 已被移除而直接丢弃该结果，不会触发回调。
-         *
-         * @returns {void}
-         */
-        static cancelWorker() {
-            // 1. 检查 Worker 是否存在且可用，避免空指针错误
-            if (!this._mathWorker || this._mathWorker.isTerminated) {
-                return;
-            }
-
-            // 2. 执行取消
-            // 这会同步地 reject 所有 Promise 并清理 Map，随后向 Worker 发送 postMessage
-            this._mathWorker.cancel();
-        }
-
-        /**
-         * @static
-         * @method setCalcAccuracy
-         * @description 在 Web Worker 中异步地为所有新的 BigNumber 和 ComplexNumber 实例设置全局默认计算精度。
-         * 此设置将影响所有后续在该 Worker 中执行的计算。
-         * @param {number|undefined} [acc] - (可选) 要设置的精度值。如果省略此参数，方法将使用预设的默认精度值。若提供，则必须是 1 到 CalcConfig._maxGlobalAccuracy 之间的整数。
-         * @returns {Promise<number>} 一个 Promise，它会解析为在 Worker 中成功设置的新精度值。
-         * @throws {Error} 如果输入值无效或 Worker 发生错误，Promise 将被拒绝。
-         */
-        static setCalcAccuracy(acc) {
-            return this._dispatch('setCalcAccuracy', [acc]);
-        }
-
-        /**
-         * @static
-         * @method getCalcAccuracy
-         * @description 在 Web Worker 中异步地获取当前的全局默认计算精度。
-         * 此精度值用于所有在该 Worker 中新创建的 BigNumber 和 ComplexNumber 实例的内部计算。
-         * @returns {Promise<number>} 一个 Promise，它会解析为 Worker 中的当前计算精度值。
-         */
-        static getCalcAccuracy() {
-            return this._dispatch('getCalcAccuracy');
-        }
-
-        /**
-         * @static
-         * @method setOutputAccuracy
-         * @description 在 Web Worker 中异步地为所有后续的格式化输出设置全局默认精度。
-         * 此设置将影响所有后续在该 Worker 中执行的 `idealizationToString` 等函数的默认行为。
-         * 它与 `setCalcAccuracy` 设置的内部计算精度是分开的。
-         * @param {number|undefined} [acc] - (可选) 要设置的输出精度。
-         *   - 如果省略，将重置为 Worker 中当前的计算精度。
-         *   - 如果是大于 1 的整数，它代表绝对的有效数字位数。
-         *   - 如果是 (0, 1] 之间的浮点数，它代表输出精度与当前计算精度的比率。
-         * @returns {Promise<number>} 一个 Promise，它会解析为在 Worker 中成功设置的新输出精度值。
-         * @throws {Error} 如果输入值无效或 Worker 发生错误，Promise 将被拒绝。
-         */
-        static setOutputAccuracy(acc) {
-            return this._dispatch('setOutputAccuracy', [acc]);
-        }
-
-        /**
-         * @static
-         * @method getOutputAccuracy
-         * @description 在 Web Worker 中异步地获取用于格式化输出的当前全局默认精度。
-         * 此精度值由 `idealizationToString` 等函数在 Worker 内部使用。
-         * @returns {Promise<number>} 一个 Promise，它会解析为 Worker 中的当前输出精度值。
-         */
-        static getOutputAccuracy() {
-            return this._dispatch('getOutputAccuracy');
-        }
-
-        /**
-         * @static
-         * @method setPrintMode
-         * @description 在 Web Worker 中异步地为复数转换为字符串设置默认打印模式。
-         * 此设置将影响所有后续在该 Worker 中执行的 `ComplexNumber.prototype.toString` 的行为。
-         * @param {string} mode - 要设置的打印模式。必须是 'algebra' (代数形式, a+bi) 或 'polar' (极坐标形式, r∠θ) 之一。
-         * @returns {Promise<string>} 一个 Promise，它会解析为在 Worker 中成功设置的新打印模式字符串。
-         * @throws {Error} 如果提供的模式无效或 Worker 发生错误，Promise 将被拒绝。
-         * @example
-         * WorkerTools.setPrintMode('polar').then(newMode => console.log(`Print mode set to: ${newMode}`));
-         */
-        static setPrintMode(mode) {
-            return this._dispatch('setPrintMode', [mode]);
-        }
-
-        /**
-         * @static
-         * @method getPrintMode
-         * @description 在 Web Worker 中异步地获取复数转换为字符串时的默认打印模式。
-         * @returns {Promise<string>} 一个 Promise，它会解析为 Worker 中的当前打印模式 ('algebra' 或 'polar')。
-         */
-        static getPrintMode() {
-            return this._dispatch('getPrintMode');
-        }
-
-        /**
-         * @static
-         * @method powerFunctionAnalysis
-         * @description 在 Web Worker 中异步地分析一个最高为四次的多项式实函数，确定其关键属性。
-         * 该方法通过微积分（导数）来确定函数的单调性、极值、凹凸性和拐点，并求解其根。
-         * 将计算移至 Worker 线程可以防止复杂分析阻塞主线程，从而保持用户界面的响应性。
-         * @param {Array<string|number|bigint|BigNumber|ComplexNumber|Array>} list - 多项式的系数数组，从最高次项到常数项排列。
-         * 例如，对于函数 f(x) = ax⁴ + bx³ + cx² + dx + e, 输入应为 `[a, b, c, d, e]`。
-         * 该函数能处理 4、3、2、1 和 0 次多项式。
-         * @returns {Promise<object>} 一个 Promise，它会解析为一个包含函数分析结果的对象。该对象的属性包括：
-         * - `range`: `[string, string]` 函数的值域。
-         * - `increasingInterval`: `Array<[string, string]>` 函数的单调递增区间。
-         * - `decreasingInterval`: `Array<[string, string]>` 函数的单调递减区间。
-         * - `maximumPoint`: `Array<[string, string]>` 局部极大值点 `[x, y]`。
-         * - `minimumPoint`: `Array<[string, string]>` 局部极小值点 `[x, y]`。
-         * - `convexInterval`: `Array<[string, string]>` 函数的凸区间（凹向上）。
-         * - `concaveInterval`: `Array<[string, string]>` 函数的凹区间（凹向下）。
-         * - `inflectionPoint`: `Array<[string, string]>` 拐点 `[x, y]`。
-         * - `roots`: `Array<string>` 函数的实数根和复数根。
-         * @throws {Error} 如果输入无效或 Worker 发生错误，Promise 将被拒绝。
-         */
-        static powerFunctionAnalysis(list) {
-            return this._dispatch('powerFunctionAnalysis', [list]);
-        }
-
-        /**
-         * @static
-         * @method statisticsCalc
-         * @description 在 Web Worker 中异步地对两个数据集（自变量和因变量）执行全面的统计分析和多模型回归。
-         * 将此计算密集型任务移至 Worker 线程可以防止阻塞主线程，从而保持用户界面的响应性。
-         * 该方法计算每个数据集的基本统计数据，它们之间的相关性，并拟合多种回归模型
-         * （线性、二次、对数、幂、指数、反比例），为每个模型提供其参数和决定系数 (R²)。
-         * 最后，它会根据 R² 值确定最佳拟合模型。
-         * @param {Array<ComplexNumber|string|number>} listA - 自变量数据集 (x-values)。数组中的每个元素都将被转换为 ComplexNumber。
-         * @param {Array<ComplexNumber|string|number>} listB - 因变量数据集 (y-values)。数组中的每个元素都将被转换为 ComplexNumber。
-         * @returns {Promise<object>} 一个 Promise，它会解析为一个包含详细统计和回归分析结果的对象。
-         * @throws {Error} 如果输入无效或 Worker 发生错误，Promise 将被拒绝。
-         */
-        static statisticsCalc(listA, listB) {
-            return this._dispatch('statisticsCalc', [listA, listB]);
-        }
-
-        /**
-         * @static
-         * @method radicalFunctionAnalysis
-         * @description 在 Web Worker 中异步地计算复数 z 的 n 次方根，并以结构化的对象形式返回结果。
-         * 将此计算移至 Worker 线程可以防止复杂分析阻塞主线程。
-         * 结果包括通项公式、k 的取值范围以及前几个数值解。
-         * @param {ComplexNumber|string|number|bigint|BigNumber|Array} z - 需要开方的复数（被开方数）。
-         * @param {ComplexNumber|string|number|bigint|BigNumber|Array} n - 根指数，必须是一个正整数。
-         * @returns {Promise<object>} 一个 Promise，它会解析为一个包含分析结果的对象，其属性包括：
-         * - `formula`: {string} 根的通项公式字符串。
-         * - `kRange`: {[string, string]} 整数 k 的取值范围，格式为 `['0', 'n-1']`。
-         * - `numericalResults`: {Array<string>} 一个字符串数组，包含从 k=0 开始的数值解。
-         * @throws {Error} 如果输入无效或 Worker 发生错误，Promise 将被拒绝。
-         */
-        static radicalFunctionAnalysis(z, n) {
-            return this._dispatch('radicalFunctionAnalysis', [z, n]);
-        }
-
-        /**
-         * @static
-         * @method valueList
-         * @description 在 Web Worker 中异步地在指定的实数范围内，以固定的步长为两个可能相互依赖的函数 f(x) 和 g(x) 生成数值列表。
-         * 将此计算移至 Worker 线程可以防止复杂计算阻塞主线程。
-         * 该方法允许 f(x) 的表达式调用 g(x)，反之亦然，从而支持联立或递归的函数求值。
-         * @param {string} f - 第一个函数的表达式字符串。表达式中可以使用 'x' 作为变量，并可以调用 g(x)。
-         * @param {string} g - 第二个函数的表达式字符串。表达式中可以使用 'x' 作为变量，并可以调用 f(x)。
-         * @param {string|number|BigNumber|ComplexNumber|Array} start - 区间的起始值。
-         * @param {string|number|BigNumber|ComplexNumber|Array} step - 区间内每一步的增量。
-         * @param {string|number|BigNumber|ComplexNumber|Array} end - 区间的结束值。必须为实数，且不小于起始值。
-         * @returns {Promise<object>} 一个 Promise，它会解析为一个包含三个数组的对象：
-         * - `varList`: 在指定范围内生成的所有自变量 `x` 的值列表。
-         * - `f`: 函数 f(x) 在每个自变量点上的计算结果列表。
-         * - `g`: 函数 g(x) 在每个自变量点上的计算结果列表。
-         * 如果某个点的计算失败，对应的数组元素将是字符串 'error'。
-         * @throws {Error} 如果输入无效或 Worker 发生错误，Promise 将被拒绝。
-         * @example
-         * // 异步计算 f(x) = x^2 和 g(x) = f(x) - 1 在 x 从 1 到 3，步长为 1 时的值
-         * WorkerTools.valueList('x^2', 'f(x)-1', 1, 1, 3)
-         *   .then(results => console.log(results));
-         * // 异步地返回: { f: ['1', '4', '9'], g: ['0', '3', '8'] }
-         */
-        static valueList(f, g, start, step, end) {
-            return this._dispatch('valueList', [f, g, start, step, end]);
-        }
-
-        /**
-         * @static
-         * @method exec
-         * @description 在 Web Worker 中异步地执行一个数学表达式的计算。
-         * 此方法将计算任务分派到后台线程，以防止复杂或耗时的计算阻塞主 UI 线程，从而保持用户界面的响应性。
-         * 它允许为单次计算临时覆盖 Worker 的全局计算和输出精度，并在计算完成后自动恢复，确保了操作的隔离性。
-         *
-         * @param {string} expr - 要计算的数学表达式字符串。
-         * @param {object} [options={}] - 可选的配置对象，用于控制计算的各个方面。
-         * @param {number} [options.calcAcc] - 本次计算使用的内部计算精度。如果未提供，则使用 Worker 中的当前默认值。
-         * @param {number} [options.outputAcc] - 本次计算结果输出时使用的精度。如果未提供，则使用 Worker 中的当前默认值。
-         * @param {string} [options.calcMode='calc'] - 控制 `MathPlus.calc` 的行为模式。
-         *   - 'calc': (默认) 解析并计算表达式。
-         *   - 'syntaxCheck': 仅检查语法并格式化表达式，不执行计算。
-         * @param {string} [options.outputMode='output'] - 控制返回结果中 `result` 字段的格式。
-         *   - 'output': (默认) 返回一个理想化的、用户友好的字符串。
-         *   - 'mid': 返回 `ComplexNumber` 的内部数组表示 `[[power, mantissa, acc], [power, mantissa, acc]]`，用于进一步的计算或序列化。
-         * @param {string} [options.f] - 自定义函数 'f(x)' 的表达式字符串。
-         * @param {string} [options.g] - 自定义函数 'g(x)' 的表达式字符串。
-         * @returns {Promise<{result: string|Array, expr: string}>} 一个 Promise，它会解析为一个包含两部分结果的对象：
-         * - `result`: {string|Array} 计算结果。根据 `mode[1]` 的设置，可以是格式化的字符串或内部数组表示。
-         * - `expr`: {string} `MathPlus.calc` 返回的格式化后的表达式字符串。
-         * @throws {Error} 如果表达式解析或计算过程中发生错误，Promise 将被拒绝。
-         * @example
-         * async function calculate() {
-         *   try {
-         *     const { result, expr } = await WorkerTools.exec('sin(pi/2)', { outputAcc: 10 });
-         *     console.log(`Formatted Expression: ${expr}`); // "sin(pi/2)"
-         *     console.log(`Result: ${result}`); // "1"
-         *   } catch (error) {
-         *     console.error('Calculation failed:', error);
-         *   }
-         * }
-         */
-        static exec(expr, {calcAcc, outputAcc, calcMode, outputMode, f, g} = {}) {
-            return this._dispatch('exec', [expr, {calcAcc, outputAcc, calcMode, outputMode, f, g}]);
-        }
-    }
-
-    // 导出对象
-    window.SyncWorker = SyncWorker;
-    window.WorkerTools = WorkerTools;
-})();
+            window.SyncWorker = SyncWorker;
+            window.WorkerTools = WorkerTools;
+        })();

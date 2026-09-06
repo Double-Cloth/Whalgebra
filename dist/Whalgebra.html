@@ -4928,8 +4928,7 @@
                  *
                  * @private
                  * @param {Array<ComplexNumber|string|number>} list - 要遍历的源数组；保持元素顺序且不原地修改。
-                 * @param {function(ComplexNumber|string|number, number, Array): ComplexNumber} func - 同步变换函数；
-                 *   按 `Array#map` 的 `(item, index, list)` 语义调用，返回值应能作为 `ComplexNumber` 使用。
+                 * @param {function(ComplexNumber|string|number): ComplexNumber} func - 同步变换函数，对数组中的每个元素使用 func()；
                  * @returns {Array<ComplexNumber>} 一个包含变换后结果的新数组，其中每个元素都是 ComplexNumber 实例。
                  */
                 static _changeInner(list, func) {
@@ -5176,6 +5175,7 @@
                  *   `list[i]²` 的高精度值，供 `dotA2B` 复用而无需再次平方。
                  */
                 static _getStatisticsInfo(list, {averageAndSum = null, varianceList = null} = {}) {
+                    /** @type {StatisticsSummary} */
                     const statisticsResult = {};
 
                     averageAndSum = averageAndSum === null ? StatisticsTools._averageAndSum(list) : averageAndSum;
@@ -7772,6 +7772,7 @@
                             dealMode = PageConfig.currentMode;
                         }
 
+                        // 统计模式使用 [row, column] 坐标，其余模式使用固定字符串枚举。
                         if (dealMode === '1') {
                             if (!Array.isArray(name)) {
                                 name = name.split(',');
@@ -7874,6 +7875,7 @@
                         throw new Error('[PageConfig] Unsupported mode');
                     }
 
+                    // 标题和屏幕切换仍需读取旧模式，因此必须在覆写 _currentMode 前执行。
                     PageControlTools.changeTitle(mode);
                     PageControlTools.changeScreen(mode);
 
@@ -7881,6 +7883,7 @@
                     HtmlTools.getHtml(`#mode_${PageConfig._currentMode[0]}`).classList.remove('SelectionOn');
                     HtmlTools.getHtml(`#print_content_${PageConfig._currentMode[0].slice(0, 1)}`).classList.add('NoDisplay');
                     PageConfig._currentMode = mode;
+                    // 虚拟统计表只在统计模式保持运行，离开时暂停以免隐藏容器参与测量。
                     if (mode === '1') {
                         if (InputManager.statisticsRenderer.isPaused()) {
                             InputManager.statisticsRenderer.resume();
@@ -8011,6 +8014,7 @@
                     }
 
                     const secondaryKeyboard = [...HtmlTools.getHtml('.SecondaryKeyboard', -1)];
+                    // 配置索引与二级键帽的 DOM 顺序一一对应，type 直接选择主、副标签。
                     for (let i = 0; i < secondaryKeyboard.length; i++) {
                         const index = secondaryKeyboard[i];
 
@@ -8021,12 +8025,14 @@
                         );
                     }
 
+                    // 仅层级实际变化时同步“2nd”按钮状态，重复赋值只重绘键帽。
                     if (PageConfig._keyboardType !== type) {
                         PageControlTools.changeSubKeyboard('_2nd_');
                     }
 
                     PageConfig._keyboardType = type;
                     PageControlTools.keyboardFuncBecomeX();
+                    // 界面更新已经完成；持久化失败不回滚当前会话状态。
                     try {
                         localStorage.setItem('keyboardType', type.toString());
                     } catch {
@@ -8151,6 +8157,7 @@
                             return;
                         }
 
+                        // 统计键兼容单元格坐标补丁和完整二维表，首项不是数组时按坐标补丁解释。
                         if (key === '1' && !Array.isArray(value[0])) {
                             const [row, col, newVal] = value;
                             const targetMatrix = PageConfig._screenData['1'];
@@ -8168,6 +8175,7 @@
                             return;
                         }
 
+                        // 完整数组使用深拷贝，防止调用方后续原地修改绕过 setter 的同步副作用。
                         const val = Array.isArray(value) ? structuredClone(value) : value;
                         PageConfig._screenData[key] = val;
 
@@ -8200,6 +8208,7 @@
                         name = currentMode === '1' ? '1' : currentMode + PageConfig.subModes[currentMode];
                     }
 
+                    // 统计网格编辑时已直接回写数据；只有普通子屏需要从 DOM 反向提取表达式。
                     if (name !== '1') {
                         const target = HtmlTools.getHtml(`#screen_input_inner_${name}`);
                         PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
@@ -8421,6 +8430,7 @@
                         return;
                     }
 
+                    // replace 模式先清空目标，随后仍通过 fragment 一次性挂载新节点。
                     if (mode === 'replace') {
                         InputManager.ac({acArea: parentElement});
                     }
@@ -8446,6 +8456,7 @@
                                 element.setAttribute(nameType[i], name[i]);
                             }
                         } else if (typeof name === 'string') {
+                            // 字符串前缀允许调用方越过默认属性，显式指定 id 或 class。
                             if (name.startsWith('[id]')) {
                                 element.id = name.slice(4);
                             } else if (name.startsWith('[class]')) {
@@ -8464,6 +8475,7 @@
                         return;
                     }
 
+                    // 只有未提供显式参照节点时，才把 index 转换为 insertBefore 的锚点。
                     if (!referenceNode && index !== -1) {
                         referenceNode = targetParent.children[index];
                     }
@@ -9760,6 +9772,7 @@
                  * @returns {void}
                  */
                 _buildDOM() {
+                    // 先回收渲染窗口内的节点，再丢弃旧 spacer 与容器骨架。
                     this._recycleRenderedNodes();
 
                     if (this._spacerTop?.parentNode === this.container) {
@@ -9771,6 +9784,7 @@
 
                     this.container.replaceChildren();
 
+                    // spacer 只贡献滚动高度，不应产生可见内容、边距或字体排版。
                     const applySpacerStyle = (el) => Object.assign(el.style, {
                         display: 'block',
                         width: '100%',
@@ -9800,6 +9814,7 @@
                     this._startIndex = -1;
                     this._endIndex = -1;
 
+                    // 空渲染窗口也要写入完整占位高度，确保首次滚动范围正确。
                     const hm = this._heightMapper;
                     const {top, bottom} = hm.calcSpacerHeights(
                         0, 0, this.totalCount, this.itemHeight
@@ -10009,6 +10024,7 @@
                     this._calcBufferSize();
                     this._heightMapper.update(this.totalCount, this.itemHeight, newH);
 
+                    // 用逻辑行锚点重算位置，避免压缩映射变化后物理 scrollTop 指向另一行。
                     const exactVirtScroll = (this._anchorIndex + this._anchorRatio) * this.itemHeight;
                     const maxVirt = this._heightMapper._effV;
                     const clampedVirt = Math.min(exactVirtScroll, Math.max(0, maxVirt));
@@ -10062,6 +10078,7 @@
                         }
 
                         try {
+                            // 重测会重建 spacer，先保存逻辑锚点才能在新行高下恢复阅读位置。
                             const savedAnchorIndex = this._anchorIndex;
                             const savedAnchorRatio = this._anchorRatio;
 
@@ -10350,6 +10367,7 @@
                         let visibleStart = Math.floor(virtScrollTop / this.itemHeight);
                         let start = Math.max(0, visibleStart - this.bufferSize);
 
+                        // 在变更渲染窗口前记录当前逻辑锚点，供尺寸变化和重测恢复位置。
                         this._updateAnchor();
 
                         let visibleEnd = visibleStart + Math.ceil(clientHeight / this.itemHeight);
@@ -10361,6 +10379,7 @@
                             start, end, this.totalCount, this.itemHeight, clampedPhysScrollTop
                         );
 
+                        // 压缩映射可能产生负的顶部补偿量，此时通过负 margin 表达而非负 height。
                         if (spacerTopPx < 0) {
                             this._spacerTop.style.height = '0px';
                             this._spacerTop.style.marginTop = `${spacerTopPx}px`;
@@ -10621,12 +10640,14 @@
                  * @returns {void}
                  */
                 _teardown(_keepContainer) {
+                    // 先停止所有可能再次触发渲染的事件、动画和滚动任务。
                     this._unbindScroll();
                     this._unbindResize();
                     this._unbindUserInterrupt();
                     this._cancelAllRAF();
                     this._cancelSmoothScrollSilent();
 
+                    // 再释放节点缓存与待处理队列，避免残留任务继续引用旧数据。
                     this._nodePool.clear();
                     this._renderedNodes.clear();
                     this._pendingScrollQueue = [];
@@ -10640,6 +10661,7 @@
                         }
                     }
 
+                    // 最后清空容器引用和测量状态，使实例回到不可渲染的基线。
                     this._originalContainerStyle = null;
                     this._spacerTop = null;
                     this._spacerBottom = null;
@@ -10791,6 +10813,7 @@
 
                         this._resolveContainer();
 
+                        // 数据长度变化前先保存逻辑偏移，resetScroll=false 时才能跨映射恢复位置。
                         const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
 
                         this.data = data;
@@ -10936,6 +10959,7 @@
                             );
                         }
 
+                        // 多次定位只保留最后意图，避免恢复后连续动画到已经过时的位置。
                         pendingScroll = this._pendingScrollQueue.at(-1);
                     }
 
@@ -11026,6 +11050,7 @@
                     const normalizedIndex = Number.isFinite(numericIndex) ? Math.trunc(numericIndex) : 0;
                     const i = Math.max(0, Math.min(normalizedIndex, this.totalCount - 1));
 
+                    // 暂停期间容器尺寸可能无效，只记录逻辑索引，恢复后再换算物理位置。
                     if (this._sm.is(VirtualScroll.State.PAUSED)) {
                         this._pendingScrollQueue.push({index: i, behavior, block});
                         return;
@@ -11527,6 +11552,7 @@
                         return addIndex;
                     };
 
+                    // 数组模式只返回规范化副本，不触碰页面上的输入节点。
                     if (classList) {
                         const pureClassList = classList.filter((c) => c !== space);
                         if (pureClassList.length === 0) {
@@ -11554,6 +11580,7 @@
                     let totalRangeEnd = children.length;
 
                     let addIndex = [];
+                    // 局部模式只观察光标两侧最近的语义词元，足以覆盖一次编辑造成的空格变化。
                     if (rangeLimit) {
                         const childrenArray = Array.from(children);
                         const centerIndex = childrenArray.indexOf(cursor);
@@ -11648,6 +11675,7 @@
 
                     const originalDisplay = target.style.display;
 
+                    // 批量移除和插入空格时暂时隐藏容器，减少逐节点变更引发的中间重排。
                     target.style.display = 'none';
 
                     for (let i = totalRangeStart; i < totalRangeEnd; i++) {
@@ -11677,6 +11705,7 @@
                  *   强制按活动子屏幕规则清空；用于模式切换和内部恢复，不应由普通点击随意设置。
                  */
                 static ac({acArea = null, forcedMode = false} = {}) {
+                    // 指定区域时执行纯 DOM 清空，不触发主输入区的模式联动。
                     if (acArea) {
                         const target = typeof acArea === 'string' ? HtmlTools.getHtml(acArea) : acArea;
 
@@ -11692,6 +11721,7 @@
                         return;
                     }
 
+                    // 初始提示态或强制清空按当前模式处理屏幕数据，而不是重建主输入光标。
                     if (HtmlTools.getHtml('.InputTip') || forcedMode) {
                         const currentMode = PageConfig.currentMode;
                         if (currentMode === '1') {
@@ -11709,11 +11739,13 @@
                         return;
                     }
 
+                    // 普通清空保留一个新光标，使主输入区立即恢复可编辑状态。
                     const cursor = document.createElement('div');
                     cursor.id = 'cursor';
 
                     inputBox.replaceChildren(cursor);
 
+                    // 标准计算模式还需取消实时预览及其可能仍在运行的 Worker。
                     if (PageConfig.currentMode === '0') {
                         HtmlTools.getHtml('#screen_0_display').classList.add('NoDisplay');
                         PrintManager.mode0ShowOnScreen.cancel();
@@ -11768,6 +11800,7 @@
                  */
                 static del(direction = 'left', forcedMode = false) {
                     const currentMode = PageConfig.currentMode;
+                    // 提示态或强制模式操作的是活动子屏数据；普通编辑态才删除主输入 DOM。
                     if (HtmlTools.getHtml('.InputTip') || forcedMode) {
                         if (currentMode === '0') {
                             return;
@@ -11794,6 +11827,7 @@
 
                     let delNum = this.inputAreaMoveNum(direction);
                     const range = document.createRange();
+                    // 负步长表示请求方向已到边界，改删光标另一侧仍存在的完整词元。
                     if (delNum < 0) {
                         direction = direction === 'left' ? 'right' : 'left';
                         delNum = -delNum;
@@ -11829,6 +11863,7 @@
                 static moveCursor(direction, forcedMode = false) {
                     const currentMode = PageConfig.currentMode;
 
+                    // 提示态没有可移动的文本光标，方向键改为在模式字段或统计单元格间导航。
                     if (HtmlTools.getHtml('.InputTip') || forcedMode) {
                         let len, nextNum;
                         let makeValue;
@@ -11857,6 +11892,7 @@
                             }
 
                             case '3':
+                                // 五个系数字段按两列视觉布局循环，上下移动跨两个索引。
                                 len = 4;
                                 if (['left', 'right'].includes(direction)) {
                                     nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'left' ? -1 : 1);
@@ -11887,6 +11923,7 @@
                                 break;
                             }
                         }
+                        // 统一处理首尾环绕，并把不同模式的索引形态写回 subModes。
                         if (typeof makeValue === 'function') {
                             if (nextNum < 0) {
                                 nextNum = len;
@@ -12013,6 +12050,7 @@
                     HtmlTools.appendDOMs(serialNumberFather, HtmlTools.textToHtmlClass((index + 1).toString()));
                     serialNumberGrandfather.appendChild(serialNumberFather);
 
+                    // GridOn 同时匹配当前逻辑行与列，虚拟化重建节点后也能恢复活动单元格。
                     const gridX = document.createElement('div');
                     gridX.classList.add('DataX');
                     if (isCurrent && currentMode[1] === 0) {
@@ -12120,6 +12158,7 @@
                         return;
                     }
 
+                    // 末尾空行是持续录入的占位行，不能被删除到完全消失。
                     const noInner = target[0].length === 0 && target[1].length === 0;
                     if (noInner && position + 1 === len) {
                         return;
@@ -12128,6 +12167,7 @@
                     gridData.splice(position, 1);
                     PageConfig.screenData = {'1': gridData};
 
+                    // 删除原末行后立即补回空占位行，维持统计表可继续输入的约定。
                     if (gridData.length === position) {
                         InputManager.statisticsAddLine();
                     }
@@ -12331,6 +12371,7 @@
                         return;
                     }
 
+                    // 统计结果键与固定 DOM 槽位一一映射，避免依赖对象枚举顺序渲染。
                     const resultsToOutputArea = {
                         'n': '#print_content_1_content_2',
                         'averageA': '#print_content_1_content_3',
@@ -12382,6 +12423,7 @@
 
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._printHandleError(RaList.R2), {mode: 'replace'});
 
+                    // 复制后再调整显示顺序，避免 reverse() 改写缓存中的回归参数。
                     const parameter = structuredClone(RaList.parameter);
 
                     if (['linear', 'square'].includes(RaList.model)) {
@@ -12555,6 +12597,7 @@
                     const screenData = PageConfig.screenData['1'];
                     const listA = [], listB = [];
 
+                    // 每次计算都先回到 X 统计页，避免沿用上次结果页的横向偏移。
                     PageControlTools.triggerSelection(HtmlTools.getHtml('#statistics_results_top_x'));
                     PageControlTools.switchStatisticsResults('x');
 
@@ -12569,6 +12612,7 @@
                             return;
                         }
 
+                        // 整行为空时忽略；仅一侧为空时以 0 补齐成有效数据对。
                         if (currentPushA.length === 0 && currentPushB.length === 0) {
                             continue;
                         } else if (currentPushA.length === 0) {
@@ -12590,6 +12634,7 @@
 
                         this._setMode1Results(resultList);
 
+                        // 以选择项 DOM ID 建索引，让模型切换和导出共用同一份结果缓存。
                         this.mode1Results = {
                             'choose_ra_0': resultList.linear,
                             'choose_ra_1': resultList.square,
@@ -12617,6 +12662,7 @@
                  */
                 static async _exeMode2() {
                     const headInit = HtmlTools.getHtml('#print_content_2_head').children[1].children[0];
+                    // 先恢复双函数表头，单函数分支再按本次输入收窄列数与标签。
                     HtmlTools.getHtml('#print_content_2').classList.add('TwoFunc');
                     headInit.classList.add('_f_');
                     headInit.classList.remove('_g_');
@@ -12631,6 +12677,7 @@
                     try {
                         let onlyFuncG = false;
 
+                        // 异或成立表示恰有一个函数；若仅有 g(x)，还需把第二列表头改为 g。
                         if (fx === '' !== (gx === '')) {
                             if (fx === '') {
                                 headInit.classList.add('_g_');
@@ -12646,6 +12693,7 @@
 
                         const result = await WorkerTools.valueList(fx, gx, start, step, end);
 
+                        // 虚拟列表自行异步渲染；此处只提交新数据并继续解除加载遮罩。
                         void this.printListRenderer.load(
                             {result, onlyFuncG},
                             result.varList.length,
@@ -12788,6 +12836,7 @@
                         HtmlTools.appendDOMs(target, HtmlTools.textToHtmlClass(text));
                     };
 
+                    // 数字键对应结果区域后缀，值对应 Worker 返回对象中的分析字段。
                     const outputList = {
                         '2': 'increasingInterval',
                         '3': 'decreasingInterval',
@@ -12799,6 +12848,7 @@
                         '9': 'roots'
                     };
 
+                    // 空系数按 0 参与计算，但五项全空仍视为没有有效输入。
                     const list = [];
                     let noInput = true;
                     for (let i = 0; i < 5; i++) {
@@ -12972,11 +13022,13 @@
                  */
                 static async exe() {
                     const currentMode = PageConfig.currentMode;
+                    // 非标准模式先把编辑区提交到当前子屏幕，本次点击不立即进入结果页。
                     if (HtmlTools.getHtml('.InputTip') === undefined && currentMode !== '0') {
                         await PageControlTools.syncInputToScreen();
                         return;
                     }
 
+                    // 函数列表模式分两步输入：函数定义完成后先进入范围设置页。
                     if (currentMode === '2_0') {
                         PageConfig.currentMode = '2_1';
 
@@ -12992,6 +13044,7 @@
                         case '1':
                             await this._exeMode1();
 
+                            // 结果页接管视图后暂停输入网格，返回时再由 closePrint 恢复。
                             if (!HtmlTools.getHtml('#main').classList.contains('Input') && InputManager.statisticsRenderer.isRunning()) {
                                 InputManager.statisticsRenderer.pause();
                             }
@@ -13285,6 +13338,7 @@
                         '_print_content_1_arrow_'
                     ], {mode: 'replace'});
 
+                    // 从已高亮项反向定位旧模型，确保视觉状态以实际 DOM 为准。
                     for (let i = HtmlTools.getHtml('#print_content_1_choose').children.length - 2; i >= 0; i--) {
                         const dealArea = HtmlTools.getHtml(`#choose_ra_${i}`);
                         if (dealArea.classList.contains('Print1ChooseOn')) {
@@ -13294,6 +13348,7 @@
                         }
                     }
 
+                    // 仅模型真正变化时清除上一次导出的成功或失败反馈。
                     if (lastModel !== id) {
                         PageControlTools._exportRaRecover();
                     }
@@ -13302,6 +13357,7 @@
 
                     this._currentRaModel = id;
 
+                    // 初始化阶段由计算流程负责首屏渲染，用户切换时才在这里刷新结果。
                     if (mode === 'change') {
                         PrintManager.setMode1RaResults(PrintManager.mode1Results === 'error' ? 'error' : PrintManager.mode1Results[id]);
                     }
@@ -13374,6 +13430,7 @@
 
                     let currentTip = HtmlTools.getHtml('.InputTip');
 
+                    // 只有输入区仅剩光标时才补建提示，避免把提示混入已有表达式。
                     if (currentTip === undefined) {
                         if (input.children.length !== 1) {
                             return;
@@ -13397,6 +13454,7 @@
                     const currentTipList = modeTips[currentMode];
                     let currentTipStr;
 
+                    // 映射首项为 0 时提示固定；为 1 时按当前子模式选择后续提示。
                     if (currentTipList[0] === 0) {
                         currentTipStr = currentTipList[1];
                     } else {
@@ -13426,6 +13484,7 @@
                 static changeSubKeyboard(className) {
                     const children = HtmlTools.getHtml('#keyboard_top').children;
 
+                    // 特殊指令同时收起全部面板，并清除两套键盘遮罩。
                     if (className === 'allNotShow') {
                         HtmlTools.getHtml('#keyboard_cover_ForMode1').classList.remove('KeyboardCover');
                         HtmlTools.getHtml('#keyboard_cover').classList.remove('KeyboardCover');
@@ -13443,10 +13502,12 @@
 
                     parent.classList.toggle('Ordinary');
 
+                    // “2nd”只切换按钮状态，键帽重绘由 keyboardType setter 完成。
                     if (className === '_2nd_') {
                         return;
                     }
 
+                    // 切换目标面板前先收起其余面板，保证子键盘互斥。
                     for (let i = 1; i < 4; i++) {
                         if (i !== place) {
                             const dealSubKeyboard = `#sub_keyboard_${i < 3 ? i - 1 : 'ForMode1'}`;
@@ -13460,6 +13521,7 @@
                     HtmlTools.getHtml('#keyboard_cover_ForMode1').classList.remove('KeyboardCover');
                     HtmlTools.getHtml('#keyboard_cover').classList.remove('KeyboardCover');
 
+                    // 统计专用面板和普通子键盘分别使用独立遮罩。
                     if (dealSubKeyboard.id === 'sub_keyboard_ForMode1' && !dealSubKeyboard.classList.contains('NotShow')) {
                         HtmlTools.getHtml('#keyboard_cover_ForMode1').classList.add('KeyboardCover');
                     } else if (/sub_keyboard_[01]/.test(dealSubKeyboard.id) && !dealSubKeyboard.classList.contains('NotShow')) {
@@ -13766,6 +13828,7 @@
                  */
                 static syncScreenToInput(skipEmpty = true) {
                     let classList;
+                    // 统计行可能未挂载在虚拟窗口中，因此从 screenData 读取；普通子屏直接读取 DOM。
                     if (PageConfig.currentMode === '1') {
                         const current = PageConfig.subModes['1'];
                         classList = HtmlTools.textToHtmlClass(PageConfig.screenData['1'][current[0]][current[1]]);
@@ -13811,6 +13874,7 @@
                     const currentInput = HtmlTools.htmlClassToText(currentInputArray);
                     let expr;
 
+                    // 传入已保存的 f、g，使语法检查能正确解析自定义函数引用。
                     try {
                         const syntaxResult = await WorkerTools.exec(currentInput, {
                             calcMode: 'syntaxCheck',
@@ -13832,6 +13896,7 @@
                         const gridDataLast = gridData.at(-1);
                         let addSucceed = true;
 
+                        // 最后一行一旦含值就追加空占位行，保证连续录入无需手动新增。
                         if (gridDataLast[0].length !== 0 || gridDataLast[1].length !== 0) {
                             addSucceed = InputManager.statisticsAddLine();
                         }
@@ -13847,6 +13912,7 @@
                             throw new Error('[PageControlTools] There is no active area on the current screen.');
                         }
 
+                        // 普通模式先重绘活动子屏，再从该 DOM 持久化规范化后的表达式。
                         HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
                         InputManager.addSpace({area: target});
                         PageConfig.syncScreenData();
@@ -16592,6 +16658,7 @@
             background-color: hsl(var(--action-active-green) / 0.94);
         }
 
+        /* 遮罩位于键盘和展开面板之间，用于把面板外点击统一转换为关闭操作。 */
         .KeyboardCover {
             position: absolute;
             z-index: 1;
@@ -17322,6 +17389,7 @@
             overflow: visible;
         }
 
+        /* 各回归选项继承父级列轨道，使等号两侧在所有公式行中保持对齐。 */
         #print_content_1_choose > div:not(:first-child) {
             position: relative;
             display: grid;
@@ -17525,6 +17593,7 @@
             margin-top: 1dvmin;
         }
 
+        /* 只给未选中的统计标签提供悬停反馈，当前项由 IsSelected 样式负责。 */
         :where(#statistics_results_top.ResultX > div:not(:first-child),
             #statistics_results_top.ResultY > div:not(:nth-child(2)),
             #statistics_results_top.ResultXY > div:not(:nth-child(3))):not(.Lines):hover {
@@ -18364,6 +18433,7 @@
             </div>
             <div id="grid_data"></div>
         </div>
+        <!-- 函数列表模式分两屏收集函数定义与取值范围，执行键负责在两屏间推进。 -->
         <div class="ScreenMain Screen234 ScreenNoDisplay" id="screen_2_0">
             <div class="ScreenInputsOn" id="screen_input_2_00">
                 <div>
@@ -18468,6 +18538,7 @@
             <p class="_input_tip_expr_ InputTip"></p>
         </div>
         <!-- 扩展函数键盘 -->
+        <!-- 普通子键盘与统计操作面板各自使用遮罩，避免不同层级互相截获点击。 -->
         <div id="keyboard_cover"></div>
         <div id="sub_keyboard">
             <div class="NotShow" id="sub_keyboard_0">
@@ -18727,6 +18798,7 @@
             <!-- 统计与回归结果 -->
             <div class="NoDisplay" id="print_content_1">
                 <div class="NoDisplay NotPrintDefault" id="print_content_1_cover"></div>
+                <!-- 选择项把公式拆为左式、等号和右式三列，与 CSS subgrid 共同保持纵向对齐。 -->
                 <div class="PrintContent1ChooseOff NotPrintDefault" id="print_content_1_choose">
                     <div>
                         <p class="_choose_ra_"></p>
@@ -18885,6 +18957,7 @@
                     <p class="_print_content_1_content_2_"></p>
                 </div>
                 <div id="print_content_1_content_2"></div>
+                <!-- X、Y、XY 三组统计量共享同一横向结果窗口，由顶部选项切换可视分组。 -->
                 <div class="NotPrintDefault ResultX" id="statistics_results_top">
                     <div class="SelectBtn" id="statistics_results_top_x">
                         <p class="_statistics_results_top_x_"></p>
@@ -18988,6 +19061,7 @@
             <div class="NoDisplay TwoFunc" id="print_content_2">
                 <div class="Lines NotPrintDefault" id="print_grid_line_1"></div>
                 <div class="Lines NotPrintDefault" id="print_grid_line_2"></div>
+                <!-- 三列表头是稳定骨架；单函数模式由 TwoFunc 状态隐藏末列并重新分配列宽。 -->
                 <div class="NotPrintDefault" id="print_content_2_head">
                     <div>
                         <p class="_x_mathit_"></p>

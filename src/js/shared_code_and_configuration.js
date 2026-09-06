@@ -1,114 +1,100 @@
+/** 初始化并导出 token、通用工具和计算配置。 */
 (function () {
     "use strict";
 
     /**
+     * 定义计算器支持的词元及其语法属性。
+     *
      * @class TokenConfig
-     * @description 一个静态工具类，用于记录计算器使用的词元信息
      */
     class TokenConfig {
-
-        // 放置在两个操作数之前的二元运算符
+        // 二元前缀运算符。
         static _func_01_2 = ['log', 'nroot'];
-        // '&' 是内部表示的隐式乘法。
+        // `&` 是隐式乘法的内部词元。
         static _func_11_2 = ['+', '-', '*', '&', '/', 'mod', '^', 'E', '[toPolar]'];
 
-        // --- 基础数组定义 (私有，仅用于初始化) ---
-        // 'N' (一元负号) 和 'A' (绝对值) 是内部表示。
+        // 一元前缀运算符；`N` 和 `A` 分别表示一元负号和绝对值。
         static _func_01_1 = ['sqrt', 'cbrt', 'ln', 'exp', 'lg', 'f', 'g', 're', 'im', 'conj', 'ceil', 'floor', 'arg', 'sgn', '[gamma]', 'sin', 'arcsin', 'cos', 'arccos', 'tan', 'arctan', 'sh', 'arsh', 'ch', 'arch', 'th', 'arth', 'abs', 'A', 'N'];
-        // 放置在两个操作数之间的二元运算符（例如 a + b）
-        // 放置在操作数之后的一元运算符（例如 5!）
+        // 一元后缀运算符。
         static _func_10_1 = ['!', '[degree]'];
-        // 接受一个参数的函数（例如 sin(x)）
-        // 内部使用的私有函数/运算符，不应直接由用户输入。
+        // 仅供解析器使用，不能由用户直接输入。
         static _private_func = ['A', 'N', '&'];
-        // 在 HTML 只占用一个类名的函数。
+        // 在 HTML 中以单个类名表示的词元。
         static _htmlClass_len_one_func = ['[gamma]', '[toPolar]', '[degree]', '[cursor]', '[cdot]'];
-        // 定义数字常量和变量 'x'。
+
         static _baseNumbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.'];
         static _codeNumbers = ['[pi]', '[e]', '[i]', '[x]'];
-        // 其他有效符号。
         static _other = ['|', ',', '(', ')'];
-        // 将所有函数和运算符合并到一个列表中，以便于查找。
         static allFunc = new Set([...this._func_01_2, ...this._func_11_2, ...this._func_01_1, ...this._func_10_1]);
-        // 右结合运算符
         static htmlClassLenOneFunc = new Set(this._htmlClass_len_one_func);
 
         // --- 暴露给外部的高速 Set 集合 (O(1) 查询) ---
-        // 内部使用的私有函数/运算符，不应直接由用户输入。
         static privateFunc = new Set(this._private_func);
-        // 稍后用于添加临时标记以插入括号。
         static rightAssocFunc = new Set([...this._func_01_1, '^']);
         static needParensFunc = new Set(['^', ...this._complement(this._func_01_1, ['A', 'N'])]);
-        // 需要特殊括号处理的函数和运算符
-        // 数字和常量
         static baseNumbers = new Set(this._baseNumbers);
         static codeNumbers = new Set(this._codeNumbers);
-        // 剩余符号
         static other = new Set(this._other);
-        // 所有有效词法单元的完整列表
         static allSigns = new Set([...this.allFunc, ...this._baseNumbers, ...this._codeNumbers, ...this._other]);
-        // 按参数数量分组
         static params_1_set = new Set([...this._func_01_1, ...this._func_10_1]);
         static params_2_set = new Set([...this._func_01_2, ...this._func_11_2]);
 
-        // 为快速判断参数数量和位置准备的 Set
-        // 按函数位置分组
         static PlaceFrontSet = new Set([...this._func_01_2, ...this._func_01_1]);
         static PlaceMiddleSet = new Set(this._func_11_2);
         static PlaceBackSet = new Set(this._func_10_1);
-        // --- 预计算的优先级 Map ---
         static priorityMap = new Map();
 
         /**
-         * @static
+         * 最长合法词元的字符数。
+         *
          * @type {number}
-         * @description 合法 token 的最大长度。
          */
         static MAX_TOKEN_LENGTH = Math.max(
             1,
-            ...[...this.allSigns, ...this.htmlClassLenOneFunc].map(token => token.length)
+            ...[...this.allSigns, ...this.htmlClassLenOneFunc].map((token) => token.length)
         );
 
         /**
-         * @constructor
-         * @description TokenConfig 的构造函数。
-         * 这个类被设计为静态类，不应该被实例化。
-         * 如果尝试创建 TokenConfig 的实例，构造函数会抛出一个错误。
-         * @throws {Error} 总是抛出错误，以防止实例化。
+         * 阻止实例化静态配置类。
+         *
+         * @throws {Error} 始终抛出。
          */
         constructor() {
-            // 抛出错误以明确表示这是一个静态类，不应创建实例。
-            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
             throw new Error('[TokenConfig] TokenConfig is a static class and should not be instantiated.');
         }
 
         /**
+         * 返回数组差集 `arrA \\ arrB`。
+         *
+         * @param {Array<*>} arrA - 作为筛选基准的源数组；元素顺序与重复项会保留，方法不修改它。
+         * @param {Array<*>} arrB - 排除集合；通过 `Array#includes` 的 SameValueZero 规则逐项匹配，
+         *   因而 `NaN` 可被排除，对象则只有同一引用才匹配。方法不要求该数组去重。
+         * @returns {Array<*>} 保持 `arrA` 原顺序的新数组；包含所有未被 `arrB.includes` 严格匹配的元素，
+         *   不会修改两个输入数组，重复的保留元素也不会去重。
          * @private
-         * @function _complement
-         * @description (内部辅助函数) 计算两个数组的差集 (A \ B)，返回所有在数组 A 中但不在数组 B 中的元素。
-         * @param {Array<*>} arrA - 源数组（集合 A）。
-         * @param {Array<*>} arrB - 要从中减去的元素的数组（集合 B）。
-         * @returns {Array<*>} 一个新的数组，包含差集中的所有元素。
          */
         static _complement(arrA, arrB) {
             const setB = new Set(arrB);
-            return arrA.filter(item => !setB.has(item));
+            /** 判断元素是否不在排除集合中。 */
+            return arrA.filter((item) => !setB.has(item));
         }
 
-        // 静态初始化块：只在类加载时执行一次，用于处理复杂的初始化逻辑
+        // 数字越小表示优先级越高。
         static {
             const levels = [
-                [...this._func_01_2, ...this._complement(this._func_01_1, ['N'])], // l0
-                this._func_10_1, // l1
-                ['^'], // l2
-                ['N'], // l3
-                ['&'], // l4
-                this._complement(this._func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']), // l5
-                ['*', '/', 'mod'], // l6
-                ['+', '-'] // l7
+                [...this._func_01_2, ...this._complement(this._func_01_1, ['N'])],
+                this._func_10_1,
+                ['^'],
+                ['N'],
+                ['&'],
+                this._complement(this._func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']),
+                ['*', '/', 'mod'],
+                ['+', '-']
             ];
+            /** 将同一优先级的词元写入映射。 */
             levels.forEach((levelTokens, index) => {
-                levelTokens.forEach(token => {
+                /** 记录当前词元的优先级。 */
+                levelTokens.forEach((token) => {
                     this.priorityMap.set(token, index);
                 });
             });
@@ -116,89 +102,74 @@
     }
 
     /**
+     * 提供与具体数学对象无关的通用工具。
+     *
      * @class Public
-     * @description 一个静态工具类，提供全局所需的、与特定数学对象无关的通用辅助函数。
-     * 它不应该被实例化，其所有方法都应静态访问。
      */
     class Public {
         /**
-         * @constructor
-         * @description Public 的构造函数。
-         * 这个类被设计为静态类，不应该被实例化。
-         * 如果尝试创建 Public 的实例，构造函数会抛出一个错误。
-         * @throws {Error} 总是抛出错误，以防止实例化。
+         * 阻止实例化静态工具类。
+         *
+         * @throws {Error} 始终抛出。
          */
         constructor() {
-            // 抛出错误以明确表示这是一个静态类，不应创建实例。
-            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
             throw new Error('[Public] Public is a static class and should not be instantiated.');
         }
 
         /**
+         * 是否启用网页专属功能（如全屏切换）。
+         *
          * @private
-         * @static
          * @type {boolean}
-         * @description 标记当前是否处于 Web 模式。
-         * 如果为 true，则启用某些特定于 Web 的功能（如全屏切换）。
-         * 这是一个私有静态字段，应通过 `webMode` 的 getter 进行访问。
          */
         static _webMode = true;
 
         /**
-         * @static
-         * @property {boolean} webMode
-         * @description 获取当前是否处于 Web 模式。
-         * @type {boolean}
+         * 获取是否启用网页专属功能。
+         *
+         * @returns {boolean} 是否为网页模式。
          */
         static get webMode() {
             return this._webMode;
         }
 
         /**
-         * @static
-         * @method typeOf
-         * @description 以小写字符串形式获取一个值的精确类型。
-         * 这在区分对象子类型时比 `typeof` 更可靠。
-         * @param {*} value - 需要检查类型的任何值。
-         * @returns {string} 表示该值类型的小写字符串 (例如, 'array', 'object', 'bignumber')。
+         * 返回值的精确小写类型名。
+         *
+         * @param {*} value - 待检查的任意 JavaScript 值；通过内部 `[[Class]]` 标签判型，
+         *   因而数组、包装对象以及 `BigNumber`/`ComplexNumber` 实例不会被统一归为 `object`。
+         * @returns {string} 例如 `array`、`object` 或 `bignumber`。
          */
-        static typeOf = value => Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
+        static typeOf = (value) => Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
 
         /**
-         * @static
-         * @method zeroCorrect
-         * @description 修正潜在的浮点计算误差，将绝对值极小的数“修正”为零。
-         * 它创建一个基于输入精度的极小阈值，如果输入数字的绝对值小于此阈值，则将其视为零。
-         * 这有助于清理那些本应为零但因计算误差而产生的微小非零结果（例如 1e-250）。
-         * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 需要修正的输入数字。
-         * @returns {ComplexNumber} 修正后的 ComplexNumber 实例。
+         * 将精度范围内接近零的实部和虚部归零。
+         *
+         * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 待修正的数值，格式必须能被
+         *   `ComplexNumber` 构造器接受；数组既可表示 `[real, imag]`，也可表示底层高精度数值元组。
+         *   该方法会创建新实例，不会修改传入的 `BigNumber`、`ComplexNumber` 或数组。
+         * @returns {ComplexNumber} 修正后的复数。
          */
         static zeroCorrect(x) {
             /**
-             * @function _bigNumberZeroCorrect
-             * @description (内部辅助函数) 检查一个 BigNumber 是否非常接近于零，如果是，则将其“修正”为零。
-             * 这是 `zeroCorrect` 的核心实现，专门处理 BigNumber 实例。
-             * @param {BigNumber} input - 需要进行零值修正的 BigNumber 实例。
-             * @returns {BigNumber} 如果输入值小于预设的极小阈值，则返回一个代表零的新 BigNumber 实例；否则返回原始输入。
+             * 将精度阈值内的 `BigNumber` 归零。
+             *
+             * @param {BigNumber} input - 待修正的实部或虚部；其 `acc` 同时决定判零阈值和返回零值的精度。
+             * @returns {BigNumber} 零值或原值。
              * @private
              */
             function _bigNumberZeroCorrect(input) {
                 const acc = input.acc;
-                // 创建一个极小的阈值 (smallNum)。
-                // 如果一个数的绝对值小于这个阈值，我们就可以安全地认为它在计算上等同于零。
-                // 阈值的选择是基于精度的，通常是精度的一个比例或略低于精度，以捕捉浮点误差。
+                // 阈值同时保留至少 90% 的有效数字和最多 8 位保护位；取更严格者
+                // 只消除由中间运算产生的尾部噪声，避免把低精度下仍有意义的小量误判为零。
                 const smallNum = new ComplexNumber([-Math.max(Math.floor(0.9 * acc), acc - 8), 1n, acc]);
-                // 比较 |input| 和 smallNum。如果 |input| < smallNum，则返回 0。
                 if (MathPlus.minus(smallNum, MathPlus.abs(input)).re.isPositive()) {
                     return new BigNumber([0, 0n, acc]);
                 }
-                // 如果大于阈值，则返回原始输入。
                 return input;
             }
 
-            // 确保输入是 ComplexNumber 类型，以便统一处理实部和虚部。
             x = new ComplexNumber(x);
-            // 分别对复数的实部和虚部进行零值修正，然后返回一个新的 ComplexNumber。
             return new ComplexNumber([
                 _bigNumberZeroCorrect(x.re),
                 _bigNumberZeroCorrect(x.im)
@@ -206,75 +177,64 @@
         }
 
         /**
-         * @static
-         * @method integerCorrect
-         * @description 修正一个非常接近整数的数值的潜在浮点计算误差。
-         * 在开 n 次方的计算中，根指数 n 必须是整数。此方法通过临时降低输入值的精度，
-         * 尝试将一个由于计算误差而产生的、接近整数的数（例如 2.999...）“修正”回其整数值（例如 3）。
-         * 如果降低精度后该数变为整数，则返回修正后的整数值；否则，返回原始值。
-         * @param {ComplexNumber|string|number} n - 需要修正的输入数字，通常是根指数。
-         * @returns {ComplexNumber} 修正后的 ComplexNumber（如果修正成功）或原始的 ComplexNumber。
+         * 将精度误差造成的近似整数恢复为整数。
+         *
+         * @param {ComplexNumber|string|number} n - 待修正的数值；仅当它在降低少量保护位后成为
+         *   纯实整数时才会被替换，真正的小数、非零虚部和已精确表示的整数均保持原值。
+         * @returns {ComplexNumber} 修正后的值；无法修正时返回原值。
          */
         static integerCorrect(n) {
             const input = new ComplexNumber(n);
-            // 如果输入数字的实部已经是整数（其 BigNumber 表示的 power >= 0），则无需修正。
             if (input.re.power >= 0 && input.im.isZero()) {
                 return input;
             }
             const acc = input.acc;
-            // 创建一个具有较低精度的新 ComplexNumber 实例。
-            // 降低精度是修正浮点误差的常用技巧。
             const newInput = new ComplexNumber(input, {acc: Math.max(Math.floor(0.9 * acc), acc - 8)});
-            // 检查降低精度后，该数是否变成了整数。
             if (newInput.re.power >= 0 && newInput.im.isZero()) {
-                // 如果是，则返回这个被“修正”为整数的新实例。
                 return newInput;
             }
-            // 如果降低精度后仍不是整数，说明它不是一个“非常接近”整数的数，返回原始输入。
             return input;
         }
 
         /**
-         * @static idealizationToString
-         * @description 将一个或一组数值转换为对用户友好的、经过“理想化”处理的字符串。
-         * “理想化”处理主要包含两个步骤：
-         * 1. **零值修正**：使用 `zeroCorrect` 方法将因浮点计算误差而产生的、极小的非零值（如 1e-250）修正为零。
-         * 2. **精度控制**：使用一个通常略低于内部计算精度的 `acc` 值来格式化数字。这能有效隐藏计算伪影（例如，将 4.999...98 舍入为 "5"），从而呈现出更清晰、更符合数学期望的结果。
+         * 按指定精度和打印模式格式化一个值或值数组。
          *
-         * 该方法能够处理单个值或数组，并会原样返回 'error' 字符串。
-         *
-         * @param {*|Array<*>} x 要转换的值。可以是任何 `ComplexNumber` 构造函数可接受的类型（如 string, number, BigNumber, ComplexNumber 等），或这些类型的数组。
-         * @param {object} [options={}] - (可选) 格式化选项。
-         * @param {number} [options.acc=CalcConfig.outputAccuracy] - 用于格式化的目标精度。
+         * @param {*|Array<*>} x - `ComplexNumber` 可接受的单值、由这些值组成的数组，或字符串 `error`。
+         *   数组按元素独立格式化并返回等长新数组；`error` 原样透传，输入对象不会被修改。
+         * @param {object} [options={}] - 仅控制本次转换的格式化选项，不会改写 `CalcConfig` 的全局设置。
+         * @param {number} [options.acc=CalcConfig.outputAccuracy] - 有效数字位数、精度比例或非正的原精度标记。
          *   - 若省略，则使用 `CalcConfig.outputAccuracy` 的当前值。
          *   - 若 `acc >= 1`，它代表一个绝对的有效数字位数。
          *   - 若 `0 < acc < 1`，它被视为一个比例，最终精度将是 `acc * CalcConfig.globalCalcAccuracy`。
          *   - 若 `acc <= 0`，它代表输出精度和输入一致。
-         * @param {string} [options.printMode=CalcConfig.globalPrintMode] - 输出模式，如 'algebra' 或 'polar'。
+         * @param {'algebra'|'polar'} [options.printMode=CalcConfig.globalPrintMode] - 复数输出形式：
+         *   `algebra` 生成 `a+bi`，`polar` 生成模与辐角；实数在两种模式下都保持普通数值表示。
          * @returns {string|string[]} 如果输入是单个值，则返回其字符串表示；如果输入是数组，则返回一个字符串数组。
          */
         static idealizationToString(x, {
             acc = CalcConfig.outputAccuracy,
             printMode = CalcConfig.globalPrintMode
         } = {}) {
-            // 特殊情况：如果输入是 'error' 字符串，直接返回，不进行任何处理。
             if (x === 'error') {
                 return 'error';
             }
 
-            // 内部辅助函数：根据输入数值的精度计算输出精度
-            // numAcc: 数值本身的计算精度
+            /**
+             * 根据输入精度和输出设置计算实际精度。
+             *
+             * @param {number} numAcc - 当前待格式化数值携带的正整数有效位数；比例精度以它为基数，
+             *   绝对精度也不会超过它，以免输出并不存在的有效数字。
+             * @returns {number} 实际输出精度。
+             */
             const getRealAcc = (numAcc) => {
                 if (acc <= 0) {
-                    // 同精度模式：直接返回数值本身的精度
                     return numAcc;
                 }
+
                 if (acc < 1) {
-                    // 比例模式：基于数据本身的精度 * 比例
                     return Math.floor(acc * numAcc);
                 }
-                // 绝对模式：直接使用指定的位数，但不能超过数据本身的精度
-                // 防止用户要求输出精度高于计算精度
+
                 return Math.min(acc, numAcc);
             };
 
@@ -284,13 +244,11 @@
                 case 'array': {
                     const result = [];
                     for (let i = 0; i < x.length; i++) {
-                        // 同样，在数组处理中也要检查 'error' 字符串。
                         if (x[i] === 'error') {
                             result.push('error');
                         } else {
                             const num = new ComplexNumber(x[i]);
                             const realAcc = getRealAcc(num.acc);
-                            // 将每个元素转换为 ComplexNumber，然后使用计算出的“真实精度”将其格式化为字符串。
                             result.push(Public.zeroCorrect(num).toString({
                                 acc: realAcc,
                                 printMode: printMode
@@ -299,11 +257,9 @@
                     }
                     return result;
                 }
-                // 对于任何非数组的单个值。
                 default:
                     const num = new ComplexNumber(x);
                     const realAcc = getRealAcc(num.acc);
-                    // 将该值转换为 ComplexNumber，然后使用“真实精度”将其格式化为字符串。
                     return Public.zeroCorrect(num).toString({
                         acc: realAcc,
                         printMode: printMode
@@ -312,123 +268,99 @@
         }
 
         /**
-         * @static
-         * @method funcToString
-         * @description 将一个系数列表根据指定的函数模型转换为人类可读的数学函数字符串。
-         * 此方法支持多种函数模型，如多项式、指数函数等。
-         * @param {Array<*>} list - 系数列表。其具体含义取决于 `mode` 参数。
+         * 将模型系数格式化为数学表达式。
+         *
+         * @param {Array<*>} list - 可由 `idealizationToString` 格式化的系数列表；元素顺序和长度由
+         *   `mode` 决定。列表中出现 `error` 时整条表达式直接返回 `error`，原数组不会被改写。
          *   - 对于 'powerFunc', 'lnFunc': `[a₀, a₁, ..., aₙ]` 代表 `a₀ + a₁x + ... + aₙxⁿ`。函数会将其格式化为 `aₙxⁿ + ... + a₁x + a₀` 的形式。
          *   - 对于其他模式: `[a, b]` 代表函数的两个主要参数。
-         * @param {string} mode - 用于格式化的函数模型。
-         *   - 'powerFunc': 多项式函数, f(x) = aₙxⁿ + ... + a₀。
-         *   - 'lnFunc': 对数多项式函数, f(x) = aₙ(lnx)ⁿ + ... + a₀。
-         *   - 'expFunc': 指数函数, f(x) = a * exp(b*x)。
-         *   - 'abxFunc': 指数函数, f(x) = a * b^x。
-         *   - 'axbFunc': 幂函数, f(x) = a * x^b。
-         *   - 'reciprocalFunc': 反比例函数, f(x) = a + b/x。
-         * @param {string} [asX='x'] - (可选) 在 'powerFunc' 模式中代表变量的字符串。默认为 'x'。
-         * @returns {string} 格式化后的函数字符串。
+         * @param {'powerFunc'|'lnFunc'|'expFunc'|'abxFunc'|'axbFunc'|'reciprocalFunc'} mode - 函数模型。
+         *   - 'powerFunc': 多项式函数, f(x) = aₙxⁿ + ... + a₀
+         *   - 'lnFunc': 对数多项式函数, f(x) = aₙ(lnx)ⁿ + ... + a₀
+         *   - 'expFunc': 指数函数, f(x) = a * exp(b*x)
+         *   - 'abxFunc': 指数函数, f(x) = a * b^x
+         *   - 'axbFunc': 幂函数, f(x) = a * x^b
+         *   - 'reciprocalFunc': 反比例函数, f(x) = a + b/x
+         * @param {string} [asX='[x]'] - 插入表达式的变量词元或子表达式；递归格式化 `lnFunc`、
+         *   `expFunc` 等模型时也用它替换自变量，因此调用方需自行提供必要的括号或内部词元。
+         * @returns {string} 数学表达式；输入错误时返回 `error`。
          */
         static funcToString(list, mode, asX = '[x]') {
-            // 检查是否是错误输入
             if (list.includes('error')) {
                 return 'error';
             }
 
-            // 首先将所有系数值转换为理想化的字符串表示。
             list = Public.idealizationToString(list);
-            // 系数列表前两个元素 [a, b] 使用最多。
             const a = list[0];
             const b = list[1];
             let result = '';
 
             switch (mode) {
-                // --- 多项式函数模型: aₙxⁿ + ... + a₁x + a₀ ---
+                // 多项式：aₙxⁿ + ... + a₁x + a₀。
                 case 'powerFunc': {
-                    // 用于控制在非首个非零项前添加 '+' 号。
                     let firstNoneZero = false;
-                    // 从最高次项开始倒序遍历系数。
                     for (let i = list.length - 1; i >= 0; i--) {
                         const currentCoefficient = list[i];
-                        // 忽略系数为零的项。
                         if (currentCoefficient !== '0') {
-                            // 如果不是第一个非零项，并且系数不是负数（或包含'E'的科学记数法），则添加 '+'。
                             if (firstNoneZero && (currentCoefficient[0] !== '-' || currentCoefficient.includes('E'))) {
                                 result += '+';
                             }
                             firstNoneZero = true;
 
-                            // --- 处理变量项 (x, x², x³, ...) ---
                             if (i !== 0) {
-                                // 特殊处理系数为 1 或 -1 的情况，以简化表达式 (例如 'x' 而不是 '1x')。
                                 if (currentCoefficient === '1') {
                                     result += asX;
                                 } else if (currentCoefficient === '-1') {
                                     result += `-${asX}`;
                                 } else if (currentCoefficient.includes('E')) {
-                                    // 如果系数是科学记数法，则用括号括起来。
                                     result += `(${currentCoefficient})${asX}`;
                                 } else {
                                     result += `${currentCoefficient}${asX}`;
                                 }
-                            }
-                            // --- 处理常数项 (i=0) ---
-                            else if (!currentCoefficient.includes('E')) {
+                            } else if (!currentCoefficient.includes('E')) {
                                 result += currentCoefficient;
                             } else {
-                                // 如果常数项是科学记数法，并且是多项式中的唯一项，则不加括号。
                                 result += list.length === 1 ? currentCoefficient : `(${currentCoefficient})`;
                             }
 
-                            // --- 添加指数部分 ---
-                            // 如果指数不为 0 或 1，则添加 '^' 和指数值。
                             if (![0, 1].includes(i)) {
                                 result += `^${i}`;
                             }
                         }
                     }
-                    // 如果遍历完所有系数都没有找到非零项，则函数为 0。
                     if (!firstNoneZero) {
                         return '0';
                     }
                     return result;
                 }
 
-                // --- 对数多项式模型: aₙ(lnx)ⁿ + ... + a₀ ---
-                // 这是 powerFunc 的一个特例，只需将变量替换为 'ln(x)'。
+                // 对数多项式：以 ln(x) 代替变量。
                 case 'lnFunc':
                     return Public.funcToString(list, 'powerFunc', `ln(${asX})`);
 
-                // --- 指数函数模型: a * exp(b*x) ---
+                // 指数模型：a·exp(bx)。
                 case 'expFunc':
-                    // 如果 a=0，整个函数为 0。
                     if (a === '0') {
                         return '0';
                     }
-                    // 如果 b=0, a * exp(0) = a。
                     if (b === '0') {
                         return a;
                     }
-                    // 递归调用 funcToString 来格式化表达式。
-                    // 外层是 a * [variable]，内层是 exp(b*x)。
                     return Public.funcToString([0, a], 'powerFunc', `exp(${Public.funcToString([0, b], 'powerFunc')})`);
 
-                // --- 指数函数模型: a * b^x ---
+                // 指数模型：a·b^x。
                 case 'abxFunc':
                     if (a === '0') {
                         return '0';
                     }
-                    // 如果 b=1, a * 1^x = a。
                     if (b === '1') {
                         return a;
                     }
-                    // 处理系数 a 的格式。
                     if (a === '-1') {
                         result += '-';
                     } else if (a !== '1') {
                         result += a.includes('E') ? `(${a})*` : `${a}*`;
                     }
-                    // 处理底数 b 的格式。
                     if (!b.includes('E') && !b.includes('-')) {
                         result += `${b}^${asX}`;
                     } else {
@@ -436,13 +368,11 @@
                     }
                     return result;
 
-                // --- 幂函数模型: a * x^b ---
+                // 幂函数模型：a·x^b。
                 case 'axbFunc':
-                    // 如果 b=0, a * x^0 = a。
                     if (b === '0') {
                         return a;
                     }
-                    // 处理 x^b 部分的格式。
                     if (b === '1') {
                         result += `${asX}`;
                     } else if (!b.includes('E') && !b.includes('-')) {
@@ -450,20 +380,15 @@
                     } else {
                         result += `${asX}^(${b})`;
                     }
-                    // 递归调用 funcToString 来处理系数 a。
                     return Public.funcToString([0, a], 'powerFunc', result);
 
-                // --- 反比例函数模型: a + b/x ---
+                // 反比例模型：a + b/x。
                 case 'reciprocalFunc':
-                    // 如果 b=0, 结果为 a。
                     if (b === '0') {
                         return a;
                     }
-                    // 格式化 b/x 部分。
                     result += b.includes('E') ? `(${b})/${asX}` : `${b}/${asX}`;
-                    // 如果 a 不为零，则添加常数项 a。
                     if (a !== '0') {
-                        // 处理符号。
                         if (a[0] !== '-' || a.includes('E')) {
                             result += '+';
                         }
@@ -474,102 +399,82 @@
         }
 
         /**
-         * @static
-         * @method functionValueList
-         * @description 在指定的数值范围内，以固定的步长计算一个函数的值列表。
-         * 该函数能够处理字符串形式的数学表达式或一个 JavaScript 回调函数。
-         * @param {function(any): ComplexNumber} func - 需要求值的函数。
-         * @param {string|number|BigNumber|ComplexNumber} start - 区间的起始值。
-         * @param {string|number|BigNumber|ComplexNumber} step - 区间内每一步的增量。
-         * @param {string|number|BigNumber|ComplexNumber} end - 区间的结束值。循环将持续到当前值超过 `end` 为止。
-         * @returns {Array<ComplexNumber|string>} 一个数组，其中包含函数在每个点上的计算结果。
-         *   - 如果在某个点的计算成功，数组中对应的元素是一个 `ComplexNumber` 实例。
-         *   - 如果在某个点的计算失败（例如，表达式无效或出现数学错误），则对应的元素是字符串 'error'。
+         * 按固定正步长依次计算从 `start` 到 `end` 的函数值，包含区间端点。
+         *
+         * 单次求值失败时不会中断计算，而是在对应位置记录 `"error"`。
+         *
+         * @param {function(ComplexNumber): ComplexNumber} func - 对每个采样点同步调用的求值函数；参数是
+         *   当前 `ComplexNumber` 自变量，返回值应能被结果消费者处理。回调抛错时该项记为 `error`。
+         * @param {string|number|BigNumber|ComplexNumber} start - 闭区间起点；进入循环前转换为新
+         *   `ComplexNumber`，并作为第一次回调的参数。
+         * @param {string|number|BigNumber|ComplexNumber} step - 每次采样后增加的步长；其实部必须严格
+         *   大于零。虚部虽可被构造器接受，但区间终止判断只依据实部，业务调用应传正实数。
+         * @param {string|number|BigNumber|ComplexNumber} end - 闭区间终点；最后一个不大于它的采样点
+         *   会被计算，步长不能整除区间时不会额外补算终点。
+         * @returns {Array<ComplexNumber|'error'>} 与实际采样点一一对应的结果数组；第 `i` 项对应
+         *   `start + i * step`。单点回调抛错时仅该项为 `error`，数组中不另行保存自变量。
+         * @throws {Error} 当步长的实部不是正数时抛出异常。
          */
         static functionValueList(func, start, step, end) {
-            // 初始化一个空数组，用于存储所有计算出的函数值。
             const result = [];
-            // 为了进行高精度计算，将区间的起始、步长和结束值都转换为 ComplexNumber 实例。
             start = new ComplexNumber(start);
             step = new ComplexNumber(step);
             end = new ComplexNumber(end);
 
-            // 遍历从 'start' 到 'end' 的整个范围。
-            // - 初始化: 循环变量 i 从 start 开始。
-            // - 条件: 循环持续的条件是 i <= end。这里使用高精度减法 (MathPlus.minus) 来进行精确比较。
-            // - 增量: 在每一步中，i 都会增加一个步长 (step)。
+            if (!step.re.isPositive()) {
+                throw new Error('[Public] The step size must be positive.');
+            }
+
             for (let i = start; !MathPlus.minus(i, end).re.isPositive(); i = MathPlus.plus(i, step)) {
                 try {
-                    // 调用函数，并传入当前的循环变量 'i'。
                     result.push(func(i));
                 } catch {
-                    // 如果在函数求值过程中发生任何错误（例如，除以零、无效的数学运算），
-                    // 则捕获异常，并在结果数组中对应位置添加 'error' 字符串。
                     result.push('error');
                 }
             }
-            // 返回包含所有计算结果的数组。
             return result;
         }
 
         /**
-         * @static
-         * @method getTokenInfo
-         * @description 分析一个词法单元（token），返回其包含完整元数据的对象。
-         * 此函数是词法分析器的核心，它为后续的语法分析（如调度场算法）提供了正确解析运算符优先级、
-         * 结合性、函数参数数量等所需的所有信息。
+         * 返回词元的类别和语法属性。
          *
-         * @param {string} token - 要分析的词法单元字符串，例如 `"+"`, `"sin"`, `"pi"`, `"5"`。
+         * @param {string} [token] - 已由 `tokenizer` 拆分的单个内部词元；空字符串是合法输入并会
+         *   返回 `illegal` 分类，只有 `undefined`、`null` 等“未传值”情况返回 `undefined`。
+         * @returns {{
+         *   token: string,
+         *   class: 'func'|'number'|'other'|'illegal',
+         *   parameters?: number,
+         *   funcPlace?: 'front'|'middle'|'back',
+         *   associativity?: 'left'|'right',
+         *   needKh?: boolean,
+         *   isPrivate?: boolean,
+         *   numClass?: 'baseNumber'|'codeNumbers',
+         *   isHtmlClassLenOne?: boolean,
+         *   priority?: number
+         * }|undefined} 词元信息；未传值时返回 `undefined`。
          *
-         * @returns {object} 一个包含该词法单元详细信息的对象，其结构如下：
-         * @property {string} token - 输入的词法单元字符串。
-         * @property {string} class - 词法单元的通用类别，可以是：
-         *   - `'func'`: 函数或运算符 (例如 `'+'`, `'sin'`)。
-         *   - `'number'`: 数字、常量或变量 (例如 `'5'`, `'pi'`, `'x'`)。
-         *   - `'other'`: 其他符号 (例如 `'('`, `','`)。
-         *   - `'illegal'`: 未识别的非法词法单元。
-         * @property {number} [parameters] - (仅限 `'func'` 类型) 函数或运算符所需的参数数量。例如，`'log'` 为 2，`'sin'` 为 1。
-         * @property {string} [funcPlace] - (仅限 `'func'` 类型) 运算符或函数相对于其操作数的位置：
-         *   - `'front'`: 前缀，例如 `sin(x)` 中的 `'sin'`。
-         *   - `'middle'`: 中缀，例如 `x + y` 中的 `'+'`。
-         *   - `'back'`: 后缀，例如 `x!` 中的 `'!'`。
-         * @property {string} [associativity] - (仅限 `'func'` 类型) 运算符的结合性：
-         *   - `'left'`: 左结合，例如 `a - b - c` 被解析为 `(a - b) - c`。
-         *   - `'right'`: 右结合，例如 `a ^ b ^ c` 被解析为 `a ^ (b ^ c)`。
-         * @property {boolean} [needKh] - (仅限 `'func'` 类型) 一个标志，指示该函数或运算符在语法预处理阶段是否需要特殊处理以确保括号的正确插入，从而保证运算次序。
-         * @property {boolean} [isPrivate] - (仅限 `'func'` 类型) 一个标志，指示该词法单元是否为内部使用的私有符号（例如 `'N'` 代表一元负号），不应由用户直接输入。
-         * @property {boolean} [isHtmlClassLenOne] - 一个标志，指示该词法单元是否在 HTML 只占用一个类名。
-         * @property {string} [numClass] - (仅限 `'number'` 类型) 数字的子类别：
-         *   - `'baseNumber'`: 基础数字字符，例如 `'0'`-`'9'` 和 `.`。
-         *   - `'codeNumber'`: 预定义的常量或变量，例如 `'pi'`, `'e'`, `'i'`, `'x'`。
-         * @property {number} priority - 运算符的优先级。数值越小，优先级越高。此属性是调度场算法正确处理运算顺序的关键。非运算符的此值为 `Infinity`。
-         *
-         * @example
-         * // 分析一个中缀运算符
-         * Public.getTokenInfo('+');
-         * // 返回: { token: '+', class: 'func', parameters: 2, funcPlace: 'middle', associativity: 'left', needKh: false, isPrivate: false, priority: 7 }
-         *
-         * @example
-         * // 分析一个前缀函数
-         * Public.getTokenInfo('sin');
-         * // 返回: { token: 'sin', class: 'func', parameters: 1, funcPlace: 'front', associativity: 'right', needKh: true, isPrivate: false, priority: 0 }
+         * 返回对象字段说明：
+         *   - `token`：输入的词法单元字符串。
+         *   - `class`：词元类别。
+         *   - `parameters`：仅限 `func` 类型，表示参数数量。
+         *   - `funcPlace`：仅限 `func` 类型，表示函数相对操作数的位置。
+         *   - `associativity`：仅限 `func` 类型，表示结合方向。
+         *   - `needKh`：仅限 `func` 类型，表示是否需要解析器补充括号。
+         *   - `isPrivate`：仅限 `func` 类型，表示是否为内部词元。
+         *   - `numClass`：仅限 `number` 类型，表示数字子类别。
+         *   - `isHtmlClassLenOne`：是否由单个 HTML 类名表示。
+         *   - `priority`：优先级；非运算符为 `Infinity`。
          */
         static getTokenInfo(token) {
             if (!token && token !== '') {
                 return;
             }
 
-            const result = {token: token};
-
-            // 标记是否为在 HTML 中只占用一个类名的函数
+            const result = {token: token, class: 'illegal'};
             result.isHtmlClassLenOne = TokenConfig.htmlClassLenOneFunc.has(token);
-
-            // 安全获取首字符 (处理 token 为空字符串的情况，避免越界或报错)
             const firstChar = token.length > 0 ? token[0] : null;
 
-            // 检查 token 是否合法 (不在全量符号表中，且首字母也不是基础数字)
             if (!TokenConfig.allSigns.has(token) && !TokenConfig.baseNumbers.has(firstChar)) {
-                result.class = 'illegal';
                 return result;
             }
 
@@ -577,14 +482,12 @@
             if (TokenConfig.allFunc.has(token)) {
                 result.class = 'func';
 
-                // 确定参数数量
                 if (TokenConfig.params_1_set.has(token)) {
                     result.parameters = 1;
                 } else if (TokenConfig.params_2_set.has(token)) {
                     result.parameters = 2;
                 }
 
-                // 确定函数/运算符的位置
                 if (TokenConfig.PlaceFrontSet.has(token)) {
                     result.funcPlace = 'front';
                 } else if (TokenConfig.PlaceMiddleSet.has(token)) {
@@ -593,66 +496,48 @@
                     result.funcPlace = 'back';
                 }
 
-                // 确定结合性、括号处理及是否为私有标记
                 result.associativity = TokenConfig.rightAssocFunc.has(token) ? 'right' : 'left';
                 result.needKh = TokenConfig.needParensFunc.has(token);
                 result.isPrivate = TokenConfig.privateFunc.has(token);
-            }
-            // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
-            else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+            } else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+                // 检查 token 是否为数字或变量 (通过常量匹配或首字母匹配)
                 result.class = 'number';
                 result.numClass = TokenConfig.codeNumbers.has(token) ? 'codeNumbers' : 'baseNumber';
-            }
-            // 检查 token 是否为其他合法符号（如括号、逗号等）
-            else if (TokenConfig.other.has(token)) {
+            } else if (TokenConfig.other.has(token)) {
+                // 检查 token 是否为其他合法符号
                 result.class = 'other';
             }
 
-            // 获取并附加优先级信息（利用预计算的 Map 极速获取）
             result.priority = TokenConfig.priorityMap.has(token) ? TokenConfig.priorityMap.get(token) : Infinity;
 
             return result;
         }
 
         /**
-         * @static
-         * @method tokenizer (词法分析器)
-         * @description 将一个数学表达式字符串分解（或“标记化”）成一个词法单元（token）数组。
-         * 这是解析过程的第一步（词法分析），它将原始的、无结构的字符串转换为一个解析器可以理解的、结构化的单元列表。
+         * 将数学表达式拆分为最长匹配的词元。
          *
-         * @param {string} str - 要进行分词的数学表达式字符串。
-         * @param {object} [options={}] - (可选) 一个包含配置选项的对象。
-         * @param {string} [options.baseNumberMode='separate'] - (可选) 控制如何处理基本数字（0-9, .）的模式。
-         *   - `'separate'`: (默认) 将每个数字或小数点字符视为一个独立的词法单元。例如, "123" -> ['1', '2', '3']。
+         * @param {string} str - 使用内部符号表书写的完整数学表达式；扫描按最长合法词元优先，
+         *   返回的索引与字符位置均以该原始字符串为准。
+         * @param {object} [options={}] - 本次扫描策略；对象只被读取，不会被补写默认值或修改。
+         * @param {'separate'|'together'} [options.baseNumberMode='separate'] - 数字逐字符拆分或连续合并。
+         *   - `'separate'`: 将每个数字或小数点字符视为一个独立的词法单元。例如, "123" -> ['1', '2', '3']。
          *   - `'together'`: 将连续的数字和单个小数点组合成一个完整的数字字符串词法单元。例如, "123.45" -> ['123.45']。
-         * @param {boolean} [options.strictMode=true] - (可选) 控制错误处理的模式。
-         *   - `true`: (默认) 严格模式。一旦遇到无法识别的字符或无效的数字格式（如 "1.2.3"），立即停止并返回一个错误数组。
-         *   - `false`: 宽松模式。如果遇到非法字符，会将其作为单个 token 推入结果数组并继续解析。
-         *
-         * @returns {Array<string>|Array<[string, number]>}
-         *   - **成功时**: 返回一个包含所有词法单元的字符串数组。
-         *   - **失败时** (仅在严格模式下): 返回一个包含两个元素的数组 `['error', index]`，其中 `index` 是在原始字符串中检测到错误的字符的索引。
-         *
-         * @example
-         * // 返回: ['sin', '(', '30', ')', '+', '1']
-         * Public.tokenizer("sin(30)+1", { baseNumberMode: 'together' });
-         *
-         * // 返回: ['error', 4]
-         * Public.tokenizer("1.2.3", { baseNumberMode: 'together', strictMode: true });
+         * @param {boolean} [options.strictMode=true] - `true` 时遇到第一个非法字符立即返回
+         *   `['error', index]`；`false` 时保留可识别词元并跳过非法字符，适合宽松的输入预处理。
+         * @returns {string[]|['error', number]} 成功时返回按原表达式顺序排列的内部词元数组；
+         *   `baseNumberMode='together'` 时连续数字可能占一个元素。严格模式失败时返回二元组，
+         *   第 0 项固定为 `error`，第 1 项是原字符串中首个非法字符的零基索引。
+         *   - 成功时: 返回一个包含所有词法单元的字符串数组。
+         *   - 失败时 (仅在严格模式): 返回一个包含两个元素的数组 `['error', index]`，其中 `index` 是在原始字符串中检测到错误的字符的索引。
          */
         static tokenizer(str, {baseNumberMode = 'separate', strictMode = true} = {}) {
-            // 初始化一个空数组，用于存储最终的词法单元列表。
             const result = [];
-            // 遍历输入字符串的每个字符。
             for (let i = 0; i < str.length; i++) {
                 const currentI = str[i];
 
-                // --- 分支 1: 处理非字母字符 (如运算符, 数字, 括号等) ---
-                // 使用正则表达式快速判断当前字符是否为非字母，这通常比检查一个巨大的字符列表更高效。
+                // 数字、运算符和括号可直接按单字符识别。
                 if (currentI.match(/[^a-zA-Z\[\]]/)) {
-                    // 获取该字符的详细信息（类型、类别等）。
                     const tokenInfo = Public.getTokenInfo(currentI);
-                    // 如果是无法识别的单个字符，则立即返回错误。
                     if (tokenInfo.class === 'illegal') {
                         if (strictMode) {
                             return ['error', i];
@@ -660,190 +545,157 @@
                         result.push(currentI);
                         continue;
                     }
-                    // 如果当前字符是数字或小数点，并且模式设置为 'together'...
                     if (baseNumberMode === 'together' && tokenInfo.numClass === 'baseNumber') {
                         let token = '';
-                        let decimalPoint = false; // 用于跟踪是否已遇到小数点。
-                        // ...则进入一个内部循环，以贪婪模式向前查找，构建完整的数字字符串。
+                        let decimalPoint = false; // 是否已经读取小数点。
                         while (i < str.length && Public.getTokenInfo(str[i]).numClass === 'baseNumber') {
                             token += str[i];
-                            // 在严格模式下，检查并处理小数点，确保一个数字中最多只有一个小数点。
                             if (str[i] === '.' && strictMode) {
                                 if (decimalPoint) {
-                                    return ['error', i]; // 发现第二个小数点，格式错误。
+                                    return ['error', i]; // 同一数字包含多个小数点。
                                 }
                                 decimalPoint = true;
                             }
-                            i += 1; // 向前移动索引。
+                            i += 1;
                         }
                         if (token === '.' && strictMode) {
                             return ['error', i - 1];
                         }
-                        result.push(token); // 将构建好的完整数字词法单元推入结果数组。
-                        i -= 1; // 回退一个字符，因为外层 for 循环的 i++ 会跳过下一个字符。
+                        result.push(token);
+                        i -= 1; // 抵消外层循环的自增。
                     } else {
-                        // 如果是其他合法的非字母字符（如 '+', '(', ')'），或在 'separate' 模式下，直接将其作为单个词法单元。
                         result.push(currentI);
                     }
-                    continue; // 完成当前字符的处理，继续外层 for 循环。
+                    continue;
                 }
 
-                // --- 分支 2: 处理字母开头的词法单元 (函数名, 常量) --- //
-                // 从当前位置开始，提取一个可能的最大长度的子字符串。
-                // 这是一种优化，避免在每次迭代中都检查从当前位置到字符串末尾的所有可能性。
+                // 从最长候选开始缩短，匹配函数名和常量。
                 const temp = str.slice(i, i + TokenConfig.MAX_TOKEN_LENGTH).match(/^[a-zA-Z\[\]]*/)[0];
-                // 贪心算法：循环地从后向前缩短这个子字符串，以找到最长的有效匹配。
-                // 例如，对于 "sin(x)"，它会先尝试 "sin"，如果有效则匹配，而不会只匹配 "s"。
                 let matched = false;
-                // len 代表当前尝试匹配的子字符串长度
                 for (let len = temp.length; len > 0; len--) {
                     const subTemp = temp.slice(0, len);
-
-                    // 检查标准词法单元
                     const tokenInfo = Public.getTokenInfo(subTemp);
                     if (tokenInfo.class !== 'illegal' || (tokenInfo.isHtmlClassLenOne && !strictMode)) {
                         result.push(subTemp);
-                        i += len - 1; // 跳过已匹配的字符（保留当前 i 供主循环++使用，所以减 1）
+                        i += len - 1; // 保留当前字符供外层循环自增。
                         matched = true;
                         break;
                     }
                 }
 
-                // 3. 兜底逻辑：如果没有找到任何匹配
                 if (!matched) {
                     if (strictMode) {
                         return ['error', i];
                     }
-                    // 非严格模式下，将当前单个字符作为结果，并让主循环继续
                     result.push(str[i]);
-                    // 这里不需要修改 i，因为没有匹配成功，主循环自然会 i++ 处理下一个字符
                 }
             }
-            // 如果成功遍历整个字符串，返回包含所有词法单元的数组。
             return result;
         }
     }
 
     /**
+     * 保存数学运算和输出的全局配置。
+     *
      * @class CalcConfig
-     * @description 一个静态类，为其它数学库和计算库提供全局配置。
-     * 它不应该被实例化，其所有属性和方法都应静态访问。
      */
     class CalcConfig {
         /**
-         * @static
-         * @readonly
+         * 全局计算精度上限，其值与下面的常量精度有关。
+         *
          * @type {number}
-         * @description 存储最大全局精度（有效数字位数），其值在运行时不应被修改。
-         * 其值与下面的常量精度有关。
          */
         static MAX_GLOBAL_CALC_ACCURACY = 220;
 
         /**
-         * @static
-         * @readonly
+         * 数字构造器可接受的最大字符串长度。
+         *
          * @type {number}
-         * @description 创建 BigNumber 和 ComplexNumber 实例时输入字符串所允许的最大长度。
-         * 这是一个关键的安全措施，用于防止正则表达式拒绝服务（ReDoS）攻击
-         * 以及在处理超长数字字符串时可能发生的内存溢出问题。
          */
         static MAX_INPUT_STRING_LENGTH = 120_459;
 
         /**
-         * @static
-         * @readonly
+         * `BigNumber.toString()` 可生成的最大字符数。
+         *
          * @type {number}
-         * @description BigNumber 中 `toString()` 方法生成字符串时所允许的最大字符数。
-         * 此设置可防止因数字的绝对值过大或过小而生成一个可能耗尽系统内存的超长字符串。
          */
         static MAX_TO_STRING_LENGTH = 120_459;
 
         /**
-         * @static
-         * @readonly
+         * `BigNumber` 允许的最小指数。
+         *
          * @type {number}
-         * @description BigNumber 允许的最小指数。
-         * 用于 BigNumber 下溢检查。
          */
         static MIN_INPUT_EXPONENT = -2026;
 
         /**
-         * @static
-         * @readonly
+         * `BigNumber` 允许的最大指数。
+         *
          * @type {number}
-         * @description BigNumber 允许的最大指数。
-         * 用于上溢检查，防止数字过大。
          */
         static MAX_INPUT_EXPONENT = 2022;
 
         /**
-         * @static
-         * @readonly
+         * `MathPlus.pow()` 切换到快速幂的结果位数阈值。
+         *
          * @type {number}
-         * @description 在 `MathPlus.pow()` 中，当指数为整数时，当结果的最大十进制位数大于此值，则使用快速幂运算计算，否则使用原生 BigInt。
-         * 这是一个安全限制，防止因生成一个极大的数字而耗尽内存或耗时过长。
          */
         static CRITICAL_MAGNITUDE_FAST_EXP = 10_000;
 
         /**
-         * @static
-         * @readonly
+         * 自动输出模式切换为科学记数法的数量级阈值。
+         *
          * @type {number}
-         * @description 在 `BigNumber.toString({ mode: 'auto' })` 中，用于决定使用普通表示法还是科学记数法的阈值。
-         * 当一个数的数量级（大致可理解为小数点需要移动的位数）的绝对值超过此长度时，会触发切换。
-         * 这有助于在数的整数部分或小数部分的零过多，导致其普通表示法字符串过长时，自动切换到更紧凑的科学记数法。
-         * 例如，当此值为 10 时，像 1e11 (11 > 10) 或 1e-11 (|-11| > 10) 这样的数将被格式化为科学记数法。
          */
         static TO_STRING_AUTOMATIC_SWITCH_LENGTH = 10;
 
         /**
-         * @static
+         * 复数 n 次方根最多显示的解数。
+         *
          * @type {number}
-         * @description 求复数n次方根时，最多显示的数值解的数量。
-         * 用于防止当 n 非常大时，生成一个过长的结果列表。
          */
         static RADICAL_FUNCTION_MAX_SHOW_RESULTS = 20;
 
         /**
-         * @static
+         * 函数值列表最多显示的结果数。
+         *
          * @type {number}
-         * @description 生成函数列表时，最多显示的数值解的数量。
-         * 用于防止当 n 非常大时，生成一个过长的结果列表。
          */
         static VALUE_LIST_MAX_SHOW_RESULTS = 999;
 
         /**
+         * 已解析的常量对象。
+         *
          * @private
          * @type {Object|null}
-         * @description 顶层常量对象的单例缓存。
          */
         static _constantsCache = null;
 
         /**
+         * 以十六进制尾数保存的高精度常量原始数据。
+         *
          * @private
          * @type {Object}
-         * @description 存放基础数学常数的 16 进制字符串数据字典。
          */
         static _rawConstants = {
-            // 基本常数
+            // 基础常量。
             e: [-219, '1ecd49d9e3c29326029305c8f68bacfa3c6316f631eac146b2134a1e6c0b75cef869bf281f79ee8c71f281e2c884aeb87fb37c64089a0ec56be456431569d592c56ae708d6630c6ccf7af1f75d487096c3a75ad203963a6ddc1914a', 220],
             pi: [-219, '23993e59d8f1beed1a7593d4faa8f71e7e7bfabd3bce9147f36fe49488ef48e00256540fb0bed3a804f57ca4ae2a25415b67d6bfc0a4b0052eebd7de00d229188a05edd25b4921fa0718579873598ff6e2f639b2ca5cb0a930b4c86', 220],
 
-            // 1/(2*pi) 和 2*pi，用于三角函数的周期性计算，具有更高的精度以减少累积误差。
+            // `1/(2*pi)` 用于三角函数的周期性计算。
             invTwoPi: [-440, '7fb8e2cfa572366dac69f800d8ea4a71dec50a009caf878c5a967130e4d2dc7099d5db874d0390b8b540fafae08078229c44539acf4e25efb46ba78b8941b6725e93e7d9700720e4cbafef059ccf263028f519e3ec8defa7424ffb0bf026259cc4f88003d435b98bcf2e0406f9effdb81a5a46340909994465cf71fdc630153a6f51f44ab249beaf7daf8ec4ab820e393fdf4a18a2e16f47f1009414efe0eb850747b99448819486378e7e2ff4e8f829eb599570c017e', 440],
 
-            // ln(10)，用于对数函数的换底计算。
             ln_10: [-219, '1a176bae18c7780dbb8d48b8882691c90a86e72d72de2f768182d52f07d96dbb38aa172b3c124babac9116cabbf5455a8886de7468c185b63a2b557dd589b14e85802b87b72bd8d0eb7d86d273bd8ca8fdd8384034f38977b89d16e', 220],
-            // ln(1.2)，用于 ln 函数的范围缩减算法，以加速泰勒级数收敛。
+            // `ln(1.2)` 用于对数范围缩减。
             ln_1_2: [-220, '14a8d935f98be97b04624e3a7e3ae0617137ebf4346878d6338c45f0a167b2dd07c6c4b8c01f39378cc7816de8f6825aca7f00bef7c13790b9238ba6b373b5c18ae1f1364de093c6c002937af1bf247e88d0ca62944fa60c5f5afab', 220],
 
             /**
-             * 伽玛函数（阶乘函数的推广）的兰佐斯近似（Lanczos Approximation）系数。
+             * 伽玛函数的 Lanczos Approximation 系数。
              * 提供了多个不同精度等级的系数集。`fact` 函数会根据目标精度自动选择最合适的系数集。
              * 每个系数集包含：
-             * - acc: 该系数集设计时所针对的精度。
-             * - g: 兰佐斯公式中使用的任意常数 g。
-             * - p: 兰佐斯公式中级数求和部分的一系列预计算系数 p₀, p₁, p₂, ...。
+             *   - acc: 该系数集设计时所针对的精度。
+             *   - g: 兰佐斯公式中使用的任意常数 g。
+             *   - p: 兰佐斯公式中级数求和部分的一系列预计算系数 p₀, p₁, p₂, ...。
              */
             lanczos_n20: {
                 acc: 100,
@@ -1182,26 +1034,23 @@
         };
 
         /**
-         * @constructor
-         * @description CalcConfig 的构造函数。
-         * 这个类被设计为静态类，不应该被实例化。
-         * 如果尝试创建 CalcConfig 的实例，构造函数会抛出一个错误。
-         * @throws {Error} 总是抛出错误，以防止实例化。
+         * 阻止实例化静态配置类。
+         *
+         * @throws {Error} 始终抛出。
          */
         constructor() {
-            // 抛出错误以明确表示这是一个静态类，不应创建实例。
-            // 这是一种常见的实践，用于强制执行静态类的使用模式，防止误用。
             throw new Error('[CalcConfig] CalcConfig is a static class and should not be instantiated.');
         }
 
         /**
-         * @static
-         * @returns {Object} 包含基础数学常数（如 e, pi）和复杂算法系数（如 lanczos）的集合。
-         * @description 获取高精度常数对象集合。
-         * 每个常量都以 BigNumber 的内部格式 `[power, mantissa, accuracy]` 返回。
+         * 延迟解析并缓存高精度常量。
+         *
+         * @returns {Object<string, [number, bigint, number]|{acc:number, g:[number, bigint, number], p:Array<[number, bigint, number]>}>}
+         *   惰性解析且缓存的只读常量表。`e`、`pi`、`invTwoPi` 等基础项直接是
+         *   `[power, mantissa, acc]`；`lanczos_n20`、`lanczos_n40`、`lanczos_n82`、`lanczos_n164`
+         *   则返回 `{acc, g, p}`，其中 `acc` 是适用精度上限，`g` 是参数元组，`p` 是系数元组数组。
          */
         static get constants() {
-            // 若已完成初始化，直接返回单例，不再重复挂载 Getter
             if (this._constantsCache) {
                 return this._constantsCache;
             }
@@ -1209,69 +1058,76 @@
             const target = {};
 
             /**
-             * 核心解析器：将 16 进制原始元组解析为原生的 BigInt 数据元组。
-             * @param {Array<Number|String>} rawTuple - 原始数据元组 [指数, 16进制字符串, 精度]
-             * @returns {Array<Number|BigInt>} 结构为 [Number, BigInt, Number] 的原生数组
+             * 将十六进制尾数字符串转换为 `BigInt`。
+             *
+             * @param {[number, string, number]} rawTuple - 常量表中的 `[power, mantissa, acc]`：
+             *   `power` 为十进制指数，`mantissa` 是避免脚本解析损失的十进制整数字符串，
+             *   `acc` 是该常量可用的有效位数。返回值会将尾数转换为 `bigint`。
+             * @returns {[number, bigint, number]} 可直接传给 `BigNumber` 的
+             *   `[power, mantissa, acc]`：十进制指数、带符号整数尾数和有效位数；返回新数组。
              */
             const parseTuple = (rawTuple) => {
                 const hexStr = rawTuple[1];
                 let bigIntValue;
 
-                // 检查是否为负数
                 if (hexStr[0] === '-') {
-                    // 去掉负号，加上 0x 前缀，解析为 BigInt 后再取负
                     bigIntValue = -BigInt('0x' + hexStr.slice(1));
                 } else {
-                    // 正数直接加上 0x 前缀解析
                     bigIntValue = BigInt('0x' + hexStr);
                 }
 
                 return [rawTuple[0], bigIntValue, rawTuple[2]];
             };
 
-            // 遍历原始字典，为每个顶层属性（e, pi, lanczos_n...）劫持并挂载 Getter
+            // Getter 在首次访问后由不可变值替换。
             for (const key of Object.keys(this._rawConstants)) {
                 Object.defineProperty(target, key, {
                     /**
-                     * 顶层属性的自覆盖 Getter。
-                     * 仅在代码首次访问该属性（如 BigMath.constants.e）时触发。
+                     * 解析并缓存当前顶层常量。
+                     *
+                     * @returns {[number, bigint, number]|{acc:number, g:[number, bigint, number], p:Array<[number, bigint, number]>}}
+                     *   当前 `key` 对应的基础数值元组或 Lanczos 参数对象；首次访问后 getter 会被同一
+                     *   不可写值替换，后续访问保持对象身份。
                      */
                     get: () => {
                         const raw = this._rawConstants[key];
                         let val;
 
-                        // 判断当前处理的是 Lanczos 复杂对象，还是普通的基础常数元组
                         if (raw.p && Array.isArray(raw.p)) {
-
-                            // 初始化 Lanczos 结构壳子，保留静态属性 acc
                             const lanczosObj = {acc: raw.acc};
 
-                            // 1. 劫持 Lanczos 对象的 g 属性
                             Object.defineProperty(lanczosObj, 'g', {
+                                /**
+                                 * 解析并缓存 Lanczos 参数 `g`。
+                                 *
+                                 * @returns {[number, bigint, number]} Lanczos 参数 `g` 的
+                                 *   `[power, mantissa, acc]` 元组；首次读取时解析并固定在当前参数对象上。
+                                 */
                                 get: () => {
-                                    // 首次访问时执行字符串转换
                                     const gVal = parseTuple(raw.g);
 
-                                    // 自覆盖法：将 g 属性重写为纯静态值
                                     Object.defineProperty(lanczosObj, 'g', {
                                         value: gVal,
-                                        writable: false,      // 防篡改保护 
-                                        configurable: false,  // 防止被再次 defineProperty
+                                        writable: false,
+                                        configurable: false,
                                         enumerable: true
                                     });
                                     return gVal;
                                 },
-                                configurable: true, // 必须为 true，以允许在上面执行自覆盖
+                                configurable: true, // 允许首次访问时替换 getter。
                                 enumerable: true
                             });
 
-                            // 2. 劫持 Lanczos 对象的 p 属性（系数数组）
                             Object.defineProperty(lanczosObj, 'p', {
+                                /**
+                                 * 解析并缓存 Lanczos 系数数组 `p`。
+                                 *
+                                 * @returns {Array<[number, bigint, number]>} 按近似公式求和顺序排列的系数
+                                 *   `p₀, p₁, …`；每项均为 `[power, mantissa, acc]`，整个数组只解析一次。
+                                 */
                                 get: () => {
-                                    // 首次访问时，利用 map 瞬间将所有 16 进制字符串转为 BigInt 元组。
                                     const pArray = raw.p.map(parseTuple);
 
-                                    // 自覆盖法：将 p 属性重写为原生的纯静态数组
                                     Object.defineProperty(lanczosObj, 'p', {
                                         value: pArray,
                                         writable: false,
@@ -1286,12 +1142,9 @@
 
                             val = lanczosObj;
                         } else {
-                            // 基础常数 (如 e, pi)，直接一次性解析为原生元组
                             val = parseTuple(raw);
                         }
 
-                        // 3. 顶层属性的自覆盖法
-                        // 将 target[key] 的 Getter 替换为已经计算好的 val
                         Object.defineProperty(target, key, {
                             value: val,
                             writable: false,
@@ -1301,242 +1154,190 @@
 
                         return val;
                     },
-                    configurable: true, // 允许顶层属性自覆盖
+                    configurable: true, // 允许首次访问时替换 getter。
                     enumerable: true
                 });
             }
 
-            // 保存组装好 Getter 的目标对象至缓存
             this._constantsCache = target;
             return this._constantsCache;
         }
 
         /**
+         * 复数的默认输出模式：
+         *   - 'algebra' 表示代数形式 (a+bi)
+         *   - 'polar' 表示极坐标形式 (r∠θ)
+         *
          * @private
-         * @static
          * @type {string}
-         * @description 存储复数转换为字符串时的默认打印模式。
-         * 'algebra' 表示代数形式 (a+bi)，'polar' 表示极坐标形式 (r∠θ)。
-         * 这是一个私有静态字段。
          */
         static _globalPrintMode = 'algebra';
 
         /**
-         * @property {string} globalPrintMode
-         * @description 获取或设置复数转换为字符串时的全局默认打印模式。
-         * 此设置会影响 `ComplexNumber.prototype.toString` 的默认行为。
-         * @type {('algebra'|'polar')}
-         * @example
-         * // 设置为极坐标模式
-         * CalcConfig.globalPrintMode = 'polar';
-         * // 获取当前模式
-         * console.log(CalcConfig.globalPrintMode); // 'polar'
+         * 获取复数的默认输出模式。
+         *
+         * @returns {'algebra'|'polar'} 输出模式。
          */
         static get globalPrintMode() {
             return CalcConfig._globalPrintMode;
         }
 
         /**
-         * @param {('algebra'|'polar'|undefined)} mode - 要设置的打印模式。
-         * - `'algebra'`: 代数形式 (a + bi)。
-         * - `'polar'`: 极坐标形式 (r∠θ)。
-         * - 如果传入 `undefined`，则不会进行任何更改。
-         * @throws {Error} 如果设置的值不是 'algebra'、'polar' 或 undefined 之一。
+         * 设置复数的默认输出模式并同步到 Worker。
+         *
+         * @param {'algebra'|'polar'|undefined} mode - 新的全局复数输出形式；`algebra` 表示代数形式，
+         *   `polar` 表示极坐标形式。传 `undefined` 视为保持当前值，其他值会抛错且不会同步 Worker。
+         * @returns {void}
+         * @throws {Error} 模式不受支持时抛出。
          */
         static set globalPrintMode(mode) {
-            // 如果未提供模式，则不执行任何操作，保持当前设置。
             if (mode === undefined) {
                 return;
             }
-            // 验证输入值是否为支持的模式之一。
             if (!['algebra', 'polar'].includes(mode)) {
                 throw new Error('[CalcConfig] Input error: Only supports "algebra" and "polar" modes.');
             }
             CalcConfig._globalPrintMode = mode;
-            // 调用同步
             this._syncToWorker('setPrintMode', mode);
         }
 
         /**
+         * 全局计算精度。
+         *
          * @private
-         * @static
          * @type {number}
-         * @description 存储全局计算精度（有效数字位数）。
-         * 这是一个私有静态字段，应通过 `globalCalcAccuracy` 的 getter 和 setter 进行访问和修改。
          */
         static _globalCalcAccuracy = 220;
 
         /**
-         * @static
-         * @property {number} globalCalcAccuracy
-         * @description 获取或设置用于所有计算的全局默认精度（有效数字位数）。
-         * 此精度值将作为所有新创建的 `BigNumber` 和 `ComplexNumber` 实例的默认计算精度，
-         * 除非在构造时显式指定了其他精度。
+         * 获取全局计算精度。
          *
-         * @type {number}
-         *
-         * @example
-         * // 获取当前全局计算精度
-         * const currentAccuracy = CalcConfig.globalCalcAccuracy;
-         * console.log(currentAccuracy); // 220
-         *
-         * // 设置新的全局计算精度
-         * CalcConfig.globalCalcAccuracy = 100;
-         *
-         * // 抛出错误，因为精度必须是1到220之间的整数
-         * try {
-         *   CalcConfig.globalCalcAccuracy = 300;
-         * } catch (e) {
-         *   console.error(e.message);
-         * }
+         * @returns {number} 有效数字位数。
          */
         static get globalCalcAccuracy() {
             return CalcConfig._globalCalcAccuracy;
         }
 
         /**
-         * @param {number|undefined} acc - 要设置的新精度值。
-         * - 必须是 1 到 `_MAX_GLOBAL_CALC_ACCURACY` (220) 之间的整数。
-         * - 如果传入 `undefined`，精度将被重置为最大允许值 `_MAX_GLOBAL_CALC_ACCURACY`。
-         * @throws {Error} 如果输入值不是数字、不是整数或超出有效范围。
+         * 设置全局计算精度并同步到 Worker。
+         *
+         * @param {number|undefined} acc - 计算使用的有效数字位数
+         *   必须是 1 到 `_MAX_GLOBAL_CALC_ACCURACY`（含）之间的整数；`undefined` 重置为上限。
+         *   成功设置后会同步 Worker，且会重新解析随精度变化的常量与 Lanczos 系数。
+         * @returns {void}
+         * @throws {Error} 精度无效时抛出。
          */
         static set globalCalcAccuracy(acc) {
             let numericAcc;
 
             if (acc === undefined) {
-                // 如果未提供精度值，则重置为最大允许的全局精度。
-                // 这提供了一种方便的方式来恢复到最高精度设置。
                 numericAcc = CalcConfig.MAX_GLOBAL_CALC_ACCURACY;
             } else {
-                // 如果提供了精度值，则对其进行严格的验证。
                 numericAcc = Number(acc);
 
-                // 验证第一步：确保输入值可以转换为一个数字。
                 if (Number.isNaN(numericAcc)) {
                     throw new Error('[CalcConfig] Input error: Accuracy must be a number');
                 }
 
-                // 验证第二步：确保精度值是整数。
                 if (!Number.isInteger(numericAcc)) {
                     throw new Error('[CalcConfig] Input error: Accuracy must be an integer.');
                 }
 
-                // 验证第三步：确保精度值在允许的范围内（1 到 CalcConfig._maxGlobalAccuracy）。
-                // 精度过高可能导致性能问题或超出浮点数表示范围，过低则无意义。
                 if (numericAcc > CalcConfig.MAX_GLOBAL_CALC_ACCURACY || numericAcc <= 0) {
                     throw new Error(`[CalcConfig] Range error: Accuracy must be between 1 and ${CalcConfig.MAX_GLOBAL_CALC_ACCURACY}.`);
                 }
             }
 
-            // 所有验证通过后，更新全局计算精度。
             CalcConfig._globalCalcAccuracy = numericAcc;
 
-            // 如果当前 outputAccuracy 是绝对值且超过了新的计算精度，则进行修正
+            // 绝对输出精度不能超过计算精度。
             if (CalcConfig._outputAccuracy > 1 && CalcConfig._outputAccuracy > numericAcc) {
                 CalcConfig._outputAccuracy = numericAcc;
             }
 
-            // 调用同步
             this._syncToWorker('setCalcAccuracy', acc);
         }
 
         /**
+         * 默认输出精度或精度比例。
+         *
          * @private
-         * @static
          * @type {number}
-         * @description 存储用于格式化输出的全局默认精度。
-         * 这是一个私有静态字段，应通过 `outputAccuracy` 的 getter 和 setter 进行访问和修改。
          */
         static _outputAccuracy = 0.9;
 
         /**
-         * @static
-         * @property {number} outputAccuracy
-         * @description 获取用于格式化输出的全局默认精度。
-         * 此设置会影响 `Public.idealizationToString` 等函数的默认行为，
-         * 它与 `globalCalcAccuracy`（内部计算精度）是分开的。
-         * @type {number}
+         * 获取默认输出精度或精度比例。
+         *
+         * @returns {number} 输出精度设置。
          */
         static get outputAccuracy() {
-            // 直接返回私有静态属性 _outputAccuracy 的值。
             return CalcConfig._outputAccuracy;
         }
 
         /**
-         * @param {number|undefined} acc - 要设置的新输出精度。
-         * - **比例模式**: 如果 `acc` 是一个 (0, 1) 之间的浮点数，它将被解释为相对于 `globalCalcAccuracy` 的比例。例如，如果 `globalCalcAccuracy` 是 100，`acc` 是 0.9，则实际输出精度将是 90 位。
-         * - **绝对模式**: 如果 `acc` 是一个大于等于 1 的整数，它将直接被用作输出的有效数字位数。
-         * - **重置**: 如果 `acc` 为 `undefined`，输出精度将被重置为当前的 `globalCalcAccuracy` 值。
-         * @throws {Error} 如果输入值无效（非数字、超出范围等），则抛出错误。
+         * 设置输出精度并同步到 Worker。
+         *
+         * @param {number|undefined} acc - 输出有效位数策略：`acc >= 1` 表示绝对位数，
+         *   `0 < acc < 1` 表示相对于输入计算精度的比例，`acc <= 0` 表示沿用输入精度；
+         *   `undefined` 恢复默认比例。绝对位数不得超过全局计算精度。
+         *   - 比例模式: 如果 `acc` 是一个 (0, 1) 之间的浮点数，它将被解释为相对于 `globalCalcAccuracy` 的比例。例如，如果 `globalCalcAccuracy` 是 100，`acc` 是 0.9，则实际输出精度将是 90 位。
+         *   - 绝对模式: 如果 `acc` 是一个大于等于 1 的整数，它将直接被用作输出的有效数字位数。
+         *   - 重置: 如果 `acc` 为 `undefined`，输出精度将被重置为当前的 `globalCalcAccuracy` 值。
+         * @returns {void}
+         * @throws {Error} 输出精度无效时抛出。
          */
         static set outputAccuracy(acc) {
             let numericAcc;
 
             if (acc === undefined) {
-                // 如果未提供精度值，则重置为当前的全局计算精度。
                 numericAcc = CalcConfig.globalCalcAccuracy;
             } else {
-                // 如果提供了精度值，则对其进行严格的验证。
                 numericAcc = Number(acc);
 
-                // 验证 1：确保输入是数字。
                 if (Number.isNaN(numericAcc)) {
                     throw new Error('[CalcConfig] Input error: Accuracy must be a number.');
                 }
 
-                // 验证 2：如果精度值大于 1（绝对模式），则必须是整数。
                 if (numericAcc > 1 && !Number.isInteger(numericAcc)) {
                     throw new Error('[CalcConfig] Input error: Accuracy must be an integer when greater than 1.');
                 }
 
-                // 验证 3：确保精度值在有效范围内 (0, globalCalcAccuracy]。
                 if (numericAcc > CalcConfig.globalCalcAccuracy || numericAcc <= 0) {
                     throw new Error(`[CalcConfig] Range error: Accuracy must be between 0 (exclusive) and ${CalcConfig.globalCalcAccuracy} (inclusive).`);
                 }
             }
 
-            // 所有验证通过后，更新输出精度。
             CalcConfig._outputAccuracy = numericAcc;
-            // 调用同步
             this._syncToWorker('setOutputAccuracy', this._outputAccuracy);
         }
 
         /**
+         * 将主线程配置同步到已就绪的 Worker。
+         *
          * @private
-         * @static
-         * @method _syncToWorker
-         * @description 将主线程的配置变更单向同步到 Web Worker 中。
-         * 此方法充当主线程配置 (`CalcConfig`) 与后台计算引擎 (`WorkerTools`) 之间的桥梁。
-         *
-         * 它包含关键的环境检查逻辑：
-         * 1. **环境隔离**：通过检查 `window` 对象，确保同步仅在主线程发起，防止 Worker 接收到配置后再次尝试同步给自己，从而导致死循环。
-         * 2. **依赖安全**：检查 `WorkerTools` 是否存在及其状态 (`isReady`)，防止在 Worker 未初始化或已销毁时调用导致程序崩溃。
-         * 3. **错误处理**：捕获异步通信中的 Promise 异常并打印日志，避免阻断主线程的同步赋值逻辑。
-         *
-         * @param {string} methodName - 要调用的 `WorkerTools` 中的静态方法名 (例如 'setCalcAccuracy', 'setPrintMode')。
-         * @param {number|string} value - 需要传递给 Worker 的新配置值。
+         * @param {string} methodName - `WorkerTools` 已注册的配置方法名，例如 `setAccuracy`、
+         *   `setOutputAccuracy` 或 `setPrintMode`；网页模式下会按该名称分发异步调用。
+         * @param {number|string} value - 与目标方法契约一致的新配置值；该值通过 Worker 消息复制，
+         *   同步失败仅记录错误，不回滚主线程已经生效的配置。
          * @returns {void}
          */
         static _syncToWorker(methodName, value) {
-            // 1. 环境判断：只在主线程执行
+            // Worker 内没有 window；在这里返回可防止 Worker 应用配置后再次反向同步，形成消息回环。
             if (typeof window === 'undefined') {
                 return;
             }
 
-            // 2. 依赖判断：WorkerTools 必须存在
             if (typeof WorkerTools === 'undefined') {
                 return;
             }
 
-            // 3. 状态判断：使用公开接口检查 Worker 是否存活
-            // 修正了直接访问 _mathWorker 的问题
             if (WorkerTools.isReady) {
                 WorkerTools[methodName](value);
             }
         }
     }
 
-    // 导出对象
     window.TokenConfig = TokenConfig;
     window.Public = Public;
     window.CalcConfig = CalcConfig;
