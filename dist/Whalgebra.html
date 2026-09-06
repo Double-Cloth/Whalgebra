@@ -16153,6 +16153,8 @@
             display: none;
         }
 
+        /* 通用可见性与内容排列工具类 */
+
         .NoDisplay {
             display: none !important;
         }
@@ -16221,6 +16223,8 @@
             width: 100dvw;
             height: 100dvh;
         }
+
+        /* 两个并排视图通过水平位移切换输入页与结果页。 */
 
         #main {
             position: absolute;
@@ -16503,6 +16507,8 @@
             width: 10dvw;
             margin-left: 0;
         }
+
+        /* 数据行由虚拟滚动器动态填充。 */
 
         #grid_data {
             width: 100dvw;
@@ -17058,6 +17064,7 @@
         /* 键盘响应式布局 */
 
         @media (max-width: 160dvh) {
+            /* 较窄视口使用全宽五列键盘。 */
 
             .KeyboardCover {
                 width: 100dvw;
@@ -17135,6 +17142,7 @@
         }
 
         @media (min-width: 160dvh) {
+            /* 宽视口将输入区与键盘并排显示。 */
 
             #keyboard_cover,
             #keyboard_top > div:where(:nth-child(2), div:nth-child(3)) {
@@ -17839,6 +17847,8 @@
             margin-top: 1dvmin;
         }
 
+        /* 三组统计结果通过横向位移切换。 */
+
         #statistics_results_window {
             position: relative;
             display: flex;
@@ -17862,6 +17872,8 @@
         #statistics_results_window.ResultXY {
             transform: translateX(-198dvw);
         }
+
+        /* 函数值表在单函数与双函数模式间切换列布局。 */
 
         #print_content_2 div.Lines {
             z-index: 1;
