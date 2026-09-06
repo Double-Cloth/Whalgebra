@@ -146,7 +146,8 @@
                 /**
                  * 返回值的精确小写类型名。
                  *
-                 * @param {*} value - 待检查的值。
+                 * @param {*} value - 待检查的任意 JavaScript 值；通过内部 `[[Class]]` 标签判型，
+                 *   因而数组、包装对象以及 `BigNumber`/`ComplexNumber` 实例不会被统一归为 `object`。
                  * @returns {string} 例如 `array`、`object` 或 `bignumber`。
                  */
                 static typeOf = value => Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
@@ -154,14 +155,16 @@
                 /**
                  * 将精度范围内接近零的实部和虚部归零。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 待修正的数值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 待修正的数值，格式必须能被
+                 *   `ComplexNumber` 构造器接受；数组既可表示 `[real, imag]`，也可表示底层高精度数值元组。
+                 *   该方法会创建新实例，不会修改传入的 `BigNumber`、`ComplexNumber` 或数组。
                  * @returns {ComplexNumber} 修正后的复数。
                  */
                 static zeroCorrect(x) {
                     /**
                      * 将精度阈值内的 `BigNumber` 归零。
                      *
-                     * @param {BigNumber} input - 待修正的数值。
+                      * @param {BigNumber} input - 待修正的实部或虚部；其 `acc` 同时决定判零阈值和返回零值的精度。
                      * @returns {BigNumber} 零值或原值。
                      * @private
                      */
@@ -186,7 +189,8 @@
                 /**
                  * 将精度误差造成的近似整数恢复为整数。
                  *
-                 * @param {ComplexNumber|string|number} n - 待修正的数值。
+                 * @param {ComplexNumber|string|number} n - 待修正的数值；仅当它在降低少量保护位后成为
+                 *   纯实整数时才会被替换，真正的小数、非零虚部和已精确表示的整数均保持原值。
                  * @returns {ComplexNumber} 修正后的值；无法修正时返回原值。
                  */
                 static integerCorrect(n) {
@@ -205,14 +209,16 @@
                 /**
                  * 按指定精度和打印模式格式化一个值或值数组。
                  *
-                 * @param {*|Array<*>} x - `ComplexNumber` 可接受的值、值数组或 `error`。
-                 * @param {object} [options={}] - 格式化选项。
+                 * @param {*|Array<*>} x - `ComplexNumber` 可接受的单值、由这些值组成的数组，或字符串 `error`。
+                 *   数组按元素独立格式化并返回等长新数组；`error` 原样透传，输入对象不会被修改。
+                 * @param {object} [options={}] - 仅控制本次转换的格式化选项，不会改写 `CalcConfig` 的全局设置。
                  * @param {number} [options.acc=CalcConfig.outputAccuracy] - 有效数字位数、精度比例或非正的原精度标记。
                  *   - 若省略，则使用 `CalcConfig.outputAccuracy` 的当前值。
                  *   - 若 `acc >= 1`，它代表一个绝对的有效数字位数。
                  *   - 若 `0 < acc < 1`，它被视为一个比例，最终精度将是 `acc * CalcConfig.globalCalcAccuracy`。
                  *   - 若 `acc <= 0`，它代表输出精度和输入一致。
-                 * @param {string} [options.printMode=CalcConfig.globalPrintMode] - 输出模式。
+                 * @param {'algebra'|'polar'} [options.printMode=CalcConfig.globalPrintMode] - 复数输出形式：
+                 *   `algebra` 生成 `a+bi`，`polar` 生成模与辐角；实数在两种模式下都保持普通数值表示。
                  * @returns {string|string[]} 如果输入是单个值，则返回其字符串表示；如果输入是数组，则返回一个字符串数组。
                  */
                 static idealizationToString(x, {
@@ -226,7 +232,8 @@
                     /**
                      * 根据输入精度和输出设置计算实际精度。
                      *
-                     * @param {number} numAcc - 输入值的精度。
+                      * @param {number} numAcc - 当前待格式化数值携带的正整数有效位数；比例精度以它为基数，
+                      *   绝对精度也不会超过它，以免输出并不存在的有效数字。
                      * @returns {number} 实际输出精度。
                      */
                     const getRealAcc = (numAcc) => {
@@ -273,7 +280,8 @@
                 /**
                  * 将模型系数格式化为数学表达式。
                  *
-                 * @param {Array<*>} list - 系数列表。
+                 * @param {Array<*>} list - 可由 `idealizationToString` 格式化的系数列表；元素顺序和长度由
+                 *   `mode` 决定。列表中出现 `error` 时整条表达式直接返回 `error`，原数组不会被改写。
                  *   - 对于 'powerFunc', 'lnFunc': `[a₀, a₁, ..., aₙ]` 代表 `a₀ + a₁x + ... + aₙxⁿ`。函数会将其格式化为 `aₙxⁿ + ... + a₁x + a₀` 的形式。
                  *   - 对于其他模式: `[a, b]` 代表函数的两个主要参数。
                  * @param {'powerFunc'|'lnFunc'|'expFunc'|'abxFunc'|'axbFunc'|'reciprocalFunc'} mode - 函数模型。
@@ -283,7 +291,8 @@
                  *   - 'abxFunc': 指数函数, f(x) = a * b^x
                  *   - 'axbFunc': 幂函数, f(x) = a * x^b
                  *   - 'reciprocalFunc': 反比例函数, f(x) = a + b/x
-                 * @param {string} [asX='[x]'] - 变量词元。
+                 * @param {string} [asX='[x]'] - 插入表达式的变量词元或子表达式；递归格式化 `lnFunc`、
+                 *   `expFunc` 等模型时也用它替换自变量，因此调用方需自行提供必要的括号或内部词元。
                  * @returns {string} 数学表达式；输入错误时返回 `error`。
                  */
                 static funcToString(list, mode, asX = '[x]') {
@@ -404,10 +413,14 @@
                  *
                  * 单次求值失败时不会中断计算，而是在对应位置记录 `"error"`。
                  *
-                 * @param {function(ComplexNumber): ComplexNumber} func - 用于计算函数值的回调函数。
-                 * @param {string|number|BigNumber|ComplexNumber} start - 区间起点。
-                 * @param {string|number|BigNumber|ComplexNumber} step - 步长，其实部必须为正数。
-                 * @param {string|number|BigNumber|ComplexNumber} end - 区间终点。
+                 * @param {function(ComplexNumber): ComplexNumber} func - 对每个采样点同步调用的求值函数；参数是
+                 *   当前 `ComplexNumber` 自变量，返回值应能被结果消费者处理。回调抛错时该项记为 `error`。
+                 * @param {string|number|BigNumber|ComplexNumber} start - 闭区间起点；进入循环前转换为新
+                 *   `ComplexNumber`，并作为第一次回调的参数。
+                 * @param {string|number|BigNumber|ComplexNumber} step - 每次采样后增加的步长；其实部必须严格
+                 *   大于零。虚部虽可被构造器接受，但区间终止判断只依据实部，业务调用应传正实数。
+                 * @param {string|number|BigNumber|ComplexNumber} end - 闭区间终点；最后一个不大于它的采样点
+                 *   会被计算，步长不能整除区间时不会额外补算终点。
                  * @returns {Array<ComplexNumber|string>} 各采样点的函数值；求值失败的项为 `"error"`。
                  * @throws {Error} 当步长的实部不是正数时抛出异常。
                  */
@@ -434,7 +447,8 @@
                 /**
                  * 返回词元的类别和语法属性。
                  *
-                 * @param {string} [token] - 待分析的词元。
+                 * @param {string} [token] - 已由 `tokenizer` 拆分的单个内部词元；空字符串是合法输入并会
+                 *   返回 `illegal` 分类，只有 `undefined`、`null` 等“未传值”情况返回 `undefined`。
                  * @returns {{
                  *   token: string,
                  *   class: 'func'|'number'|'other'|'illegal',
@@ -514,12 +528,14 @@
                 /**
                  * 将数学表达式拆分为最长匹配的词元。
                  *
-                 * @param {string} str - 表达式。
-                 * @param {object} [options={}] - 分词选项。
+                 * @param {string} str - 使用内部符号表书写的完整数学表达式；扫描按最长合法词元优先，
+                 *   返回的索引与字符位置均以该原始字符串为准。
+                 * @param {object} [options={}] - 本次扫描策略；对象只被读取，不会被补写默认值或修改。
                  * @param {'separate'|'together'} [options.baseNumberMode='separate'] - 数字逐字符拆分或连续合并。
                  *   - `'separate'`: 将每个数字或小数点字符视为一个独立的词法单元。例如, "123" -> ['1', '2', '3']。
                  *   - `'together'`: 将连续的数字和单个小数点组合成一个完整的数字字符串词法单元。例如, "123.45" -> ['123.45']。
-                 * @param {boolean} [options.strictMode=true] - 遇到非法字符时是否立即报错。
+                 * @param {boolean} [options.strictMode=true] - `true` 时遇到第一个非法字符立即返回
+                 *   `['error', index]`；`false` 时保留可识别词元并跳过非法字符，适合宽松的输入预处理。
                  * @returns {string[]|['error', number]} 词元数组或错误位置。
                  *   - 成功时: 返回一个包含所有词法单元的字符串数组。
                  *   - 失败时 (仅在严格模式): 返回一个包含两个元素的数组 `['error', index]`，其中 `index` 是在原始字符串中检测到错误的字符的索引。
@@ -1052,7 +1068,9 @@
                     /**
                      * 将十六进制尾数字符串转换为 `BigInt`。
                      *
-                     * @param {[number, string, number]} rawTuple - 原始数值元组。
+                     * @param {[number, string, number]} rawTuple - 常量表中的 `[power, mantissa, acc]`：
+                     *   `power` 为十进制指数，`mantissa` 是避免脚本解析损失的十进制整数字符串，
+                     *   `acc` 是该常量可用的有效位数。返回值会将尾数转换为 `bigint`。
                      * @returns {[number, bigint, number]} 可供数字构造器使用的元组。
                      */
                     const parseTuple = (rawTuple) => {
@@ -1171,7 +1189,8 @@
                 /**
                  * 设置复数的默认输出模式并同步到 Worker。
                  *
-                 * @param {'algebra'|'polar'|undefined} mode - 输出模式；`undefined` 不修改。
+                 * @param {'algebra'|'polar'|undefined} mode - 新的全局复数输出形式；`algebra` 表示代数形式，
+                 *   `polar` 表示极坐标形式。传 `undefined` 视为保持当前值，其他值会抛错且不会同步 Worker。
                  * @returns {void}
                  * @throws {Error} 模式不受支持时抛出。
                  */
@@ -1206,7 +1225,9 @@
                 /**
                  * 设置全局计算精度并同步到 Worker。
                  *
-                 * @param {number|undefined} acc - 1 到上限（`_MAX_GLOBAL_CALC_ACCURACY`）之间的整数；`undefined` 重置为上限。
+                 * @param {number|undefined} acc - 计算使用的有效数字位数，必须是 1 到
+                 *   `_MAX_GLOBAL_CALC_ACCURACY`（含）之间的整数；`undefined` 重置为上限。成功设置后会同步
+                 *   Worker，且会重新解析随精度变化的常量与 Lanczos 系数。
                  * @returns {void}
                  * @throws {Error} 精度无效时抛出。
                  */
@@ -1261,7 +1282,9 @@
                 /**
                  * 设置输出精度并同步到 Worker。
                  *
-                 * @param {number|undefined} acc - 要设置的新输出精度。
+                 * @param {number|undefined} acc - 输出有效位数策略：`acc >= 1` 表示绝对位数，
+                 *   `0 < acc < 1` 表示相对于输入计算精度的比例，`acc <= 0` 表示沿用输入精度；
+                 *   `undefined` 恢复默认比例。绝对位数不得超过全局计算精度。
                  *   - 比例模式: 如果 `acc` 是一个 (0, 1) 之间的浮点数，它将被解释为相对于 `globalCalcAccuracy` 的比例。例如，如果 `globalCalcAccuracy` 是 100，`acc` 是 0.9，则实际输出精度将是 90 位。
                  *   - 绝对模式: 如果 `acc` 是一个大于等于 1 的整数，它将直接被用作输出的有效数字位数。
                  *   - 重置: 如果 `acc` 为 `undefined`，输出精度将被重置为当前的 `globalCalcAccuracy` 值。
@@ -1297,8 +1320,10 @@
                  * 将主线程配置同步到已就绪的 Worker。
                  *
                  * @private
-                 * @param {string} methodName - 要调用的 `WorkerTools` 中的静态方法名。
-                 * @param {number|string} value - 新配置值。
+                 * @param {string} methodName - `WorkerTools` 已注册的配置方法名，例如 `setAccuracy`、
+                 *   `setOutputAccuracy` 或 `setPrintMode`；网页模式下会按该名称分发异步调用。
+                 * @param {number|string} value - 与目标方法契约一致的新配置值；该值通过 Worker 消息复制，
+                 *   同步失败仅记录错误，不回滚主线程已经生效的配置。
                  * @returns {void}
                  */
                 static _syncToWorker(methodName, value) {
