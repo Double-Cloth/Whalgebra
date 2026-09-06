@@ -380,19 +380,26 @@
                 }
 
                 /**
-                 * 按固定步长计算闭区间内的函数值。
+                 * 按固定正步长依次计算从 `start` 到 `end` 的函数值，包含区间端点。
                  *
-                 * @param {function(*): ComplexNumber} func - 求值函数。
-                 * @param {string|number|BigNumber|ComplexNumber} start - 起点。
-                 * @param {string|number|BigNumber|ComplexNumber} step - 步长。
-                 * @param {string|number|BigNumber|ComplexNumber} end - 终点。
-                 * @returns {Array<ComplexNumber|string>} 计算结果；失败项为 `error`。
+                 * 单次求值失败时不会中断计算，而是在对应位置记录 `"error"`。
+                 *
+                 * @param {function(ComplexNumber): ComplexNumber} func - 用于计算函数值的回调函数。
+                 * @param {string|number|BigNumber|ComplexNumber} start - 区间起点。
+                 * @param {string|number|BigNumber|ComplexNumber} step - 步长，其实部必须为正数。
+                 * @param {string|number|BigNumber|ComplexNumber} end - 区间终点。
+                 * @returns {Array<ComplexNumber|string>} 各采样点的函数值；求值失败的项为 `"error"`。
+                 * @throws {Error} 当步长的实部不是正数时抛出异常。
                  */
                 static functionValueList(func, start, step, end) {
                     const result = [];
                     start = new ComplexNumber(start);
                     step = new ComplexNumber(step);
                     end = new ComplexNumber(end);
+
+                    if (!step.re.isPositive()) {
+                        throw new Error('[Public] The step size must be positive.');
+                    }
 
                     for (let i = start; !MathPlus.minus(i, end).re.isPositive(); i = MathPlus.plus(i, step)) {
                         try {
