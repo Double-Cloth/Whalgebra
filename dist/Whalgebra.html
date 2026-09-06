@@ -12377,9 +12377,13 @@
                     /**
                      * 渲染函数值列表行。
                      *
-                     * @param {number} index - 行索引。
-                     * @param {Object} dataSource - 数据源。
-                     * @returns {HTMLElement} 行元素。
+                     * @param {number} index - 要渲染的零基采样点索引；用于从三个对齐数组读取同一行数据，
+                     *   不直接显示为额外序号列。
+                     * @param {{result:{varList:string[],f:string[],g:string[]},onlyFuncG:boolean}} dataSource - 列表数据；
+                     *   `result` 是 `FuncValueListTools.valueList` 的三数组结果，`onlyFuncG` 为 `true` 时交换 f、g
+                     *   两个显示列，使单独输入的 g 位于主函数列。三个数组必须在 `index` 处都有对应项。
+                     * @returns {HTMLElement} 尚未挂载的函数值行 `<div>`；包含三个子列，顺序为自变量、主函数、
+                     *   次函数，错误和省略哨兵已转换为对应渲染类。
                      */
                     renderItem(index, dataSource) {
 
@@ -12935,7 +12939,8 @@
                      * 专门处理区间（如 `(-inf, 2)`）和点坐标（如 `(1, 5)`）的格式化显示。
                      *
                      * @param {HTMLElement} target - 目标 DOM 容器。
-                     * @param {Array<string>} textList - 包含两个元素的数组，代表区间边界或点的坐标 `[left, right]`。
+                     * @param {[string,string]} textList - 区间边界或点坐标 `[left,right]`；支持 `-inf`、`+inf`
+                     *   无穷端点和 `['null','null']` 不适用哨兵。含 `error` 时直接渲染错误状态。
                      * @param {boolean} [useBracket=false] - 是否强制使用方括号 `[]` (通常用于闭区间，但在当前逻辑中似乎主要用于区分)。
                      *   注意：代码逻辑中 `useBracket` 为 true 时使用 `_bracket_` (方括号)，否则使用 `_parentheses_` (圆括号)。
                      *   对于无穷大 `inf`，通常保持开区间（圆括号）。
@@ -13004,7 +13009,8 @@
                      * 它处理特殊情况，如无实根 ('null') 或恒等式 ('anyRealNumber')，以及常规的数值根。
                      *
                      * @param {HTMLElement} target - 目标 DOM 容器。
-                     * @param {string} text - 包含根信息的字符串。包含数值字符串或特殊标识符。
+                     * @param {string} text - 单个已格式化根；`null` 表示没有实根，`anyRealNumber` 表示恒等式的
+                     *   任意实数解，其他值按普通数学表达式词元渲染。
                      */
                     const powerFunctionRootToHtml = (target, text) => {
 
@@ -13866,7 +13872,8 @@
                          * 然后将该 div 追加到目标容器。
                          *
                          * @param {HTMLElement|DocumentFragment} target - 要追加内容的目标容器。
-                         * @param {Array} content - 要添加到新建 div 中的内容。
+                         * @param {Array<string|string[]>} content - 交给 `HtmlTools.appendDOMs` 的渲染描述；每项是
+                         *   单个类名或按属性数组解释的复合描述，顺序决定说明块中的 DOM 顺序。
                          * @returns {void}
                          */
                         const addContent = (target, content) => {
