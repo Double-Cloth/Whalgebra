@@ -90,14 +90,14 @@
                 // 数字越小表示优先级越高。
                 static {
                     const levels = [
-                        [...this._func_01_2, ...this._complement(this._func_01_1, ['N'])], // 0
-                        this._func_10_1, // 1
-                        ['^'], // 2
-                        ['N'], // 3
-                        ['&'], // 4
-                        this._complement(this._func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']), // 5
-                        ['*', '/', 'mod'], // 6
-                        ['+', '-'] // 7
+                        [...this._func_01_2, ...this._complement(this._func_01_1, ['N'])],
+                        this._func_10_1,
+                        ['^'],
+                        ['N'],
+                        ['&'],
+                        this._complement(this._func_11_2, ['+', '-', '*', '&', '/', 'mod', '^']),
+                        ['*', '/', 'mod'],
+                        ['+', '-']
                     ];
                     /** 将同一优先级的词元写入映射。 */
                     levels.forEach((levelTokens, index) => {
