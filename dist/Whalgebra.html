@@ -13739,6 +13739,7 @@
 
             let target = event.target;
 
+            // 键帽文字由内部 p 元素承载；除主输入区外统一提升到按钮容器，保证点击图标和空白处行为一致。
             if (target.tagName.toLowerCase() === 'p' && target.parentNode?.id !== 'input') {
                 target = target.parentNode;
             }
@@ -13936,6 +13937,7 @@
 
             if (/title_mode_([0134]|2_0)|screen_title|print_title/.test(targetID)) {
 
+                // 嵌入式环境关闭网页专属全屏；函数值结果页的标题也不作为全屏触发区。
                 if (!Public.webMode || (targetID !== 'print_title' && PageConfig.currentMode === '2_1')) {
                     return;
                 }
@@ -13999,6 +14001,7 @@
 
                     event.preventDefault();
 
+                    // Enter 按 UI 层级处理：先关闭模态遮罩，再退出/取消结果页，最后才提交当前表达式。
                     if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay')) {
                         return PageControlTools.clickMainCover();
                     }
@@ -14017,6 +14020,7 @@
                 event.preventDefault();
 
                 if (event.altKey && ['e', 'i', 'x'].includes(key)) {
+                    // Alt+e/i/x 输入数学变量样式，普通按键仍保留字母词元，避免两种含义混淆。
                     const input = [`_${key}_mathit_`];
                     InputManager.input(input);
                     PageControlTools.showExplain(input);
@@ -14104,6 +14108,7 @@
             recoverData('subModes', /** 恢复当前子模式。 */(data) => {
                 data = JSON.parse(data);
                 const dataLen = PageConfig.screenData['1'].length;
+                // 存储的数据行可能已被最大行数限制截断，选中坐标必须随之回退到最后一行。
                 if (data['1'][0] + 1 > dataLen) {
                     data['1'][0] = dataLen - 1;
                 }
