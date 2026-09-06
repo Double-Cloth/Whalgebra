@@ -164,7 +164,7 @@
                     /**
                      * 将精度阈值内的 `BigNumber` 归零。
                      *
-                      * @param {BigNumber} input - 待修正的实部或虚部；其 `acc` 同时决定判零阈值和返回零值的精度。
+                     * @param {BigNumber} input - 待修正的实部或虚部；其 `acc` 同时决定判零阈值和返回零值的精度。
                      * @returns {BigNumber} 零值或原值。
                      * @private
                      */
@@ -232,8 +232,8 @@
                     /**
                      * 根据输入精度和输出设置计算实际精度。
                      *
-                      * @param {number} numAcc - 当前待格式化数值携带的正整数有效位数；比例精度以它为基数，
-                      *   绝对精度也不会超过它，以免输出并不存在的有效数字。
+                     * @param {number} numAcc - 当前待格式化数值携带的正整数有效位数；比例精度以它为基数，
+                     *   绝对精度也不会超过它，以免输出并不存在的有效数字。
                      * @returns {number} 实际输出精度。
                      */
                     const getRealAcc = (numAcc) => {
@@ -3829,8 +3829,8 @@
                      * 使用分治法（二分求积）高效计算一个非负整数的阶乘。
                      * 这种方法对于计算极大的数（如 1000! 或更高）有显著的性能优势。
                      *
-                      * @param {bigint|number} num - 要精确求阶乘的非负整数；`number` 必须是安全整数并会转换为
-                      *   BigInt，负数、小数、非有限值和不安全整数均不进入递归乘积。
+                     * @param {bigint|number} num - 要精确求阶乘的非负整数；`number` 必须是安全整数并会转换为
+                     *   BigInt，负数、小数、非有限值和不安全整数均不进入递归乘积。
                      * @returns {bigint} n 的阶乘。
                      * @throws {TypeError} 如果 n 不是一个非负整数。
                      */
@@ -3842,8 +3842,8 @@
                         /**
                          * 递归的辅助函数，使用分治策略（Divide and Conquer）计算一个数字范围内的所有整数的乘积。
                          * 这个函数专门为处理 BigInt 类型设计，适用于计算大数的阶乘等场景。
-                          * @param {bigint} start - 闭区间起点；递归入口保证非负且不大于 `end`。
-                          * @param {bigint} end - 闭区间终点；区间按中点二分，单元素区间直接返回该整数。
+                         * @param {bigint} start - 闭区间起点；递归入口保证非负且不大于 `end`。
+                         * @param {bigint} end - 闭区间终点；区间按中点二分，单元素区间直接返回该整数。
                          * @returns {bigint} 从 start 到 end 的所有整数的乘积。
                          */
                         function rangeProduct(start, end) {
@@ -5483,8 +5483,8 @@
                     /**
                      * 按实部比较两个数值。
                      *
-                      * @param {*} a - 当前比较的左值；必须能由 `ComplexNumber` 构造。
-                      * @param {*} b - 当前比较的右值；只比较与 `a` 的实部差，虚部差异视为相等。
+                     * @param {*} a - 当前比较的左值；必须能由 `ComplexNumber` 构造。
+                     * @param {*} b - 当前比较的右值；只比较与 `a` 的实部差，虚部差异视为相等。
                      * @returns {-1|0|1} 排序结果。
                      */
                     list.sort((a, b) => {
@@ -6670,8 +6670,8 @@
                     /**
                      * 处理 Worker 返回的任务结果。
                      *
-                      * @param {MessageEvent} event - Worker 返回的消息事件；`event.data.id` 必须对应待处理任务，
-                      *   `result` 是可结构化克隆的返回值，`error` 则是已序列化的名称、消息和堆栈。
+                     * @param {MessageEvent} event - Worker 返回的消息事件；`event.data.id` 必须对应待处理任务，
+                     *   `result` 是可结构化克隆的返回值，`error` 则是已序列化的名称、消息和堆栈。
                      */
                     worker.onmessage = (event) => {
                         // 重启后旧 Worker 仍可能排出迟到消息；实例校验防止它污染新 Worker 的任务队列。
@@ -6704,8 +6704,8 @@
                     /**
                      * 处理 Worker 的致命运行错误。
                      *
-                      * @param {ErrorEvent} err - 无法归属到单个任务的 Worker 运行错误；其消息用于拒绝全部
-                      *   待处理 Promise，随后实例进入已终止状态。
+                     * @param {ErrorEvent} err - 无法归属到单个任务的 Worker 运行错误；其消息用于拒绝全部
+                     *   待处理 Promise，随后实例进入已终止状态。
                      */
                     worker.onerror = (err) => {
                         if (this._worker !== worker) {
@@ -6764,10 +6764,10 @@
                     /**
                      * 将支持的值序列化为 JavaScript 源码。
                      *
-                      * @param {*} value - 要嵌入脚本的依赖值；支持原始值、BigInt、普通数组/对象、函数和类。
-                      *   `undefined`、`NaN`、无穷值等需生成等价源码；平台对象和不可还原的原型实例不受支持。
-                      * @param {WeakSet<object>} [seen] - 当前递归路径上的对象集合；内部调用传递同一集合以检测
-                      *   真正的循环引用，调用入口可省略，方法不会把它暴露到生成脚本中。
+                     * @param {*} value - 要嵌入脚本的依赖值；支持原始值、BigInt、普通数组/对象、函数和类。
+                     *   `undefined`、`NaN`、无穷值等需生成等价源码；平台对象和不可还原的原型实例不受支持。
+                     * @param {WeakSet<object>} [seen] - 当前递归路径上的对象集合；内部调用传递同一集合以检测
+                     *   真正的循环引用，调用入口可省略，方法不会把它暴露到生成脚本中。
                      * @returns {string} 序列化结果。
                      */
                     const serializeValue = (value, seen = new WeakSet()) => {
@@ -6865,10 +6865,10 @@
                     /**
                      * 将函数转换为可嵌入 Worker 的表达式。
                      *
-                      * @param {Function} func - 要转换为独立表达式源码的函数或类；其源码必须能在 Worker 的
-                      *   严格模式下重新求值，原函数对象和闭包环境都不会被传输。
-                      * @param {boolean} [allowClass=true] - 是否接受 `class` 声明；序列化普通可调用函数时可设为
-                      *   `false`，从而避免把类误当作能直接调用的任务函数。
+                     * @param {Function} func - 要转换为独立表达式源码的函数或类；其源码必须能在 Worker 的
+                     *   严格模式下重新求值，原函数对象和闭包环境都不会被传输。
+                     * @param {boolean} [allowClass=true] - 是否接受 `class` 声明；序列化普通可调用函数时可设为
+                     *   `false`，从而避免把类误当作能直接调用的任务函数。
                      * @returns {string} 函数表达式源码。
                      */
                     const serializeFunction = (func, allowClass = true) => {
@@ -7548,8 +7548,8 @@
     </script>
     <!-- 页面交互 -->
     <script id="ui_styling_control" type="text/javascript">
-
-        (/** 初始化并导出页面配置、渲染与交互工具。 */ function () {
+        /** 初始化并导出页面配置、渲染与交互工具。 */
+        (function () {
             "use strict";
 
             /** 管理页面配置和持久化的 UI 状态。 */
@@ -7665,10 +7665,10 @@
                     /**
                      * 更新单个主模式的子模式、界面和持久化状态。
                      *
-                      * @param {string|Array<number|string>} name - 目标子模式；模式 `1` 传 `[row, column]`，
-                      *   其余模式传该模式白名单中的字符串 ID。
-                      * @param {string} dealMode - 已解析的主模式 ID；`default` 在调用此函数前替换为
-                      *   `PageConfig.currentMode`，并据此选择校验规则和界面副作用。
+                     * @param {string|Array<number|string>} name - 目标子模式；模式 `1` 传 `[row, column]`，
+                     *   其余模式传该模式白名单中的字符串 ID。
+                     * @param {string} dealMode - 已解析的主模式 ID；`default` 在调用此函数前替换为
+                     *   `PageConfig.currentMode`，并据此选择校验规则和界面副作用。
                      * @throws {Error} 子模式无效时抛出。
                      * @private
                      */
