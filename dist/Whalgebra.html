@@ -7780,7 +7780,9 @@
                 /**
                  * 设置当前计算器的操作模式，并触发相应的 UI 更新。
                  *
-                 * @param {string} mode - 要设置的新模式的标识符。必须是预定义模式之一 ('0', '1', '2_0', '2_1', '3', '4')。
+                 * @param {'0'|'1'|'2_0'|'2_1'|'3'|'4'} mode - 新的主计算模式：分别对应普通计算、统计、
+                 *   两个函数输入页、多项式分析和根式分析。重复设置当前值不会重放切换副作用；成功切换会
+                 *   更新标题、输入提示、活动子模式和持久化状态。
                  * @throws {Error} 如果提供的模式不受支持，则抛出错误。
                  */
                 static set currentMode(mode) {
@@ -7854,7 +7856,8 @@
                 /**
                  * 设置当前的输出模式，并更新 UI 以反映更改。
                  *
-                 * @param {string} mode - 要设置的新输出模式。必须是 '0' 或 '1'。
+                 * @param {'0'|'1'} mode - `0` 表示代数形式，`1` 表示极坐标形式；setter 会同步
+                 *   `CalcConfig.globalPrintMode`、切换开关视觉状态并持久化选择，无效值不会产生部分更新。
                  * @throws {Error} 如果提供的模式不受支持，则抛出错误。
                  */
                 static set printMode(mode) {
@@ -7908,7 +7911,8 @@
                  * 4. 如果状态发生实际变化，触发 `_2nd_` 按钮的视觉状态切换。
                  * 5. 将新的状态持久化到 `localStorage`。
                  *
-                 * @param {number} type - 要设置的新状态。`0` 代表普通模式，`1` 代表“第二功能”模式。
+                 * @param {0|1} type - 键盘层级：`0` 使用主功能标签，`1` 使用第二功能标签；必须是数值而非
+                 *   字符串。设置相同状态只保持现状，实际变化时重绘键帽并保存到本地。
                  * @throws {Error} 如果提供的 `type` 不是 `0` 或 `1`，则抛出错误。
                  */
                 static set keyboardType(type) {
@@ -7987,7 +7991,8 @@
                  * 3. 切换 UI 中精度开关的视觉状态。
                  * 4. 更新内部状态并将其持久化到 `localStorage`。
                  *
-                 * @param {number} mode - 要设置的新精度模式。`0` 代表普通精度，`1` 代表高精度。
+                 * @param {0|1} mode - `0` 选择普通计算精度，`1` 选择配置的高精度；必须是数值枚举。
+                 *   setter 会更新主线程精度、异步同步 Worker、切换 UI 并持久化状态。
                  * @throws {Error} 如果提供的 `mode` 不是 `0` 或 `1`，则抛出错误。
                  */
                 static set calcAccMode(mode) {
@@ -8529,7 +8534,8 @@
                 /**
                  * 检测元素是否滚动到最右侧
                  *
-                 * @param {HTMLElement} element - 需要检测的 DOM 元素
+                 * @param {HTMLElement} element - 具有横向滚动度量的目标元素；`null`/`undefined` 返回 `false`。
+                 *   判定允许 1px 浮点误差，调用不会改变 `scrollLeft`。
                  * @returns {boolean} - 如果到底则返回 true，否则返回 false
                  */
                 static isScrolledToRight(element) {
@@ -8732,11 +8738,12 @@
                     /**
                      * 创建有限状态机。
                      *
-                     * @param {string} initial - 初始状态名称。
-                     * @param {Object.<string, string[]>} table
-                     *   状态转换表，键为当前状态，值为允许跳转的目标状态数组。
-                     * @param {((prev: string, next: string) => void) | null} [onTransition=null]
-                     *   状态发生转换时的回调函数，参数依次为前一状态和新状态；可为 `null`。
+                     * @param {string} initial - 初始状态名称；必须作为 `table` 的键存在，构造过程不触发
+                     *   `onTransition`，只建立当前状态。
+                     * @param {Object<string, string[]>} table - 状态转换表；键为当前状态，值为允许的目标状态
+                     *   数组。构造器冻结复制后的表与各目标数组，后续修改原对象不应作为改变状态机的方式。
+                     * @param {((prev: string, next: string) => void)|null} [onTransition=null] - 合法且实际发生的
+                     *   状态转换后同步调用；参数依次是旧状态和新状态。`null` 表示不监听，自转换不重复触发。
                      */
                     constructor(initial, table, onTransition) {
                         this._state = initial;
@@ -8763,7 +8770,8 @@
                      * - 若目标状态不在当前状态的允许列表中，将抛出 `Error`。
                      * - 切换成功后会触发构造时传入的 `onTransition` 回调。
                      *
-                     * @param {string} next - 目标状态名称，必须在转换表中合法定义。
+                     * @param {string} next - 目标状态名称；必须同时是已知状态，并列在当前状态对应的允许数组中。
+                     *   非法跳转会抛错且保持原状态不变。
                      * @throws {Error} 当前状态没有转换表条目，或目标状态不被允许时抛出。
                      */
                     transition(next) {
@@ -8787,7 +8795,8 @@
                     /**
                      * 检查当前状态是否是给定状态之一。
                      *
-                     * @param {...string} states - 一个或多个待比对的状态名称。
+                     * @param {...string} states - 候选状态名称列表；只要当前状态严格等于其中一个即返回 `true`，
+                     *   空列表始终返回 `false`，此查询没有状态副作用。
                      * @returns {boolean} 若当前状态命中其中任一，则返回 `true`。
                      */
                     is(...states) {
@@ -8853,9 +8862,9 @@
                     /**
                      * 根据最新数据重新计算虚拟 / 物理高度及滚动比率。
                      *
-                     * @param {number} totalCount   - 列表总条数。
-                     * @param {number} itemHeight   - 单条目高度（px）。
-                     * @param {number} clientHeight - 容器可视高度（px）。
+                     * @param {number} totalCount - 已规范化的非负整数条目数，用于计算完整虚拟内容高度。
+                     * @param {number} itemHeight - 已测得且严格大于零的统一行高（px）。
+                     * @param {number} clientHeight - 当前容器可视高度（px）；用于判断是否需要压缩到浏览器安全高度。
                      * @returns {void}
                      */
                     update(totalCount, itemHeight, clientHeight) {
@@ -8886,7 +8895,8 @@
                      * 将物理 scrollTop 换算为虚拟 scrollTop。
                      * 使用持久化的 _effV / _effP（与 update 和 virtualToPhysical 完全一致）。
                      *
-                     * @param {number} physicalScroll - 物理 scrollTop（px），应 ≥ 0。
+                     * @param {number} physicalScroll - 浏览器容器的实际 `scrollTop`；方法先夹紧到物理可滚范围，
+                     *   再按持久化比例映射，压缩模式外等比例返回。
                      * @returns {number} 对应的虚拟滚动偏移量（px）。
                      */
                     physicalToVirtual(physicalScroll) {
@@ -8906,7 +8916,8 @@
                     /**
                      * 将虚拟 scrollTop 换算为物理 scrollTop。
                      *
-                     * @param {number} virtualOffset - 虚拟偏移量（px），应 ≥ 0。
+                     * @param {number} virtualOffset - 相对于完整逻辑内容顶部的偏移；先夹紧到虚拟可滚范围，
+                     *   再转换为浏览器可承载的物理坐标。
                      * @returns {number} 对应的物理滚动偏移量（px）。
                      */
                     virtualToPhysical(virtualOffset) {
@@ -8925,11 +8936,12 @@
                     /**
                      * 计算上下两个占位 spacer 的物理高度。
                      *
-                     * @param {number} start           - 当前渲染窗口起始索引（含）。
-                     * @param {number} end             - 当前渲染窗口结束索引（不含）。
-                     * @param {number} totalCount      - 列表总条数。
-                     * @param {number} itemHeight      - 单条目高度（px）。
-                     * @param {number} physScrollTop   - 利用当前物理滚动量和虚拟映射坐标，计算出严格对齐视口的物理起始位置，消除滑动跳闪。
+                     * @param {number} start - 当前渲染窗口的零基起始索引，包含该条目。
+                     * @param {number} end - 当前渲染窗口的排他结束索引，满足 `start <= end <= totalCount`。
+                     * @param {number} totalCount - 全部逻辑条目数，用于计算窗口之后尚未渲染的高度。
+                     * @param {number} itemHeight - 正的统一逻辑行高（px），把条目索引换算为虚拟距离。
+                     * @param {number} physScrollTop - 当前实际滚动位置；与虚拟映射坐标共同校正顶部 spacer，
+                     *   使压缩映射下的首行仍贴合视口而不发生跳闪。
                      * @returns {{ top: number, bottom: number }} 上下 spacer 应设置的像素高度。
                      */
                     calcSpacerHeights(start, end, totalCount, itemHeight, physScrollTop = 0) {
@@ -8978,7 +8990,8 @@
                     /**
                      * 创建指定容量的节点池。
                      *
-                     * @param {number} limit - 池的最大容量（超出后多余节点直接丢弃）。
+                     * @param {number} limit - 最多保留的可复用包装节点数；应为非负整数，回收时超出上限的
+                     *   节点直接释放，用户自行返回的元素不作为普通池节点缓存。
                      */
                     constructor(limit) {
 
@@ -9028,8 +9041,10 @@
                      * - 若返回值是 `HTMLElement`，直接使用，同时检查重复挂载。
                      * - `measureOnly = true` 时仅用于临时测量，不更新池状态和引用计数。
                      *
-                     * @param {string | HTMLElement} result     - `renderItem()` 的返回值。
-                     * @param {boolean}              [measureOnly=false] - 是否仅用于测量（不入池、不计引用）。
+                     * @param {string|HTMLElement} result - `renderItem()` 的单项结果；字符串写入池化包装 `<div>`，
+                     *   元素则直接使用并检查是否已被其他索引占用。
+                     * @param {boolean} [measureOnly=false] - `true` 表示临时测量节点，不登记元素引用也不进入
+                     *   正常复用生命周期；调用方须在测量后移除或交还该节点。
                      * @returns {HTMLElement} 可直接插入 DOM 的元素。
                      * @throws {TypeError}  `result` 不是字符串或 `HTMLElement` 时抛出。
                      * @throws {Error}      同一 `HTMLElement` 实例被二次挂载时抛出。
@@ -9097,7 +9112,8 @@
                      * - 若该元素是由池管理的包装 `<div>`，则清空其内容与样式后
                      *   压入池队列（不超过上限时）。
                      *
-                     * @param {HTMLElement} el - 待回收的元素。
+                     * @param {HTMLElement} el - 已从渲染映射移除的行节点；池化包装节点会清空样式和内容后复用，
+                     *   用户提供的元素只减少引用计数，不会篡改其内部 DOM。
                      * @returns {void}
                      */
                     recycle(el) {
@@ -9364,7 +9380,8 @@
                  *
                  * @private
                  *
-                 * @param {Object} config - 待校验的配置对象。
+                 * @param {object} config - 构造器收到的原始配置；必须含非空选择器字符串和渲染函数，
+                 *   可选 `remeasureOnResize` 只能是布尔值。校验只读，不补默认字段。
                  * @throws {Error} 任意必填项不合法时抛出。
                  * @returns {void}
                  */
@@ -9389,8 +9406,9 @@
                  *
                  * @private
                  *
-                 * @param {*}      length - 原始长度参数。
-                 * @param {string} caller - 调用方法名，用于警告信息。
+                 * @param {*} length - 调用方给出的逻辑长度；有限数值会截断并夹到非负范围，不能转为有效数值时
+                 *   使用零并发出警告，而不是读取 `data.length`。
+                 * @param {string} caller - 产生该长度的公开方法名，仅用于构造可定位的警告文本。
                  * @returns {number} 规范化后的非负整数。
                  */
                 _normalizeLength(length, caller) {
@@ -9952,7 +9970,8 @@
                  *
                  * @private
                  *
-                 * @param {number} newH - 新的容器 clientHeight（px）。
+                 * @param {number} newH - ResizeObserver 得到的新 `clientHeight`（px）；必须为有限非负值。
+                 *   方法会更新高度映射并尽量保持当前虚拟锚点，而不是简单保留物理 `scrollTop`。
                  * @returns {void}
                  */
                 _handleHeightChange(newH) {
@@ -10375,10 +10394,10 @@
                  *
                  * @private
                  *
-                 * @param {number} prevStart - 旧渲染窗口起始索引（含）。
-                 * @param {number} prevEnd   - 旧渲染窗口结束索引（不含）。
-                 * @param {number} newStart  - 新渲染窗口起始索引（含）。
-                 * @param {number} newEnd    - 新渲染窗口结束索引（不含）。
+                 * @param {number} prevStart - 旧窗口零基起点（含），用于只移除离开窗口的节点。
+                 * @param {number} prevEnd - 旧窗口终点（不含），与 `prevStart` 共同描述当前 DOM 映射。
+                 * @param {number} newStart - 新窗口零基起点（含），缺少的索引将按升序创建或从池中复用。
+                 * @param {number} newEnd - 新窗口终点（不含），必须已夹紧到 `totalCount`。
                  * @returns {void}
                  */
                 _incrementalUpdate(prevStart, prevEnd, newStart, newEnd) {
@@ -10526,7 +10545,8 @@
                  *
                  * @private
                  *
-                 * @param {number} index - 要移除的条目索引。
+                 * @param {number} index - `_rendered` 映射中的零基逻辑索引；未渲染索引静默忽略，命中时会
+                 *   同步删除映射、从 DOM 分离节点并交给节点池回收。
                  * @returns {void}
                  */
                 _removeRenderedNode(index) {
@@ -10628,7 +10648,8 @@
                  *
                  * @private
                  *
-                 * @param {number} targetPhysical - 目标物理 `scrollTop`（px）。
+                 * @param {number} targetPhysical - 已由虚拟坐标映射得到的物理目标位置；进入动画前夹紧到当前
+                 *   可滚范围，新请求会取消并替换尚未完成的平滑滚动。
                  * @returns {void}
                  */
                 _smoothScrollTo(targetPhysical) {
@@ -12292,7 +12313,8 @@
                     /**
                      * 将回归模型名称映射到对应的 UI 选择器 ID。
                      *
-                     * @param {string} modelName - 模型名称 (e.g., 'linear', 'square').
+                     * @param {string} modelName - `StatisticsTools` 返回的回归模型键，如 `linear`、`square`；
+                     *   必须存在于本地模型到选择器 ID 的映射中，未知键不会生成可用按钮 ID。
                      * @returns {string} 对应的 DOM ID (e.g., 'choose_ra_0').
                      */
                     function modelToId(modelName) {
@@ -13267,7 +13289,8 @@
                  * 切换显示在屏幕顶部的标题，以匹配当前的计算模式。
                  * 它通过隐藏当前的标题元素并显示与新模式对应的标题元素来工作。
                  *
-                 * @param {string} mode - 要激活的新模式的标识符。
+                 * @param {string} mode - 与标题元素 ID 后缀对应的主模式标识；调用前应已通过
+                 *   `PageConfig.currentMode` 白名单校验，方法只负责隐藏旧标题并显示目标标题。
                  * @returns {void}
                  */
                 static changeTitle(mode) {
@@ -13402,7 +13425,8 @@
                  * 此方法通过为当前屏幕添加隐藏类并为新屏幕移除隐藏类来工作。
                  * 它会根据模式的不同使用不同的 CSS 类，以支持不同的过渡动画效果。
                  *
-                 * @param {string} mode - 要激活的新模式的标识符。例如 '0', '1', '2_0' 等。
+                 * @param {'0'|'1'|'2_0'|'2_1'|'3'|'4'} mode - 目标主屏幕 ID 后缀；决定使用普通还是方向性过渡类，
+                 *   并在动画结束后清理旧屏幕状态。该方法不负责校验或持久化模式。
                  * @returns {void}
                  */
                 static changeScreen(mode) {
