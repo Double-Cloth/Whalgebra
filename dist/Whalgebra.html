@@ -1543,7 +1543,8 @@
                  * 可以直接复用已有结果。
                  *
                  * @private
-                 * @param {number} exp - 指数，必须是非负整数。
+                 * @param {number} exp - 10 的指数；必须是可安全循环处理的非负整数。结果缓存按该整数键复用，
+                 *   小数、负数和非有限值会在任何 BigInt 幂运算前被拒绝。
                  * @returns {bigint} `10 ** exp` 的 BigInt 结果。
                  * @throws {Error} 如果 `exp` 不是非负整数。
                  */
@@ -1575,7 +1576,7 @@
                  * 内部使用指数扩张寻找上界，再通过二分查找确定精确位数。
                  *
                  * @private
-                 * @param {bigint} n - 要计算十进制位数的 BigInt 值，可以为负数。
+                 * @param {bigint} n - 要统计的整数；符号位不计入十进制位数，`0n` 特判为一位。
                  * @returns {number} `n` 的十进制位数；对于 `0n` 返回 `1`。
                  */
                 static _decimalLengthBigInt(n) {
@@ -1613,7 +1614,8 @@
                  * 检查一个字符串是否是无效的数字格式。
                  *
                  * @private
-                 * @param {string} input - 要检查的字符串。
+                 * @param {string} input - 待验证的完整数值字面量；允许符号、小数和科学记数法，但不接受
+                 *   前后空白、单位、复数部分或仅含指数标记的不完整形式。
                  * @returns {boolean} 如果字符串不是有效的数字格式，则返回 true，否则返回 false。
                  */
                 static _isInvalidNumericString(input) {
@@ -1628,9 +1630,11 @@
                  * 此函数使用高效的 BigInt 算术运算来处理大数。
                  *
                  * @private
-                 * @param {bigint|number} mantissa - 原始尾数（可以为负数）。
-                 * @param {number} power - 原始指数。
-                 * @param {number} acc - 目标精度（有效数字的位数）。
+                 * @param {bigint|number} mantissa - 带符号整数尾数；`number` 仅用于能无损转为 BigInt 的整数，
+                 *   零值会规范化为统一的零表示。
+                 * @param {number} power - 与尾数配套的十进制安全整数指数；舍入移除的位数会补偿到该指数。
+                 * @param {number} acc - 舍入后最多保留的正整数有效位数；半舍情形按当前整数规则进位，
+                 *   末尾十进制零随后继续并入 `power`。
                  * @returns {{mantissa: bigint, power: number}} 一个包含舍入和规范化后的尾数和指数的对象。
                  */
                 static _roundAndNormalize(mantissa, power, acc) {
@@ -1709,7 +1713,8 @@
                  *      power = 2 - (5 - 1) = -2. 最终表示为 12345 * 10^-2.
                  *
                  * @private
-                 * @param {string} numStr - 要解析的数字字符串。
+                 * @param {string} numStr - 已通过格式校验的普通或科学记数法字符串；方法提取符号、小数位和
+                 *   显式指数，返回规范化前的十进制指数与整数尾数，不负责最终精度舍入。
                  * @returns {[number, bigint]} 一个包含指数和带符号尾数的元组。
                  */
                 static _parseNumericString(numStr) {
@@ -2009,7 +2014,8 @@
                  *
                  * @private
                  *
-                 * @param {string} complexString - 表示复数的输入字符串。
+                 * @param {string} complexString - 代数形式的完整复数字符串；支持实数、纯虚数、`a±bi` 及
+                 *   科学记数法分量。正负号只有在不属于指数时才分隔实部和虚部，多个 `i` 或空分量会抛错。
                  * @returns {{re: string, im: string}} 一个包含实部 (`re`) 和虚部 (`im`) 字符串的对象。
                  * @throws {Error} 如果输入字符串的格式无效或不明确。
                  */
@@ -3283,7 +3289,8 @@
                  * 计算 x 的常用对数（以 10 为底的对数，log₁₀(x)）。
                  * - 该方法基于对数换底公式：lg(x) = ln(x) / ln(10)。
                  * - 它能够自动处理实数和复数输入，因为其依赖的 `ln` 和 `divide` 方法已经具备此能力。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 非零实数或复数；按
+                 *   `ln(x) / ln(10)` 返回主值，因此负实数的结果包含由主辐角产生的虚部。
                  * @returns {ComplexNumber} 代表 lg(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // lg(100) -> 2
@@ -3322,7 +3329,8 @@
                 /**
                  * 计算一个数的正弦 (sin(x))。
                  * - 该方法能够处理实数和复数输入，并返回主值。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入的角度（弧度）。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
+                 *   实数先按周期与象限归约以保持精度，复数按指数恒等式计算。
                  * @returns {ComplexNumber} 代表 sin(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // sin(π/2) -> 1
@@ -3401,7 +3409,8 @@
                  * - 对于实数 `x` 且 `|x| <= 1`，使用 `arcsin(x) = arg(sqrt(1 - x²) + ix)` 计算，数值稳定性好。
                  * - 对于实数 `x` 且 `|x| > 1`，结果为复数，使用基于对数的恒等式计算。
                  * - 对于复数 `z`，使用通用公式 `arcsin(z) = -i * ln(iz + sqrt(1 - z²))`。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；实数区间
+                 *   `[-1, 1]` 返回 `[-π/2, π/2]` 内主值，区间外以及复数输入按主对数分支返回复数。
                  * @returns {ComplexNumber} 代表 arcsin(x) 结果的 ComplexNumber 实例。
                  */
                 static arcsin(x) {
@@ -3456,7 +3465,8 @@
                  * 计算 x 的余弦 (cos(x))。
                  * - 对于实数，使用范围缩减和泰勒级数进行高精度计算，并返回主值。
                  * - 对于复数 z，使用欧拉公式 cos(z) = (e^(iz) + e^(-iz)) / 2 进行计算。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入的角度（弧度）。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
+                 *   实数使用范围缩减，复数使用欧拉公式，输入精度决定级数停止阈值。
                  * @returns {ComplexNumber} 代表 cos(x) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果内部计算未能收敛。
                  */
@@ -3529,7 +3539,8 @@
                  * - 该方法利用了核心三角恒等式 arccos(x) = π/2 - arcsin(x)，并返回主值。
                  * - 它将计算完全委托给已经实现且功能完备的 `arcsin` 方法，
                  * 这种方式不仅代码简洁，而且能自动继承 `arcsin` 对实数和复数输入的处理能力。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；返回满足主值约定的
+                 *   `π/2 - arcsin(x)`，实数 `[-1, 1]` 的结果位于 `[0, π]`。
                  * @returns {ComplexNumber} 代表 arccos(x) 结果的 ComplexNumber 实例。
                  */
                 static arccos(x) {
@@ -3545,7 +3556,8 @@
                 /**
                  * 计算 x 的正切 (tan(x))。
                  * - 该方法通过基本三角恒等式 tan(x) = sin(x) / cos(x) 进行计算，并返回主值。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入的角度（弧度）。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以弧度表示的实数或复数角；
+                 *   通过 `sin(x) / cos(x)` 计算，余弦为零或数值修正后为零时函数未定义。
                  * @returns {ComplexNumber} 代表 tan(x) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果 cos(x) 为 0（此时 tan(x) 在数学上是未定义的），
                  * 底层的 `divide` 方法将抛出一个“除以零”的错误。
@@ -3561,7 +3573,8 @@
                 /**
                  * 计算反正切；实数经范围缩减后使用泰勒级数，复数使用对数恒等式。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；实数通过倒数和倍角
+                 *   归约到稳定区间，复数按主对数恒等式返回主反正切值。
                  * @returns {ComplexNumber} arctan(x)。
                  * @throws {Error} 迭代未收敛时抛出。
                  */
@@ -3656,7 +3669,8 @@
                  * 计算 x 的双曲正弦 (sinh(x))。
                  * - 该方法基于双曲正弦的指数定义：sinh(x) = (e^x - e^-x) / 2。
                  * - 能够自动处理实数和复数输入。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；按
+                 *   `(exp(x) - exp(-x)) / 2` 计算，较大实部可能触发指数结果规模保护。
                  * @returns {ComplexNumber} 代表 sinh(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // sinh(0) -> 0
@@ -3680,7 +3694,8 @@
                  * 计算 x 的反双曲正弦 (arsinh(x))。
                  * - 该方法基于反双曲正弦的对数定义：arsinh(x) = ln(x + sqrt(x² + 1))。
                  * - 能够自动处理实数和复数输入。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；按
+                 *   `ln(x + sqrt(x² + 1))` 的主分支计算，实数输入始终得到实数结果。
                  * @returns {ComplexNumber} 代表 arsinh(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // arsinh(0) -> 0
@@ -3708,7 +3723,8 @@
                  * - 该方法基于双曲余弦的指数定义：cosh(x) = (e^x + e^-x) / 2。
                  * - 能够自动处理实数和复数输入。
                  * @alias cosh
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；按
+                 *   `(exp(x) + exp(-x)) / 2` 计算，结果遵循复指数的周期性。
                  * @returns {ComplexNumber} 代表 cosh(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // cosh(0) -> 1
@@ -3732,7 +3748,8 @@
                  * 计算 x 的反双曲余弦 (arcosh(x))。
                  * @alias arcosh - 该方法基于反双曲余弦的对数定义：arcosh(x) = ln(x + sqrt(x² - 1))。
                  * - 能够自动处理实数和复数输入。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；返回
+                 *   `ln(x + sqrt(x² - 1))` 的主值。实数 `x >= 1` 时结果为非负实数，其他实数可得到复数。
                  * @returns {ComplexNumber} 代表 arcosh(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // arcosh(1) -> 0
@@ -3758,7 +3775,8 @@
                 /**
                  * 计算双曲正切。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数自变量；通过
+                 *   `sinh(x) / cosh(x)` 计算，分母为零的复数点会被拒绝。
                  * @returns {ComplexNumber} tanh(x)。
                  * @alias tanh
                  */
@@ -3776,7 +3794,8 @@
                 /**
                  * 计算反双曲正切。
                  *
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；按
+                 *   `ln((1+x)/(1-x))/2` 返回主值，实数 `x = ±1` 为奇点，`|x| > 1` 返回复数。
                  * @returns {ComplexNumber} artanh(x)。
                  * @alias artanh
                  */
@@ -3800,7 +3819,8 @@
                  * 计算一个数的阶乘 (x!)。
                  * - 对于非负整数 n, n! = 1 * 2 * ... * n，并返回主值。
                  * - 对于非整数、负数和复数，此函数计算伽玛函数 Γ(x + 1)。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 阶乘参数；非负整数走精确的
+                 *   BigInt 分治乘积，其他非极点值通过 `Γ(x + 1)` 延拓，负整数因伽玛极点而拒绝。
                  * @returns {ComplexNumber} 代表 x! 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果输入为负整数，因为其阶乘未定义。
                  */
@@ -3809,7 +3829,8 @@
                      * 使用分治法（二分求积）高效计算一个非负整数的阶乘。
                      * 这种方法对于计算极大的数（如 1000! 或更高）有显著的性能优势。
                      *
-                     * @param {bigint | number} num - 需要计算阶乘的非负整数。
+                      * @param {bigint|number} num - 要精确求阶乘的非负整数；`number` 必须是安全整数并会转换为
+                      *   BigInt，负数、小数、非有限值和不安全整数均不进入递归乘积。
                      * @returns {bigint} n 的阶乘。
                      * @throws {TypeError} 如果 n 不是一个非负整数。
                      */
@@ -3821,8 +3842,8 @@
                         /**
                          * 递归的辅助函数，使用分治策略（Divide and Conquer）计算一个数字范围内的所有整数的乘积。
                          * 这个函数专门为处理 BigInt 类型设计，适用于计算大数的阶乘等场景。
-                         * @param {bigint} start 范围的起始数字（包含）。
-                         * @param {bigint} end 范围的结束数字（包含）。
+                          * @param {bigint} start - 闭区间起点；递归入口保证非负且不大于 `end`。
+                          * @param {bigint} end - 闭区间终点；区间按中点二分，单元素区间直接返回该整数。
                          * @returns {bigint} 从 start 到 end 的所有整数的乘积。
                          */
                         function rangeProduct(start, end) {
@@ -3941,7 +3962,8 @@
                  * - 伽玛函数是阶乘函数向复数和实数的推广，并返回主值。
                  * - 该实现利用了核心关系 Γ(x) = (x-1)!。
                  * - 它将计算委托给库中已经实现的、能够处理复数和非整数的 `fact` 方法。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 伽玛函数参数；允许一般复数，
+                 *   但零和负整数是极点。实部较小时通过反射/递推移入 Lanczos 近似的稳定区域。
                  * @returns {ComplexNumber} 代表 Γ(x) 结果的 ComplexNumber 实例。
                  * @throws {Error} 如果输入为 0 或负整数，此时伽玛函数未定义。
                  * @example
@@ -3962,7 +3984,8 @@
                  * 计算一个数的向下取整 (floor)。
                  * - 对于实数 x，返回不大于 x 的最大整数。
                  * - 对于复数 a + bi，返回 floor(a) + floor(b)i。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 要向负无穷方向取整的值；
+                 *   仅定义于纯实数，复数的非零虚部会被拒绝，整数输入保持不变。
                  * @returns {ComplexNumber} 代表向下取整结果的 ComplexNumber 实例。
                  * @example
                  * // 实数: floor(3.7) -> 3; floor(-3.1) -> -4
@@ -4002,7 +4025,8 @@
                  * 计算一个数的向上取整 (ceiling)。
                  * - 对于实数 x，返回不小于 x 的最小整数。
                  * - 对于复数 a + bi，遵循分部计算的原则，返回 ceil(a) + ceil(b)i。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 需要计算向上取整的输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 要向正无穷方向取整的值；
+                 *   仅定义于纯实数，复数的非零虚部会被拒绝，整数输入保持不变。
                  * @returns {ComplexNumber} 代表向上取整结果的 ComplexNumber 实例。
                  * @example
                  * // 实数: ceil(3.1) -> 4; ceil(-3.7) -> -3
@@ -4042,7 +4066,8 @@
                  * 计算一个数的绝对值（或模）。
                  * - 对于实数 x, |x| 是其到 0 的距离。
                  * - 对于复数 z = a + bi, |z| 是其在复平面上到原点的距离，即 sqrt(a² + b²)。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；实数返回通常的
+                 *   非负绝对值，复数返回 `sqrt(re² + im²)` 的非负实数模。
                  * @returns {ComplexNumber} 一个纯实数的 ComplexNumber 实例，代表输入值的绝对值。
                  * @example
                  * // |-5| -> 5
@@ -4071,7 +4096,8 @@
                  * - 对于实数 x：如果 x>0, 返回 1; 如果 x<0, 返回 -1; 如果 x=0, 返回 0。
                  * - 对于复数 z (z≠0): 返回 z / |z|，这是一个模为 1 的复数，指向 z 的方向。
                  * - 对于复数 z=0: 返回 0。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 输入值。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 实数或复数；零返回零，非零值
+                 *   返回单位方向 `x / abs(x)`，因此复数结果位于单位圆而不只是 `±1`。
                  * @returns {ComplexNumber} 代表 sgn(x) 结果的 ComplexNumber 实例。
                  * @example
                  * // sgn(10) -> 1
@@ -4105,7 +4131,8 @@
                 /**
                  * 将角度从度 (degree) 转换为弧度 (radian)。
                  * - 计算公式为：radians = degrees * π / 180。
-                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以度为单位的输入角度。
+                 * @param {string|number|bigint|BigNumber|ComplexNumber|Array} x - 以角度制表示的实数或复数值；
+                 *   通过乘以 `π / 180` 转为弧度，返回值精度受输入与圆周率常量共同限制。
                  * @returns {ComplexNumber} 代表转换后弧度值的 ComplexNumber 实例。
                  * @example
                  * // 180° -> π ≈ 3.14159
