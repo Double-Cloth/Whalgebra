@@ -298,8 +298,7 @@
                                         } else {
                                             result += `${currentCoefficient}${asX}`;
                                         }
-                                    }
-                                    else if (!currentCoefficient.includes('E')) {
+                                    } else if (!currentCoefficient.includes('E')) {
                                         result += currentCoefficient;
                                     } else {
                                         result += list.length === 1 ? currentCoefficient : `(${currentCoefficient})`;
@@ -457,12 +456,10 @@
                         result.associativity = TokenConfig.rightAssocFunc.has(token) ? 'right' : 'left';
                         result.needKh = TokenConfig.needParensFunc.has(token);
                         result.isPrivate = TokenConfig.privateFunc.has(token);
-                    }
-                    else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
+                    } else if (TokenConfig.codeNumbers.has(token) || TokenConfig.baseNumbers.has(firstChar)) {
                         result.class = 'number';
                         result.numClass = TokenConfig.codeNumbers.has(token) ? 'codeNumbers' : 'baseNumber';
-                    }
-                    else if (TokenConfig.other.has(token)) {
+                    } else if (TokenConfig.other.has(token)) {
                         result.class = 'other';
                     }
 
@@ -1304,7 +1301,6 @@
                             const arrayAcc = (len === 3 && x[2] > 0) ? x[2] : undefined;
                             const finalAcc = acc ?? arrayAcc ?? CalcConfig.globalCalcAccuracy;
 
-
                             if (arrayAcc !== undefined || acc !== undefined) {
                                 const rounded = BigNumber._roundAndNormalize(mantissa, power, finalAcc);
                                 mantissa = rounded.mantissa;
@@ -1416,14 +1412,12 @@
 
                     const [rawPower, rawMantissa] = BigNumber._parseNumericString(mantissaStr);
 
-
                     const {
                         mantissa: finalMantissa,
                         power: middlePower
                     } = BigNumber._roundAndNormalize(rawMantissa, rawPower, acc);
 
                     const finalPower = middlePower + pow;
-
 
                     // 过小的数按零处理，避免指数下溢。
                     if (finalMantissa === 0n || finalPower + CalcConfig.globalCalcAccuracy < CalcConfig.MIN_INPUT_EXPONENT) {
@@ -1504,8 +1498,6 @@
 
                     let lo = 1;
                     let hi = 2;
-
-
 
                     while (n >= BigNumber._pow10(hi)) {
                         lo = hi + 1;
@@ -2104,7 +2096,6 @@
                         changeSign = -typeFactor;
                     }
 
-
                     const highPrecisionAcc = -CalcConfig.constants.invTwoPi[0];
                     if (!MathPlus.minus(angle, [highPrecisionAcc >> 1, 1n, acc]).re.isNegative()) {
                         if (!MathPlus.minus(angle, [highPrecisionAcc, 1n, acc]).re.isNegative()) {
@@ -2182,7 +2173,6 @@
 
                     // 按实部符号修正 arctan(im/re) 的象限。
                     const result = MathPlus.arctan(MathPlus.divide(input.im, input.re));
-
 
                     if (input.re.isNegative()) {
                         return MathPlus[input.im.isNegative() ? 'minus' : 'plus'](result, CalcConfig.constants.pi);
@@ -2289,8 +2279,6 @@
 
                         const resultPower = Math.min(reA.power, reB.power);
 
-
-
                         return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
 
                     }
@@ -2335,8 +2323,6 @@
                     const inputA = new ComplexNumber(a);
                     const inputB = new ComplexNumber(b);
 
-
-
                     if (inputA.onlyReal && inputB.onlyReal) {
                         const reA = inputA.re;
                         const reB = inputB.re;
@@ -2348,7 +2334,6 @@
 
                         return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
                     }
-
 
                     const ac = MathPlus.times(inputA.re, inputB.re);
                     const bd = MathPlus.times(inputA.im, inputB.im);
@@ -2391,9 +2376,6 @@
                         const lenA = (reA.isNegative() ? -reA.mantissa : reA.mantissa).toString().length;
                         const lenB = (reB.isNegative() ? -reB.mantissa : reB.mantissa).toString().length;
 
-
-
-
                         // 预留保护位，减少中间计算的舍入误差。
                         const scalingDigits = resultAcc + lenB - lenA + 4;
 
@@ -2404,10 +2386,8 @@
                         const resultMantissa = scaledMantissaA / reB.mantissa;
                         const resultPower = reA.power - reB.power - finalScalingDigits;
 
-
                         return new ComplexNumber(resultMantissa, {pow: resultPower, acc: resultAcc});
                     }
-
 
                     const conjB = MathPlus.conj(inputB);
                     const numerator = MathPlus.times(inputA, conjB);
@@ -2456,7 +2436,6 @@
                         if (powOfA > CalcConfig.MAX_INPUT_EXPONENT) {
                             const modAB = calcA % calcB;
 
-
                             let modOfPow = 1n;
                             let base = 10n % calcB;
                             let exp = powOfA;
@@ -2474,7 +2453,6 @@
                             if (reA.acc < CalcConfig.MAX_INPUT_EXPONENT) {
                                 modResult = calcA;
                                 if (isNegativeA !== isNegativeB) {
-
 
                                     calcB = calcB * (10n ** BigInt(powOfB));
                                 }
@@ -2556,7 +2534,6 @@
                             return 1;
                         }
 
-
                         const aStr = a.toString();
                         const numDigitsInA = aStr.length;
 
@@ -2569,8 +2546,6 @@
                         const bAsNumber = Number(b);
 
                         const log10Result = bAsNumber * log10a;
-
-
 
                         return Math.floor(log10Result) + 1;
                     }
@@ -2589,8 +2564,6 @@
                             return new ComplexNumber([0, 1n, CalcConfig.globalCalcAccuracy]);
                         }
 
-
-
                         let b = new ComplexNumber(base, {acc: currentAcc + 10});
 
                         const acc = b.acc;
@@ -2601,8 +2574,6 @@
                             if ((exponent & 1n) === 1n) {
                                 result = MathPlus.times(result, b);
                             }
-
-
 
                             if (exponent > 1n) {
                                 b = MathPlus.times(b, b);
@@ -2658,7 +2629,6 @@
                             }
 
                             const realMantissa = absB.mantissa * (10n ** BigInt(absB.power));
-
 
                             const orderOfMagnitude = estimateDigitCount(reA.mantissa, realMantissa);
                             if (orderOfMagnitude >= Number.MAX_SAFE_INTEGER) {
@@ -2811,11 +2781,8 @@
 
                         // 使用牛顿迭代；收敛过慢时回退到 ln/exp。
 
-
-
                         const lowAccuracyRe = new BigNumber(absInput, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
-
 
                         if (!Number.isFinite(numberRe)) {
                             useAlternative = true;
@@ -2837,7 +2804,6 @@
                                     const_2
                                 );
 
-
                                 difference = MathPlus.minus(mid, result).re;
                                 i++;
                             } while (difference.power > minPower && !difference.isZero() && i < max);
@@ -2847,7 +2813,6 @@
                                 useAlternative = true;
                             }
                         }
-
 
                         if (useAlternative) {
                             result = MathPlus.exp(
@@ -2883,10 +2848,8 @@
                             return new ComplexNumber([0, 0n, acc]);
                         }
 
-
                         const lowAccuracyRe = new BigNumber(re, {acc: 15});
                         const numberRe = Number(lowAccuracyRe.mantissa) * (10 ** lowAccuracyRe.power);
-
 
                         if (!Number.isFinite(numberRe)) {
                             useAlternative = true;
@@ -2894,7 +2857,6 @@
 
                         if (!useAlternative) {
                             result = new ComplexNumber(Math.cbrt(numberRe), {acc: acc});
-
 
                             // 使用立方根的牛顿迭代公式。
 
@@ -2916,7 +2878,6 @@
                                     const_3
                                 );
 
-
                                 difference = MathPlus.minus(mid, result).re;
                                 i++;
                             } while (difference.power > minPower && !difference.isZero() && i < max);
@@ -2926,7 +2887,6 @@
                                 useAlternative = true;
                             }
                         }
-
 
                         if (useAlternative) {
                             return MathPlus.pow(re, MathPlus.divide([0, 1n, acc], [0, 3n, acc]));
@@ -2981,7 +2941,6 @@
                             return MathPlus.pow(CalcConfig.constants.e, input);
                         }
 
-
                         // 将 x 拆为整数和小数部分，分别计算后相乘。
 
                         let resultMid, iterationMantissa;
@@ -2996,13 +2955,9 @@
                             iterationMantissa = re.mantissa - intPart * realPower;
                         }
 
-
-
                         const iteration = new ComplexNumber([re.power - 1, iterationMantissa, acc]);
 
                         // 用泰勒级数计算小数部分。
-
-
 
                         const max = CalcConfig.globalCalcAccuracy + 5;
 
@@ -3020,12 +2975,9 @@
                             );
                         }
 
-
                         if (i === max) {
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: exp. Input: ${input.toString()}`);
                         }
-
-
 
                         return MathPlus.times(
                             MathPlus.pow(result, [1, 1n, acc]),
@@ -3066,12 +3018,9 @@
 
                         // 先缩减范围，再用 artanh 泰勒级数计算。
 
-
                         const mantissaLen = re.mantissa.toString().length;
                         const mantissaChangedBy10 = mantissaLen + re.power;
                         let mid = new ComplexNumber([re.power - mantissaChangedBy10, re.mantissa, acc]);
-
-
 
                         const const_1_2 = new ComplexNumber([-1, 12n, acc]);
                         const const_1_1 = new ComplexNumber([-1, 11n, acc]);
@@ -3086,9 +3035,6 @@
                         if (j === 14) {
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: ln. Input: ${input.toString()}`);
                         }
-
-
-
 
                         mid = MathPlus.plus(
                             [0, 1n, acc],
@@ -3204,7 +3150,6 @@
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: sin. Input: ${input.toString()}`);
                         }
 
-
                         const squareOfRe = MathPlus.times(re, re);
                         const max = CalcConfig.globalCalcAccuracy + 5;
                         const minPower = -2 * acc - 1;
@@ -3263,8 +3208,6 @@
                         const re = input.re;
                         const one = new ComplexNumber([0, 1n, acc]);
                         const absInput = MathPlus.abs(input);
-
-
 
                         // 该恒等式在 x 接近 ±1 时比泰勒级数稳定。
                         if (!MathPlus.minus(absInput, one).re.isPositive()) {
@@ -3333,7 +3276,6 @@
 
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: cos. Input: ${input.toString()}`);
                         }
-
 
                         const squareOfRe = MathPlus.times(re, re);
                         const max = CalcConfig.globalCalcAccuracy + 5;
@@ -3451,7 +3393,6 @@
                         if (j === 4) {
                             throw new Error(`[MathPlus] mathematical error: Unreliable result, error source: arctan. Input: ${input.toString()}`);
                         }
-
 
                         let [mid, mid_pow] = [re, re];
                         const squareOfRe = MathPlus.times(re, re);
@@ -3685,7 +3626,6 @@
                                 return start;
                             }
 
-
                             if (end - start < 13n) {
                                 let res = 1n;
                                 for (let i = start; i <= end; i++) {
@@ -3722,8 +3662,6 @@
                             acc: acc
                         });
                     }
-
-
 
                     // 非整数、负数和复数阶乘使用兰佐斯近似计算 Γ(x+1)。
 
@@ -3844,11 +3782,6 @@
                         return new ComplexNumber(result, {acc: acc});
                     }
 
-
-
-
-
-
                     return new ComplexNumber([
                         MathPlus.floor(input.re).re,
                         MathPlus.floor(input.im).re
@@ -3889,11 +3822,6 @@
                         return new ComplexNumber(result, {acc: acc});
                     }
 
-
-
-
-
-
                     return new ComplexNumber([
                         MathPlus.ceil(input.re).re,
                         MathPlus.ceil(input.im).re
@@ -3917,13 +3845,9 @@
                     const input = new ComplexNumber(x);
                     const re = input.re, im = input.im;
 
-
-
                     if (input.onlyReal) {
                         return re.isNegative() ? new ComplexNumber(MathPlus._oppositeNumber(re)) : input;
                     }
-
-
 
                     if (input.re.isZero()) {
                         return im.isNegative() ? new ComplexNumber(MathPlus._oppositeNumber(im)) : new ComplexNumber(im);
@@ -4114,13 +4038,10 @@
                                 }
                                 valueStack.push(value);
                             }
-                        }
-
-                        else if (tokenInfo.parameters === 2) {
+                        } else if (tokenInfo.parameters === 2) {
                             if (valueStack.length < 2) {
                                 throw new Error(`[MathPlus] syntax error: Insufficient parameters for function ${token}.`);
                             }
-
 
                             const b = valueStack.pop();
                             if (mode === 'calc') {
@@ -4243,8 +4164,7 @@
                                 currentPush = ')';
                                 kh -= 1;
                                 absKhStack.pop();
-                            }
-                            else if (
+                            } else if (
                                 lastTokenInfo.class === 'number' ||
                                 lastTokenInfo.token === ')' ||
                                 lastTokenInfo.funcPlace === 'back'
@@ -4339,10 +4259,6 @@
                         output.push(')');
                         kh -= 1;
                     }
-
-
-
-
 
                     // 临时标记区分一元前缀函数与幂运算，并记录是否已有完整括号。
                     [output, input] = [[], output];
@@ -4441,7 +4357,6 @@
                             }
                         }
 
-
                         if (currentToken === ')') {
                             kh -= 1;
                         }
@@ -4514,8 +4429,6 @@
                                 topOfStack = topOfStack.replace('~', '');
                                 topOfStackInfo = Public.getTokenInfo(topOfStack);
                             }
-
-
 
                             while (
                                 topOfStack !== undefined && (
@@ -4822,7 +4735,6 @@
                     for (let i = 0; i < n; i++) {
                         // 使用部分主元法提高数值稳定性。
 
-
                         let maxRow = i;
                         for (let k = i + 1; k < n; k++) {
                             if (MathPlus.minus(MathPlus.abs(augmentedMatrix[k][i]), MathPlus.abs(augmentedMatrix[maxRow][i])).re.isPositive()) {
@@ -5068,8 +4980,6 @@
                     const varianceA = this._variance(listA);
                     const varianceB = this._variance(listB);
 
-
-
                     const statisticsInfoA = this._getStatisticsInfo(listA, {
                         averageAndSum: averageAndSumA,
                         variance: varianceA
@@ -5296,7 +5206,6 @@
                      */
                     list.sort((a, b) => {
 
-
                         const diff = MathPlus.minus(a, b).re.mantissa;
                         if (diff > 0n) {
                             return 1;
@@ -5400,8 +5309,6 @@
                         return PowerFunctionTools._sort(roots);
                     }
 
-
-
                     // 末尾的 null 标记一对共轭复根。
                     roots.push(null);
                     return roots;
@@ -5492,9 +5399,6 @@
                         }
                         return [root1, root2];
                     }
-
-
-
 
                     const absA = MathPlus.abs(A);
                     const T = MathPlus.divide(
@@ -6102,7 +6006,7 @@
                     return [
                         formula,
                         /** 根据根序号计算对应的极坐标根。 */
-                        x => MathPlus.toPolar(
+                            x => MathPlus.toPolar(
                             length,
                             MathPlus.plus(argumentConstant, MathPlus.times(x, argumentConstantK))
                         )
@@ -6258,7 +6162,6 @@
                     f,
                     g
                 } = {}) {
-
 
                     let effectiveOutputAcc = outputAcc;
                     if (effectiveOutputAcc > 1 && effectiveOutputAcc > calcAcc) {
@@ -7409,7 +7312,6 @@
                             }
                             [name[0], name[1]] = [Number(name[0]), Number(name[1])];
 
-
                             const children = PageConfig.screenData['1'];
                             if (![0, 1].includes(name[1]) || name[0] >= children.length || name.length !== 2) {
                                 throw new Error('[PageConfig] Unsupported sub-mode (out of range).');
@@ -7421,23 +7323,21 @@
                              * - @param {Function} callback - 在第二帧重绘前执行的回调函数
                              */
                             const safeRaf = (callback) => {
-                                requestAnimationFrame( /** 安排回调在连续两帧后执行。 */ () => requestAnimationFrame(callback));
+                                requestAnimationFrame(/** 安排回调在连续两帧后执行。 */() => requestAnimationFrame(callback));
                             };
 
                             if (PageConfig.currentMode === '1') {
                                 const gridOn = HtmlTools.getHtml('.GridOn');
                                 if (gridOn) {
-                                    safeRaf( /** 移除旧统计单元格的高亮。 */ () => gridOn.classList.remove('GridOn'));
+                                    safeRaf(/** 移除旧统计单元格的高亮。 */() => gridOn.classList.remove('GridOn'));
                                 }
 
-                                InputManager.statisticsRenderer.applyToItem(name[0],  /** 更新目标统计单元格。 */ el => {
+                                InputManager.statisticsRenderer.applyToItem(name[0], /** 更新目标统计单元格。 */el => {
                                     const targetEl = el.children[name[1] + 1];
-                                    safeRaf( /** 为新统计单元格添加高亮。 */ () => targetEl.classList.add('GridOn'));
+                                    safeRaf(/** 为新统计单元格添加高亮。 */() => targetEl.classList.add('GridOn'));
                                 });
                             }
                         } else {
-
-
 
                             const modeValidations = {
                                 '2_0': ['0', '1'],
@@ -7445,7 +7345,6 @@
                                 '3': ['0', '1', '2', '3', '4'],
                                 '4': ['0', '1']
                             };
-
 
                             const validation = modeValidations[dealMode];
 
@@ -7475,7 +7374,6 @@
                     if (!obj) {
                         throw new Error('[PageConfig] Unsupported sub-mode');
                     }
-
 
                     for (const key of Object.keys(obj)) {
                         if (key === 'default' || PageConfig._subModes[key] !== undefined) {
@@ -7513,7 +7411,6 @@
                     if (!['0', '1', '2_0', '2_1', '3', '4'].includes(mode)) {
                         throw new Error('[PageConfig] Unsupported mode');
                     }
-
 
                     PageControlTools.changeTitle(mode);
                     PageControlTools.changeScreen(mode);
@@ -7589,14 +7486,11 @@
                         throw new Error('[PageConfig] Unsupported mode');
                     }
 
-
                     HtmlTools.getHtml(`#print_${PageConfig._printMode}`).classList.remove('SelectionOn');
 
                     PageConfig._printMode = mode;
 
                     HtmlTools.getHtml(`#print_${PageConfig._printMode}`).classList.add('SelectionOn');
-
-
 
                     CalcConfig.globalPrintMode = mode === '0' ? 'algebra' : 'polar';
 
@@ -7662,7 +7556,6 @@
                         throw new Error('[PageConfig] Unsupported mode');
                     }
 
-
                     const secondaryKeyboard = [...HtmlTools.getHtml('.SecondaryKeyboard', -1)];
                     for (let i = 0; i < secondaryKeyboard.length; i++) {
                         const index = secondaryKeyboard[i];
@@ -7726,11 +7619,9 @@
                         throw new Error('[PageConfig] Unsupported mode');
                     }
 
-
                     const accMode = mode === 0 ? this.ACC_MODE_0 : this.ACC_MODE_1;
                     CalcConfig.globalCalcAccuracy = accMode.globalCalcAccuracy;
                     CalcConfig.outputAccuracy = accMode.outputAccuracy;
-
 
                     if (mode !== PageConfig._calcAccMode) {
                         HtmlTools.getHtml('#switch_container').classList.toggle('Active');
@@ -7758,9 +7649,6 @@
                     '1': [['', '']],
                     '2_00': '',
                     '2_01': '',
-
-
-
 
                     '2_10': '',
                     '2_11': '',
@@ -7799,17 +7687,15 @@
                         return;
                     }
 
-                    Object.entries(data).forEach( /** 校验并写入单项屏幕数据。 */ ([key, value]) => {
+                    Object.entries(data).forEach(/** 校验并写入单项屏幕数据。 */([key, value]) => {
                         // 只接受已有的自有属性，避免原型链注入。
                         if (!Object.hasOwn(PageConfig._screenData, key)) {
                             return;
                         }
 
-
                         if (key === '1' && !Array.isArray(value[0])) {
-                            const [row, col, newVal] = value; 
+                            const [row, col, newVal] = value;
                             const targetMatrix = PageConfig._screenData['1'];
-
 
                             const isValidRow = row >= 0 && row < targetMatrix.length;
                             const isValidCol = col >= 0 && col < 2;
@@ -7818,17 +7704,14 @@
                                 targetMatrix[row][col] = newVal;
                             }
 
-
                             if (PageConfig.currentMode === '1') {
                                 InputManager.statisticsRenderer.load(targetMatrix, targetMatrix.length, {resetScroll: false});
                             }
-                            return; 
+                            return;
                         }
-
 
                         const val = Array.isArray(value) ? structuredClone(value) : value;
                         PageConfig._screenData[key] = val;
-
 
                         if (key === '1' && PageConfig.currentMode === '1') {
                             InputManager.statisticsRenderer.load(val, val.length, {resetScroll: false});
@@ -7860,18 +7743,15 @@
                         name = area;
                     } else {
 
-
                         name = currentMode === '1' ? '1' : currentMode + PageConfig.subModes[currentMode];
                     }
 
-
                     if (name !== '1') {
-
 
                         const target = HtmlTools.getHtml(`#screen_input_inner_${name}`);
 
                         PageConfig._screenData[name] = HtmlTools.htmlClassToText(HtmlTools.getClassList(target));
-                    } 
+                    }
 
                     try {
 
@@ -7905,8 +7785,7 @@
                  */
                 static _tokenizerRegex = (() => {
 
-                    const escape =  /** 转义正则表达式元字符。 */ s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-
+                    const escape = /** 转义正则表达式元字符。 */s => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 
                     const symbolPattern = Object.keys(PageConfig.classNameConverterConfig)
                         .map(escape)
@@ -7974,11 +7853,8 @@
 
                     const classLists = [];
 
-
                     const children = area.children;
                     const totalLen = children.length;
-
-
 
                     const validStart = Math.max(0, startIndex);
 
@@ -7986,28 +7862,23 @@
                                      ? Math.min(endIndex, totalLen)
                                      : totalLen;
 
-
                     for (let i = validStart; i < validEnd; i++) {
                         const child = children[i];
                         let className;
                         className = child.className;
 
-
                         if (ignoreSpace && className === '_space_') {
                             continue;
                         }
-
 
                         if (onlyP && child?.tagName?.toLowerCase() === 'p') {
 
                             classLists.push(className);
                         } else if (!onlyP) {
 
-
                             classLists.push(className === '' ? `[id]${child.id}` : className);
                         }
                     }
-
 
                     return classLists;
                 }
@@ -8054,7 +7925,7 @@
                 static htmlClassToText(classArray) {
                     const reverseConfig = HtmlTools._classNameConverterReverseConfig;
 
-                    return classArray.map( /** 将单个 CSS 类名还原为词元。 */ cls => {
+                    return classArray.map(/** 将单个 CSS 类名还原为词元。 */cls => {
                         if (!cls.startsWith('_') || !cls.endsWith('_')) {
                             return cls === '[id]cursor' ? '[cursor]' : cls;
                         }
@@ -8089,23 +7960,19 @@
                                          ? HtmlTools.getHtml(parentElement)
                                          : parentElement;
 
-
                     if (!targetParent || !Array.isArray(nameList)) {
                         return;
                     }
 
-
                     if (mode === 'replace') {
                         InputManager.ac({acArea: parentElement});
                     }
-
 
                     if (nameList.length === 0) {
                         return;
                     }
 
                     const fragment = document.createDocumentFragment();
-
 
                     for (const name of nameList) {
 
@@ -8114,7 +7981,6 @@
                         }
 
                         const element = document.createElement(appendType);
-
 
                         if (Array.isArray(name)) {
                             if (nameType.length !== name.length) {
@@ -8139,16 +8005,13 @@
                         fragment.appendChild(element);
                     }
 
-
                     if (!fragment.hasChildNodes()) {
                         return;
                     }
 
-
                     if (!referenceNode && index !== -1) {
                         referenceNode = targetParent.children[index];
                     }
-
 
                     targetParent.insertBefore(fragment, referenceNode || null);
                 }
@@ -8171,19 +8034,16 @@
                         // 先匹配较长词元，避免短词元提前截断。
                         // 转义词元中的正则元字符。
                         const sortedEscaped = deleteStrList
-                            .sort( /** 按待删除词元的长度降序排列。 */ (a, b) => b.length - a.length)
-                            .map( /** 转义待删除词元中的正则字符。 */ word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-
+                            .sort(/** 按待删除词元的长度降序排列。 */(a, b) => b.length - a.length)
+                            .map(/** 转义待删除词元中的正则字符。 */word => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
                         const regex = new RegExp(`\\[(${sortedEscaped.join('|')})\\]`, 'g');
-
 
                         return expr.replace(regex, '');
                     }
 
-
                     const resultList = [];
-                    const deleteClassList = deleteStrList.map( /** 将待删除词元转换为 CSS 类名。 */ name => `_${name}_`);
+                    const deleteClassList = deleteStrList.map(/** 将待删除词元转换为 CSS 类名。 */name => `_${name}_`);
                     for (let i = 0; i < expr.length; i++) {
                         const className = expr[i];
 
@@ -8210,7 +8070,6 @@
                         return typeof res !== 'undefined' ? res : null;
                     }
 
-
                     const targetName = `#screen_input_inner_${currentMode}${PageConfig.subModes[currentMode]}`;
 
                     return HtmlTools.getHtml(targetName);
@@ -8233,7 +8092,6 @@
                         return;
                     }
 
-
                     const isAtStart = !cursor.previousElementSibling;
                     const isAtEnd = !cursor.nextElementSibling;
 
@@ -8248,18 +8106,15 @@
                         leftNum = Math.min(leftNum, 5);
                         rightNum = Math.min(rightNum, 5);
 
-
                         let leftTarget = cursor;
                         for (let i = 0; i < leftNum && leftTarget.previousElementSibling; i++) {
                             leftTarget = leftTarget.previousElementSibling;
                         }
 
-
                         let rightTarget = cursor;
                         for (let i = 0; i < rightNum && rightTarget.nextElementSibling; i++) {
                             rightTarget = rightTarget.nextElementSibling;
                         }
-
 
                         // 依次滚动两侧边界，使上下文尽量完整可见。
 
@@ -8270,10 +8125,8 @@
                             rightTarget.scrollIntoView({inline: 'nearest'});
                         }
 
-
                         cursor.scrollIntoView({inline: 'nearest'});
                     }
-
 
                     if (PageConfig.currentMode === '1') {
                         const current = PageConfig.subModes['1'];
@@ -8316,13 +8169,12 @@
                         timerId,
                         lastCallTime;
 
-                    let lastInvokeTime = 0; 
+                    let lastInvokeTime = 0;
                     let leading = false;
-                    let maxing = false; 
+                    let maxing = false;
                     let trailing = true;
 
-
-                    wait = +wait || 0; 
+                    wait = +wait || 0;
                     if (isObject(options)) {
                         leading = !!options.leading;
                         maxing = 'maxWait' in options;
@@ -8331,15 +8183,11 @@
                         trailing = 'trailing' in options ? !!options.trailing : trailing;
                     }
 
-
-
                     /** 判断值是否为对象或函数。 */
                     function isObject(value) {
                         const type = typeof value;
                         return value != null && (type === 'object' || type === 'function');
                     }
-
-
 
                     /** 使用最近一次参数调用目标函数。 */
                     function invokeFunc(time) {
@@ -8352,14 +8200,10 @@
                         return result;
                     }
 
-
-
                     /** 启动防抖计时器。 */
                     function startTimer(pendingFunc, wait) {
                         return setTimeout(pendingFunc, wait);
                     }
-
-
 
                     /** 计算防抖调用的剩余等待时间。 */
                     function remainingWait(time) {
@@ -8367,23 +8211,15 @@
                         const timeSinceLastInvoke = time - lastInvokeTime;
                         const timeWaiting = wait - timeSinceLastCall;
 
-
                         return maxing
                                ? Math.min(timeWaiting, maxWait - timeSinceLastInvoke)
                                : timeWaiting;
                     }
 
-
-
                     /** 判断当前调用是否应立即执行。 */
                     function shouldInvoke(time) {
                         const timeSinceLastCall = time - lastCallTime;
                         const timeSinceLastInvoke = time - lastInvokeTime;
-
-
-
-
-
 
                         return (
                             lastCallTime === undefined ||
@@ -8392,8 +8228,6 @@
                             (maxing && timeSinceLastInvoke >= maxWait)
                         );
                     }
-
-
 
                     /** 处理防抖计时器到期。 */
                     function timerExpired() {
@@ -8405,8 +8239,6 @@
                         timerId = startTimer(timerExpired, remainingWait(time));
                     }
 
-
-
                     /** 处理防抖周期的前沿调用。 */
                     function leadingEdge(time) {
 
@@ -8417,13 +8249,9 @@
                         return leading ? invokeFunc(time) : result;
                     }
 
-
-
                     /** 处理防抖周期的尾沿调用。 */
                     function trailingEdge(time) {
                         timerId = undefined;
-
-
 
                         if (trailing && lastArgs) {
                             return invokeFunc(time);
@@ -8432,8 +8260,6 @@
                         lastArgs = lastThis = undefined;
                         return result;
                     }
-
-
 
                     /** 取消待执行的防抖调用。 */
                     function cancel() {
@@ -8444,21 +8270,15 @@
                         lastArgs = lastCallTime = lastThis = timerId = undefined;
                     }
 
-
-
                     /** 立即执行待处理的防抖调用。 */
                     function flush() {
                         return timerId === undefined ? result : trailingEdge(Date.now());
                     }
 
-
-
                     /** 判断是否存在待处理的防抖调用。 */
                     function pending() {
                         return timerId !== undefined;
                     }
-
-
 
                     /** 记录并调度一次防抖调用。 */
                     function debounced(...args) {
@@ -8488,7 +8308,6 @@
                         return result;
                     }
 
-
                     debounced.cancel = cancel;
                     debounced.flush = flush;
                     debounced.pending = pending;
@@ -8506,8 +8325,6 @@
              * - 通过 ResizeObserver（或 window.resize 降级）自动响应容器尺寸变化。
              */
             class VirtualScroll {
-
-
 
                 /**
                  * 有限状态机（FSM）辅助类。
@@ -8529,7 +8346,7 @@
                         this._state = initial;
                         this._table = Object.freeze(
                             Object.fromEntries(
-                                Object.entries(table).map( /** 将状态转换表的值转换为 Set。 */ ([k, v]) => [k, new Set(v)])
+                                Object.entries(table).map(/** 将状态转换表的值转换为 Set。 */([k, v]) => [k, new Set(v)])
                             )
                         );
                         this._onTransition = onTransition ?? null;
@@ -8600,7 +8417,6 @@
                      */
                     static MAX_ELEMENT_HEIGHT = 12_000_000;
 
-
                     constructor() {
                         this.reset();
                     }
@@ -8614,12 +8430,9 @@
 
                         this.virtualHeight = 0;
 
-
                         this.physicalHeight = 0;
 
-
                         this.scrollRatio = 1;
-
 
                         this.compressed = false;
 
@@ -8641,10 +8454,6 @@
                         this._effV = 0;
                     }
 
-
-
-
-
                     /**
                      * 根据最新数据重新计算虚拟 / 物理高度及滚动比率。
                      *
@@ -8665,14 +8474,13 @@
 
                         if (rawEffP <= 0) {
 
-
                             this._effV = 0;
-                            this._effP = 0;          
+                            this._effP = 0;
                             this.scrollRatio = 1;         // 无滚动范围时以 1 作为安全比率。
                         } else {
 
                             this._effV = Math.max(0, rawEffV);
-                            this._effP = rawEffP;    
+                            this._effP = rawEffP;
                             this.scrollRatio = this.compressed ? this._effV / this._effP : 1;
                         }
                     }
@@ -8713,7 +8521,6 @@
                             return 0;
                         }
 
-
                         const raw = Math.max(0, virtualOffset) * (this._effP / this._effV);
                         return Math.min(this._effP, raw);
                     }
@@ -8746,7 +8553,6 @@
                         let physTop = physScrollTop + vStart - virtScrollTop;
                         const itemsH = (end - start) * itemHeight;
                         let physBottom = this.physicalHeight - physTop - itemsH;
-
 
                         // 吸收微小负值，避免滚动条因浮点误差抖动。
 
@@ -8781,12 +8587,9 @@
 
                         this._limit = limit;
 
-
                         this._pool = [];
 
-
                         this._wrapperSet = new Set();
-
 
                         this._userRefCnt = new Map();
                     }
@@ -8849,8 +8652,6 @@
                                 return result.cloneNode(true);
                             }
 
-
-
                             const cnt = this._userRefCnt.get(result) ?? 0;
                             if (cnt > 0) {
                                 throw new Error(
@@ -8863,15 +8664,12 @@
                             return result;
                         }
 
-
                         let wrapper;
                         if (measureOnly) {
 
                             wrapper = document.createElement('div');
                         } else {
                             wrapper = this._pool.pop() ?? document.createElement('div');
-
-
 
                             // 清理池中的脏节点，避免复用旧内容。
                             if (wrapper.childNodes.length > 0 || wrapper.hasAttributes()) {
@@ -8887,7 +8685,6 @@
 
                             this._wrapperSet.add(wrapper);
                         }
-
 
                         const frag = document.createRange().createContextualFragment(result);
 
@@ -8924,7 +8721,6 @@
 
                                 el.replaceChildren();
 
-
                                 for (const {name} of Array.from(el.attributes)) {
                                     el.removeAttribute(name);
                                 }
@@ -8946,8 +8742,6 @@
                     }
                 };
 
-
-
                 /**
                  * 实例可处于的全部状态枚举（冻结对象，不可修改）。
                  * - `IDLE`      — 初始或 `clear()` 后的空闲状态，尚未加载数据。
@@ -8964,8 +8758,6 @@
                     PAUSED: 'paused',
                     DESTROYED: 'destroyed'
                 });
-
-
 
                 /**
                  * 缓冲区行数下限（视口外最少预渲染条数）。
@@ -9031,8 +8823,6 @@
                  */
                 static _MIN_ITEM_HEIGHT = 1;
 
-
-
                 /**
                  * 创建尚未加载数据的虚拟滚动实例。
                  *
@@ -9046,7 +8836,6 @@
                 constructor(config) {
                     this._validateConfig(config);
 
-
                     this.container = null;
 
                     /**
@@ -9056,31 +8845,22 @@
                      */
                     this.renderItem = config.renderItem;
 
-
                     this.data = [];
-
 
                     this.totalCount = 0;
 
-
                     this.itemHeight = 0;
 
-
                     this.bufferSize = 0;
-
 
                     this._anchorIndex = 0;
                     this._anchorRatio = 0;
 
-
                     this._selector = config.container;
-
 
                     this._remeasureOnResize = config.remeasureOnResize ?? true;
 
-
                     this._originalContainerStyle = null;
-
 
                     this._sm = new VirtualScroll._StateMachine(
                         VirtualScroll.State.IDLE,
@@ -9103,7 +8883,6 @@
                         }
                     );
 
-
                     this._spacerTop = null;
 
                     this._spacerBottom = null;
@@ -9112,18 +8891,15 @@
 
                     this._endIndex = -1;
 
-
                     this._renderedNodes = new Map();
 
                     this._nodePool = new VirtualScroll._NodePool(VirtualScroll._POOL_LIMIT);
 
                     this._heightMapper = new VirtualScroll._HeightMapper();
 
-
                     this._lastContainerHeight = 0;
 
                     this._lastContainerWidth = 0;
-
 
                     this._handleScroll = null;
 
@@ -9133,7 +8909,6 @@
 
                     this._ro = null;
 
-
                     this._renderRAF = null;
 
                     this._remeasureRAF = null;
@@ -9141,7 +8916,6 @@
                     this._smoothRAF = null;
 
                     this._resumeRAF = null;
-
 
                     this._measured = false;
 
@@ -9179,8 +8953,6 @@
                 get state() {
                     return this._sm.state;
                 }
-
-
 
                 /**
                  * 校验构造函数传入的配置对象，任何不合法项均抛出 `Error`。
@@ -9226,7 +8998,6 @@
                         return 0;
                     }
 
-
                     let num;
                     try {
                         num = Number(length);
@@ -9241,7 +9012,6 @@
                         console.warn(`[VirtualScroll] ${caller}(): length "${length}" is not a finite number, treating as 0.`);
                         return 0;
                     }
-
 
                     const int = Math.trunc(num);
 
@@ -9266,8 +9036,6 @@
                         throw new Error(`[VirtualScroll] Instance destroyed, cannot call ${method}().`);
                     }
                 }
-
-
 
                 /**
                  * 解析并缓存容器 DOM 元素。
@@ -9358,8 +9126,6 @@
                     this._lastContainerWidth = this.container.clientWidth;
                 }
 
-
-
                 /**
                  * 在不重新测量（`remeasure: false`）时，通过采样少量条目来
                  *   校验缓存行高与新数据实际行高是否吻合。
@@ -9390,8 +9156,8 @@
                     this.container.appendChild(frag);
                     void this.container.offsetHeight; // 触发布局计算后再读取 `offsetHeight`。
 
-                    const heights = els.map( /** 读取元素的实际高度。 */ el => el.offsetHeight);
-                    const avg = heights.reduce( /** 累计元素高度。 */ (s, h) => s + h, 0) / heights.length;
+                    const heights = els.map(/** 读取元素的实际高度。 */el => el.offsetHeight);
+                    const avg = heights.reduce(/** 累计元素高度。 */(s, h) => s + h, 0) / heights.length;
 
                     for (const el of els) {
                         el.remove();
@@ -9405,8 +9171,6 @@
                         );
                     }
                 }
-
-
 
                 /**
                  * 执行完整的行高测量流程。
@@ -9463,11 +9227,10 @@
                             tempEls.push(el);
                         }
 
-
                         void this.container.offsetHeight;
 
-                        const heights = tempEls.map( /** 读取测量样本的高度。 */ el => el.offsetHeight);
-                        const sum = heights.reduce( /** 累计测量样本高度。 */ (s, h) => s + h, 0);
+                        const heights = tempEls.map(/** 读取测量样本的高度。 */el => el.offsetHeight);
+                        const sum = heights.reduce(/** 累计测量样本高度。 */(s, h) => s + h, 0);
                         let measured = sum / sampleCount;
 
                         this.container.replaceChildren();
@@ -9502,8 +9265,6 @@
                     }
                 }
 
-
-
                 /**
                  * 根据容器高度和行高动态计算缓冲区行数。
                  * - 计算公式：`bufferSize = clamp(ceil(visibleRows × _BUFFER_RATIO), _BUFFER_MIN, _BUFFER_MAX)`。
@@ -9534,8 +9295,6 @@
                     }
                 }
 
-
-
                 /**
                  * 重建容器内的基础 DOM 骨架（清空 + 创建上下 spacer）。
                  * - 回收所有已渲染节点并清空容器。
@@ -9559,7 +9318,7 @@
 
                     this.container.replaceChildren();
 
-                    const applySpacerStyle =  /** 应用虚拟滚动占位元素样式。 */ el => Object.assign(el.style, {
+                    const applySpacerStyle = /** 应用虚拟滚动占位元素样式。 */el => Object.assign(el.style, {
                         display: 'block',
                         width: '100%',
                         height: '0px',
@@ -9588,8 +9347,6 @@
                     this._startIndex = -1;
                     this._endIndex = -1;
 
-
-
                     const hm = this._heightMapper;
                     const {top, bottom} = hm.calcSpacerHeights(
                         0, 0, this.totalCount, this.itemHeight
@@ -9597,8 +9354,6 @@
                     this._spacerTop.style.height = `${top}px`;
                     this._spacerBottom.style.height = `${bottom}px`;
                 }
-
-
 
                 /**
                  * 同时绑定滚动事件和 resize 监听器。
@@ -9622,7 +9377,7 @@
                         return;
                     }
 
-                    this._handleUserInterrupt =  /** 处理用户对平滑滚动的中断。 */ () => {
+                    this._handleUserInterrupt = /** 处理用户对平滑滚动的中断。 */() => {
 
                         if (this._isSmoothScrolling) {
                             this._cancelSmoothScroll();
@@ -9650,7 +9405,7 @@
                         return;
                     }
 
-                    this._handleScroll =  /** 同步处理容器滚动事件。 */ () => {
+                    this._handleScroll = /** 同步处理容器滚动事件。 */() => {
                         if (this._isSmoothScrolling) {
                             return;
                         }
@@ -9689,7 +9444,7 @@
                             return;
                         }
 
-                        this._ro = new ResizeObserver( /** 处理虚拟列表尺寸变化。 */ entries => {
+                        this._ro = new ResizeObserver(/** 处理虚拟列表尺寸变化。 */entries => {
                             if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                                 return;
                             }
@@ -9699,13 +9454,11 @@
                                 return;
                             }
 
-
                             if (!entry.target.isConnected) {
                                 console.warn('[VirtualScroll] Container detached, auto-destroying.');
                                 this.destroy();
                                 return;
                             }
-
 
                             const newW = entry.target.clientWidth;
                             const newH = entry.target.clientHeight;
@@ -9713,11 +9466,9 @@
                             const widthChanged = Math.round(newW) !== Math.round(this._lastContainerWidth);
                             const heightChanged = Math.round(newH) !== Math.round(this._lastContainerHeight);
 
-
                             if (!widthChanged && !heightChanged) {
                                 return;
                             }
-
 
                             this._lastContainerWidth = newW;
                             this._lastContainerHeight = newH;
@@ -9737,11 +9488,10 @@
                         if (this._handleWindowResize) {
                             return;
                         }
-                        this._handleWindowResize =  /** 处理窗口尺寸变化。 */ () => {
+                        this._handleWindowResize = /** 处理窗口尺寸变化。 */() => {
                             if (!this._sm.is(VirtualScroll.State.RUNNING)) {
                                 return;
                             }
-
 
                             if (!this.container || !this.container.isConnected) {
                                 console.warn('[VirtualScroll] Container detached, auto-destroying fallback listener.');
@@ -9820,7 +9570,6 @@
                             nextPhysScrollTop
                         );
 
-
                         if (top < 0) {
                             this._spacerTop.style.height = '0px';
                             this._spacerTop.style.marginTop = `${top}px`;
@@ -9833,8 +9582,6 @@
 
                     this.container.scrollTop = nextPhysScrollTop;
                 }
-
-
 
                 /**
                  * 使用 `requestAnimationFrame` 异步调度一次行高重测。
@@ -9853,7 +9600,7 @@
                     this._remeasurePending = true;
                     this._cancelRenderRAF();
 
-                    this._remeasureRAF = requestAnimationFrame( /** 在下一帧重新测量虚拟列表。 */ () => {
+                    this._remeasureRAF = requestAnimationFrame(/** 在下一帧重新测量虚拟列表。 */() => {
                         this._remeasureRAF = null;
 
                         if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
@@ -9871,14 +9618,12 @@
                             this._syncContainerSize();
                             this._calcBufferSize(true);
 
-
                             this._buildDOM();
 
                             // 按原逻辑行和相对偏移恢复滚动位置。
                             const clientHeight = this.container.clientHeight;
                             this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
                             this._syncContainerSize();
-
 
                             const exactVirtScroll = (savedAnchorIndex + savedAnchorRatio) * this.itemHeight;
                             const maxVirt = Math.max(0, this._heightMapper.virtualHeight - clientHeight);
@@ -9912,7 +9657,7 @@
                         let lastWidth = -1;
                         let lastHeight = -1;
 
-                        const waitForContainer =  /** 等待容器恢复可测量状态。 */ () => {
+                        const waitForContainer = /** 等待容器恢复可测量状态。 */() => {
                             this._resumeRAF = null;
 
                             if (!this._sm.is(VirtualScroll.State.RUNNING) || !this.container) {
@@ -9944,19 +9689,16 @@
 
                     this._pendingScrollQueue = [];
 
-
                     const savedAnchorIndex = this._anchorIndex;
                     const savedAnchorRatio = this._anchorRatio;
 
                     this._heightMapper.reset();
-
 
                     this._doMeasure();
                     this._measured = true;
 
                     this._syncContainerSize();
                     this._calcBufferSize(true);
-
 
                     this._buildDOM();
 
@@ -9969,7 +9711,6 @@
                     );
 
                     this._syncContainerSize();
-
 
                     if (pendingScroll) {
                         const {index, behavior, block} = pendingScroll;
@@ -9996,13 +9737,10 @@
                     // `_doMeasure()` 会解绑滚动监听，恢复后需重新绑定。
                     this._bindEvents();
 
-
                     this._render();
                     // 下一帧补充渲染，等待恢复后的布局稳定。
                     this._scheduleRender();
                 }
-
-
 
                 /**
                  * 通过 `requestAnimationFrame` 异步调度一次渲染。
@@ -10016,7 +9754,7 @@
                     if (this._renderRAF || this._remeasurePending) {
                         return;
                     }
-                    this._renderRAF = requestAnimationFrame( /** 在下一帧渲染虚拟列表。 */ () => {
+                    this._renderRAF = requestAnimationFrame(/** 在下一帧渲染虚拟列表。 */() => {
                         this._renderRAF = null;
                         this._render();
                     });
@@ -10090,8 +9828,6 @@
                     this._render(true);
                 }
 
-
-
                 /**
                  * 计算视口渲染窗口并增量更新节点与 spacer。
                  *
@@ -10128,15 +9864,12 @@
                             return;
                         }
 
-
-
                         // 先更新缓存高度，避免重入或外部更新导致误判。
                         const heightChanged = clientHeight !== this._lastContainerHeight;
                         if (heightChanged) {
                             this._lastContainerHeight = clientHeight;
                             this._calcBufferSize();
                             this._heightMapper.update(this.totalCount, this.itemHeight, clientHeight);
-
 
                             if (this._spacerTop && this._spacerBottom) {
                                 const hm = this._heightMapper;
@@ -10148,8 +9881,6 @@
                                 this._spacerTop.style.height = `${top}px`;
                                 this._spacerBottom.style.height = `${bottom}px`;
                             }
-
-
 
                             const hm = this._heightMapper;
                             const maxPhysical = Math.max(0, hm.physicalHeight - clientHeight);
@@ -10169,13 +9900,10 @@
 
                         const virtScrollTop = hm.physicalToVirtual(clampedPhysScrollTop);
 
-
                         let visibleStart = Math.floor(virtScrollTop / this.itemHeight);
                         let start = Math.max(0, visibleStart - this.bufferSize);
 
-
                         this._updateAnchor();
-
 
                         let visibleEnd = visibleStart + Math.ceil(clientHeight / this.itemHeight);
                         let end = Math.min(this.totalCount, visibleEnd + this.bufferSize);
@@ -10183,7 +9911,6 @@
                         const rangeUnchanged = start === this._startIndex && end === this._endIndex;
 
                         // 渲染范围不变时也要更新 spacer，以同步滚动视差。
-
 
                         const {top: spacerTopPx, bottom: spacerBottomPx} = hm.calcSpacerHeights(
                             start, end, this.totalCount, this.itemHeight, clampedPhysScrollTop
@@ -10197,7 +9924,6 @@
                             this._spacerTop.style.marginTop = '0px';
                         }
                         this._spacerBottom.style.height = `${spacerBottomPx}px`;
-
 
                         if (!force && rangeUnchanged && !heightChanged) {
                             return;
@@ -10220,8 +9946,6 @@
 
                         this._recycleRenderedNodes();
 
-
-
                         if (this._spacerTop?.isConnected && this._spacerBottom?.isConnected) {
                             const {top, bottom} = this._heightMapper.calcSpacerHeights(
                                 0, 0, this.totalCount, this.itemHeight, 0
@@ -10237,8 +9961,6 @@
                         this._rendering = false;
                     }
                 }
-
-
 
                 /**
                  * 在旧渲染窗口与新渲染窗口有重叠时，执行最小化 DOM 操作的增量更新。
@@ -10394,8 +10116,6 @@
                     this._anchorRatio = (exactIdx % 1);
                 }
 
-
-
                 /**
                  * 从 `_renderedNodes` 中移除单个索引对应的节点，并将其归还节点池。
                  * - 若指定索引不存在于 Map 中，静默返回。
@@ -10431,8 +10151,6 @@
                     this._startIndex = -1;
                     this._endIndex = -1;
                 }
-
-
 
                 /**
                  * 移除用户交互打断监听器。
@@ -10496,8 +10214,6 @@
                     this._rendering = false;
                 }
 
-
-
                 /**
                  * 在压缩模式下使用 rAF 动画实现平滑滚动到指定物理偏移量。
                  * - 浏览器原生 `scrollTo({ behavior: 'smooth' })` 在压缩模式下因高度不真实而
@@ -10521,7 +10237,6 @@
                         return;
                     }
 
-
                     const distance = Math.abs(delta);
                     const clientHeight = this.container.clientHeight;
 
@@ -10529,11 +10244,11 @@
                     const dur = Math.min(800, Math.max(300, screens * 100));
 
                     let t0 = null;
-                    const easeInOut =  /** 计算平滑滚动的缓入缓出进度。 */ t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                    const easeInOut = /** 计算平滑滚动的缓入缓出进度。 */t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
 
                     this._isSmoothScrolling = true;
 
-                    const step =  /** 执行一帧平滑滚动动画。 */ (ts) => {
+                    const step = /** 执行一帧平滑滚动动画。 */(ts) => {
                         if (this._sm.is(VirtualScroll.State.DESTROYED) || !this.container) {
                             this._smoothRAF = null;
                             this._isSmoothScrolling = false;
@@ -10547,7 +10262,7 @@
                         const progress = easeInOut(elapsed / dur);
 
                         this.container.scrollTop = start + delta * progress;
-                        this._render();  
+                        this._render();
 
                         if (elapsed < dur) {
                             this._smoothRAF = requestAnimationFrame(step);
@@ -10556,8 +10271,8 @@
                             this.container.scrollTop = targetPhysical;
                             this._smoothRAF = null;
                             this._isSmoothScrolling = false;
-                            this._updateAnchor();   
-                            this._scheduleRender(); 
+                            this._updateAnchor();
+                            this._scheduleRender();
                         }
                     };
 
@@ -10596,8 +10311,6 @@
                     this._isSmoothScrolling = false;
                 }
 
-
-
                 /**
                  * 加载数据并启动或刷新虚拟滚动。
                  *
@@ -10630,7 +10343,6 @@
 
                         this._resolveContainer();
 
-
                         const oldVirtScroll = this._heightMapper.physicalToVirtual(this.container.scrollTop);
 
                         this.data = data;
@@ -10638,7 +10350,7 @@
 
                         if (!this._measured || remeasure) {
                             this._setupContainer();
-                            this._doMeasure();   
+                            this._doMeasure();
                             this._measured = true;
                         } else {
                             this._verifyItemHeight();
@@ -10649,31 +10361,22 @@
 
                         this._calcBufferSize(true);
 
-
                         if (!this._spacerTop?.isConnected || !this._spacerBottom?.isConnected) {
-                            this._buildDOM();  
+                            this._buildDOM();
                         }
 
                         this._syncContainerSize();
 
-
-
-
                         // 先撑开完整占位高度，避免浏览器钳制随后设置的 `scrollTop`。
-
-
-
-
 
                         {
                             const hm = this._heightMapper;
                             const {top, bottom} = hm.calcSpacerHeights(
                                 0, 0, this.totalCount, this.itemHeight
                             );
-                            this._spacerTop.style.height = `${top}px`;    
-                            this._spacerBottom.style.height = `${bottom}px`; 
+                            this._spacerTop.style.height = `${top}px`;
+                            this._spacerBottom.style.height = `${bottom}px`;
                         }
-
 
                         if (resetScroll) {
                             this.container.scrollTop = 0;
@@ -10689,9 +10392,7 @@
                             this.container.scrollTop = hm.virtualToPhysical(newVirtScroll);
                         }
 
-
                         this._bindEvents();
-
 
                         this._forceRender();
 
@@ -10725,7 +10426,6 @@
                     if (typeof callback !== 'function') {
                         throw new TypeError('[VirtualScroll] applyToItem() requires a callback function.');
                     }
-
 
                     const i = Number(index);
                     const el = this._renderedNodes.get(i);
@@ -10779,7 +10479,6 @@
                     this._sm.transition(VirtualScroll.State.RUNNING);
                     this._bindScroll();
 
-
                     let pendingScroll = null;
 
                     if (this._pendingScrollQueue.length > 0) {
@@ -10800,7 +10499,6 @@
                     }
 
                     this._pendingScrollQueue = [];
-
 
                     if (pendingScroll) {
                         const {index, behavior, block} = pendingScroll;
@@ -10843,7 +10541,6 @@
                     if (this._sm.is(VirtualScroll.State.DESTROYED)) {
                         return;
                     }
-
 
                     this._sm.transition(VirtualScroll.State.DESTROYED);
                     this._teardown(false);
@@ -10901,7 +10598,7 @@
                             const visEndVirtual = visStartVirtual + clientHeight;
 
                             if (itemVirtualTop >= visStartVirtual && itemVirtualBottom <= visEndVirtual) {
-                                return; 
+                                return;
                             } else if (itemVirtualTop < visStartVirtual) {
                                 virtualTop = itemVirtualTop;
                             } else {
@@ -10976,7 +10673,6 @@
 
                     const clientHeight = this.container.clientHeight;
 
-
                     const physicalBottom = Math.max(0, this._heightMapper.physicalHeight - clientHeight);
 
                     if (behavior === 'smooth') {
@@ -11008,25 +10704,21 @@
                         state: this.state,
                         ready: this._sm.is(VirtualScroll.State.RUNNING, VirtualScroll.State.PAUSED),
 
-
                         isRendering: this._rendering,
                         isSmoothScrolling: this._isSmoothScrolling,
                         isRemeasurePending: this._remeasurePending,
 
-
                         itemHeight: this.itemHeight,
-                        containerHeight: this._lastContainerHeight, 
+                        containerHeight: this._lastContainerHeight,
                         bufferSize: this.bufferSize,
                         visibleCount,
                         totalCount: this.totalCount,
-
 
                         startIndex: this._startIndex,
                         endIndex: this._endIndex,
                         renderedCount: this._renderedNodes.size,
                         anchorIndex: this._anchorIndex,
-                        anchorRatio: Number(this._anchorRatio.toFixed(4)), 
-
+                        anchorRatio: Number(this._anchorRatio.toFixed(4)),
 
                         scrollTop: this.container?.scrollTop ?? 0,
                         compressed: hm.compressed,
@@ -11034,18 +10726,15 @@
                         physicalHeight: hm.physicalHeight,
                         scrollRatio: hm.scrollRatio,
 
-
                         poolSize: this._nodePool.poolSize,
                         wrapperCount: this._nodePool.wrapperCount,
                         userElemCount: this._nodePool.userElemCount,
 
-
                         spacerTop: this._spacerTop ? parseFloat(this._spacerTop.style.height) : 0,
                         spacerBottom: this._spacerBottom ? parseFloat(this._spacerBottom.style.height) : 0,
 
-
                         pendingScrollQueue: Object.freeze(
-                            this._pendingScrollQueue.map( /** 冻结待处理滚动事件的副本。 */ e => Object.freeze({...e}))
+                            this._pendingScrollQueue.map(/** 冻结待处理滚动事件的副本。 */e => Object.freeze({...e}))
                         )
                     });
                 }
@@ -11094,7 +10783,7 @@
                  * @type {VirtualScroll}
                  */
                 static statisticsRenderer = new VirtualScroll({
-                    container: '#grid_data',    
+                    container: '#grid_data',
 
                     /**
                      * 渲染统计数据行。
@@ -11146,7 +10835,6 @@
                         return 0;
                     }
 
-
                     const tokenInfo = Public.getTokenInfo(token);
 
                     if (tokenInfo.class === 'func' && !tokenInfo.isHtmlClassLenOne) {
@@ -11174,13 +10862,11 @@
                     const children = input.children;
                     const len = children.length;
 
-                    const range = TokenConfig.MAX_TOKEN_LENGTH + 2; 
-
+                    const range = TokenConfig.MAX_TOKEN_LENGTH + 2;
 
                     let cursorIndex = -1;
 
                     if (!asCursor) {
-
 
                         for (let i = 0; i < len; i++) {
                             if (children[i].id === 'cursor') {
@@ -11203,7 +10889,6 @@
                                 realCursorIndex = i;
                             }
 
-
                             if (targetIndex !== -1 && realCursorIndex !== -1) {
                                 break;
                             }
@@ -11218,7 +10903,6 @@
                         }
                     }
 
-
                     if (cursorIndex === -1) {
                         return direction === 'both' ? [0, 0] : 0;
                     }
@@ -11229,9 +10913,8 @@
                     const endIndex = Math.min(len - 1, cursorIndex + range);
                     const classList = HtmlTools.getClassList(input, {
                         startIndex: startIndex,
-                        endIndex: endIndex + 1 
+                        endIndex: endIndex + 1
                     });
-
 
                     const offset = cursorIndex - startIndex;
                     const leftText = HtmlTools.htmlClassToText(classList.slice(0, offset));
@@ -11242,9 +10925,7 @@
                         return direction === 'both' ? [0, 0] : 0;
                     }
 
-
-
-                    const splitPoint = leftText.replace(/\[[a-zA-Z0-9_]+]/g, '1').length; 
+                    const splitPoint = leftText.replace(/\[[a-zA-Z0-9_]+]/g, '1').length;
                     const tokens = Public.tokenizer(fullText, {strictMode: false});
 
                     let leftToken = null;
@@ -11254,8 +10935,6 @@
                     for (const token of tokens) {
                         const tokenLen = this._getTokenLen(token);
                         const tokenEnd = currentPos + tokenLen;
-
-
 
                         if (currentPos < splitPoint && tokenEnd > splitPoint) {
                             const leftDist = splitPoint - currentPos;
@@ -11272,33 +10951,24 @@
                             }
                         }
 
-
-
                         if (tokenEnd === splitPoint) {
                             leftToken = token;
-                        }
-
-                        else if (currentPos === splitPoint) {
+                        } else if (currentPos === splitPoint) {
                             rightToken = token;
-                            break; 
+                            break;
                         }
 
                         currentPos += tokenLen;
                     }
-
-
-
 
                     const leftLen = this._getTokenLen(leftToken);
                     const rightLen = this._getTokenLen(rightToken);
                     const leftStep = asCursor ? 0 : leftLen;
                     const rightStep = asCursor ? (leftLen - 1) : rightLen;
 
-
                     if (direction === 'both') {
                         return [leftStep, rightStep];
                     }
-
 
                     const isAtLeftEdge = (cursorIndex === 0) && !asCursor;
                     const isAtRightEdge = (cursorIndex === len - 1) && !asCursor;
@@ -11306,7 +10976,7 @@
                     if (direction === 'left') {
 
                         return isAtLeftEdge ? -rightStep : leftStep;
-                    } else { 
+                    } else {
 
                         return isAtRightEdge ? -leftStep : rightStep;
                     }
@@ -11344,7 +11014,6 @@
                         const prevInfo = Public.getTokenInfo(prevToken);
                         const currInfo = Public.getTokenInfo(currToken);
 
-
                         const isAlphaSeq = REGEX_ALPHA.test(prevToken) && REGEX_ALPHA.test(currToken);
                         const hasFunc = prevInfo.class === 'func' || currInfo.class === 'func';
                         const notSpecialSymbol = !(prevInfo.isHtmlClassLenOne || currInfo.isHtmlClassLenOne);
@@ -11353,7 +11022,6 @@
                         if (isAlphaSeq && hasFunc && notSpecialSymbol && illegal) {
                             return true;
                         }
-
 
                         const isBoundaryIllegal = (prevInfo.class === 'illegal') !== (currInfo.class === 'illegal');
                         const isIgnoredChar = [prevToken, currToken].includes(' ') || prevInfo.isHtmlClassLenOne || currInfo.isHtmlClassLenOne;
@@ -11378,11 +11046,9 @@
                             clonedList.shift();
                         }
 
-
                         const textList = HtmlTools.htmlClassToText(clonedList);
                         const tokens = Public.tokenizer(textList, {strictMode: false});
                         const addIndex = [];
-
 
                         if (tokens && tokens.length > 0) {
 
@@ -11400,24 +11066,19 @@
                             }
                         }
 
-
                         if (haveSpecialCharacters) {
                             for (let i = 0; i < addIndex.length; i++) {
                                 addIndex[i] = addIndex[i] + 1;
                             }
-                            addIndex.unshift(1); 
+                            addIndex.unshift(1);
                         }
-
 
                         return addIndex;
                     };
 
-
-
-
                     if (classList) {
 
-                        const pureClassList = classList.filter( /** 过滤空格类名。 */ c => c !== space);
+                        const pureClassList = classList.filter(/** 过滤空格类名。 */c => c !== space);
                         if (pureClassList.length === 0) {
                             return pureClassList;
                         }
@@ -11428,11 +11089,8 @@
                             pureClassList.splice(addIndex[i], 0, space);
                         }
 
-                        return pureClassList; 
+                        return pureClassList;
                     }
-
-
-
 
                     if (!area && HtmlTools.getHtml('.InputTip')) {
 
@@ -11443,10 +11101,8 @@
                     const cursor = HtmlTools.getHtml('#cursor');
                     const children = target.children;
 
-
                     let totalRangeStart = 0;
                     let totalRangeEnd = children.length;
-
 
                     let addIndex = [];
                     if (rangeLimit) {
@@ -11454,34 +11110,28 @@
                         const childrenArray = Array.from(children);
                         const centerIndex = childrenArray.indexOf(cursor);
 
-
                         if (centerIndex === -1) {
                             return;
                         }
 
-
-                        const range = TokenConfig.MAX_TOKEN_LENGTH * 2 + 3; 
+                        const range = TokenConfig.MAX_TOKEN_LENGTH * 2 + 3;
                         const startIndex = Math.max(0, centerIndex - range);
                         const endIndex = Math.min(childrenArray.length - 1, centerIndex + range);
-
 
                         const leftClassList = HtmlTools.getClassList(target, {
                             onlyP: false,
                             startIndex: startIndex,
-                            endIndex: centerIndex 
+                            endIndex: centerIndex
                         });
-
 
                         const rightClassList = HtmlTools.getClassList(target, {
                             onlyP: false,
                             startIndex: centerIndex + 1,
-                            endIndex: endIndex + 1 
+                            endIndex: endIndex + 1
                         });
-
 
                         const leftTokens = Public.tokenizer(HtmlTools.htmlClassToText(leftClassList), {strictMode: false}).slice(-4);
                         const rightTokens = Public.tokenizer(HtmlTools.htmlClassToText(rightClassList), {strictMode: false}).slice(0, 4);
-
 
                         let tokenStack = [];
                         let leftSpaceCount = 0;
@@ -11512,7 +11162,6 @@
                             totalRangeStart = centerIndex - leftSpaceCount - len0 - len1;
                         }
 
-
                         tokenStack.length = 0;
                         let rightSpaceCount = 0;
                         for (let i = 0; i < rightTokens.length; i++) {
@@ -11520,7 +11169,7 @@
                                 rightSpaceCount += 1;
                             } else {
                                 if (tokenStack.length > 0) {
-                                    addPos = centerIndex - leftSpaceCount + this._getTokenLen(tokenStack[0]) + 1; 
+                                    addPos = centerIndex - leftSpaceCount + this._getTokenLen(tokenStack[0]) + 1;
                                 }
                                 tokenStack.push(rightTokens[i]);
                             }
@@ -11550,11 +11199,9 @@
                         addIndex = getUnlimitedAddIndex(classList);
                     }
 
-
                     const originalDisplay = target.style.display;
 
                     target.style.display = 'none';
-
 
                     for (let i = totalRangeStart; i < totalRangeEnd; i++) {
                         const curr = children[i];
@@ -11564,11 +11211,9 @@
                         }
                     }
 
-
                     for (let i = addIndex.length - 1; i >= 0; i--) {
                         HtmlTools.appendDOMs(target, [space], {index: addIndex[i]});
                     }
-
 
                     target.style.display = originalDisplay;
 
@@ -11584,20 +11229,17 @@
                  */
                 static ac({acArea = null, forcedMode = false} = {}) {
 
-
                     if (acArea) {
 
                         const target = typeof acArea === 'string' ? HtmlTools.getHtml(acArea) : acArea;
 
-                        if (target) { 
+                        if (target) {
                             target.replaceChildren();
                         }
-                        return; 
+                        return;
                     }
 
-
                     const inputBox = HtmlTools.getHtml('#input');
-
 
                     if (!inputBox) {
                         return;
@@ -11621,11 +11263,9 @@
                     }
 
                     const cursor = document.createElement('div');
-                    cursor.id = 'cursor'; 
-
+                    cursor.id = 'cursor';
 
                     inputBox.replaceChildren(cursor);
-
 
                     if (PageConfig.currentMode === '0') {
                         HtmlTools.getHtml('#screen_0_display').classList.add('NoDisplay');
@@ -11635,7 +11275,6 @@
                             PrintManager.mode0ScreenInCalc = false;
                         }
                     }
-
 
                     PageControlTools.changeInputTip();
                     HtmlTools.getHtml('#screen_0_display').classList.add('NoDisplay');
@@ -11655,7 +11294,6 @@
                     if (!HtmlTools.getHtml('#main_cover').classList.contains('NoDisplay') || !HtmlTools.getHtml('#main').classList.contains('Input')) {
                         return;
                     }
-
 
                     const inputArea = HtmlTools.getHtml('#input');
                     if (inputArea.children.length > this._MAX_INPUT_LEN) { // 限制输入长度。
@@ -11704,12 +11342,9 @@
                         return;
                     }
 
-
                     const input = HtmlTools.getHtml('#input');
                     const cursor = HtmlTools.getHtml('#cursor');
                     const cursorPlace = [...input.children].indexOf(cursor);
-
-
 
                     let delNum = this.inputAreaMoveNum(direction);
                     const range = document.createRange();
@@ -11719,29 +11354,16 @@
                     }
                     if (direction === 'right') {
 
-
-
-
-
-
-
                         const endPlace = Math.min(cursorPlace + delNum, input.children.length - 1);
                         range.setStartAfter(cursor);
                         range.setEndAfter(input.children[endPlace]);
                     } else if (direction === 'left') {
-
-
-
-
-
-
 
                         const startPlace = Math.max(cursorPlace - delNum, 0);
                         range.setStartBefore(input.children[startPlace]);
                         range.setEndBefore(cursor);
                     }
                     range.deleteContents();
-
 
                     if (input.children.length === 1) {
                         PageControlTools.changeInputTip();
@@ -11761,7 +11383,6 @@
                  */
                 static moveCursor(direction, forcedMode = false) {
                     const currentMode = PageConfig.currentMode;
-
 
                     if (HtmlTools.getHtml('.InputTip') || forcedMode) {
                         let len, nextNum;
@@ -11784,7 +11405,7 @@
                                     case 'down':
                                         len = PageConfig.screenData['1'].length - 1;
                                         nextNum = currentSubModes[0] + (direction === 'up' ? -1 : 1);
-                                        makeValue =  /** 生成统计网格的二维子模式坐标。 */ nextNum => [nextNum, currentSubModes[1]];
+                                        makeValue = /** 生成统计网格的二维子模式坐标。 */nextNum => [nextNum, currentSubModes[1]];
                                         break;
                                 }
                                 break;
@@ -11794,7 +11415,7 @@
                                 len = 4;
                                 if (['left', 'right'].includes(direction)) {
                                     nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'left' ? -1 : 1);
-                                    makeValue =  /** 生成相邻子模式编号。 */ nextNum => nextNum.toString();
+                                    makeValue = /** 生成相邻子模式编号。 */nextNum => nextNum.toString();
                                     break;
                                 }
                                 nextNum = Number(PageConfig.subModes[currentMode]) + (direction === 'up' ? -2 : 2);
@@ -11817,7 +11438,7 @@
                                     addNum = -1;
                                 }
                                 nextNum = Number(PageConfig.subModes[currentMode]) + addNum;
-                                makeValue =  /** 生成循环后的子模式编号。 */ nextNum => nextNum.toString();
+                                makeValue = /** 生成循环后的子模式编号。 */nextNum => nextNum.toString();
                                 break;
                             }
                         }
@@ -11836,15 +11457,12 @@
                         return;
                     }
 
-
                     const targetArea = HtmlTools.getHtml('#input');
                     const cursor = HtmlTools.getHtml('#cursor');
-
 
                     if (!targetArea || !cursor) {
                         return;
                     }
-
 
                     if (direction === 'end') {
                         targetArea.appendChild(cursor);
@@ -11853,8 +11471,6 @@
                     } else {
 
                         const moveNum = this.inputAreaMoveNum(direction);
-
-
 
                         if (moveNum < 0) {
                             if (direction === 'left') {
@@ -11865,9 +11481,7 @@
 
                                 targetArea.insertBefore(cursor, targetArea.children[0]);
                             }
-                        }
-
-                        else {
+                        } else {
                             let targetNode = cursor;
 
                             if (direction === 'left') {
@@ -11884,14 +11498,12 @@
                                     targetNode = targetNode.nextElementSibling;
                                 }
 
-
                                 targetArea.insertBefore(cursor, targetNode.nextElementSibling);
                             }
 
                             this.addSpace({rangeLimit: true});
                         }
                     }
-
 
                     HtmlTools.scrollToView();
                 }
@@ -11912,28 +11524,20 @@
                     const input = HtmlTools.getHtml('#input');
                     const cursor = HtmlTools.getHtml('#cursor');
 
-
-                    const contentChildren = [...input.children].filter( /** 过滤输入区中的光标节点。 */ el => el.id !== 'cursor');
+                    const contentChildren = [...input.children].filter(/** 过滤输入区中的光标节点。 */el => el.id !== 'cursor');
                     const targetIndex = contentChildren.indexOf(target);
 
                     if (targetIndex === -1) {
                         return;
                     }
 
-
                     const offsetToStart = this.inputAreaMoveNum('left', target);
-
-
-
 
                     const finalIndex = targetIndex - offsetToStart;
 
-
-
                     // 先移除光标，避免旧位置影响插入索引。
 
-
-                    const refNode = contentChildren[finalIndex] || null; 
+                    const refNode = contentChildren[finalIndex] || null;
                     input.insertBefore(cursor, refNode);
 
                     this.addSpace();
@@ -11966,14 +11570,11 @@
 
                     const isCurrent = index === currentMode[0];
 
-
                     const serialNumberGrandfather = document.createElement('div');
                     const serialNumberFather = document.createElement('div');
 
-
                     HtmlTools.appendDOMs(serialNumberFather, HtmlTools.textToHtmlClass((index + 1).toString()));
                     serialNumberGrandfather.appendChild(serialNumberFather);
-
 
                     const gridX = document.createElement('div');
                     gridX.classList.add('DataX');
@@ -11984,7 +11585,6 @@
                         classList: inputListX
                     }));
 
-
                     const gridY = document.createElement('div');
                     gridY.classList.add('DataY');
                     if (isCurrent && currentMode[1] === 1) {
@@ -11993,7 +11593,6 @@
                     HtmlTools.appendDOMs(gridY, InputManager.addSpace({
                         classList: inputListY
                     }));
-
 
                     insert.appendChild(serialNumberGrandfather);
                     insert.appendChild(gridX);
@@ -12034,11 +11633,9 @@
                         position = Array.isArray(location) ? location[0] : location;
                     }
 
-
                     if (len + 1 > InputManager.MAX_STATISTICS_ROW) {
                         return false;
                     }
-
 
                     const newItems = [
                         [inputX, inputY]
@@ -12048,7 +11645,6 @@
 
                         gridData.splice(position + 1, 0, ...newItems);
                         PageConfig.screenData = {'1': gridData};
-
 
                         InputManager.statisticsRenderer.load(gridData, gridData.length, {resetScroll: false});
                     } catch {
@@ -12091,21 +11687,17 @@
                         return;
                     }
 
-
                     gridData.splice(position, 1);
                     PageConfig.screenData = {'1': gridData};
-
 
                     if (gridData.length === position) {
                         InputManager.statisticsAddLine();
                     }
 
-
                     if (position === PageConfig.subModes['1'][0]) {
 
                         PageControlTools.syncScreenToInput(false);
                     }
-
 
                     // 新增行后重新读取网格数据。
                     const newData = PageConfig.screenData['1'];
@@ -12141,7 +11733,7 @@
                  * @type {VirtualScroll}
                  */
                 static printListRenderer = new VirtualScroll({
-                    container: '#print_content_2_inner',   
+                    container: '#print_content_2_inner',
 
                     /**
                      * 渲染函数值列表行。
@@ -12154,35 +11746,27 @@
 
                         const {result, onlyFuncG} = dataSource;
 
-
                         const sources = onlyFuncG ?
                             [result.varList[index], result.g[index], result.f[index]] :
                             [result.varList[index], result.f[index], result.g[index]];
 
-
                         const currentDiv = document.createElement('div');
 
-
-                        sources.forEach( /** 渲染一组输入数据。 */ dataItem => {
+                        sources.forEach(/** 渲染一组输入数据。 */dataItem => {
                             const subWrapper = document.createElement('div');
                             const subContent = document.createElement('div');
 
-
                             const formattedNodes = PrintManager._printHandleError(dataItem);
 
-
                             HtmlTools.appendDOMs(subContent, formattedNodes);
-
 
                             subWrapper.appendChild(subContent);
                             currentDiv.appendChild(subWrapper);
                         });
 
-
                         if (result.varList.length > 4) {
                             currentDiv.classList.add(index % 2 === 0 ? 'Even' : 'Odd');
                         }
-
 
                         return currentDiv;
                     }
@@ -12296,8 +11880,6 @@
                         }
                     }
 
-
-
                     if (resultList === 'error') {
 
                         PrintManager.setMode1RaResults('error');
@@ -12310,38 +11892,34 @@
                         return;
                     }
 
-
-
                     const resultsToOutputArea = {
-                        'n': '#print_content_1_content_2', 
-                        'averageA': '#print_content_1_content_3', 
-                        'sumA': '#print_content_1_content_4', 
-                        'sum2A': '#print_content_1_content_5', 
-                        'totalVarianceA': '#print_content_1_content_6', 
-                        'sampleVarianceA': '#print_content_1_content_7', 
-                        'maxA': '#print_content_1_content_8', 
-                        'minA': '#print_content_1_content_9', 
-                        'averageB': '#print_content_1_content_10', 
-                        'sumB': '#print_content_1_content_11', 
-                        'sum2B': '#print_content_1_content_12', 
-                        'totalVarianceB': '#print_content_1_content_13', 
-                        'sampleVarianceB': '#print_content_1_content_14', 
-                        'maxB': '#print_content_1_content_15', 
-                        'minB': '#print_content_1_content_16', 
-                        'dotAB': '#print_content_1_content_17', 
-                        'dotA2B': '#print_content_1_content_18', 
-                        'totalCovariance': '#print_content_1_content_19', 
-                        'sampleCovariance': '#print_content_1_content_20', 
-                        'r': '#print_content_1_content_21' 
+                        'n': '#print_content_1_content_2',
+                        'averageA': '#print_content_1_content_3',
+                        'sumA': '#print_content_1_content_4',
+                        'sum2A': '#print_content_1_content_5',
+                        'totalVarianceA': '#print_content_1_content_6',
+                        'sampleVarianceA': '#print_content_1_content_7',
+                        'maxA': '#print_content_1_content_8',
+                        'minA': '#print_content_1_content_9',
+                        'averageB': '#print_content_1_content_10',
+                        'sumB': '#print_content_1_content_11',
+                        'sum2B': '#print_content_1_content_12',
+                        'totalVarianceB': '#print_content_1_content_13',
+                        'sampleVarianceB': '#print_content_1_content_14',
+                        'maxB': '#print_content_1_content_15',
+                        'minB': '#print_content_1_content_16',
+                        'dotAB': '#print_content_1_content_17',
+                        'dotA2B': '#print_content_1_content_18',
+                        'totalCovariance': '#print_content_1_content_19',
+                        'sampleCovariance': '#print_content_1_content_20',
+                        'r': '#print_content_1_content_21'
                     };
-
-
 
                     this.setMode1RaResults(resultList[resultList.bestModel]);
 
                     PageControlTools.changePrint1Ra(modelToId(resultList.bestModel), 'init');
 
-                    Object.entries(resultsToOutputArea).forEach( /** 将基础统计结果写入对应区域。 */ ([key, value]) => {
+                    Object.entries(resultsToOutputArea).forEach(/** 将基础统计结果写入对应区域。 */([key, value]) => {
                         HtmlTools.appendDOMs(HtmlTools.getHtml(value), this._printHandleError(resultList[key]), {mode: 'replace'});
                     });
                 }
@@ -12356,8 +11934,6 @@
 
                     const content0 = HtmlTools.getHtml('#print_content_1_content_0');
 
-
-
                     if ([RaList, RaList.regressionEquation].includes('error')) {
                         const element = document.createElement('div');
                         HtmlTools.appendDOMs(element, ['_error_']);
@@ -12366,13 +11942,9 @@
                         return;
                     }
 
-
-
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#print_content_1_content_1'), this._printHandleError(RaList.R2), {mode: 'replace'});
 
-
                     const parameter = structuredClone(RaList.parameter);
-
 
                     if (['linear', 'square'].includes(RaList.model)) {
                         parameter.reverse();
@@ -12381,7 +11953,7 @@
                     this._multipleLinesPrint(
                         content0,
                         parameter,
- /** 渲染回归参数行。 */ (div, str, i) => HtmlTools.appendDOMs(div, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(str)]),
+                        /** 渲染回归参数行。 */(div, str, i) => HtmlTools.appendDOMs(div, [`_${i === 0 ? 'a' : i === 1 ? 'b' : 'c'}_mathit_`, '_space_', '_equal_', '_space_', ...HtmlTools.textToHtmlClass(str)]),
                         true
                     );
                 }
@@ -12401,12 +11973,9 @@
 
                         WorkerTools.restart();
 
-
-
                     }
                     this.mode0ScreenInCalc = true;
                     this._currentRequestId = requestId;
-
 
                     const screen0Display = HtmlTools.getHtml('#screen_0_display');
                     const screen0DisplayInner = HtmlTools.getHtml('#screen_0_display_inner');
@@ -12424,7 +11993,6 @@
                     }
 
                     try {
-
 
                         const result = await WorkerTools.exec(currentInput, {
                             calcAcc: PageConfig.ACC_MODE_0.globalCalcAccuracy,
@@ -12469,13 +12037,11 @@
                     const resultDisplay = HtmlTools.getHtml('#print_content_0_content_1');
                     const screenDisplay = HtmlTools.getHtml('#screen_0_display');
 
-
                     const currentInputArray = HtmlTools.getClassList(inputEl, {ignoreSpace: true});
                     if (currentInputArray[0].includes('InputTip')) {
                         currentInputArray.length = 0;
                     }
                     const currentInput = HtmlTools.htmlClassToText(currentInputArray);
-
 
                     InputManager.ac({acArea: textDisplay});
                     InputManager.ac({acArea: resultDisplay});
@@ -12508,10 +12074,8 @@
                             return;
                         }
 
-
                         result = ['_error_'];
                         const syntaxErrorOutput = ['_syntax_error_', ...currentInputArray];
-
 
                         try {
                             const syntaxResult = await WorkerTools.exec(currentInput, {
@@ -12525,11 +12089,9 @@
                         }
                     }
 
-
                     HtmlTools.appendDOMs(textDisplay, expr);
                     HtmlTools.appendDOMs(resultDisplay, result);
                     InputManager.addSpace({area: textDisplay});
-
 
                     if (result[0] !== '_error_' && screenDisplay.classList.contains('NoDisplay')) {
                         if (PageConfig.calcAccMode === 0) {
@@ -12565,16 +12127,13 @@
                     const screenData = PageConfig.screenData['1'];
                     const listA = [], listB = [];
 
-
                     PageControlTools.triggerSelection(HtmlTools.getHtml('#statistics_results_top_x'));
                     PageControlTools.switchStatisticsResults('x');
-
 
                     for (let i = 0; i < screenData.length; i++) {
 
                         let currentPushA = screenData[i][0];
                         let currentPushB = screenData[i][1];
-
 
                         if (currentPushA.startsWith('[syntax_error]') || currentPushB.startsWith('[syntax_error]')) {
                             this._setMode1Results('error');
@@ -12582,7 +12141,6 @@
                             PageConfig.syncScreenData();
                             return;
                         }
-
 
                         if (currentPushA.length === 0 && currentPushB.length === 0) {
                             continue;
@@ -12596,11 +12154,9 @@
                             currentPushB = '0';
                         }
 
-
                         listA.push(currentPushA);
                         listB.push(currentPushB);
                     }
-
 
                     PageConfig.syncScreenData();
 
@@ -12608,19 +12164,16 @@
 
                         const resultList = await WorkerTools.statisticsCalc(listA, listB);
 
-
                         this._setMode1Results(resultList);
 
-
-
                         this.mode1Results = {
-                            'choose_ra_0': resultList.linear,     
-                            'choose_ra_1': resultList.square,     
-                            'choose_ra_2': resultList.ln,         
-                            'choose_ra_3': resultList.exp,        
-                            'choose_ra_4': resultList.abx,        
-                            'choose_ra_5': resultList.axb,        
-                            'choose_ra_6': resultList.reciprocal  
+                            'choose_ra_0': resultList.linear,
+                            'choose_ra_1': resultList.square,
+                            'choose_ra_2': resultList.ln,
+                            'choose_ra_3': resultList.exp,
+                            'choose_ra_4': resultList.abx,
+                            'choose_ra_5': resultList.axb,
+                            'choose_ra_6': resultList.reciprocal
                         };
                     } catch {
 
@@ -12658,7 +12211,7 @@
                     try {
                         let onlyFuncG = false;
 
-                        if (fx === '' !== (gx === '')) { 
+                        if (fx === '' !== (gx === '')) {
                             if (fx === '') {
 
                                 headInit.classList.add('_g_');
@@ -12667,7 +12220,7 @@
                             }
 
                             HtmlTools.getHtml('#print_content_2').classList.remove('TwoFunc');
-                        } else if (fx === '') { 
+                        } else if (fx === '') {
 
                             HtmlTools.getHtml('#print_content_2_error').classList.remove('NoDisplay');
                             return;
@@ -12820,18 +12373,16 @@
                         HtmlTools.appendDOMs(target, HtmlTools.textToHtmlClass(text));
                     };
 
-
                     const outputList = {
-                        '2': 'increasingInterval', 
-                        '3': 'decreasingInterval', 
-                        '4': 'maximumPoint',       
-                        '5': 'minimumPoint',       
-                        '6': 'concaveInterval',    
-                        '7': 'convexInterval',     
-                        '8': 'inflectionPoint',    
-                        '9': 'roots'               
+                        '2': 'increasingInterval',
+                        '3': 'decreasingInterval',
+                        '4': 'maximumPoint',
+                        '5': 'minimumPoint',
+                        '6': 'concaveInterval',
+                        '7': 'convexInterval',
+                        '8': 'inflectionPoint',
+                        '9': 'roots'
                     };
-
 
                     const list = [];
 
@@ -12847,7 +12398,6 @@
                         }
                     }
 
-
                     if (noInput) {
                         errorPrint();
                         return;
@@ -12856,7 +12406,6 @@
                     try {
 
                         const result = await WorkerTools.powerFunctionAnalysis(list);
-
 
                         for (let i = 0; i < 10; i++) {
                             switch (i) {
@@ -12872,11 +12421,9 @@
                                     break;
                                 case 1:
 
-
                                     powerFunctionTextToHtml(HtmlTools.getHtml('#print_content_3_content_1'), result.range, true);
                                     break;
                                 case 9:
-
 
                                     this._multipleLinesPrint(
                                         HtmlTools.getHtml(`#print_content_3_content_${i}`),
@@ -12930,7 +12477,6 @@
                         HtmlTools.appendDOMs(target, HtmlTools.textToHtmlClass(text));
                     };
 
-
                     const z = PageConfig.screenData['40'];
                     const n = PageConfig.screenData['41'];
 
@@ -12945,7 +12491,6 @@
                             HtmlTools.appendDOMs(content40, ['_error_'], {mode: 'replace'});
                         } else {
 
-
                             HtmlTools.appendDOMs(
                                 content40,
                                 [...HtmlTools.textToHtmlClass(result.z), '_space_', '_de_'],
@@ -12954,10 +12499,10 @@
 
                             switch (result.n) {
                                 case '2':
-                                    HtmlTools.appendDOMs(content40, ['_print_4_sqrt_']); 
+                                    HtmlTools.appendDOMs(content40, ['_print_4_sqrt_']);
                                     break;
                                 case '3':
-                                    HtmlTools.appendDOMs(content40, ['_cbrt_ch_']); 
+                                    HtmlTools.appendDOMs(content40, ['_cbrt_ch_']);
                                     break;
                                 default:
 
@@ -12972,7 +12517,6 @@
                         if (result.kRange.includes('error') || result.formula === 'error') {
                             HtmlTools.appendDOMs(content41, ['_error_'], {mode: 'replace'});
                         } else {
-
 
                             HtmlTools.appendDOMs(
                                 content41,
@@ -12995,12 +12539,11 @@
                             }
                         }
 
-
                         this._multipleLinesPrint(
                             content42,
                             result.numericalResults,
                             indexingNumericalResults,
-                            true 
+                            true
                         );
 
                         HtmlTools.getHtml('#print_omit').classList[result.overflow ? 'remove' : 'add']('NoDisplay');
@@ -13040,7 +12583,6 @@
 
                     HtmlTools.getHtml('#load_cover').classList.remove('NoDisplay');
 
-
                     HtmlTools.getHtml('#main').classList.remove('Input');
                     switch (currentMode) {
                         case '0':
@@ -13063,7 +12605,6 @@
                             await this._exeMode4();
                             break;
                     }
-
 
                     HtmlTools.getHtml('#load_cover').classList.add('NoDisplay');
                 }
@@ -13125,7 +12666,6 @@
 
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#export_1'), ['_export_gx_'], {mode: 'replace'});
 
-
                     export0.classList.remove('Failed');
                     export1.classList.remove('Failed');
                 }
@@ -13143,10 +12683,9 @@
 
                     const ripples = btn.querySelectorAll('.Ripple');
 
-
-                    ripples.forEach( /** 触发单个涟漪的淡出。 */ r => {
+                    ripples.forEach(/** 触发单个涟漪的淡出。 */r => {
                         r.classList.add('IsFadingOut');
-                        setTimeout( /** 在动画结束后移除涟漪。 */ () => r.remove(), 600);
+                        setTimeout(/** 在动画结束后移除涟漪。 */() => r.remove(), 600);
                     });
 
                     btn.classList.remove('IsSelected');
@@ -13167,14 +12706,12 @@
 
                     target.classList.add('IsSelected');
 
-
                     const circle = document.createElement('span');
                     circle.classList.add('Ripple');
 
                     const diameter = Math.max(target.clientWidth, target.clientHeight);
                     const radius = diameter / 2;
                     const rect = target.getBoundingClientRect();
-
 
                     let x = rect.width / 2;
                     let y = rect.height / 2;
@@ -13204,26 +12741,21 @@
                     const topBar = HtmlTools.getHtml('#statistics_results_top');
                     const resultWindow = HtmlTools.getHtml('#statistics_results_window');
 
-
                     const modeClasses = ['ResultX', 'ResultY', 'ResultXY'];
                     const targetUpper = target.toUpperCase();
 
-
-                    [topBar, resultWindow].forEach( /** 重置顶部栏和结果区状态。 */ el => {
+                    [topBar, resultWindow].forEach(/** 重置顶部栏和结果区状态。 */el => {
                         if (!el) {
                             return;
-                        } 
-                        el.classList.remove(...modeClasses); 
+                        }
+                        el.classList.remove(...modeClasses);
                         el.classList.add(`Result${targetUpper}`);
                     });
 
-
-
                     const indexMap = {'x': 0, 'y': 1, 'xy': 2};
-                    const skipIndex = indexMap[target.toLowerCase()] ?? 3; 
+                    const skipIndex = indexMap[target.toLowerCase()] ?? 3;
 
-
-                    Array.from(topBar.children).forEach( /** 重置未被跳过的顶部栏按钮。 */ (child, index) => {
+                    Array.from(topBar.children).forEach(/** 重置未被跳过的顶部栏按钮。 */(child, index) => {
                         if (index !== skipIndex) {
                             this._resetButton(child);
                         }
@@ -13248,7 +12780,6 @@
                  */
                 static clickMainCover() {
 
-
                     PageControlTools.headChangeModes('add');
 
                     PageControlTools.headChangeExplain('add');
@@ -13269,7 +12800,6 @@
                     HtmlTools.getHtml('._head_setting_').classList[mode === undefined ? 'toggle' : mode]('Horizontal');
                     setting.classList[mode === undefined ? 'toggle' : mode]('SettingNotShow');
                     HtmlTools.getHtml('#main_cover').classList[mode === undefined ? 'toggle' : mode]('NoDisplay');
-
 
                     if (PageConfig.currentMode === '0' && setting.classList.contains('SettingNotShow')) {
                         PrintManager.mode0ShowOnScreen();
@@ -13358,7 +12888,6 @@
                     const modelShow = HtmlTools.getHtml('#print_1_0_choose');
                     let lastModel;
 
-
                     HtmlTools.appendDOMs(modelShow, [
                         '_print_1_0_choose_',
                         '_space_',
@@ -13367,8 +12896,6 @@
                         ...model,
                         '_print_content_1_arrow_'
                     ], {mode: 'replace'});
-
-
 
                     for (let i = HtmlTools.getHtml('#print_content_1_choose').children.length - 2; i >= 0; i--) {
                         const dealArea = HtmlTools.getHtml(`#choose_ra_${i}`);
@@ -13379,21 +12906,17 @@
                         }
                     }
 
-
                     if (lastModel !== id) {
                         PageControlTools._exportRaRecover();
                     }
-
 
                     HtmlTools.getHtml(`#${id}`).classList.add('Print1ChooseOn');
 
                     this._currentRaModel = id;
 
-
                     if (mode === 'change') {
                         PrintManager.setMode1RaResults(PrintManager.mode1Results === 'error' ? 'error' : PrintManager.mode1Results[id]);
                     }
-
 
                     PageControlTools.clickPrint1Cover();
                 }
@@ -13412,10 +12935,8 @@
 
                     const clickArea = HtmlTools.getHtml(`#${func}`);
 
-
                     // 忽略已成功导出的重复点击。
                     if (!clickArea.children[0].classList.contains('_success_')) {
-
 
                         const exportTarget = func === 'export_0' ? '2_00' : '2_01';
 
@@ -13430,7 +12951,6 @@
                         const equation = MathPlus.calc(exportContent[this._currentRaModel].regressionEquation, {mode: 'syntaxCheck'})[1];
 
                         PageConfig.screenData = {[exportTarget]: equation};
-
 
                         HtmlTools.appendDOMs(HtmlTools.getHtml(`#screen_input_inner_${exportTarget}`), HtmlTools.textToHtmlClass(equation), {mode: 'replace'});
 
@@ -13447,8 +12967,6 @@
                  * @returns {void}
                  */
                 static changeScreen(mode) {
-
-
 
                     const currentMode = PageConfig.currentMode;
                     const currentNoDisplayStr = ['0', '1'].includes(currentMode) ? 'NoDisplay' : 'ScreenNoDisplay';
@@ -13481,16 +12999,13 @@
                         return;
                     }
 
-
-
-
                     const modeTips = {
-                        '0': [0, 'expr'], 
-                        '1': [0, 'R'], 
-                        '2_0': [0, 'expr'], 
-                        '2_1': [1, 'R', 'R', 'positive'], 
-                        '3': [0, 'R'], 
-                        '4': [1, 'C', 'N'] 
+                        '0': [0, 'expr'],
+                        '1': [0, 'R'],
+                        '2_0': [0, 'expr'],
+                        '2_1': [1, 'R', 'R', 'positive'],
+                        '3': [0, 'R'],
+                        '4': [1, 'C', 'N']
                     };
 
                     const currentMode = PageConfig.currentMode;
@@ -13508,7 +13023,6 @@
                     }
 
                     currentTip.classList.value = '';
-
 
                     currentTip.classList.add(`_input_tip_${currentTipStr}_`);
 
@@ -13606,8 +13120,6 @@
                         dealArea.className = '_x_mathit_';
                     } else if (PageConfig.keyboardType === 1) {
 
-
-
                         dealArea.className = PageConfig.subModes['2_0'] === '1' ? '_f_' : '_g_';
                     }
                 }
@@ -13621,7 +13133,6 @@
                  * @returns {void}
                  */
                 static closePrint() {
-
 
                     HtmlTools.getHtml('#main').classList.add('Input');
                     switch (PageConfig.currentMode) {
@@ -13674,9 +13185,7 @@
                     HtmlTools.getHtml('#head_inputs').classList.add('NoDisplay');
                     HtmlTools.getHtml('#head_title').classList.remove('NoDisplay');
 
-
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_title_inner'), ['_basic_explain_title_'], {mode: 'replace'});
-
 
                     HtmlTools.appendDOMs(HtmlTools.getHtml('#explain_content'), ['_basic_explain_content_'], {mode: 'replace'});
                 }
@@ -13712,11 +13221,9 @@
                             target.appendChild(tempDIV);
                         };
 
-
                         const additionalInfoShow = document.createElement('div');
                         additionalInfoShow.classList.add('AdditionalInfo');
                         target.appendChild(additionalInfoShow);
-
 
                         addContent(additionalInfoShow,
                             ['_priority_level_', '_space_']
@@ -13725,11 +13232,9 @@
                             ['_L_', '_e_', '_v_', '_e_', '_l_', '_space_', ...HtmlTools.textToHtmlClass(priority.toString())]
                         );
 
-
                         if (associativity === null) {
                             return;
                         }
-
 
                         addContent(additionalInfoShow,
                             ['_operator_associativity_', '_space_']
@@ -13756,18 +13261,14 @@
                         return;
                     }
 
-
-
                     const inputStr = HtmlTools.htmlClassToText(input);
                     const info = Public.getTokenInfo(inputStr);
                     const converterConfig = PageConfig.classNameConverterConfig;
-
 
                     if (info.class === 'illegal') {
                         this.hideExplain();
                         return;
                     }
-
 
                     const inputClassStr = (inputStr in converterConfig ? converterConfig[inputStr] : inputStr).replace(/[\[\]]/g, '');
 
@@ -13815,7 +13316,6 @@
                             break;
                     }
 
-
                     const fragment = document.createDocumentFragment();
                     switch (inputStr) {
                         case '1':
@@ -13845,9 +13345,8 @@
                             break;
                     }
 
-
                     if (info.class === 'func') {
-                        addLine(fragment); 
+                        addLine(fragment);
                         const plusAndMinusPriority = info.priority + 2;
                         const plusAndMinusAssociativity = info.associativity;
 
@@ -13859,12 +13358,10 @@
                                 const positiveAndNegativePriority = positiveAndNegative.priority + 2;
                                 const positiveAndNegativeAssociativity = positiveAndNegative.associativity;
 
-
                                 HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'plus' : 'minus'}_sign_ ExplainLeft`]);
                                 funcInfoShow(fragment, plusAndMinusPriority, plusAndMinusAssociativity);
 
-                                addLine(fragment); 
-
+                                addLine(fragment);
 
                                 HtmlTools.appendDOMs(fragment, [`_as_${inputStr === '+' ? 'positive' : 'negative'}_sign_ ExplainLeft`]);
                                 funcInfoShow(fragment, positiveAndNegativePriority, positiveAndNegativeAssociativity);
@@ -13877,8 +13374,7 @@
                                 HtmlTools.appendDOMs(fragment, ['_as_explicit_multiplication_ ExplainLeft']);
                                 funcInfoShow(fragment, explicit.priority + 2, explicit.associativity);
 
-                                addLine(fragment); 
-
+                                addLine(fragment);
 
                                 HtmlTools.appendDOMs(fragment, ['_as_implicit_multiplication_ ExplainLeft']);
                                 funcInfoShow(fragment, implicit.priority + 2, implicit.associativity);
@@ -13893,7 +13389,6 @@
                         addLine(fragment);
                         funcInfoShow(fragment, 1, null);
                     }
-
 
                     HtmlTools.getHtml('#explain_content').replaceChildren(fragment);
                 }
@@ -13922,12 +13417,9 @@
                         return;
                     }
 
-
-
                     if (!HtmlTools.getHtml('.InputTip')) {
                         InputManager.ac();
                     }
-
 
                     if (classList.length > 0) {
                         InputManager.input(HtmlTools.deleteIllegal(classList));
@@ -13950,7 +13442,6 @@
 
                     const currentMode = PageConfig.currentMode;
 
-
                     if (currentMode === '0') {
                         return;
                     }
@@ -13962,7 +13453,6 @@
                     let expr;
 
                     try {
-
 
                         const syntaxResult = await WorkerTools.exec(currentInput, {
                             calcMode: 'syntaxCheck',
@@ -13976,12 +13466,10 @@
                         expr = ['_syntax_error_', ...currentInputArray];
                     }
 
-
                     if (currentMode === '1') {
 
                         const current = PageConfig.subModes['1'];
                         PageConfig.screenData = {'1': [current[0], current[1], HtmlTools.htmlClassToText(expr)]};
-
 
                         const gridData = PageConfig.screenData['1'];
                         const gridDataLast = gridData.at(-1);
@@ -13995,16 +13483,13 @@
                             InputManager.moveCursor('down', true);
                         }
 
-
                         InputManager.ac();
                     } else {
-
 
                         const target = HtmlTools.getCurrentSubscreenArea();
                         if (!target) {
                             throw new Error('[PageControlTools] There is no active area on the current screen.');
                         }
-
 
                         HtmlTools.appendDOMs(target, expr, {mode: 'replace'});
 
@@ -14012,12 +13497,9 @@
 
                         PageConfig.syncScreenData();
 
-
-
                         if (moveCursor && HtmlTools.getHtml(`#screen_${currentMode}`).children.length !== Number(PageConfig.subModes[currentMode]) + 1) {
                             InputManager.moveCursor('right', true);
                         }
-
 
                         InputManager.ac();
                     }
@@ -14025,7 +13507,6 @@
                     HtmlTools.scrollToView();
                 }
             }
-
 
             window.PageConfig = PageConfig;
             window.HtmlTools = HtmlTools;
@@ -14045,24 +13526,17 @@
         document.addEventListener('click', (event) => {
             "use strict";
 
-
             let target = event.target;
-
 
             if (target.tagName.toLowerCase() === 'p' && target.parentNode?.id !== 'input') {
                 target = target.parentNode;
             }
-
 
             const {id: targetID, className: targetClass} = target;
 
             const firstChildClass = target.firstElementChild?.className || '';
             const parent = target.parentNode;
             const parentID = parent?.id || '';
-
-
-
-
 
             switch (targetID) {
                 case 'head_setting':
@@ -14114,9 +13588,7 @@
                     return;
             }
 
-
-
-            const showMoreFunc = /** 打开更多键盘选项。 */ () => PageControlTools.changeSubKeyboard('SortSvg');
+            const showMoreFunc = /** 打开更多键盘选项。 */() => PageControlTools.changeSubKeyboard('SortSvg');
 
             switch (parentID) {
                 case 'setting_acc_control':
@@ -14135,11 +13607,10 @@
                 case 'keyboard_top': {
 
                     const handlers = {
-                        '_2nd_': /** 切换第二功能键盘。 */ () => PageConfig.keyboardType = 1 - PageConfig.keyboardType,
-                        '_trigonometry_': /** 切换三角函数键盘。 */ () => PageControlTools.changeSubKeyboard('_trigonometry_'),
-                        '_functions_': /** 切换常用函数键盘。 */ () => PageControlTools.changeSubKeyboard('_functions_')
+                        '_2nd_': /** 切换第二功能键盘。 */() => PageConfig.keyboardType = 1 - PageConfig.keyboardType,
+                        '_trigonometry_': /** 切换三角函数键盘。 */() => PageControlTools.changeSubKeyboard('_trigonometry_'),
+                        '_functions_': /** 切换常用函数键盘。 */() => PageControlTools.changeSubKeyboard('_functions_')
                     };
-
 
                     if (handlers[firstChildClass]) {
                         handlers[firstChildClass]();
@@ -14148,7 +13619,6 @@
                     } else {
 
                         PageControlTools.hideExplain();
-
 
                         const direction = firstChildClass.slice(13).toLowerCase();
                         if (direction) {
@@ -14159,7 +13629,6 @@
                 }
             }
 
-
             if (parentID.startsWith('screen_input_')) {
 
                 PageControlTools.hideExplain();
@@ -14169,29 +13638,23 @@
                 return;
             }
 
-
             if (parentID === 'input' && targetID === '') {
 
                 PageControlTools.hideExplain();
                 return InputManager.clickMoveCursor(target);
             }
 
-
-
-
             if (targetID.includes('keyboard_cover')) {
                 return PageControlTools.changeSubKeyboard('allNotShow');
             }
-
 
             if (/^mode_[0-4]$/.test(targetID)) {
                 const mode = targetID.slice(-1);
                 PageConfig.currentMode = (mode === '2') ? '2_0' : mode;
 
-                setTimeout(/** 延迟收起页面遮罩。 */ () => PageControlTools.clickMainCover(), 340);
+                setTimeout(/** 延迟收起页面遮罩。 */() => PageControlTools.clickMainCover(), 340);
                 return;
             }
-
 
             if (/Data[XY]/.test(targetClass)) {
 
@@ -14209,12 +13672,10 @@
                 return;
             }
 
-
             if (/^print_[0-1]$/.test(targetID)) {
                 PageConfig.printMode = targetID.slice(-1);
                 return;
             }
-
 
             if (/KeyboardStyle(?:[123]|EXE)/.test(targetClass)) {
 
@@ -14259,7 +13720,6 @@
                 return;
             }
 
-
             if (/title_mode_([0134]|2_0)|screen_title|print_title/.test(targetID)) {
 
                 if (!Public.webMode || (targetID !== 'print_title' && PageConfig.currentMode === '2_1')) {
@@ -14292,12 +13752,9 @@
         document.addEventListener('keydown', (event) => {
             "use strict";
 
-
             const key = event.key;
 
-
             PageControlTools.hideExplain();
-
 
             switch (key) {
                 case 'Backspace':
@@ -14342,8 +13799,6 @@
                     return PrintManager.exe();
             }
 
-
-
             if (/^([a-z0-9E])$/.test(key)) {
                 event.preventDefault();
 
@@ -14363,8 +13818,6 @@
                 return;
             }
 
-
-
             if (/^[+\-*/^|!,.()]$/.test(key)) {
                 event.preventDefault();
 
@@ -14379,7 +13832,7 @@
         window.addEventListener('load', () => {
             "use strict";
 
-            const getStore = /** 读取一项本地存储数据。 */ (key) => localStorage.getItem(key);
+            const getStore = /** 读取一项本地存储数据。 */(key) => localStorage.getItem(key);
 
             /**
              * 恢复单项本地数据，并清除无法解析的值。
@@ -14406,15 +13859,11 @@
                 }
             };
 
-
-
-
-            recoverData('currentMode', /** 恢复当前页面模式。 */ (data) => {
+            recoverData('currentMode', /** 恢复当前页面模式。 */(data) => {
                 PageConfig.currentMode = data;
             });
 
-
-            recoverData('screenData', /** 恢复各输入区数据。 */ (data) => {
+            recoverData('screenData', /** 恢复各输入区数据。 */(data) => {
                 data = JSON.parse(data);
                 for (const key in data) {
                     const inner = data[key];
@@ -14436,8 +13885,7 @@
                 }
             });
 
-
-            recoverData('subModes', /** 恢复当前子模式。 */ (data) => {
+            recoverData('subModes', /** 恢复当前子模式。 */(data) => {
                 data = JSON.parse(data);
                 const dataLen = PageConfig.screenData['1'].length;
                 if (data['1'][0] + 1 > dataLen) {
@@ -14446,22 +13894,18 @@
                 PageConfig.subModes = data;
             });
 
-
-            recoverData('keyboardType', /** 恢复第二功能键盘状态。 */ (data) => {
+            recoverData('keyboardType', /** 恢复第二功能键盘状态。 */(data) => {
                 PageConfig.keyboardType = Number(data);
             });
 
-
-            recoverData('printMode', /** 恢复复数输出模式。 */ (data) => {
+            recoverData('printMode', /** 恢复复数输出模式。 */(data) => {
                 PageConfig.printMode = data;
             });
 
-
-
             recoverData(
                 'calcAccMode',
-                /** 恢复计算精度模式。 */ (data) => PageConfig.calcAccMode = Number(data),
-                /** 应用默认计算精度模式。 */ () => PageConfig.calcAccMode = 0
+                /** 恢复计算精度模式。 */(data) => PageConfig.calcAccMode = Number(data),
+                /** 应用默认计算精度模式。 */() => PageConfig.calcAccMode = 0
             );
 
             HtmlTools.scrollToView();
@@ -17065,7 +16509,6 @@
 
         @media (max-width: 160dvh) {
             /* 较窄视口使用全宽五列键盘。 */
-
             .KeyboardCover {
                 width: 100dvw;
             }
@@ -17143,7 +16586,6 @@
 
         @media (min-width: 160dvh) {
             /* 宽视口将输入区与键盘并排显示。 */
-
             #keyboard_cover,
             #keyboard_top > div:where(:nth-child(2), div:nth-child(3)) {
                 display: none !important;
@@ -17264,7 +16706,6 @@
             height: calc(var(--layout-action-height) + 37dvmin + 2dvh);
             border-radius: 3dvmin;
 
-
             background: linear-gradient(145deg, hsl(var(--white) / 0.34), hsl(var(--surface-raised) / 0.98) 42%, hsl(var(--surface-soft) / 0.96));
 
             box-shadow: 0 0 0 0.1dvmin hsl(var(--shadow-grey-1) / 0.22),
@@ -17295,7 +16736,6 @@
 
             display: flex;
             align-items: center;
-
 
             justify-content: center;
             width: 25dvmin;
@@ -17330,7 +16770,6 @@
         }
 
         @keyframes bump {
-
 
             from,
             42%,
@@ -17381,7 +16820,6 @@
         }
 
         @keyframes worm {
-
 
             from {
                 stroke-dashoffset: 10;
@@ -17787,7 +17225,7 @@
 
         .SelectBtn {
             position: relative;
-            overflow: hidden; 
+            overflow: hidden;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
             outline: none;
@@ -17808,13 +17246,11 @@
             position: absolute;
             transform: scale(0);
             animation: RippleFill 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            pointer-events: none; 
+            pointer-events: none;
             border-radius: 50%;
-
 
             background-color: hsl(var(--black) / 0.1);
         }
-
 
         span.Ripple.IsFadingOut {
             animation: RippleFadeOut 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -17838,8 +17274,6 @@
                 transform: scale(4.2);
             }
         }
-
-
 
         #statistics_results {
             overflow: hidden;
@@ -18084,7 +17518,6 @@
             box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--switch-shadow-dark) / 0.3),
             inset calc(var(--h) * -0.025) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.7);
 
-
             --h: min(6dvh, 7.5dvw);
             --switch-gap: calc(var(--h) * 0.1);
             --knob-size: calc(var(--h) * 0.8);
@@ -18118,20 +17551,18 @@
             var(--knob-color-3) 72%,
             var(--knob-color-4) 100%),
             var(--knob-base-color);
-            box-shadow:  0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
- calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
- calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.86),
- inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.94),
- inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--switch-shadow-mid) / 0.2);
+            box-shadow: 0 0 calc(var(--h) * 0.24) hsl(var(--action-green) / 0),
+            calc(var(--h) * 0.055) calc(var(--h) * 0.065) calc(var(--h) * 0.14) hsl(var(--switch-shadow-dark) / 0.4),
+            calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0.86),
+            inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.94),
+            inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--switch-shadow-mid) / 0.2);
             --knob-color-1: hsl(var(--white));
             --knob-color-2: hsl(var(--soft-white));
             --knob-color-3: hsl(var(--switch-track));
 
-
             --knob-color-4: hsl(var(--switch-shadow));
             --knob-base-color: transparent;
         }
-
 
         .SwitchIcon {
             position: absolute;
@@ -18145,21 +17576,17 @@
             pointer-events: none;
         }
 
-
         .IconOff {
             transform: translate(-50%, -50%) scale(1) rotate(0deg);
             opacity: 1;
             stroke: hsl(var(--switch-icon-off));
         }
 
-
         .IconOn {
             transform: translate(-50%, -50%) scale(0.5) rotate(-45deg);
             opacity: 0;
             stroke: hsl(var(--white));
         }
-
-
 
         #switch_container.Active {
             box-shadow: inset calc(var(--h) * 0.035) calc(var(--h) * 0.045) calc(var(--h) * 0.13) hsl(var(--shadow-grey-0) / 0.42),
@@ -18170,21 +17597,18 @@
 
             transform: translateX(var(--h));
 
-            box-shadow:  0 0 calc(var(--h) * 0.26) hsl(var(--action-green) / 0.86),
- calc(var(--h) * 0.05) calc(var(--h) * 0.06) calc(var(--h) * 0.13) hsl(var(--action-green-shadow) / 0.44),
- calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0),
- inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.5),
- inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.36);
+            box-shadow: 0 0 calc(var(--h) * 0.26) hsl(var(--action-green) / 0.86),
+            calc(var(--h) * 0.05) calc(var(--h) * 0.06) calc(var(--h) * 0.13) hsl(var(--action-green-shadow) / 0.44),
+            calc(var(--h) * -0.03) calc(var(--h) * -0.03) calc(var(--h) * 0.09) hsl(var(--white) / 0),
+            inset calc(var(--h) * 0.025) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.5),
+            inset calc(var(--h) * -0.025) calc(var(--h) * -0.04) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.36);
             --knob-color-1: hsl(var(--white) / 0.22);
             --knob-color-2: hsl(var(--white) / 0.07);
             --knob-color-3: hsl(var(--black) / 0.035);
 
-
             --knob-color-4: hsl(var(--black) / 0.13);
             --knob-base-color: hsl(var(--action-green) / 0.82);
         }
-
-
 
         #switch_container.Active .IconOff {
             transform: translate(-50%, -50%) scale(0.5) rotate(45deg);
@@ -18196,28 +17620,25 @@
             opacity: 1;
         }
 
-
         #switch_container:hover #switch_knob {
             filter: brightness(1.025);
         }
 
-
         #switch_container:active #switch_knob {
-            box-shadow:  0 0 calc(var(--h) * 0.19) hsl(var(--action-green) / 0),
- calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--switch-shadow-pressed) / 0.34),
- calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0.46),
- inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.74),
- inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--switch-shadow-pressed-bottom) / 0.28);
+            box-shadow: 0 0 calc(var(--h) * 0.19) hsl(var(--action-green) / 0),
+            calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--switch-shadow-pressed) / 0.34),
+            calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0.46),
+            inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.74),
+            inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--switch-shadow-pressed-bottom) / 0.28);
             filter: brightness(0.97);
         }
 
-
         #switch_container.Active:active #switch_knob {
-            box-shadow:  0 0 calc(var(--h) * 0.2) hsl(var(--action-green) / 0.76),
- calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.44),
- calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0),
- inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.38),
- inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--action-green-shadow) / 0.42);
+            box-shadow: 0 0 calc(var(--h) * 0.2) hsl(var(--action-green) / 0.76),
+            calc(var(--h) * 0.02) calc(var(--h) * 0.025) calc(var(--h) * 0.065) hsl(var(--action-green-shadow) / 0.44),
+            calc(var(--h) * -0.012) calc(var(--h) * -0.012) calc(var(--h) * 0.045) hsl(var(--white) / 0),
+            inset calc(var(--h) * 0.02) calc(var(--h) * 0.035) calc(var(--h) * 0.055) hsl(var(--white) / 0.38),
+            inset calc(var(--h) * -0.02) calc(var(--h) * -0.035) calc(var(--h) * 0.06) hsl(var(--action-green-shadow) / 0.42);
         }
 
         #switch_container:focus-visible {
