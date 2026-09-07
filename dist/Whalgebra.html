@@ -2,7 +2,7 @@
 <html dir="ltr" lang="zh-CN">
 
 <head>
-    <!-- Whalgebra Version: v3.1.3 | Updated: 2026-09-06 -->
+    <!-- Whalgebra Version: v3.1.3 | Updated: 2026-09-07 -->
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport"/>
     <title>Whalgebra</title>
@@ -4729,8 +4729,8 @@
              * 单个回归模型的输出结构。
              *
              * @typedef {object} RegressionModelResult
-             * @property {Array<string|'error'>} parameter - 按模型表达式顺序排列的参数；二参数模型为
-             *   `[a,b]`，二次模型为 `[a,b,c]`。无法求解的参数逐项使用 `error`。
+             * @property {Array<string|'error'>} parameter - 按模型表达式顺序排列的参数；
+             *   二参数模型为 `[a,b]`，二次模型为 `[a,b,c]`。无法求解的参数逐项使用 `error`。
              * @property {string|'error'} regressionEquation - 可直接交给表达式解析器的回归方程字符串。
              * @property {string|'error'} R2 - 在原始因变量量纲上计算并格式化的决定系数。
              * @property {'linear'|'square'|'ln'|'exp'|'abx'|'axb'|'reciprocal'} model - 模型标识，
@@ -5505,16 +5505,16 @@
              * @typedef {object} PowerFunctionAnalysisResult
              * @property {string} equation - 按降幂规范化的多项式表达式。
              * @property {[string, string]} range - 值域左右边界；无穷使用 `-inf`/`+inf`。
-             * @property {Array<[string, string]>} increasingInterval - 单调递增区间；不存在时为
-             *   `[['null','null']]`，无穷端点使用专用字符串。
+             * @property {Array<[string, string]>} increasingInterval - 单调递增区间；
+             *   不存在时为 `[['null','null']]`，无穷端点使用专用字符串。
              * @property {Array<[string, string]>} decreasingInterval - 与上项采用相同编码的单调递减区间。
              * @property {Array<[string, string]>} maximumPoint - 极大值点 `[x,y]` 列表；不存在时使用空点哨兵。
              * @property {Array<[string, string]>} minimumPoint - 极小值点 `[x,y]` 列表；不存在时使用空点哨兵。
              * @property {Array<[string, string]>} convexInterval - 凸区间列表；端点编码与单调区间一致。
              * @property {Array<[string, string]>} concaveInterval - 凹区间列表；端点编码与单调区间一致。
              * @property {Array<[string, string]>} inflectionPoint - 拐点 `[x,y]` 列表；不存在时使用空点哨兵。
-             * @property {Array<string>} roots - 已格式化实根/复根列表；无根为 `['null']`，恒等于零为
-             *   `['anyRealNumber']`。返回数量不超过实际多项式次数。
+             * @property {Array<string>} roots - 已格式化实根/复根列表；无根为 `['null']`，
+             *   恒等于零为 `['anyRealNumber']`。返回数量不超过实际多项式次数。
              */
 
             /**
@@ -6455,16 +6455,16 @@
                 /**
                  * 在实数闭区间内生成可能相互引用的 f(x) 和 g(x) 值列表。
                  *
-                 * @param {string} f - 使用内部词元书写的 `f(x)` 函数体；可通过 `[g]` 调用 `g`，单点求值
-                 *   失败只在 `f` 结果的同一位置写入 `error`。
-                 * @param {string} g - 使用内部词元书写的 `g(x)` 函数体；可通过 `[f]` 调用 `f`，其失败位置
-                 *   与 `f` 独立记录。
+                 * @param {string} f - 使用内部词元书写的 `f(x)` 函数体；可通过 `[g]` 调用 `g`，
+                 *   单点求值失败只在 `f` 结果的同一位置写入 `error`。
+                 * @param {string} g - 使用内部词元书写的 `g(x)` 函数体；可通过 `[f]` 调用 `f`，
+                 *   其失败位置与 `f` 独立记录。
                  * @param {string|number|BigNumber|ComplexNumber|Array} start - 闭区间实数起点；表达式求值、
                  *   近零修正后不得带非零虚部，且不得大于 `end`。
                  * @param {string|number|BigNumber|ComplexNumber|Array} step - 严格大于零的纯实步长；决定显示点间距。
                  *   达到最大展示数量时停止继续分配，并在结果尾部放置省略标记。
-                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 闭区间实数终点；仅计算按步长实际
-                 *   到达且不大于它的点，不会为了包含终点而改变最后一步。
+                 * @param {string|number|BigNumber|ComplexNumber|Array} end - 闭区间实数终点；
+                 *   仅计算按步长实际到达且不大于它的点，不会为了包含终点而改变最后一步。
                  * @returns {{varList:Array<string>, f:Array<string>, g:Array<string>}} 三个索引对齐的显示数组：
                  *   `varList[i]` 是采样自变量，`f[i]`、`g[i]` 是对应函数值或 `error`。超出展示上限时
                  *   `varList` 末尾追加 `[print_content_omit]`，两个函数数组同位置追加 `[not_applicable]`。
@@ -6563,8 +6563,7 @@
                     outputAcc = CalcConfig.outputAccuracy,
                     calcMode = 'calc',
                     outputMode = 'output',
-                    f,
-                    g
+                    f, g
                 } = {}) {
                     let effectiveOutputAcc = outputAcc;
                     if (effectiveOutputAcc > 1 && effectiveOutputAcc > calcAcc) {
